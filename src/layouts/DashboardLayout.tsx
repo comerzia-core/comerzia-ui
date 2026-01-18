@@ -1,4 +1,5 @@
 import { Outlet } from "react-router-dom";
+import { ThemeToggle } from "../components/ui/ThemeToggle";
 
 export const DashboardLayout = () => {
   return (
@@ -9,14 +10,30 @@ export const DashboardLayout = () => {
       {/* CONTENIDO PRINCIPAL (Derecha) */}
       <div className="drawer-content flex flex-col bg-base-100">
         
-        {/* Navbar Superior */}
-        <div className="w-full navbar bg-base-300">
-          <div className="flex-none lg:hidden">
-            <label htmlFor="my-drawer-2" className="btn btn-square btn-ghost">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="inline-block w-6 h-6 stroke-current"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
-            </label>
+        {/* Navbar */}
+        <div className="w-full navbar bg-base-300 flex justify-between"> {/* Agregamos flex justify-between */}
+          
+          {/* Lado Izquierdo (Menú Móvil + Título) */}
+          <div className="flex items-center">
+            <div className="flex-none lg:hidden">
+              <label htmlFor="my-drawer-2" className="btn btn-square btn-ghost">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="inline-block w-6 h-6 stroke-current"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+              </label>
+            </div>
+            <div className="px-2 mx-2 text-xl font-bold">Comerzia ERP</div>
           </div>
-          <div className="flex-1 px-2 mx-2 text-xl font-bold">Comerzia ERP</div>
+
+          {/* Lado Derecho (Aquí ponemos el switch) */}
+          <div className="flex-none gap-2 px-2">
+             <ThemeToggle />
+             {/* Aquí a futuro irá el Avatar del usuario */}
+             <div className="avatar placeholder">
+                <div className="bg-neutral text-neutral-content rounded-full w-10">
+                    <span className="text-xs">UI</span>
+                </div>
+             </div>
+          </div>
+
         </div>
 
         {/* Aquí se inyectan las páginas (Como el <ui:insert> de JSF) */}

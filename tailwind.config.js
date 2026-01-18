@@ -12,6 +12,11 @@ export default {
   ],
   // Configuración opcional de DaisyUI (temas, etc)
   daisyui: {
-    themes: ["light", "dark", "cupcake"], // Puedes elegir los que quieras
+    themes: [
+      "light", 
+      "dark", 
+      "cupcake",
+      "corporate"
+    ], 
   },
 }
