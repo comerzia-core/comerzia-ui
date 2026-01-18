@@ -97,3 +97,6 @@ npx tailwindcss init -p
 
 # 3. Instalar DaisyUI
 npm install -D daisyui
+
+# 4. Axios
+npm install axios
