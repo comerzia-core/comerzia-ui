@@ -1,0 +1,17 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [
+    require('daisyui'),
+  ],
+  // Configuración opcional de DaisyUI (temas, etc)
+  daisyui: {
+    themes: ["light", "dark", "cupcake"], // Puedes elegir los que quieras
+  },
+}
