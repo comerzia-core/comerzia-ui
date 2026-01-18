@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { LoginPage } from "../features/auth/pages/LoginPage";
 import { DashboardPage } from "../features/dashboard/pages/DashboardPage";
 import { DashboardLayout } from "../layouts/DashboardLayout";
+import { ProtectedRoute } from "./ProtectedRoute";
 
 export const AppRouter = () => {
   return (
@@ -9,16 +10,23 @@ export const AppRouter = () => {
       <Routes>
         {/* Rutas Públicas (Sin Layout de Dashboard) */}
         <Route path="/login" element={<LoginPage />} />
+        
+        {/* RUTAS PROTEGIDAS */}
+        {/* Paso 1: Verificamos si está logueado */}
+        <Route element={<ProtectedRoute />}>
+            
+            {/* Paso 2: Si pasa, cargamos el Layout (Sidebar + Navbar) */}
+            <Route element={<DashboardLayout />}>
+                <Route path="/dashboard" element={<DashboardPage />} />
+                
+                {/* Aquí irán las futuras rutas */}
+                {/* <Route path="/ventas" element={<VentasPage />} /> */}
+            </Route>
 
-        {/* Rutas Privadas (Con Layout de Dashboard) */}
-        {/* Todo lo que esté dentro de este Route tendrá el Sidebar automáticamente */}
-        <Route element={<DashboardLayout />}>
-            <Route path="/dashboard" element={<DashboardPage />} />
-            {/* Aquí agregaremos más rutas: /inventory, /sales, etc. */}
         </Route>
 
-        {/* Redirección por defecto: Si entra a la raíz, mandar a login o dashboard */}
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        {/* Redirección por defecto */}
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </BrowserRouter>
   );

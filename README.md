@@ -100,3 +100,6 @@ npm install -D daisyui
 
 # 4. Axios
 npm install axios
+
+# zustand jwt-decode
+npm install zustand jwt-decode
