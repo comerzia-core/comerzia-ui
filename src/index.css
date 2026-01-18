@@ -1,3 +1,62 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer components {
+  /* CLASES PERSONALIZADAS DE COMERZIA 
+     Esto garantiza que el color sea SIEMPRE sólido, sin importar si es Light, Dark o Cyberpunk.
+  */
+
+  /* Botón de Guardar (Verde Esmeralda Sólido) */
+  .btn-comerzia-save {
+    background-color: #10b981 !important; /* emerald-500 */
+    color: white !important;
+  }
+  
+  .btn-comerzia-save:hover {
+    background-color: #059669 !important; /* emerald-600 */
+  }
+
+  /* Botón de Eliminar (Rojo Sólido) */
+  .btn-comerzia-delete {
+    background-color: #ef4444 !important; /* red-500 */
+    color: white !important;
+  }
+  
+  .btn-comerzia-delete:hover {
+    background-color: #dc2626 !important; /* red-600 */
+  }
+
+  /* Botón INFO Sólido */
+  .btn-comerzia-info {
+    background-color: #0ea5e9 !important; /* sky-500 */
+    border-color: #0ea5e9 !important;
+    color: white !important;
+  }
+  .btn-comerzia-info:hover { background-color: #0284c7 !important; }
+
+  /* Botón SUCCESS Sólido (Reemplaza al estándar para consistencia) */
+  .btn-comerzia-success {
+    background-color: #22c55e !important; /* green-500 */
+    border-color: #22c55e !important;
+    color: white !important;
+  }
+  .btn-comerzia-success:hover { background-color: #16a34a !important; }
+
+  /* Botón WARNING Sólido */
+  .btn-comerzia-warning {
+    background-color: #eab308 !important; /* yellow-500 */
+    border-color: #eab308 !important;
+    color: white !important; /* O black si prefieres contraste */
+  }
+  .btn-comerzia-warning:hover { background-color: #ca8a04 !important; }
+
+  /* Botón ERROR Sólido */
+  .btn-comerzia-error {
+    background-color: #ef4444 !important; /* red-500 */
+    border-color: #ef4444 !important;
+    color: white !important;
+  }
+  .btn-comerzia-error:hover { background-color: #dc2626 !important; }
+
+}

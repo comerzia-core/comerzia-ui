@@ -10,13 +10,13 @@ export default {
   plugins: [
     require('daisyui'),
   ],
-  // Configuración opcional de DaisyUI (temas, etc)
   daisyui: {
     themes: [
       "light", 
       "dark", 
       "cupcake",
-      "corporate"
+      "corporate",
+      "synthwave"
     ], 
   },
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 // Definimos los temas disponibles para tener autocompletado
-type Theme = "light" | "dark" | "cupcake" | "corporate";
+type Theme = "light" | "dark" | "cupcake" | "corporate" | "synthwave";
 
 export const useTheme = () => {
   // 1. Estado inicial: Leemos de localStorage o usamos 'light' por defecto
