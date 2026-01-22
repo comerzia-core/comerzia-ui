@@ -1,7 +1,7 @@
 import { NavLink, useLocation } from "react-router-dom";
 import type { MenuItem } from "../../features/auth/types";
 import { IconRenderer } from "../ui/IconRenderer";
-import { ChevronRight } from "lucide-react"; // Flecha bonita
+// import { ChevronRight } from "lucide-react"; // Flecha bonita
 
 const MenuItemRenderer = ({ item }: { item: MenuItem }) => {
     const location = useLocation();

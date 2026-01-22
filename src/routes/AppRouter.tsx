@@ -3,6 +3,7 @@ import { LoginPage } from "../features/auth/pages/LoginPage";
 import { DashboardPage } from "../features/dashboard/pages/DashboardPage";
 import { DashboardLayout } from "../layouts/DashboardLayout";
 import { ProtectedRoute } from "./ProtectedRoute";
+import { UnderConstruction } from "../components/ui/UnderConstruction";
 
 export const AppRouter = () => {
   return (
@@ -21,6 +22,14 @@ export const AppRouter = () => {
                 
                 {/* Aquí irán las futuras rutas */}
                 {/* <Route path="/ventas" element={<VentasPage />} /> */}
+
+                {/* 2. Rutas futuras (Cuando crees el archivo, lo agregas aquí) */}
+                {/* <Route path="/inventory/products" element={<ProductListPage />} /> */}
+
+                {/* 3. EL TRUCO: Ruta Comodín para todo lo demás */}
+                {/* Cualquier ruta hija del layout que no esté definida arriba, caerá aquí */}
+                <Route path="*" element={<UnderConstruction />} />
+
             </Route>
 
         </Route>

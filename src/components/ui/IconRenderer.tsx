@@ -7,7 +7,7 @@ import {
     FileText, 
     LogOut,
     HelpCircle,
-    ChevronRight // Usaremos este para nuestra propia flecha personalizada
+    // ChevronRight // Usaremos este para nuestra propia flecha personalizada
 } from 'lucide-react';
 
 // Mapa de Strings (API) -> Componentes Lucide
