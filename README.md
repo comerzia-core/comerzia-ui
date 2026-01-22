@@ -103,3 +103,6 @@ npm install axios
 
 # zustand jwt-decode
 npm install zustand jwt-decode
+
+# ico
+npm install lucide-react

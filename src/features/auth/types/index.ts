@@ -15,3 +15,12 @@ export interface User {
     username: string;
     roles: string[];
 }
+
+// Estructura del Menú que viene del Backend
+export interface MenuItem {
+    id: number;
+    name: string;      // Ej: "Inventarios"
+    route: string;     // Ej: "/inventory" o null si es solo padre
+    icon?: string;     // Ej: "box", "users"
+    children?: MenuItem[]; // RECURSIVIDAD: Lista de hijos opcional
+}

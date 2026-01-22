@@ -35,7 +35,7 @@ export const LoginPage = () => {
             
         } catch (err) {
             console.error(err);
-            setError('Credenciales incorrectas o error en el servidor');
+            setError('Credenciales incorrectas');
         } finally {
             setLoading(false);
         }

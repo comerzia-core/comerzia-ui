@@ -1,61 +1,67 @@
+import { useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
 import { ThemeToggle } from "../components/ui/ThemeToggle";
+import { SidebarMenu } from "../components/layout/SidebarMenu"; // Importamos el componente nuevo
+import { getMyMenuTree } from "../services/menuService";       // Importamos el servicio
+import type { MenuItem } from "../features/auth/types";
 
 export const DashboardLayout = () => {
+  // Estado local para el menú
+  const [menuTree, setMenuTree] = useState<MenuItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Cargamos el menú al iniciar
+  useEffect(() => {
+    const fetchMenu = async () => {
+        try {
+            const data = await getMyMenuTree();
+            setMenuTree(data);
+        } catch (error) {
+            console.error("Error cargando el menú", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    fetchMenu();
+  }, []);
+
   return (
-    // Estructura "Drawer" de DaisyUI
     <div className="drawer lg:drawer-open">
       <input id="my-drawer-2" type="checkbox" className="drawer-toggle" />
       
-      {/* CONTENIDO PRINCIPAL (Derecha) */}
+      {/* CONTENIDO PRINCIPAL */}
       <div className="drawer-content flex flex-col bg-base-100">
-        
-        {/* Navbar */}
-        <div className="w-full navbar bg-base-300 flex justify-between"> {/* Agregamos flex justify-between */}
-          
-          {/* Lado Izquierdo (Menú Móvil + Título) */}
+        <div className="w-full navbar bg-base-300 flex justify-between">
           <div className="flex items-center">
-            <div className="flex-none lg:hidden">
-              <label htmlFor="my-drawer-2" className="btn btn-square btn-ghost">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="inline-block w-6 h-6 stroke-current"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
-              </label>
-            </div>
-            <div className="px-2 mx-2 text-xl font-bold">Comerzia ERP</div>
+             <div className="flex-none lg:hidden">
+                <label htmlFor="my-drawer-2" className="btn btn-square btn-ghost">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="inline-block w-6 h-6 stroke-current"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </label>
+             </div>
+             <div className="px-2 mx-2 text-xl font-bold">Comerzia ERP</div>
           </div>
-
-          {/* Lado Derecho (Aquí ponemos el switch) */}
           <div className="flex-none gap-2 px-2">
              <ThemeToggle />
-             {/* Aquí a futuro irá el Avatar del usuario */}
              <div className="avatar placeholder">
                 <div className="bg-neutral text-neutral-content rounded-full w-10">
                     <span className="text-xs">UI</span>
                 </div>
              </div>
           </div>
-
         </div>
 
-        {/* Aquí se inyectan las páginas (Como el <ui:insert> de JSF) */}
         <div className="p-6">
             <Outlet /> 
         </div>
-      
       </div> 
       
-      {/* SIDEBAR (Izquierda) */}
+      {/* SIDEBAR DINÁMICO */}
       <div className="drawer-side">
         <label htmlFor="my-drawer-2" className="drawer-overlay"></label> 
-        <ul className="menu p-4 w-80 min-h-full bg-base-200 text-base-content">
-          {/* Logo o Título del Sidebar */}
-          <li className="mb-4 text-2xl font-bold px-4">Comerzia</li>
-          
-          {/* Opciones del Menú */}
-          <li><a>Dashboard</a></li>
-          <li><a>Inventario</a></li>
-          <li><a>Ventas</a></li>
-          <li><a>Usuarios</a></li>
-        </ul>
+        
+        {/* Aquí usamos el componente recursivo */}
+        <SidebarMenu menuTree={menuTree} isLoading={loading} />
       
       </div>
     </div>
