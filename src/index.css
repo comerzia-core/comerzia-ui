@@ -83,4 +83,24 @@
   }
   .btn-comerzia-pdf:hover { background-color: #c2410c !important; }
 
+  /* BOTÓN PRIMARIO (LOGIN / SISTEMA) - BLINDADO */
+  .btn-comerzia-primary {
+    background-color: #432ad5 !important; /* Violet-600 (Morado) */
+    border-color: #432ad5 !important;
+    color: white !important;
+  }
+  .btn-comerzia-primary:hover { 
+    background-color: #3d1eed !important; /* Un poco más oscuro al pasar el mouse */
+  }
+
+  /* BOTÓN NEUTRO/CANCELAR (Para el Modal "NO") */
+  /* A veces btn-ghost también falla, aseguramos un gris suave */
+  .btn-comerzia-ghost {
+    background-color: transparent !important;
+    border: 1px solid #d1d5db !important; /* Gris suave (border-gray-300) */
+    color: inherit !important;
+  }
+  .btn-comerzia-ghost:hover {
+    background-color: rgba(0,0,0,0.05) !important;
+  }
 }

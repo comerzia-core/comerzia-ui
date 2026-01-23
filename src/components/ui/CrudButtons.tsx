@@ -77,3 +77,39 @@ export const BtnPDF = ({ label = "Exportar PDF", ...props }: BaseBtnProps) => (
         {...props} 
     />
 );
+
+// ==========================================
+// BOTONES DE SISTEMA (Login, Modales, etc)
+// ==========================================
+
+// 7. LOGIN (Morado Primario, Ancho completo, Sin ícono)
+export const BtnLogin = ({ label = "Ingresar", ...props }: BaseBtnProps) => (
+    <ComerziaButton 
+        variant="primary" // Usa el color principal del tema (Morado)
+        label={label}
+        fullWidth // Generalmente el login ocupa todo el ancho
+        // No pasamos 'icon', y como 'primary' no tiene icono por defecto, sale limpio
+        {...props} 
+    />
+);
+
+// 8. MODAL: CONFIRMACIÓN DESTRUCTIVA (Rojo, Sin ícono)
+export const BtnModalYes = ({ label = "Sí, Confirmar", ...props }: BaseBtnProps) => (
+    <ComerziaButton 
+        variant="delete" // Reusamos el rojo corporativo
+        label={label}
+        icon={null} // <--- TRUCO: Pasamos null explícitamente para anular el basurero automático
+        {...props} 
+    />
+);
+
+// 9. MODAL: CANCELAR / NEUTRO (Gris/Transparente, Sin ícono)
+export const BtnModalNo = ({ label = "No, Cancelar", ...props }: BaseBtnProps) => (
+    <ComerziaButton 
+        variant="ghost" // O 'neutral' si lo quieres con fondo gris
+        label={label}
+        icon={null} // Sin ícono de X
+        className="border border-base-300" // Un borde sutil para que parezca botón
+        {...props} 
+    />
+);

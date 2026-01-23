@@ -3,6 +3,10 @@ import { useAuthStore } from "../../stores/useAuthStore";
 import { useCurrentTime } from "../../hooks/useCurrentTime";
 import { Bell, LogOut, User as UserIcon, Settings, Shield, HelpCircle } from "lucide-react";
 import { ThemeToggle } from "../ui/ThemeToggle";
+import { 
+    BtnModalYes, 
+    BtnModalNo 
+} from "../ui/CrudButtons";
 
 export const Header = () => {
   const userProfile = useAuthStore((state) => state.userProfile);
@@ -153,12 +157,16 @@ export const Header = () => {
             ¿Estás seguro de que quieres salir del sistema?
           </p>
           <div className="modal-action">
+            {/* Opción NO (Cierra el modal) */}
             <form method="dialog">
-              <button className="btn">No, Cancelar</button>
+              <BtnModalNo label="No, Cancelar" />
             </form>
-            <button onClick={handleConfirmLogout} className="btn btn-error text-white">
-                Sí, Cerrar Sesión
-            </button>
+            
+            {/* Opción SI (Ejecuta la acción) */}
+            <BtnModalYes 
+                label="Sí, Cerrar Sesión" 
+                onClick={handleConfirmLogout} 
+            />
           </div>
         </div>
         <form method="dialog" className="modal-backdrop">

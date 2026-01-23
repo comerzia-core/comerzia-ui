@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
-import { ComerziaButton } from '../../../components/ui/ComerziaButton';
 import api from '../../../lib/axios';
 import type { LoginResponse } from '../types';
+import { BtnLogin } from "../../../components/ui/CrudButtons";
 
 export const LoginPage = () => {
     const navigate = useNavigate();
@@ -69,12 +69,11 @@ export const LoginPage = () => {
                         )}
 
                         <div className="card-actions justify-end mt-4">
-                            <ComerziaButton 
+                            {/* Reemplazamos el ComerziaButton genérico por el específico */}
+                            <BtnLogin 
                                 type="submit" 
-                                label="Ingresar" 
-                                variant="primary" 
                                 isLoading={loading} 
-                                fullWidth
+                                // label="Ingresar" // Ya viene por defecto, pero puedes cambiarlo
                             />
                         </div>
                     </form>

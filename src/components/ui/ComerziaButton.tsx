@@ -42,8 +42,8 @@ export const ComerziaButton = ({
       
       // Defaults de DaisyUI
       case "neutral": return "btn-neutral text-white";
-      case "ghost": return "btn-ghost"; 
-      default: return "btn-primary text-white";
+      case "ghost": return "btn-comerzia-ghost text-white"; 
+      default: return "btn-comerzia-primary text-white";
     }
   };
 
