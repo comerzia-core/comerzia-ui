@@ -8,8 +8,12 @@ import { UnderConstruction } from "../components/ui/UnderConstruction";
 // import { UsersPage } from "../features/security/pages/UsersPage";
 // import { RolesPage } from "../features/security/pages/RolesPage";
 // import { EmployeesPage } from "../features/hrm/pages/EmployeesPage";
+import { useTheme } from "../hooks/useTheme"; 
+import { use } from "react";
 
 export const AppRouter = () => {
+  useTheme(); 
+  
   return (
     <BrowserRouter>
       <Routes>
