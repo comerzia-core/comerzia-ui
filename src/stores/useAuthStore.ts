@@ -1,65 +1,49 @@
 import { create } from 'zustand';
 import { jwtDecode } from 'jwt-decode';
-import type { JwtPayload, User } from '../features/auth/types';
+import api from '../lib/axios';
+import type { LoginResponse, JwtPayload, UserProfile } from '../features/auth/types'; // Importa UserProfile
 
 interface AuthState {
     token: string | null;
-    user: User | null;
     isAuthenticated: boolean;
+    userProfile: UserProfile | null; // Aquí guardaremos la info completa del backend
+    
     // Acciones
     login: (token: string) => void;
     logout: () => void;
+    fetchUserProfile: () => Promise<void>; // Nueva acción
 }
 
-export const useAuthStore = create<AuthState>((set) => {
-    // 1. Intentar recuperar sesión al recargar la página
+export const useAuthStore = create<AuthState>((set, get) => {
+    // Recuperación inicial del token
     const storedToken = localStorage.getItem('token');
-    let initialUser: User | null = null;
-    let initialAuth = false;
-
-    if (storedToken) {
-        try {
-            const decoded = jwtDecode<JwtPayload>(storedToken);
-            // Validar expiración básica
-            if (decoded.exp * 1000 > Date.now()) {
-                initialUser = {
-                    username: decoded.sub,
-                    roles: decoded.authorities
-                };
-                initialAuth = true;
-            } else {
-                localStorage.removeItem('token'); // Token expirado
-            }
-        } catch (error) {
-            localStorage.removeItem('token');
-        }
-    }
-
+    
     return {
         token: storedToken,
-        user: initialUser,
-        isAuthenticated: initialAuth,
+        isAuthenticated: !!storedToken, // True si hay token
+        userProfile: null, // Al inicio es null hasta que lo pidamos
 
         login: (token: string) => {
-            // Guardamos en LocalStorage para persistencia
             localStorage.setItem('token', token);
-            
-            // Decodificamos para obtener datos de usuario
-            const decoded = jwtDecode<JwtPayload>(token);
-            
-            set({
-                token,
-                isAuthenticated: true,
-                user: {
-                    username: decoded.sub,
-                    roles: decoded.authorities
-                }
-            });
+            set({ token, isAuthenticated: true });
+            // Opcional: Podrías llamar a get().fetchUserProfile() aquí mismo
         },
 
         logout: () => {
             localStorage.removeItem('token');
-            set({ token: null, user: null, isAuthenticated: false });
+            set({ token: null, isAuthenticated: false, userProfile: null });
+        },
+
+        fetchUserProfile: async () => {
+            try {
+                // Llamamos a tu endpoint nuevo
+                const { data } = await api.get<UserProfile>('/auth/profile');
+                set({ userProfile: data });
+            } catch (error) {
+                console.error("Error cargando perfil", error);
+                // Si falla el perfil (ej: token inválido), podríamos hacer logout automático
+                // get().logout(); 
+            }
         }
     };
 });

@@ -24,3 +24,17 @@ export interface MenuItem {
     icon?: string;     // Ej: "box", "users"
     children?: MenuItem[]; // RECURSIVIDAD: Lista de hijos opcional
 }
+
+// profile
+export interface UserProfile {
+    id: number;
+    username: string;
+    firstName: string;
+    paternalLastName: string;
+    maternalLastName: string;
+    fullName: string;
+    email: string;
+    imageUrl: string | null;
+    roles: string[];
+    permissions: string[];
+}
