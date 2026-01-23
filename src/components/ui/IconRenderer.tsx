@@ -1,38 +1,37 @@
-import { 
-    LayoutDashboard, 
-    Box, 
-    Users, 
-    ShieldCheck, 
-    Settings, 
-    FileText, 
-    LogOut,
-    HelpCircle,
-    // ChevronRight // Usaremos este para nuestra propia flecha personalizada
-} from 'lucide-react';
+import { useMemo } from 'react';
+// 1. Importamos TODO como un objeto para búsqueda dinámica
+import * as LucideIcons from 'lucide-react';
+// 2. Importamos explícitamente el fallback (CircleHelp es el nuevo nombre de HelpCircle)
+import { CircleHelp } from 'lucide-react';
+// 3. Importación de solo tipo corregida
+import type { LucideProps } from 'lucide-react';
 
-// Mapa de Strings (API) -> Componentes Lucide
-const iconMap: Record<string, any> = {
-    // Nombres que vienen de tu Base de Datos (en minúsculas)
-    dashboard: LayoutDashboard,
-    inventory: Box,
-    users: Users,
-    employees: Users, // Podemos reusar iconos
-    security: ShieldCheck,
-    settings: Settings,
-    reports: FileText,
-    logout: LogOut,
-    default: HelpCircle
-};
-
-interface Props {
-    iconName?: string;
-    className?: string;
-    size?: number;
+interface IconRendererProps extends Omit<LucideProps, 'ref'> {
+  iconName?: string;
 }
 
-export const IconRenderer = ({ iconName, className = "", size = 20 }: Props) => {
-    // Buscamos el icono, si no existe o es null, usamos el default
-    const IconComponent = iconMap[iconName?.toLowerCase() || 'default'] || iconMap['default'];
+export const IconRenderer = ({ iconName, className, size = 20, ...props }: IconRendererProps) => {
+  
+  const IconComponent = useMemo(() => {
+    // Si no viene nombre, devolvemos el fallback directo
+    if (!iconName) return CircleHelp;
+
+    // 1. Normalización de nombre (PascalCase)
+    // Convertimos "shopping-cart" -> "ShoppingCart" por si acaso
+    const pascalName = iconName
+      .split('-')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join('');
+
+    // 2. Buscamos en el objeto gigante de iconos
+    // @ts-ignore: Acceso dinámico necesario
+    const icon = LucideIcons[pascalName] || LucideIcons[iconName];
+
+    // 3. Retornamos el icono encontrado O el fallback si no existe
+    return icon || CircleHelp;
     
-    return <IconComponent className={className} size={size} />;
+  }, [iconName]);
+
+  // Renderizamos el componente encontrado
+  return <IconComponent className={className} size={size} {...props} />;
 };
