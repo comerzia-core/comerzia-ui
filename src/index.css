@@ -59,4 +59,28 @@
   }
   .btn-comerzia-error:hover { background-color: #dc2626 !important; }
 
+  /* Botón EDITAR (Azul Sólido) */
+  .btn-comerzia-edit {
+    background-color: #2563eb !important; /* blue-600 */
+    border-color: #2563eb !important;
+    color: white !important;
+  }
+  .btn-comerzia-edit:hover { background-color: #1d4ed8 !important; }
+
+  /* Botón EXCEL (Verde Oscuro) */
+  .btn-comerzia-excel {
+    background-color: #15803d !important; /* green-700 */
+    border-color: #15803d !important;
+    color: white !important;
+  }
+  .btn-comerzia-excel:hover { background-color: #14532d !important; }
+
+  /* Botón PDF (Naranja/Rojo) */
+  .btn-comerzia-pdf {
+    background-color: #ea580c !important; /* orange-600 */
+    border-color: #ea580c !important;
+    color: white !important;
+  }
+  .btn-comerzia-pdf:hover { background-color: #c2410c !important; }
+
 }

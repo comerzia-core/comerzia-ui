@@ -1,14 +1,20 @@
 import React from "react";
 
-// Definimos los "sabores" de botones
-type ButtonVariant = "error" | "success" | "primary" | "secondary" | "save" | "delete" | "ghost" | "neutral" | "accent" | "info" | "warning";
+// Agregamos las nuevas variantes a la lista
+type ButtonVariant = 
+  | "primary" | "secondary" | "neutral" | "ghost" 
+  | "save" | "delete" | "cancel" | "edit" // CRUD Básico
+  | "excel" | "pdf" // Reportes
+  | "success" | "error" | "warning" | "info"; 
 
 interface Props extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  label: string;
+  label?: string; // Ahora es opcional (porque los botones redondos no llevan texto)
   variant?: ButtonVariant;
   isLoading?: boolean;
   icon?: React.ReactNode;
-  fullWidth?: boolean; // Nueva prop para forzar ancho completo si se necesita
+  fullWidth?: boolean;
+  isIconOnly?: boolean; // Nueva prop para hacerlos redondos
+  tooltip?: string; // Útil para botones sin texto
 }
 
 export const ComerziaButton = ({ 
@@ -16,61 +22,53 @@ export const ComerziaButton = ({
   variant = "primary", 
   isLoading = false, 
   icon,
-  fullWidth = false, // Por defecto no ocupa todo, pero respeta el min-width
+  fullWidth = false,
+  isIconOnly = false,
   className = "",
+  tooltip,
   ...props 
 }: Props) => {
 
-const getVariantClass = () => {
+  const getVariantClass = () => {
     switch (variant) {
-      // TUS CLASES PERSONALIZADAS (Blindadas contra cambios de tema)
-      case "save": return "btn-comerzia-save text-white border-none"; 
-      case "delete": return "btn-comerzia-delete text-white border-none";
-      case "neutral": return "btn-comerzia-neutral text-white border-none";
+      // Clases mapeadas en index.css
+      case "save": return "btn-comerzia-save border-none"; 
+      case "delete": return "btn-comerzia-delete border-none";
+      case "cancel": return "btn-comerzia-delete border-none"; // Reusamos el rojo para cancelar como pediste
       
-      // NUEVAS CLASES MAPEADAS
-      case "info": return "btn-comerzia-info text-white border-none";
-      case "success": return "btn-comerzia-success text-white border-none";
-      case "warning": return "btn-comerzia-warning text-white border-none";
-      case "error": return "btn-comerzia-error text-white border-none";
-
-      // Estos suelen ser seguros dejarlos default, pero si fallan, hazles su clase también
-      case "primary": return "btn-primary text-white"; 
-      case "secondary": return "btn-secondary text-white";
-      case "accent": return "btn-accent text-white";
+      case "edit": return "btn-comerzia-edit border-none";
+      case "excel": return "btn-comerzia-excel border-none";
+      case "pdf": return "btn-comerzia-pdf border-none";
       
+      // Defaults de DaisyUI
+      case "neutral": return "btn-neutral text-white";
       case "ghost": return "btn-ghost"; 
       default: return "btn-primary text-white";
     }
-};
-
-  const getIcon = () => {
-    if (isLoading) return <span className="loading loading-spinner"></span>;
-    if (icon) return icon;
-    
-    if (variant === "save") return (
-       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
-    );
-    if (variant === "delete") return (
-       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-    );
-    return null;
   };
 
-  return (
+  const content = (
     <button 
       className={`
         btn 
         ${getVariantClass()} 
-        ${fullWidth ? "w-full" : "min-w-[120px]"}  
-        gap-2 
+        ${fullWidth ? "w-full" : ""}
+        ${isIconOnly ? "btn-circle btn-sm md:btn-md" : "min-w-[120px] gap-2"} 
+        shadow-sm hover:shadow-md transition-all
         ${className}
       `} 
       disabled={isLoading || props.disabled}
       {...props}
     >
-      {getIcon()}
-      {label}
+      {isLoading ? <span className="loading loading-spinner"></span> : icon}
+      {!isIconOnly && label}
     </button>
   );
+
+  // Si tiene tooltip, lo envolvemos
+  if (tooltip) {
+    return <div className="tooltip" data-tip={tooltip}>{content}</div>;
+  }
+
+  return content;
 };
