@@ -3,7 +3,7 @@ import { LoginPage } from "../features/auth/pages/LoginPage";
 import { DashboardPage } from "../features/dashboard/pages/DashboardPage";
 import { DashboardLayout } from "../layouts/DashboardLayout";
 import { ProtectedRoute } from "./ProtectedRoute";
-import { UnderConstruction } from "../components/ui/UnderConstruction";
+import { UnderConstruction } from "../features/errors/pages/UnderConstruction";
 // Importamos la nueva página
 import { useTheme } from "../hooks/useTheme"; 
 
