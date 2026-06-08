@@ -3,9 +3,11 @@ import { LoginPage } from "../features/auth/pages/LoginPage";
 import { DashboardPage } from "../features/dashboard/pages/DashboardPage";
 import { DashboardLayout } from "../layouts/DashboardLayout";
 import { ProtectedRoute } from "./ProtectedRoute";
-import { UnderConstruction } from "../features/errors/pages/UnderConstruction";
+import { UnderConstruction } from "../features/errors/pages/UnderConstructionPage";
 // Importamos la nueva página
 import { useTheme } from "../hooks/useTheme"; 
+import { NotFoundPage } from "../features/errors/pages/NotFoundPage";
+import { PermissionGuard } from "./PermissionGuard";
 
 export const AppRouter = () => {
   useTheme(); 
@@ -20,28 +22,47 @@ export const AppRouter = () => {
         <Route element={<ProtectedRoute />}>
             
             <Route element={<DashboardLayout />}>
+                {/* Redirección por defecto al entrar a la raíz "/" */}
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/dashboard" element={<DashboardPage />} />
-                
-                {/* --- MÓDULO INVENTARIO --- */}
-                {/* --- MÓDULO DE VENTAS --- */}
-                {/* --- FINANZAS --- */}
 
-                {/* Futuras rutas de inventario */}
+
+                {/* --- MÓDULOS DEL SISTEMA --- */}
                 {/* <Route path="/inventory/products" element={<ProductListPage />} /> */}
 
-                {/* --- MÓDULO SEGURIDAD (Ejemplo) --- */}
-                {/* <Route element={<PermissionGuard code="SEC_VIEW" />}>
-                    <Route path="/security/users" element={<UsersPage />} />
+
+
+
+                {/* --- MÓDULO SAAS --- */}
+                <Route element={<PermissionGuard code="SYS_TENANTS_VIEW" />}>
+                  <Route path="/saas/tenants" element={<UnderConstruction />} />
+                </Route>
+                
+                <Route element={<PermissionGuard code="SYS_SUBSCRIPTIONS_VIEW" />}>
+                  <Route path="/saas/subscriptions" element={<UnderConstruction />} />
+                </Route>
+
+                
+                {/* <Route element={<PermissionGuard code="SYS_TENANTS_VIEW" />}>
+                  <Route path="/security/users" element={<UsersPage />} 
                 </Route> */}
 
-                {/* Ruta Comodín: Cualquier otra ruta muestra "En Construcción" */}
-                <Route path="*" element={<UnderConstruction />} />
+                {/* Ruta Comodín INTERNA (Dashboard 404): 
+                  Si escriben una URL protegida que no existe (ej: /dashboard/xyz), 
+                  mostramos el 404 SIN sacarlos del Layout (siguen viendo el Sidebar).
+                */}
+                <Route path="*" element={<NotFoundPage />} />
 
             </Route>
 
         </Route>
 
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        {/* Ruta Comodín GLOBAL (404 Público): 
+          Cualquier ruta fuera del Layout que no exista (ej: /xyz) caerá aquí. 
+          Al no estar envuelta en <DashboardLayout>, mostrará la pantalla completa de 404.
+        */}
+        <Route path="*" element={<NotFoundPage />} />
+        
       </Routes>
     </BrowserRouter>
   );
