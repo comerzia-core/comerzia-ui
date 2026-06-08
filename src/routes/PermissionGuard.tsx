@@ -14,7 +14,7 @@ export const PermissionGuard = ({ code }: Props) => {
         return <Navigate to="/dashboard" replace />;
         
         // Opción B (Mejor): Mostrar componente de "Acceso Denegado"
-        // return <AccessDeniedPage />;
+        //return <AccessDeniedPage />;
     }
 
     // Si TIENE permiso, renderiza la ruta hija

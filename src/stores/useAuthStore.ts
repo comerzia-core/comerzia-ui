@@ -1,48 +1,80 @@
 import { create } from 'zustand';
 import api from '../lib/axios';
-import type { UserProfile } from '../features/auth/types'; // Importa UserProfile
+// Importamos estrictamente desde tu archivo central de tipos
+import type { UserProfile, MenuItem } from '../features/auth/types';
 
 interface AuthState {
     token: string | null;
     isAuthenticated: boolean;
-    userProfile: UserProfile | null; // Aquí guardaremos la info completa del backend
+    userProfile: UserProfile | null;
+    menuTree: MenuItem[]; // Usando la interfaz correcta
+    isSessionReady: boolean;
     
-    // Acciones
-    login: (token: string) => void;
+    // Acciones del store
+    login: (token: string) => Promise<void>;
     logout: () => void;
-    fetchUserProfile: () => Promise<void>; // Nueva acción
+    initializeSession: () => Promise<void>;
+    fetchUserProfile: () => Promise<void>;
+    fetchMenuTree: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set) => {
-    // Recuperación inicial del token
+export const useAuthStore = create<AuthState>((set, get) => {
+    // Recuperación inicial del token desde el almacenamiento local
     const storedToken = localStorage.getItem('token');
     
     return {
         token: storedToken,
-        isAuthenticated: !!storedToken, // True si hay token
-        userProfile: null, // Al inicio es null hasta que lo pidamos
+        isAuthenticated: !!storedToken,
+        userProfile: null,
+        menuTree: [],
+        isSessionReady: false, 
 
-        login: (token: string) => {
+        login: async (token: string) => {
             localStorage.setItem('token', token);
-            set({ token, isAuthenticated: true });
-            // Opcional: Podrías llamar a get().fetchUserProfile() aquí mismo
+            set({ token, isAuthenticated: true, isSessionReady: false });
+            
+            // Inmediatamente disparamos la orquestación para cargar perfil y menú
+            await get().initializeSession();
         },
 
         logout: () => {
             localStorage.removeItem('token');
-            set({ token: null, isAuthenticated: false, userProfile: null });
+            set({ 
+                token: null, 
+                isAuthenticated: false, 
+                userProfile: null, 
+                menuTree: [], 
+                isSessionReady: false 
+            });
+        },
+
+        initializeSession: async () => {
+            try {
+                // Ejecutamos ambas peticiones en paralelo para optimizar el tiempo de carga
+                await Promise.all([
+                    get().fetchUserProfile(),
+                    get().fetchMenuTree()
+                ]);
+                
+                // Si ambas promesas se resuelven, la sesión está lista para renderizar la UI
+                set({ isSessionReady: true });
+            } catch (error) {
+                console.error("Fatal error initializing session:", error);
+                
+                // Si falla la carga vital, forzamos el cierre de sesión por seguridad
+                get().logout(); 
+            }
         },
 
         fetchUserProfile: async () => {
-            try {
-                // Llamamos a tu endpoint nuevo
-                const { data } = await api.get<UserProfile>('/auth/profile');
-                set({ userProfile: data });
-            } catch (error) {
-                console.error("Error cargando perfil", error);
-                // Si falla el perfil (ej: token inválido), podríamos hacer logout automático
-                // get().logout(); 
-            }
+            const { data } = await api.get<UserProfile>('/auth/profile');
+            set({ userProfile: data });
+        },
+
+        fetchMenuTree: async () => {
+            // Usamos MenuItem como el tipo de la respuesta esperada
+            const { data } = await api.get<MenuItem[]>('/menu/my-tree'); 
+            set({ menuTree: data });
         }
     };
 });
