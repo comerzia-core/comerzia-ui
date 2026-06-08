@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../stores/useAuthStore";
 import { useCurrentTime } from "../../hooks/useCurrentTime";
-import { Bell, LogOut, User as UserIcon, Settings, Shield, HelpCircle } from "lucide-react";
+import { Bell, LogOut, User as UserIcon, Settings, Shield, HelpCircle, Menu } from "lucide-react";
 import { ThemeToggle } from "../ui/ThemeToggle";
 import { 
     BtnModalYes, 
@@ -42,15 +42,24 @@ export const Header = () => {
       <div className="navbar bg-base-100 px-6 py-4 border-b border-base-200 justify-between sticky top-0 z-30 shadow-sm">
         
         {/* IZQUIERDA */}
-        <div className="flex flex-col">
-          <h1 className="text-2xl font-bold text-base-content">
-            Hola, {userProfile?.firstName || 'Usuario'}
-          </h1>
-          <p className="text-sm text-base-content/60 font-medium mt-1 capitalize">
-            {currentTime}
-          </p>
-        </div>
+        <div className="flex items-center gap-4">
+            
+            {/* ✅ NUEVO: BOTÓN HAMBURGUESA (Solo visible en Móvil 'lg:hidden') */}
+            {/* Este label busca un input con id="my-drawer" que pondremos en el Layout */}
+            <label htmlFor="my-drawer" className="btn btn-square btn-ghost lg:hidden text-base-content">
+                <Menu size={24} />
+            </label>
 
+            <div className="flex flex-col">
+                <h1 className="text-2xl font-bold text-base-content">
+                    Hola, {userProfile?.firstName || 'Usuario'}
+                </h1>
+                <p className="text-sm text-base-content/60 font-medium mt-1 capitalize">
+                    {currentTime}
+                </p>
+            </div>
+        </div>
+        
         {/* DERECHA */}
         <div className="flex items-center gap-4">
           

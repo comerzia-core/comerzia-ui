@@ -1,4 +1,4 @@
-# Arquitectura Frontend - Comerzia
+# Arquitectura Frontend - Travesia
 
 Este proyecto utiliza una **Arquitectura Basada en Features (Funcionalidades)** para garantizar escalabilidad, mantenimiento y orden, similar a un enfoque modular en el backend.
 

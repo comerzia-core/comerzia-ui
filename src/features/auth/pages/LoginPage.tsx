@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../../stores/useAuthStore';
-import { ComerziaInput } from '../../../components/ui/ComerziaInput';
+import { TravesiaInput } from '../../../components/ui/ComerziaInput';
 import api from '../../../lib/axios';
 import type { LoginResponse } from '../types';
 import { BtnLogin } from "../../../components/ui/CrudButtons";
@@ -45,16 +45,16 @@ export const LoginPage = () => {
         <div className="min-h-screen flex items-center justify-center bg-base-200">
             <div className="card w-96 bg-base-100 shadow-xl">
                 <div className="card-body">
-                    <h2 className="card-title text-2xl font-bold justify-center mb-4">Comerzia</h2>
+                    <h2 className="card-title text-2xl font-bold justify-center mb-4">Travesia</h2>
                     
                     <form onSubmit={handleSubmit} className="space-y-4">
-                        <ComerziaInput 
+                        <TravesiaInput 
                             label="Usuario" 
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
                         />
                         
-                        <ComerziaInput 
+                        <TravesiaInput 
                             label="Contraseña" 
                             type="password"
                             value={password}
@@ -69,7 +69,7 @@ export const LoginPage = () => {
                         )}
 
                         <div className="card-actions justify-end mt-4">
-                            {/* Reemplazamos el ComerziaButton genérico por el específico */}
+                            {/* Reemplazamos el TravesiaButton genérico por el específico */}
                             <BtnLogin 
                                 type="submit" 
                                 isLoading={loading} 

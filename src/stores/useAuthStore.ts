@@ -1,7 +1,6 @@
 import { create } from 'zustand';
-import { jwtDecode } from 'jwt-decode';
 import api from '../lib/axios';
-import type { LoginResponse, JwtPayload, UserProfile } from '../features/auth/types'; // Importa UserProfile
+import type { UserProfile } from '../features/auth/types'; // Importa UserProfile
 
 interface AuthState {
     token: string | null;
@@ -14,7 +13,7 @@ interface AuthState {
     fetchUserProfile: () => Promise<void>; // Nueva acción
 }
 
-export const useAuthStore = create<AuthState>((set, get) => {
+export const useAuthStore = create<AuthState>((set) => {
     // Recuperación inicial del token
     const storedToken = localStorage.getItem('token');
     

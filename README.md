@@ -75,12 +75,12 @@ export default defineConfig([
 
 
 # 1. Crear el proyecto (te preguntará nombre, framework y variante)
-npm create vite@latest comerzia-frontend
+npm create vite@latest travesia-frontend
 # -> Select a framework: React
 # -> Select a variant: TypeScript
 
 # 2. Entrar a la carpeta
-cd comerzia-frontend
+cd travesia-frontend
 
 # 3. Instalar las dependencias base (el "mvn install" de JS)
 npm install
@@ -106,3 +106,7 @@ npm install zustand jwt-decode
 
 # ico
 npm install lucide-react
+
+# para manejar os estados en memoria
+npm install @tanstack/react-query
+npm install react-hook-form zod @hookform/resolvers
