@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import api from '../lib/axios';
 // Importamos estrictamente desde tu archivo central de tipos
 import type { UserProfile, MenuItem } from '../features/auth/types';
+import { getMyMenuTree } from '../services/menuService';
 
 interface AuthState {
     token: string | null;
@@ -72,9 +73,9 @@ export const useAuthStore = create<AuthState>((set, get) => {
         },
 
         fetchMenuTree: async () => {
-            // Usamos MenuItem como el tipo de la respuesta esperada
-            const { data } = await api.get<MenuItem[]>('/menu/my-tree'); 
-            set({ menuTree: data });
+            // Utilizamos el servicio que ya limpia la estructura del backend
+            const tree = await getMyMenuTree(); 
+            set({ menuTree: tree });
         }
     };
 });
