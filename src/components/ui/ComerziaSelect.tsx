@@ -1,4 +1,5 @@
 import React, { forwardRef } from "react";
+import { useShake } from "../../hooks/useShake";
 
 export interface SelectOption {
     value: string | number;
@@ -16,39 +17,20 @@ interface Props extends React.SelectHTMLAttributes<HTMLSelectElement> {
     shakeKey?: number; 
 }
 
-// ✅ forwardRef es obligatorio para usar con react-hook-form
 export const TravesiaSelect = forwardRef<HTMLSelectElement, Props>(({ 
     label, options, error, isLoading, isRequired, shakeKey,
     placeholder = "Seleccione...", 
     enableDefaultOption = false,
-    className,
+    className = "",
     ...props 
 }, ref) => {
     
-    // Clonamos los props para manipularlos de forma segura
-    const selectProps = { ...props };
-
-    // 🚀 MAGIA SENIOR: Soporte dual para Controlled y Uncontrolled
-    if ('value' in props) {
-        // MODO CONTROLADO (useState o Controller):
-        // Garantizamos que nunca sea null/undefined para que no de errores
-        selectProps.value = props.value ?? "";
-    } else {
-        // MODO NO CONTROLADO (react-hook-form con register directo):
-        // Forzamos que inicie vacío (defaultValue) para que caiga en el placeholder 
-        // y no en la 1ra opción visualmente.
-        if (!('defaultValue' in props)) {
-            selectProps.defaultValue = "";
-        }
-    }
+    const isShaking = useShake(shakeKey);
 
     return (
-        <div 
-            key={error && shakeKey ? `err-${shakeKey}` : undefined}
-            className={`form-control w-full ${error ? "animate-shake" : ""}`}
-        >
+        <div className={`form-control w-full ${isShaking ? "animate-shake" : ""}`}>
             {label && (
-                <label className="label">
+                <label className="label py-1">
                     <span className={`label-text font-semibold flex gap-1 ${error ? "text-error" : ""}`}>
                         {label}
                         {isRequired && <span className="text-error" title="Campo obligatorio">*</span>}
@@ -57,17 +39,22 @@ export const TravesiaSelect = forwardRef<HTMLSelectElement, Props>(({
             )}
             
             <select 
-                ref={ref} // ✅ Asignamos el ref al DOM real
-                className={`select select-bordered w-full ${error ? "select-error bg-error/5" : ""} ${className || ''}`} 
+                ref={ref}
+                className={`
+                    select select-bordered w-full transition-colors
+                    focus:border-primary focus:ring-1 focus:ring-primary/20
+                    ${error ? "select-error bg-error/5" : ""} 
+                    ${className}
+                `} 
                 disabled={isLoading}
-                {...selectProps} // ✅ Pasamos los props inteligentemente procesados
+                // Si React Hook Form envía un valor o defaultValue, se aplica naturalemente aquí
+                {...props} 
             >
-                {/* Opción Placeholder */}
+                {/* Opción Placeholder neutral (value vacío) */}
                 <option disabled={isLoading || !enableDefaultOption} value="">
-                    {isLoading ? "Cargando datos..." : placeholder}
+                    {isLoading ? "Cargando..." : placeholder}
                 </option>
                 
-                {/* Lista de Opciones */}
                 {!isLoading && options.map((opt) => (
                     <option key={opt.value} value={opt.value}>
                         {opt.label}
@@ -76,7 +63,7 @@ export const TravesiaSelect = forwardRef<HTMLSelectElement, Props>(({
             </select>
 
             {error && (
-                <label className="label">
+                <label className="label py-1 pb-0">
                     <span className="label-text-alt text-error font-medium">{error}</span>
                 </label>
             )}

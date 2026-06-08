@@ -85,7 +85,14 @@ export const TravesiaButton = ({
 
   // Si tiene tooltip, lo envolvemos
   if (tooltip) {
-    return <div className="tooltip" data-tip={tooltip}>{content}</div>;
+    return (
+      <div 
+        className={`tooltip ${fullWidth ? 'w-full block' : 'inline-block'}`} 
+        data-tip={tooltip}
+      >
+        {content}
+      </div>
+    );
   }
 
   return content;
