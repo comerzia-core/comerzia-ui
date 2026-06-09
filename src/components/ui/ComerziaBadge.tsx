@@ -1,28 +1,28 @@
-import type { ReactNode } from "react";
-import { type BadgeType, getBadgeStyle } from "../../config/badgeConfig";
+type BadgeVariant = "success" | "warning" | "error" | "info" | "neutral" | "ghost";
 
 interface Props {
-    label?: string;               // 🟢 Opcional (ahora puede venir en children)
-    children?: ReactNode;         // 🟢 Nuevo: Permite usar <Badge>Texto</Badge>
-    code?: string | number | boolean; 
-    type?: BadgeType;        
-    className?: string;      
+    label: string;
+    variant?: BadgeVariant;
+    className?: string;
 }
 
-export const TravesiaBadge = ({ label, children, code, type = 'DEFAULT', className = '' }: Props) => {
-    // 1. Decidir qué mostrar: Preferimos children, si no hay, usamos label
-    const content = children ?? label;
-
-    // 2. Decidir qué código evaluar para el color:
-    // Si pasan 'code', usamos eso. Si no, usamos el 'label' como fallback si es texto.
-    const codeToEvaluate = code ?? (typeof label === 'string' ? label : undefined);
+export const ComerziaBadge = ({ label, variant = "ghost", className = "" }: Props) => {
     
-    // 3. Obtener estilos del config
-    const colorClass = getBadgeStyle(type, codeToEvaluate ?? '');
+    const getVariantClass = () => {
+        switch (variant) {
+            case "success": return "badge-success text-white border-0"; // Verde
+            case "warning": return "badge-warning text-white border-0"; // Amarillo
+            case "error":   return "badge-error text-white border-0";   // Rojo
+            case "info":    return "badge-info text-white border-0";    // Azul
+            case "neutral": return "bg-base-300 text-base-content/60 border-0"; // Gris oscuro
+            case "ghost":
+            default:        return "badge-ghost opacity-70 border-0";   // Gris claro
+        }
+    };
 
     return (
-        <span className={`badge ${colorClass} gap-2 px-3 py-3 font-medium border-0 shadow-sm ${className}`}>
-            {content}
+        <span className={`badge ${getVariantClass()} px-3 py-3 font-medium whitespace-nowrap ${className}`}>
+            {label}
         </span>
     );
 };

@@ -1,69 +1,28 @@
-// Definimos los tipos de badges que soportará tu sistema
-export type BadgeType = 
-    | 'PRODUCT_CATEGORY' 
-    | 'PROVIDER_STATUS' 
-    | 'RESERVATION_STATUS' 
-    | 'TRANSACTION_STATUS' 
-    | 'PAYMENT_METHOD'
-    | 'DEFAULT';
+// Importamos el tipo del Badge para mantener el tipado estricto
+type BadgeVariant = "success" | "warning" | "error" | "info" | "neutral" | "ghost";
 
-// Definimos el mapa de colores. 
-// La clave interna puede ser el ID numérico (code) o un string clave.
-export const BADGE_STYLES: Record<BadgeType, Record<string | number, string>> = {
-    
-    // 1. CATEGORÍAS DE PRODUCTO (Usamos los códigos que me mostraste: 601, 602, 603)
-    PRODUCT_CATEGORY: {
-        601: "badge-primary text-primary-content",   // Electrónica / General -> Azul/Primario
-        602: "badge-secondary text-secondary-content", // Hospedaje -> Rosa/Secundario
-        603: "badge-accent text-accent-content",     // Transporte -> Turquesa/Acento
-        // Puedes agregar más códigos aquí...
-        default: "badge-ghost"
-    },
+/**
+ * MAPA GLOBAL DE COLORES PARA ESTADOS
+ * Mapea los códigos enteros devueltos por el backend hacia una variante de UI.
+ */
+export const STATUS_COLOR_MAP: Record<number, BadgeVariant> = {
+    // --- ESTADOS DE TENANTS (SaaS) ---
+    901: "success", // Active
+    902: "neutral", // Inactive
+    903: "error",   // Suspended
+    904: "warning", // Pending
 
-    PROVIDER_STATUS: {
-        121: "badge-warning text-white", // Pendiente
-        122: "badge-success text-white", // Confirmada
-        123: "badge-error text-white",   // Cancelada
-        124: "badge-ghost",              // Inactiva
-        default: "badge-ghost"
-    },
+    // --- ESTADOS DE SUSCRIPCIÓN ---
+    201: "success", // Active
+    202: "warning", // Past Due
+    203: "error",   // Cancelled
+    204: "info",    // Replaced
 
-    // 3. TRANSACCIONES
-    TRANSACTION_STATUS: {
-        501: "badge-warning text-white",      // Pendiente
-        502: "badge-success text-white",      // Confirmado
-        503: "badge-error text-white",        // Rechazado
-        504: "badge-info text-white",         // Devolución
-    },
-    
-    RESERVATION_STATUS: {
-        101: "badge-warning text-white",      // Pendiente Pago (Amarillo)
-        102: "badge-success text-white",      // Confirmada (Verde)
-        103: "badge-error text-white",        // Cancelada (Rojo)
-        104: "border-orange-500 bg-orange-50 text-orange-600", // Expirada (Naranja custom)
-        105: "badge-info text-white",         // Completada (Azul)
-        default: "badge-ghost"
-    },
-    
-    PAYMENT_METHOD: {
-        401: "badge-success text-white",
-        402: "badge-success text-white",
-        403: "badge-warning text-white",
-        404: "badge-warning text-white",
-        default: "badge-ghost"
-    },
+    // --- ESTADOS DE FACTURAS (Ejemplo futuro) ---
+    301: "warning", // Unpaid
+    302: "success", // Paid
+    303: "error",   // Voided
 
-    DEFAULT: {
-        default: "badge-ghost"
-    }
-};
-
-// Helper para obtener el estilo de forma segura
-export const getBadgeStyle = (type: BadgeType, code: string | number | boolean): string => {
-    const group = BADGE_STYLES[type] || BADGE_STYLES.DEFAULT;
-    
-    // Convertimos booleanos a 1/0 para estandarizar si fuera necesario
-    const safeCode = typeof code === 'boolean' ? (code ? 1 : 0) : code;
-
-    return group[safeCode] || group['default'] || "badge-ghost";
+    // --- ESTADOS DE PROVEEDORES (Tu código original) ---
+    // Si tienes códigos para PENDING, CONFIRMED, etc., los agregas aquí.
 };
