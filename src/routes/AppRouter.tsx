@@ -8,7 +8,7 @@ import { UnderConstruction } from "../features/errors/pages/UnderConstructionPag
 import { useTheme } from "../hooks/useTheme"; 
 import { NotFoundPage } from "../features/errors/pages/NotFoundPage";
 import { PermissionGuard } from "./PermissionGuard";
-import { TenantsPage } from "../features/saas/pages/TenantsPage";
+import { CompaniesPage } from "../features/saas/pages/CompaniesPage";
 
 export const AppRouter = () => {
   useTheme(); 
@@ -29,7 +29,7 @@ export const AppRouter = () => {
 
 
                 {/* --- MÓDULOS DEL SISTEMA --- */}
-                <Route path="/saas/tenants" element={<TenantsPage />} />
+                <Route path="/saas/tenants" element={<CompaniesPage />} />
 
 
 
