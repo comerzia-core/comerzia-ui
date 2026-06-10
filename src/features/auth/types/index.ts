@@ -26,15 +26,24 @@ export interface MenuItem {
 }
 
 // profile
+export interface CompanySettings {
+    id: string;
+    commercialName: string;
+    timezone: string;
+    currencyCode: string;
+    logoUrl: string | null;
+}
+
 export interface UserProfile {
-    id: number;
+    id: string;
     username: string;
     firstName: string;
     paternalLastName: string;
-    maternalLastName: string;
+    maternalFirstName: string | null;
     fullName: string;
     email: string;
     imageUrl: string | null;
     roles: string[];
     permissions: string[];
+    companySettings: CompanySettings | null; 
 }

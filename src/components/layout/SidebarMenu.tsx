@@ -2,6 +2,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import type { MenuItem } from "../../features/auth/types";
 import { IconRenderer } from "../ui/IconRenderer";
 import { ChevronLeft, ChevronRight } from "lucide-react"; // ✅ Importar Flechas
+import { useCompanyContext } from "../../hooks/useCompanyContext";
 
 // ✅ Modificar el Renderer para que acepte 'isCollapsed'
 const MenuItemRenderer = ({ item, isCollapsed }: { item: MenuItem, isCollapsed: boolean }) => {
@@ -147,7 +148,8 @@ interface Props {
 }
 
 export const SidebarMenu = ({ menuTree, isLoading, isCollapsed, toggleCollapse }: Props) => {
-    if (isLoading) return <div className="p-4 space-y-4">Cargando...</div>;
+    const { commercialName, logoUrl } = useCompanyContext();
+    if (isLoading) return <div className="p-4 space-y-4">Loading...</div>;
 
     return (
         <aside className={`
@@ -156,10 +158,24 @@ export const SidebarMenu = ({ menuTree, isLoading, isCollapsed, toggleCollapse }
         `}>
             {/* 1. HEADER (Logo) */}
             <div className={`h-16 flex items-center gap-3 px-6 border-b border-base-300 bg-base-200 shrink-0 ${isCollapsed ? 'justify-center px-0' : ''}`}>
-                <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-primary-content font-bold shadow-lg shadow-primary/40 shrink-0">
-                    T
-                </div>
-                {!isCollapsed && <span className="text-xl font-bold tracking-wide text-base-content animate-fade-in">Travesia</span>}
+                {logoUrl ? (
+                    <img 
+                        src={logoUrl} 
+                        alt={commercialName} 
+                        className="w-8 h-8 rounded-lg object-cover shadow-sm shrink-0" 
+                    />
+                ) : (
+                    <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-primary-content font-bold shadow-lg shadow-primary/40 shrink-0 uppercase">
+                        {/* Tomamos la primera letra dinámica */}
+                        {commercialName.charAt(0)}
+                    </div>
+                )}
+                
+                {!isCollapsed && (
+                    <span className="text-xl font-bold tracking-wide text-base-content animate-fade-in truncate" title={commercialName}>
+                        {commercialName}
+                    </span>
+                )}
             </div>
 
             {/* 2. AREA SCROLLABLE */}
