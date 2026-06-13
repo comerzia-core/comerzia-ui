@@ -1,4 +1,17 @@
 /**
+ * Configuración global de la aplicación y reglas de negocio del Frontend.
+ */
+export const APP_CONFIG = {
+    PAGINATION: {
+        // El índice visual para el usuario siempre empieza en 1
+        DEFAULT_PAGE: 1, 
+        DEFAULT_SIZE: 10,
+        // Opciones para el selector de "Registros por página"
+        OPTIONS: [5, 10, 15, 25, 50] 
+    }
+} as const;
+
+/**
  * Códigos de Categoría para el Módulo GENERIC.
  * Estos strings deben coincidir con la columna 'category' en tu BD.
  */
@@ -20,8 +33,6 @@ export interface SystemParameter {
     description?: string;
     category: string;
 }
-
-// ... otras constantes ...
 
 // ✅ MAPA DE ESTADOS DE PROVEEDOR (Ajusta los IDs según tu Base de Datos)
 export const PROVIDER_STATUS_ID = {
