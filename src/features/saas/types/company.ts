@@ -39,7 +39,7 @@ export interface SaasCompanyDetailResponse {
     slug: string;
     taxId: string;
     status: boolean;
-    settings: SaasCompanySettingsResponse; // Mapeado del JSON backend (saasCompanySettingsResponse)
+    saasCompanySettingsResponse: SaasCompanySettingsResponse; // Mapeado del JSON backend (saasCompanySettingsResponse)
     subscriptionHistory: SaasSubscriptionResponse[];
 }
 

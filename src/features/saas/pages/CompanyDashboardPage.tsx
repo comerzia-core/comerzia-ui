@@ -4,7 +4,7 @@ import { getCompanyById } from "../services/companyService";
 import type { SaasCompanyDetailResponse } from "../types/company";
 import { CompanyBranchesTab } from "../components/companies/tabs/CompanyBranchesTab";
 import { CompanyEmployeesTab } from "../components/companies/tabs/CompanyEmployeesTab";
-// import { CompanyEmployeesTab } from "../components/companies/tabs/CompanyEmployeesTab";
+import { CompanySubscriptionsTab } from "../components/companies/tabs/CompanySubscriptionsTab";
 // import { formatDateForUser } from "../../../utils/date"; 
 
 export const CompanyDashboardPage = () => {
@@ -47,8 +47,8 @@ export const CompanyDashboardPage = () => {
             <div className="flex items-center gap-4 bg-base-100 p-6 rounded-xl shadow-sm border border-base-200">
                 <div className="avatar">
                     <div className="w-16 rounded-xl border border-base-300">
-                        {company.settings?.companyLogoUrl ? (
-                            <img src={company.settings.companyLogoUrl} alt="Logo" />
+                        {company.saasCompanySettingsResponse?.companyLogoUrl ? (
+                            <img src={company.saasCompanySettingsResponse.companyLogoUrl} alt="Logo" />
                         ) : (
                             <div className="bg-base-200 w-full h-full flex items-center justify-center font-bold text-base-content/50">
                                 {company.legalName.substring(0, 2).toUpperCase()}
@@ -90,23 +90,42 @@ export const CompanyDashboardPage = () => {
                 {/* Renderizado de Componentes según Tab Activo (Lazy Loading implicito) */}
                 <div className="bg-base-100 rounded-b-xl border border-t-0 border-base-200 p-6 min-h-[400px]">
                     
+                    {/* TAB 1: Ajustes Generales Mejorados visualmente */}
                     {activeTab === 0 && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <h3 className="col-span-full font-bold text-lg border-b pb-2 mb-2">Ajustes Locales</h3>
-                            <div className="flex flex-col"><span className="text-xs text-gray-500">Moneda</span><span className="font-medium">{company.settings?.currencyCode}</span></div>
-                            <div className="flex flex-col"><span className="text-xs text-gray-500">Zona Horaria</span><span className="font-medium">{company.settings?.timezone}</span></div>
-                            <div className="flex flex-col"><span className="text-xs text-gray-500">Impuesto Default</span><span className="font-medium">{company.settings?.taxName} ({company.settings?.taxPercentage}%)</span></div>
+                        <div className="p-6">
+                            <h3 className="font-bold text-lg border-b pb-2 mb-6">Parámetros de Operación</h3>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div className="bg-base-200/50 p-4 rounded-xl border border-base-200">
+                                    <span className="block text-xs font-semibold text-base-content/60 uppercase tracking-wider mb-1">Moneda Principal</span>
+                                    <span className="text-lg font-bold">{company.saasCompanySettingsResponse?.currencyCode || 'No definida'}</span>
+                                </div>
+                                
+                                <div className="bg-base-200/50 p-4 rounded-xl border border-base-200">
+                                    <span className="block text-xs font-semibold text-base-content/60 uppercase tracking-wider mb-1">Zona Horaria</span>
+                                    <span className="text-lg font-bold">{company.saasCompanySettingsResponse?.timezone || 'UTC'}</span>
+                                </div>
+                                
+                                <div className="bg-base-200/50 p-4 rounded-xl border border-base-200">
+                                    <span className="block text-xs font-semibold text-base-content/60 uppercase tracking-wider mb-1">Impuesto por Defecto</span>
+                                    <span className="text-lg font-bold">
+                                        {company.saasCompanySettingsResponse?.taxName} ({company.saasCompanySettingsResponse?.taxPercentage}%)
+                                    </span>
+                                </div>
+
+                                <div className="bg-base-200/50 p-4 rounded-xl border border-base-200 md:col-span-3">
+                                    <span className="block text-xs font-semibold text-base-content/60 uppercase tracking-wider mb-1">Pie de Ticket (Impresión)</span>
+                                    <p className="text-sm italic text-base-content/80">
+                                        "{company.saasCompanySettingsResponse?.ticketFooterText || 'Sin texto configurado'}"
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                     )}
 
+                    {/* TAB 2: Suscripciones - Ahora con la tabla */}
                     {activeTab === 1 && (
-                        <div>
-                            <h3 className="font-bold text-lg border-b pb-2 mb-4">Historial de Suscripciones</h3>
-                            {/* Renderizarías aquí otra <ComerziaTable> sencilla con company.subscriptionHistory */}
-                            <pre className="text-xs bg-base-200 p-4 rounded-lg overflow-x-auto">
-                                {JSON.stringify(company.subscriptionHistory, null, 2)}
-                            </pre>
-                        </div>
+                        <CompanySubscriptionsTab subscriptions={company.subscriptionHistory} />
                     )}
 
                     {activeTab === 2 && (
