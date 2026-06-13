@@ -9,6 +9,7 @@ import { useTheme } from "../hooks/useTheme";
 import { NotFoundPage } from "../features/errors/pages/NotFoundPage";
 import { PermissionGuard } from "./PermissionGuard";
 import { CompaniesPage } from "../features/saas/pages/CompaniesPage";
+import { CompanyDashboardPage } from "../features/saas/pages/CompanyDashboardPage";
 
 export const AppRouter = () => {
   useTheme(); 
@@ -30,7 +31,7 @@ export const AppRouter = () => {
 
                 {/* --- MÓDULOS DEL SISTEMA --- */}
                 <Route path="/saas/tenants" element={<CompaniesPage />} />
-
+                <Route path="/saas/companies/:id" element={<CompanyDashboardPage />} />
 
 
 

@@ -14,3 +14,15 @@ export interface PaginatedResponse<T> {
     size: number;
     number: number; // página actual
 }
+
+// Envoltorio genérico para respuestas paginadas de Spring Boot
+export interface PageResponse<T> {
+    content: T[];
+    totalElements: number;
+    totalPages: number;
+    size: number;
+    number: number;
+    last: boolean;
+    first: boolean;
+    empty: boolean;
+}

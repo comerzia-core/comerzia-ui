@@ -1,8 +1,32 @@
 import api from '../../../lib/axios';
-import type { SaasCompanyListResponse } from '../types/company';
+import type { PageResponse } from '../../../types/api';
+import type { 
+    SaasCompanyListResponse, 
+    SaasCompanyDetailResponse, 
+    BranchResponse, 
+    EmployeeSummaryResponse 
+} from '../types/company';
 
-// Obtenemos la lista completa de empresas del backend SaaS
 export const getCompanies = async (): Promise<SaasCompanyListResponse[]> => {
     const response = await api.get<SaasCompanyListResponse[]>('/saas/companies');
+    return response.data;
+};
+
+export const getCompanyById = async (id: string): Promise<SaasCompanyDetailResponse> => {
+    const response = await api.get<SaasCompanyDetailResponse>(`/saas/companies/${id}`);
+    return response.data;
+};
+
+export const getCompanyBranches = async (companyId: string, page: number, size: number): Promise<PageResponse<BranchResponse>> => {
+    const response = await api.get<PageResponse<BranchResponse>>(`/saas/companies/${companyId}/branches`, {
+        params: { page, size }
+    });
+    return response.data;
+};
+
+export const getCompanyEmployees = async (companyId: string, page: number, size: number): Promise<PageResponse<EmployeeSummaryResponse>> => {
+    const response = await api.get<PageResponse<EmployeeSummaryResponse>>(`/saas/companies/${companyId}/employees`, {
+        params: { page, size }
+    });
     return response.data;
 };
