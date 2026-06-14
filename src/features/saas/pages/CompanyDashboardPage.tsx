@@ -125,7 +125,11 @@ export const CompanyDashboardPage = () => {
 
                     {/* TAB 2: Suscripciones - Ahora con la tabla */}
                     {activeTab === 1 && (
-                        <CompanySubscriptionsTab subscriptions={company.subscriptionHistory} />
+                        <CompanySubscriptionsTab 
+                            subscriptions={company.subscriptionHistory} 
+                            // Pasamos el timezone de la empresa configurada, con un fallback seguro a UTC
+                            companyTimezone={company.saasCompanySettingsResponse?.timezone || 'UTC'} 
+                        />
                     )}
 
                     {activeTab === 2 && (

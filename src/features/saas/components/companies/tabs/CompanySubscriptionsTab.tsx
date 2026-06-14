@@ -5,11 +5,11 @@ import type { SaasSubscriptionResponse } from "../../../types/company";
 
 interface Props {
     subscriptions: SaasSubscriptionResponse[];
+    companyTimezone: string; // Exigimos la zona horaria como prop
 }
 
-export const CompanySubscriptionsTab = ({ subscriptions }: Props) => {
+export const CompanySubscriptionsTab = ({ subscriptions, companyTimezone }: Props) => {
     
-    // Definimos las columnas estrictamente tipadas
     const columns: Column<SaasSubscriptionResponse>[] = [
         { 
             header: "Plan", 
@@ -19,23 +19,22 @@ export const CompanySubscriptionsTab = ({ subscriptions }: Props) => {
         { 
             header: "Estado", 
             render: (row) => (
-                // Utilizamos el componente inteligente para renderizar por código del backend
                 <StatusBadge statusName={row.statusName} statusCode={row.statusTypeCode} />
             ) 
         },
         { 
             header: "Válido Desde", 
-            // Regla de Oro: Formateo estricto de fechas UTC a Local
-            render: (row) => formatDateForUser(row.validFrom) 
+            // Inyectamos el timezone de la empresa para que las horas coincidan con su operación local
+            render: (row) => formatDateForUser(row.validFrom, companyTimezone) 
         },
         { 
             header: "Válido Hasta", 
-            render: (row) => formatDateForUser(row.validUntil) 
+            render: (row) => formatDateForUser(row.validUntil, companyTimezone) 
         },
         { 
-            header: "Límites (Sucursales / Usuarios)", 
+            header: "Límites (Suc. / Usu.)", 
             render: (row) => (
-                <span className="text-sm">
+                <span className="text-sm font-medium">
                     🏢 {row.maxBranches} | 👤 {row.maxUsers}
                 </span>
             )
@@ -52,8 +51,6 @@ export const CompanySubscriptionsTab = ({ subscriptions }: Props) => {
                 data={subscriptions} 
                 columns={columns} 
                 showRowNumbers={true}
-                // No enviamos 'pagination' por ahora, la tabla renderizará el listado completo
-                // Cuando el endpoint sea pageable, simplemente agregaremos el prop pagination aquí.
             />
         </div>
     );
