@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../../stores/useAuthStore';
-import { TravesiaInput } from '../../../components/ui/ComerziaInput';
+import { ComerziaInput } from '../../../components/ui/ComerziaInput';
 import api from '../../../lib/axios';
 import type { LoginResponse } from '../types';
 import { BtnLogin } from "../../../components/ui/CrudButtons";
@@ -48,13 +48,13 @@ export const LoginPage = () => {
                     <h2 className="card-title text-2xl font-bold justify-center mb-4">Login</h2>
                     
                     <form onSubmit={handleSubmit} className="space-y-4">
-                        <TravesiaInput 
+                        <ComerziaInput 
                             label="Usuario" 
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
                         />
                         
-                        <TravesiaInput 
+                        <ComerziaInput 
                             label="Contraseña" 
                             type="password"
                             value={password}

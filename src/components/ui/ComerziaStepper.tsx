@@ -4,7 +4,7 @@ interface Props {
     className?: string;
 }
 
-export const TravesiaStepper = ({ steps, currentStep, className = "" }: Props) => {
+export const ComerziaStepper = ({ steps, currentStep, className = "" }: Props) => {
     // Calculamos el nombre del paso actual de forma segura
     const currentStepName = steps[currentStep - 1] || "";
     

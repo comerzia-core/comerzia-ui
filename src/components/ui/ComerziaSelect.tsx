@@ -17,7 +17,7 @@ interface Props extends React.SelectHTMLAttributes<HTMLSelectElement> {
     shakeKey?: number; 
 }
 
-export const TravesiaSelect = forwardRef<HTMLSelectElement, Props>(({ 
+export const ComerziaSelect = forwardRef<HTMLSelectElement, Props>(({ 
     label, options, error, isLoading, isRequired, shakeKey,
     placeholder = "Seleccione...", 
     enableDefaultOption = false,
@@ -71,4 +71,4 @@ export const TravesiaSelect = forwardRef<HTMLSelectElement, Props>(({
     );
 });
 
-TravesiaSelect.displayName = "TravesiaSelect";
+ComerziaSelect.displayName = "ComerziaSelect";

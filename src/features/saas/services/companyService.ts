@@ -4,7 +4,8 @@ import type {
     SaasCompanyListResponse, 
     SaasCompanyDetailResponse, 
     BranchResponse, 
-    EmployeeSummaryResponse 
+    EmployeeSummaryResponse, 
+    CreateCompanyRequest
 } from '../types/company';
 
 export const getCompanies = async (): Promise<SaasCompanyListResponse[]> => {
@@ -29,4 +30,9 @@ export const getCompanyEmployees = async (companyId: string, page: number, size:
         params: { page, size }
     });
     return response.data;
+};
+
+export const createCompany = async (payload: CreateCompanyRequest): Promise<void> => {
+    // El backend recibe el POST para registrar la nueva empresa
+    await api.post('/saas/companies', payload);
 };

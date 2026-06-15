@@ -1,5 +1,5 @@
 import { Save, X, Trash2, Pencil, FileSpreadsheet, FileText, Plus, ArrowLeft, ArrowRight, RefreshCw } from "lucide-react";
-import { TravesiaButton } from "./ComerziaButton";
+import { ComerziaButton } from "./ComerziaButton";
 
 // Tipos para pasar props extra (como onClick)
 interface BaseBtnProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -10,7 +10,7 @@ interface BaseBtnProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 
 // 1. BOTÓN GUARDAR (Verde + Icono Save)
 export const BtnSave = ({ label = "Guardar", responsive = true, ...props }: BaseBtnProps) => (
-    <TravesiaButton 
+    <ComerziaButton 
         variant="save" 
         label={label} 
         icon={<Save size={18} />} 
@@ -21,7 +21,7 @@ export const BtnSave = ({ label = "Guardar", responsive = true, ...props }: Base
 
 // 2. BOTÓN CANCELAR (Rojo + Icono X)
 export const BtnCancel = ({ label = "Cancelar", responsive = true, ...props }: BaseBtnProps) => (
-    <TravesiaButton 
+    <ComerziaButton 
         variant="cancel" 
         label={label} 
         icon={<X size={18} />} 
@@ -32,7 +32,7 @@ export const BtnCancel = ({ label = "Cancelar", responsive = true, ...props }: B
 
 // 3. BOTÓN EDITAR (Azul + Lapiz + Redondo)
 export const BtnEdit = (props: BaseBtnProps) => (
-    <TravesiaButton 
+    <ComerziaButton 
         variant="edit" 
         isIconOnly 
         icon={<Pencil size={16} />} 
@@ -42,7 +42,7 @@ export const BtnEdit = (props: BaseBtnProps) => (
 
 // 4. BOTÓN ELIMINAR TABLA (Rojo + Basurero + Redondo)
 export const BtnDeleteIcon = (props: BaseBtnProps) => (
-    <TravesiaButton 
+    <ComerziaButton 
         variant="delete" 
         isIconOnly 
         icon={<Trash2 size={16} />} 
@@ -52,7 +52,7 @@ export const BtnDeleteIcon = (props: BaseBtnProps) => (
 
 // 4.1 BOTÓN EXCEL TABLA (Redondo)
 export const BtnExcelIcon = (props: BaseBtnProps) => (
-    <TravesiaButton 
+    <ComerziaButton 
         variant="excel" 
         isIconOnly 
         icon={<FileSpreadsheet size={16} />} 
@@ -62,7 +62,7 @@ export const BtnExcelIcon = (props: BaseBtnProps) => (
 
 // 4.2 BOTÓN PDF TABLA (Redondo)
 export const BtnPDFIcon = (props: BaseBtnProps) => (
-    <TravesiaButton 
+    <ComerziaButton 
         variant="pdf" 
         isIconOnly 
         icon={<FileText size={16} />} 
@@ -73,7 +73,7 @@ export const BtnPDFIcon = (props: BaseBtnProps) => (
 
 // 5. BOTÓN ELIMINAR NORMAL (Con texto, para confirmaciones)
 export const BtnDelete = ({ label = "Eliminar", responsive = true, ...props }: BaseBtnProps) => (
-    <TravesiaButton 
+    <ComerziaButton 
         variant="delete" 
         label={label}
         icon={<Trash2 size={18} />} 
@@ -84,7 +84,7 @@ export const BtnDelete = ({ label = "Eliminar", responsive = true, ...props }: B
 
 // 6. REPORTES
 export const BtnExcel = ({ label = "Exportar Excel", responsive = true, ...props }: BaseBtnProps) => (
-    <TravesiaButton 
+    <ComerziaButton 
         variant="excel" 
         label={label}
         icon={<FileSpreadsheet size={18} />} 
@@ -94,7 +94,7 @@ export const BtnExcel = ({ label = "Exportar Excel", responsive = true, ...props
 );
 
 export const BtnPDF = ({ label = "Exportar PDF", responsive = true, ...props }: BaseBtnProps) => (
-    <TravesiaButton 
+    <ComerziaButton 
         variant="pdf" 
         label={label}
         icon={<FileText size={18} />} 
@@ -105,7 +105,7 @@ export const BtnPDF = ({ label = "Exportar PDF", responsive = true, ...props }: 
 
 // 7. TABLAS
 export const BtnCreate = ({ label = "Adicionar", responsive = false, ...props }: BaseBtnProps) => (
-    <TravesiaButton 
+    <ComerziaButton 
         variant="create" 
         label={label}
         icon={<Plus size={18} />} 
@@ -120,7 +120,7 @@ export const BtnCreate = ({ label = "Adicionar", responsive = false, ...props }:
 
 // 7. LOGIN (Morado Primario, Ancho completo, Sin ícono)
 export const BtnLogin = ({ label = "Ingresar", ...props }: BaseBtnProps) => (
-    <TravesiaButton 
+    <ComerziaButton 
         variant="primary" // Usa el color principal del tema (Morado)
         label={label}
         fullWidth // Generalmente el login ocupa todo el ancho
@@ -131,7 +131,7 @@ export const BtnLogin = ({ label = "Ingresar", ...props }: BaseBtnProps) => (
 
 // 8. MODAL: CONFIRMACIÓN DESTRUCTIVA (Rojo, Sin ícono)
 export const BtnModalYes = ({ label = "Sí, Confirmar", ...props }: BaseBtnProps) => (
-    <TravesiaButton 
+    <ComerziaButton 
         variant="delete" // Reusamos el rojo corporativo
         label={label}
         icon={null} // <--- TRUCO: Pasamos null explícitamente para anular el basurero automático
@@ -141,7 +141,7 @@ export const BtnModalYes = ({ label = "Sí, Confirmar", ...props }: BaseBtnProps
 
 // 9. MODAL: CANCELAR / NEUTRO (Gris/Transparente, Sin ícono)
 export const BtnModalNo = ({ label = "No, Cancelar", ...props }: BaseBtnProps) => (
-    <TravesiaButton 
+    <ComerziaButton 
         variant="ghost" // O 'neutral' si lo quieres con fondo gris
         label={label}
         icon={null} // Sin ícono de X
@@ -205,7 +205,7 @@ export const ExportButtons = ({ onExportExcel, onExportPDF, disabled = false }: 
 
 // 13. BOTÓN ATRÁS (Ghost + Flecha Izquierda) - Para Wizards
 export const BtnBack = ({ label = "Atrás", responsive = true, ...props }: BaseBtnProps) => (
-    <TravesiaButton 
+    <ComerziaButton 
         variant="steps" 
         label={label} 
         responsive={responsive}
@@ -216,12 +216,12 @@ export const BtnBack = ({ label = "Atrás", responsive = true, ...props }: BaseB
 
 // 14. BOTÓN SIGUIENTE (Primario + Flecha Derecha) - Para Wizards
 export const BtnNext = ({ label = "Siguiente", responsive = true, ...props }: BaseBtnProps) => (
-    <TravesiaButton 
+    <ComerziaButton 
         variant="steps" 
         label={label} 
         responsive={responsive}
         // Nota: Por defecto el icono va a la izquierda. 
-        // Si quisieras el icono a la derecha, tendrías que ajustar TravesiaButton, 
+        // Si quisieras el icono a la derecha, tendrías que ajustar ComerziaButton, 
         // pero por consistencia lo dejaremos a la izquierda como el resto del sistema.
         icon={<ArrowRight size={18} />} 
         {...props} 
@@ -230,7 +230,7 @@ export const BtnNext = ({ label = "Siguiente", responsive = true, ...props }: Ba
 
 // 15. BOTÓN CAMBIAR (Blanco, ideal para overlays de imágenes)
 export const BtnChange = ({ label = "Cambiar", responsive = true, ...props }: BaseBtnProps) => (
-    <TravesiaButton 
+    <ComerziaButton 
         variant="overlay" 
         label={label} 
         icon={<RefreshCw size={16} />} 
@@ -241,7 +241,7 @@ export const BtnChange = ({ label = "Cambiar", responsive = true, ...props }: Ba
 
 // 16. BOTÓN QUITAR (Rojo Error + X, para quitar de una lista o uploader)
 export const BtnRemove = ({ label = "Quitar", responsive = true, ...props }: BaseBtnProps) => (
-    <TravesiaButton 
+    <ComerziaButton 
         variant="overlay" 
         label={label} 
         icon={<X size={16} />} 

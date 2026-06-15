@@ -59,3 +59,38 @@ export interface EmployeeSummaryResponse {
     userEnabled: boolean;
     requiresPasswordChange: boolean;
 }
+
+// --- PAYLOADS DE CREACIÓN ---
+
+export interface CreateCompanyDetails {
+    legalName: string;
+    commercialName: string;
+    slug: string;
+    taxId: string;
+}
+
+export interface CreateOwnerDetails {
+    firstName: string;
+    paternalSurname: string;
+    maternalSurname?: string;
+    documentType: string; // En el JSON viajan como String hacia el Enum del Backend
+    documentNumber: string;
+    extension?: string;
+    email: string;
+    phoneNumber: string;
+}
+
+export interface CreateSubscriptionDetails {
+    planType: string; // Código del Enum/Diccionario
+    validUntil: string; // Instant (UTC String)
+    maxBranches: number;
+    maxUsers: number;
+    maxProducts: number;
+    enabledModules?: string;
+}
+
+export interface CreateCompanyRequest {
+    company: CreateCompanyDetails;
+    owner: CreateOwnerDetails;
+    subscription: CreateSubscriptionDetails;
+}

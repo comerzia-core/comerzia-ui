@@ -11,7 +11,7 @@ interface Props {
     closeOnOutsideClick?: boolean;
 }
 
-export const TravesiaModal = ({ isOpen, onClose, title, children, actions, size = "md", closeOnOutsideClick = false }: Props) => {
+export const ComerziaModal = ({ isOpen, onClose, title, children, actions, size = "md", closeOnOutsideClick = false }: Props) => {
     
     // 1. MANEJO DE TECLA ESC (Manual, ya que quitamos el dialog nativo)
     useEffect(() => {

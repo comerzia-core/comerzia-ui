@@ -3,122 +3,122 @@
 @tailwind utilities;
 
 @layer components {
-  /* CLASES PERSONALIZADAS DE TRAVESIA 
+  /* CLASES PERSONALIZADAS DE COMERZIA 
      Esto garantiza que el color sea SIEMPRE sólido, sin importar si es Light, Dark o Cyberpunk.
   */
 
   /* Botón de Guardar (Verde Esmeralda Sólido) */
-  .btn-travesia-save {
+  .btn-comerzia-save {
     background-color: #10b981 !important; /* emerald-500 */
     color: white !important;
   }
   
-  .btn-travesia-save:hover {
+  .btn-comerzia-save:hover {
     background-color: #059669 !important; /* emerald-600 */
   }
 
   /* Botón de Eliminar (Rojo Sólido) */
-  .btn-travesia-delete {
+  .btn-comerzia-delete {
     background-color: #ef4444 !important; /* red-500 */
     color: white !important;
   }
   
-  .btn-travesia-delete:hover {
+  .btn-comerzia-delete:hover {
     background-color: #dc2626 !important; /* red-600 */
   }
 
   /* Botón INFO Sólido */
-  .btn-travesia-info {
+  .btn-comerzia-info {
     background-color: #0ea5e9 !important; /* sky-500 */
     border-color: #0ea5e9 !important;
     color: white !important;
   }
-  .btn-travesia-info:hover { background-color: #0284c7 !important; }
+  .btn-comerzia-info:hover { background-color: #0284c7 !important; }
 
   /* Botón SUCCESS Sólido (Reemplaza al estándar para consistencia) */
-  .btn-travesia-success {
+  .btn-comerzia-success {
     background-color: #22c55e !important; /* green-500 */
     border-color: #22c55e !important;
     color: white !important;
   }
-  .btn-travesia-success:hover { background-color: #16a34a !important; }
+  .btn-comerzia-success:hover { background-color: #16a34a !important; }
 
   /* Botón WARNING Sólido */
-  .btn-travesia-warning {
+  .btn-comerzia-warning {
     background-color: #eab308 !important; /* yellow-500 */
     border-color: #eab308 !important;
     color: white !important; /* O black si prefieres contraste */
   }
-  .btn-travesia-warning:hover { background-color: #ca8a04 !important; }
+  .btn-comerzia-warning:hover { background-color: #ca8a04 !important; }
 
   /* Botón ERROR Sólido */
-  .btn-travesia-error {
+  .btn-comerzia-error {
     background-color: #ef4444 !important; /* red-500 */
     border-color: #ef4444 !important;
     color: white !important;
   }
-  .btn-travesia-error:hover { background-color: #dc2626 !important; }
+  .btn-comerzia-error:hover { background-color: #dc2626 !important; }
 
   /* Botón EDITAR (Azul Sólido) */
-  .btn-travesia-edit {
+  .btn-comerzia-edit {
     background-color: #2563eb !important; /* blue-600 */
     border-color: #2563eb !important;
     color: white !important;
   }
-  .btn-travesia-edit:hover { background-color: #1d4ed8 !important; }
+  .btn-comerzia-edit:hover { background-color: #1d4ed8 !important; }
 
   /* Botón EXCEL (Verde Oscuro) */
-  .btn-travesia-excel {
+  .btn-comerzia-excel {
     background-color: #15803d !important; /* green-700 */
     border-color: #15803d !important;
     color: white !important;
   }
-  .btn-travesia-excel:hover { background-color: #14532d !important; }
+  .btn-comerzia-excel:hover { background-color: #14532d !important; }
 
   /* Botón PDF (Naranja/Rojo) */
-  .btn-travesia-pdf {
+  .btn-comerzia-pdf {
     background-color: #ea580c !important; /* orange-600 */
     border-color: #ea580c !important;
     color: white !important;
   }
-  .btn-travesia-pdf:hover { background-color: #c2410c !important; }
+  .btn-comerzia-pdf:hover { background-color: #c2410c !important; }
 
   /* BOTÓN PRIMARIO (LOGIN / SISTEMA) - BLINDADO */
-  .btn-travesia-primary {
+  .btn-comerzia-primary {
     background-color: #432ad5 !important; /* Violet-600 (Morado) */
     border-color: #432ad5 !important;
     color: white !important;
   }
-  .btn-travesia-primary:hover { 
+  .btn-comerzia-primary:hover { 
     background-color: #3d1eed !important; /* Un poco más oscuro al pasar el mouse */
   }
 
   /* BOTÓN NEUTRO/CANCELAR (Para el Modal "NO") */
   /* A veces btn-ghost también falla, aseguramos un gris suave */
-  .btn-travesia-ghost {
+  .btn-comerzia-ghost {
     background-color: transparent !important;
     border: 1px solid #d1d5db !important; /* Gris suave (border-gray-300) */
     color: inherit !important;
   }
-  .btn-travesia-ghost:hover {
+  .btn-comerzia-ghost:hover {
     background-color: rgba(0,0,0,0.05) !important;
   }
   
   /* Botón CREATE (Verde Oscuro) */
-  .btn-travesia-create {
+  .btn-comerzia-create {
     background-color: #15803d !important; /* green-700 */
     border-color: #15803d !important;
     color: white !important;
   }
-  .btn-travesia-create:hover { background-color: #14532d !important; }
+  .btn-comerzia-create:hover { background-color: #14532d !important; }
   
   /* Botón CREATE (Morado) */
-  .btn-travesia-steps {
+  .btn-comerzia-steps {
     background-color: #432ad5 !important; /* violet-600 */
     border-color: #432ad5 !important;
     color: white !important;
   }
-  .btn-travesia-steps:hover { background-color: #3d1eed !important; }
+  .btn-comerzia-steps:hover { background-color: #3d1eed !important; }
 
   /* Animación de error (Shake) */
   @keyframes shake {

@@ -12,7 +12,7 @@ interface Props extends React.InputHTMLAttributes<HTMLInputElement> {
   uppercase?: boolean;
 }
 
-export const TravesiaInput = forwardRef<HTMLInputElement, Props>(({ 
+export const ComerziaInput = forwardRef<HTMLInputElement, Props>(({ 
   label, error, icon, isRequired, shakeKey, helperText, uppercase, className = "", 
   onChange, onBlur, ...props 
 }, ref) => {
@@ -90,4 +90,4 @@ export const TravesiaInput = forwardRef<HTMLInputElement, Props>(({
   );
 });
 
-TravesiaInput.displayName = "TravesiaInput";
+ComerziaInput.displayName = "ComerziaInput";
