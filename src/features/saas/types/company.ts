@@ -94,3 +94,12 @@ export interface CreateCompanyRequest {
     owner: CreateOwnerDetails;
     subscription: CreateSubscriptionDetails;
 }
+
+export interface CompanyCreatedResponse {
+    companyId: string;
+    businessName: string;
+    defaultBranchName: string;
+    ownerFullName: string;
+    ownerUsername: string;
+    temporaryPassword: string;
+}

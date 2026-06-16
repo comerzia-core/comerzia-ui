@@ -1,14 +1,20 @@
 import { useEffect, useState, useCallback } from "react";
 import { CompaniesTable } from "../components/companies/CompaniesTable";
 import { CreateCompanyWizard } from "../components/companies/CreateCompanyWizard";
+import { CompanyCredentialsModal } from "../components/companies/CompanyCredentialsModal";
 import { getCompanies } from "../services/companyService";
-import type { SaasCompanyListResponse } from "../types/company";
-import { Plus } from "lucide-react"; // Para el botón de crear
+import type { SaasCompanyListResponse, CompanyCreatedResponse } from "../types/company";
+import { Plus } from "lucide-react";
 
 export const CompaniesPage = () => {
     const [companies, setCompanies] = useState<SaasCompanyListResponse[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
-    const [isWizardOpen, setIsWizardOpen] = useState(false); // Estado del modal
+    
+    // Estados orquestadores de los Modales
+    const [isWizardOpen, setIsWizardOpen] = useState(false);
+    
+    // Estado para capturar y mostrar las credenciales generadas
+    const [credentialsData, setCredentialsData] = useState<CompanyCreatedResponse | null>(null);
 
     const fetchCompanies = useCallback(async () => {
         try {
@@ -26,15 +32,20 @@ export const CompaniesPage = () => {
         fetchCompanies();
     }, [fetchCompanies]);
 
-    const handleCreateSuccess = () => {
-        // Al crear con éxito, recargamos la lista
-        fetchCompanies();
+    // Handler cuando el wizard termina exitosamente
+    const handleCreateSuccess = (data: CompanyCreatedResponse) => {
+        fetchCompanies(); // Recargamos la tabla en segundo plano
+        setCredentialsData(data); // Inyectamos la data para abrir el modal de credenciales automáticamente
+    };
+
+    const handleCloseCredentials = () => {
+        // Al cerrar el modal, purgamos la data de RAM por seguridad
+        setCredentialsData(null);
     };
 
     return (
         <div className="flex flex-col gap-6 p-6">
             
-            {/* Header */}
             <div className="flex justify-between items-center bg-base-100 p-4 rounded-xl shadow-sm border border-base-200">
                 <div>
                     <h1 className="text-2xl font-bold text-base-content">Empresas (Tenants)</h1>
@@ -43,7 +54,6 @@ export const CompaniesPage = () => {
                     </p>
                 </div>
                 
-                {/* Botón estandarizado de creación */}
                 <button 
                     onClick={() => setIsWizardOpen(true)}
                     className="btn btn-primary btn-sm rounded-lg"
@@ -57,11 +67,18 @@ export const CompaniesPage = () => {
                 isLoading={isLoading} 
             />
 
-            {/* Modal Wizard Inyectado */}
+            {/* Modal 1: Creación */}
             <CreateCompanyWizard 
                 isOpen={isWizardOpen}
                 onClose={() => setIsWizardOpen(false)}
                 onSuccess={handleCreateSuccess}
+            />
+
+            {/* Modal 2: Entrega de Credenciales (Solo se renderiza si credentialsData existe) */}
+            <CompanyCredentialsModal
+                isOpen={!!credentialsData}
+                data={credentialsData}
+                onClose={handleCloseCredentials}
             />
             
         </div>

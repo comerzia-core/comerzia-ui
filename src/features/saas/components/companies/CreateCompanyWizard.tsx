@@ -7,7 +7,7 @@ import { BtnBack, BtnNext, BtnCancel, BtnSave } from "../../../../components/ui/
 import { useLoadDictionaries } from "../../../../hooks/useLoadDictionaries";
 import { DICTIONARIES } from "../../../../config/dictionaries";
 import { createCompany } from "../../services/companyService";
-import type { CreateCompanyRequest } from "../../types/company";
+import type { CompanyCreatedResponse, CreateCompanyRequest } from "../../types/company";
 
 // NOTA: Asumo que tu context exporta un hook useToast con métodos como success() y error().
 // Ajusta esto si la firma de tu ToastContext es ligeramente distinta.
@@ -16,7 +16,7 @@ import { useToast } from "../../../../context/ToastContext";
 interface Props {
     isOpen: boolean;
     onClose: () => void;
-    onSuccess: () => void;
+    onSuccess: (data: CompanyCreatedResponse) => void;
 }
 
 const INITIAL_STATE: CreateCompanyRequest = {
@@ -151,12 +151,13 @@ export const CreateCompanyWizard = ({ isOpen, onClose, onSuccess }: Props) => {
                 }
             };
 
-            await createCompany(payload);
+            // 2. Capturamos la respuesta del backend
+            const responseData = await createCompany(payload);
             
-            // Notificación de éxito
             if (toast?.success) toast.success("Empresa y Suscripción registradas exitosamente.");
             
-            onSuccess();
+            // 3. Emitimos la data al padre
+            onSuccess(responseData);
             handleClose();
         } catch (error: any) {
             console.error("Error creating company:", error);
@@ -267,17 +268,23 @@ export const CreateCompanyWizard = ({ isOpen, onClose, onSuccess }: Props) => {
                         <ComerziaInput 
                             label="Número de Documento" 
                             value={formData.owner.documentNumber} 
-                            onChange={(e) => updateOwner('documentNumber', e.target.value)} 
+                            onChange={(e) => {
+                                const soloNumeros = e.target.value.replace(/\D/g, '').slice(0, 12);
+                                updateOwner('documentNumber', soloNumeros);
+                            }} 
                             isRequired 
                             error={errors.documentNumber}
                             shakeKey={shakeKey}
                         />
                         <ComerziaSelect 
-                            label="Extensión (Opcional)" 
+                            label="Extensión" 
                             options={options[DICTIONARIES.DOCUMENT_EXTENSION]} 
                             isLoading={isLoadingDicts}
                             value={formData.owner.extension || ''} 
                             onChange={(e) => updateOwner('extension', e.target.value)} 
+                            isRequired 
+                            error={errors.extension}
+                            shakeKey={shakeKey}
                         />
 
                         <ComerziaInput 
@@ -292,10 +299,14 @@ export const CreateCompanyWizard = ({ isOpen, onClose, onSuccess }: Props) => {
                         <ComerziaInput 
                             label="Teléfono" 
                             value={formData.owner.phoneNumber} 
-                            onChange={(e) => updateOwner('phoneNumber', e.target.value)} 
+                            onChange={(e) => {
+                                const soloNumeros = e.target.value.replace(/\D/g, '').slice(0, 8);
+                                updateOwner('phoneNumber', soloNumeros);
+                            }} 
                             isRequired 
                             error={errors.phoneNumber}
                             shakeKey={shakeKey}
+                            placeholder="ej. 71234567" 
                         />
                     </div>
                 )}
