@@ -47,3 +47,14 @@ export interface UserProfile {
     permissions: string[];
     companySettings: CompanySettings | null; 
 }
+
+export interface AuthErrorResponse {
+    code: string;
+    message: string;
+    errors: string[] | null;
+    timestamp: string;
+}
+
+export const AUTH_ERROR_CODES = {
+    REQUIRES_PASSWORD_CHANGE: 'requires_password_change'
+} as const;

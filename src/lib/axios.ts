@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { useAuthStore } from '../stores/useAuthStore'; 
+import { useAuthStore } from '../stores/useAuthStore';
 
 // 1. Crear instancia base
 const api = axios.create({
@@ -13,7 +13,7 @@ const api = axios.create({
 api.interceptors.request.use(
     (config) => {
         // Leemos el token directamente desde la memoria de Zustand
-        const token = useAuthStore.getState().token; 
+        const token = useAuthStore.getState().token;
         
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
@@ -33,26 +33,33 @@ api.interceptors.response.use(
     (error) => {
         if (error.response) {
             const { status } = error.response;
+            
+            // MAGIA AQUÍ: Detectamos si la petición iba dirigida a autenticación
+            const isAuthRequest = error.config?.url?.includes('/auth/');
 
             if (status === 401) {
-                console.error("Token expired or invalid. Executing automatic logout...");
-                
-                // Limpiamos la memoria y forzamos la recarga hacia el login
-                useAuthStore.getState().logout();
-                window.location.href = '/login';
+                // Si es un 401 pero viene del login, NO hacemos recarga de página.
+                // Dejamos que el Catch de la vista (LoginPage) maneje y pinte el error.
+                if (!isAuthRequest) {
+                    console.error("Token expired or invalid. Executing automatic logout...");
+                    
+                    // Limpiamos la memoria y forzamos la recarga hacia el login
+                    useAuthStore.getState().logout();
+                    window.location.href = '/login';
+                }
             }
             
             if (status === 403) {
                 console.error("Access denied by backend configuration.");
             }
-
+            
             if (status >= 500) {
                 console.error("Critical server error. Backend is failing.");
             }
         } else {
             console.error("Network error. Unable to connect to the server.");
         }
-
+        
         return Promise.reject(error);
     }
 );
