@@ -10,6 +10,7 @@ import { NotFoundPage } from "../features/errors/pages/NotFoundPage";
 import { PermissionGuard } from "./PermissionGuard";
 import { CompaniesPage } from "../features/saas/pages/CompaniesPage";
 import { CompanyDashboardPage } from "../features/saas/pages/CompanyDashboardPage";
+import { CompanyProfilePage } from "../features/organization/pages/CompanyProfilePage";
 
 export const AppRouter = () => {
   useTheme(); 
@@ -28,10 +29,9 @@ export const AppRouter = () => {
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/dashboard" element={<DashboardPage />} />
 
+                {/* --- COMMERCIAL MODULES --- */}
+                <Route path="/organization/company" element={<CompanyProfilePage />} />
 
-                {/* --- MÓDULOS DEL SISTEMA --- */}
-                <Route path="/saas/tenants" element={<CompaniesPage />} />
-                <Route path="/saas/companies/:id" element={<CompanyDashboardPage />} />
 
 
 
@@ -43,6 +43,12 @@ export const AppRouter = () => {
                 <Route element={<PermissionGuard code="SYS_SUBSCRIPTIONS_VIEW" />}>
                   <Route path="/saas/subscriptions" element={<UnderConstruction />} />
                 </Route>
+
+                
+                {/* --- MÓDULOS DEL SISTEMA --- */}
+                <Route path="/saas/tenants" element={<CompaniesPage />} />
+                <Route path="/saas/companies/:id" element={<CompanyDashboardPage />} />
+
 
                 
                 {/* <Route element={<PermissionGuard code="SYS_TENANTS_VIEW" />}>
