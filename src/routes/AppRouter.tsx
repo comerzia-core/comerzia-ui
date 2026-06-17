@@ -11,6 +11,7 @@ import { PermissionGuard } from "./PermissionGuard";
 import { CompaniesPage } from "../features/saas/pages/CompaniesPage";
 import { CompanyDashboardPage } from "../features/saas/pages/CompanyDashboardPage";
 import { CompanyProfilePage } from "../features/organization/pages/CompanyProfilePage";
+import { BranchesPage } from "../features/organization/pages/BranchesPage";
 
 export const AppRouter = () => {
   useTheme(); 
@@ -31,8 +32,7 @@ export const AppRouter = () => {
 
                 {/* --- COMMERCIAL MODULES --- */}
                 <Route path="/organization/company" element={<CompanyProfilePage />} />
-
-
+                <Route path="/organization/branches" element={<BranchesPage />} />
 
 
                 {/* --- MÓDULO SAAS --- */}

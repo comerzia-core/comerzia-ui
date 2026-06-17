@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import { TravesiaModal } from "./ComerziaModal";
-import { TravesiaButton } from "./ComerziaButton";
+import { ComerziaModal } from "./ComerziaModal";
+import { ComerziaButton } from "./ComerziaButton";
 import { AlertTriangle, Info, CheckCircle } from "lucide-react";
 
 type ModalVariant = "danger" | "warning" | "info" | "success" | "primary";
@@ -62,7 +62,7 @@ export const ConfirmationModal = ({
     const config = getConfig();
 
     return (
-        <TravesiaModal
+        <ComerziaModal
             isOpen={isOpen}
             onClose={onClose}
             closeOnOutsideClick={true}
@@ -83,14 +83,14 @@ export const ConfirmationModal = ({
 
                 {/* Botones de Acción */}
                 <div className="flex gap-3 w-full justify-center mt-6 pt-2">
-                    <TravesiaButton 
+                    <ComerziaButton 
                         variant="ghost" 
                         label={cancelText} 
                         onClick={onClose} 
                         disabled={isLoading}
                         className="flex-1"
                     />
-                    <TravesiaButton 
+                    <ComerziaButton 
                         variant={config.btnVariant} 
                         label={confirmText} 
                         onClick={onConfirm} 
@@ -99,6 +99,6 @@ export const ConfirmationModal = ({
                     />
                 </div>
             </div>
-        </TravesiaModal>
+        </ComerziaModal>
     );
 };
