@@ -1,10 +1,13 @@
 // src/features/organization/components/branches/BranchModal.tsx
 import React, { useState, useEffect } from 'react';
 import { Store } from 'lucide-react';
+import axios from 'axios';
 import { ComerziaModal } from '../../../../components/ui/ComerziaModal';
 import { ComerziaInput } from '../../../../components/ui/ComerziaInput';
 import { ComerziaSelect } from '../../../../components/ui/ComerziaSelect';
 import { BtnCancel, BtnSave } from '../../../../components/ui/CrudButtons';
+// IMPORTAMOS EL NUEVO COMPONENTE GLOBAL
+import { SubscriptionLimitModal } from '../../../../components/ui/SubscriptionLimitModal'; 
 import { branchService } from '../../services/branchService';
 import { useToast } from '../../../../context/ToastContext';
 import type { BranchResponse, CreateBranchRequest, UpdateBranchRequest } from '../../types/branch';
@@ -13,26 +16,27 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   branchToEdit: BranchResponse | null;
-  onSuccess: () => void; // Para recargar la tabla al guardar
+  onSuccess: () => void; 
 }
 
 export const BranchModal = ({ isOpen, onClose, branchToEdit, onSuccess }: Props) => {
   const { addToast: showToast } = useToast();
-
   
   const [isSaving, setIsSaving] = useState(false);
   const [shakeKey, setShakeKey] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // ESTADO SIMPLIFICADO: Solo guardamos el mensaje crudo del backend
+  const [backendLimitError, setBackendLimitError] = useState<string | null>(null);
+
   const [formData, setFormData] = useState({
     name: '',
     address: '',
-    status: 'true' // Guardamos como string para el Select, luego parseamos a boolean
+    status: 'true' 
   });
 
   const isEditing = !!branchToEdit;
 
-  // Llenar el formulario si estamos editando o limpiar si es nuevo
   useEffect(() => {
     if (isOpen) {
       if (branchToEdit) {
@@ -45,6 +49,7 @@ export const BranchModal = ({ isOpen, onClose, branchToEdit, onSuccess }: Props)
         setFormData({ name: '', address: '', status: 'true' });
       }
       setErrors({});
+      setBackendLimitError(null); // Limpiamos errores previos al abrir
     }
   }, [isOpen, branchToEdit]);
 
@@ -52,7 +57,6 @@ export const BranchModal = ({ isOpen, onClose, branchToEdit, onSuccess }: Props)
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     
-    // Limpiar error al escribir
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
@@ -62,12 +66,12 @@ export const BranchModal = ({ isOpen, onClose, branchToEdit, onSuccess }: Props)
     const newErrors: Record<string, string> = {};
 
     if (!formData.name.trim()) {
-      newErrors.name = 'Branch name is required';
+      newErrors.name = 'El nombre de la sucursal es obligatorio';
     }
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
-      setShakeKey(prev => prev + 1); // Disparamos la vibración
+      setShakeKey(prev => prev + 1); 
       return false;
     }
     return true;
@@ -86,21 +90,28 @@ export const BranchModal = ({ isOpen, onClose, branchToEdit, onSuccess }: Props)
           status: formData.status === 'true'
         };
         await branchService.updateBranch(branchToEdit.id, payload);
-        showToast('Branch updated successfully', 'success');
+        showToast('Sucursal actualizada exitosamente', 'success');
       } else {
         const payload: CreateBranchRequest = {
           name: formData.name,
           address: formData.address
         };
         await branchService.createBranch(payload);
-        showToast('Branch created successfully', 'success');
+        showToast('Sucursal creada exitosamente', 'success');
       }
       
-      onSuccess(); // Recargar tabla
-      onClose(); // Cerrar modal
+      onSuccess(); 
+      onClose(); 
     } catch (error) {
       console.error('Error saving branch:', error);
-      showToast('Error saving branch', 'error');
+      
+      // VALIDACIÓN: Verificamos si es un error de regla de negocio
+      if (axios.isAxiosError(error) && error.response?.data?.code === 'business_rule_violation') {
+        // Le pasamos el mensaje crudo en inglés al estado
+        setBackendLimitError(error.response.data.message);
+      } else {
+        showToast('Error al guardar la sucursal', 'error');
+      }
     } finally {
       setIsSaving(false);
     }
@@ -114,54 +125,63 @@ export const BranchModal = ({ isOpen, onClose, branchToEdit, onSuccess }: Props)
   );
 
   return (
-    <ComerziaModal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={
-        <div className="flex items-center gap-2 text-primary">
-          <Store size={22} />
-          {isEditing ? 'Edit Branch' : 'New Branch'}
-        </div>
-      }
-      actions={modalActions}
-      size="md"
-    >
-      <div className="space-y-4 pt-2">
-        <ComerziaInput
-          label="Branch Name"
-          name="name"
-          placeholder="e.g. Main Store, Downtown Branch"
-          value={formData.name}
-          onChange={handleChange}
-          error={errors.name}
-          shakeKey={shakeKey}
-          isRequired
-          maxLength={100}
-        />
-
-        <ComerziaInput
-          label="Address (Optional)"
-          name="address"
-          placeholder="123 Commerce St..."
-          value={formData.address}
-          onChange={handleChange}
-          maxLength={200}
-        />
-
-        {/* Solo mostramos el estado si estamos editando (por defecto uno nuevo es Activo) */}
-        {isEditing && (
-          <ComerziaSelect
-            label="Branch Status"
-            name="status"
-            value={formData.status}
+    <>
+      {/* MODAL PRINCIPAL: Formulario */}
+      <ComerziaModal
+        isOpen={isOpen}
+        onClose={onClose}
+        title={
+          <div className="flex items-center gap-2 text-primary">
+            <Store size={22} />
+            {isEditing ? 'Editar Sucursal' : 'Nueva Sucursal'}
+          </div>
+        }
+        actions={modalActions}
+        size="md"
+      >
+        <div className="space-y-4 pt-2">
+          <ComerziaInput
+            label="Nombre de la Sucursal"
+            name="name"
+            placeholder="Ej. Tienda Central, Sucursal Norte"
+            value={formData.name}
             onChange={handleChange}
-            options={[
-              { value: 'true', label: 'Active' },
-              { value: 'false', label: 'Inactive' }
-            ]}
+            error={errors.name}
+            shakeKey={shakeKey}
+            isRequired
+            maxLength={100}
           />
-        )}
-      </div>
-    </ComerziaModal>
+
+          <ComerziaInput
+            label="Dirección (Opcional)"
+            name="address"
+            placeholder="Av. Principal 123..."
+            value={formData.address}
+            onChange={handleChange}
+            maxLength={200}
+          />
+
+          {isEditing && (
+            <ComerziaSelect
+              label="Estado de la Sucursal"
+              name="status"
+              value={formData.status}
+              onChange={handleChange}
+              options={[
+                { value: 'true', label: 'Activa' },
+                { value: 'false', label: 'Inactiva' }
+              ]}
+            />
+          )}
+        </div>
+      </ComerziaModal>
+
+      {/* COMPONENTE GLOBAL DE LÍMITES */}
+      <SubscriptionLimitModal
+        isOpen={!!backendLimitError}
+        onClose={() => setBackendLimitError(null)}
+        backendMessage={backendLimitError || ''}
+      />
+    </>
   );
 };
