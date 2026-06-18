@@ -5,17 +5,17 @@ interface Props {
     disabled?: boolean;
 }
 
-export const TravesiaSwitch = ({ checked, onChange, isLoading = false, disabled = false }: Props) => {
+export const ComerziaSwitch = ({ checked, onChange, isLoading = false, disabled = false }: Props) => {
     // Si está cargando o deshabilitado, bloqueamos el clic
     const isInteractive = !isLoading && !disabled;
 
     return (
-        <div 
+        <div
             onClick={isInteractive ? onChange : undefined}
             className={`
                 relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 cursor-pointer border-2
                 ${/* COLOR DE FONDO (TRACK) */ ""}
-                ${checked 
+                ${checked
                     ? 'bg-success border-success' // ENCENDIDO: Verde
                     : 'bg-base-300 border-base-300 hover:bg-base-400' // APAGADO: Gris claro (o usa bg-error si quieres rojo intenso)
                 } 
@@ -31,7 +31,7 @@ export const TravesiaSwitch = ({ checked, onChange, isLoading = false, disabled 
                     ${isLoading ? 'animate-pulse' : ''}
                 `}
             />
-            
+
             {/* (Opcional) Iconos dentro del switch para más claridad visual */}
             {/* <span className={`absolute text-[7px] font-bold text-white left-1.5 ${checked ? 'opacity-100' : 'opacity-0'}`}>
                 ON

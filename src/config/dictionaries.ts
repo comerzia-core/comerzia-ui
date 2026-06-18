@@ -8,6 +8,7 @@ export const DICTIONARIES = {
     PLAN_TYPE: 'plan-type',
     DOCUMENT_TYPE: 'document-type',
     DOCUMENT_EXTENSION: 'document-extension',
+    PAYMENT_FREQUENCY: 'payment-frequency',
 
 } as const;
 
