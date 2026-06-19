@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react';
 import { EmployeeTable } from '../components/EmployeeTable';
 import { EmployeeModal } from '../components/EmployeeModal';
 import { employeeService } from '../services/employeeService';
-import type { EmployeeSummaryResponse } from '../types/employee';
+import type { EmployeeSummaryResponse, EmployeeCreatedResponse } from '../types/employee';
 import type { TablePaginationConfig, ColumnSort } from '../../../components/ui/ComerziaTable';
 import { BtnCreate } from '../../../components/ui/CrudButtons';
 import { useToast } from '../../../context/ToastContext';
 import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
+import { EmployeeCredentialsModal } from '../components/EmployeeCredentialsModal';
 
 export const EmployeePage = () => {
   const [data, setData] = useState<EmployeeSummaryResponse[]>([]);
@@ -23,6 +24,8 @@ export const EmployeePage = () => {
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [employeeToDelete, setEmployeeToDelete] = useState<EmployeeSummaryResponse | null>(null);
+
+  const [credentialsData, setCredentialsData] = useState<EmployeeCreatedResponse | null>(null);
 
   const { success, error } = useToast();
 
@@ -119,7 +122,12 @@ export const EmployeePage = () => {
       <EmployeeModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onSaved={loadData}
+        onSaved={(data) => {
+          loadData();
+          if (data) {
+            setCredentialsData(data);
+          }
+        }}
         employee={selectedEmployee}
       />
 
@@ -129,6 +137,12 @@ export const EmployeePage = () => {
         message={`¿Estás seguro de que deseas eliminar al empleado "${employeeToDelete?.fullName}"? Esta acción revocará su acceso al sistema y no se puede deshacer.`}
         onConfirm={handleConfirmDelete}
         onClose={() => setIsDeleteModalOpen(false)}
+      />
+
+      <EmployeeCredentialsModal
+        isOpen={!!credentialsData}
+        data={credentialsData}
+        onClose={() => setCredentialsData(null)}
       />
     </div>
   );

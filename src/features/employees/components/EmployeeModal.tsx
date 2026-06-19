@@ -10,12 +10,13 @@ import { useLoadDictionaries } from '../../../hooks/useLoadDictionaries';
 import { DICTIONARIES } from '../../../config/dictionaries';
 import { employeeService } from '../services/employeeService';
 import { branchService } from '../../organization/services/branchService';
-import type { EmployeeSummaryResponse, RoleResponse } from '../types/employee';
+import { useToast } from '../../../context/ToastContext';
+import type { EmployeeSummaryResponse, RoleResponse, EmployeeCreatedResponse } from '../types/employee';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (data?: EmployeeCreatedResponse) => void;
   employee: EmployeeSummaryResponse | null;
 }
 
@@ -26,6 +27,7 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
     DICTIONARIES.DOCUMENT_EXTENSION,
     DICTIONARIES.PAYMENT_FREQUENCY,
   ]);
+  const { error: toastError } = useToast();
 
   const [isLoading, setIsLoading] = useState(false);
   const [shakeKey, setShakeKey] = useState(0);
@@ -47,13 +49,13 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
   });
 
   const [contract, setContract] = useState({
-    branchId: '' as string | number,
+    branchId: '' as string,
     employmentStartDate: '',
     paymentFrequency: '' as string | number,
     baseSalary: '' as string | number
   });
 
-  const [roleIds, setRoleIds] = useState<(number | string)[]>([]);
+  const [roleIds, setRoleIds] = useState<string[]>([]);
   const [userEnabled, setUserEnabled] = useState(true);
 
   // Datos externos
@@ -114,7 +116,7 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
 
       setUserEnabled(detail.userEnabled);
       
-      // Guardar roleIds tal como vienen de la base de datos (numéricos)
+      // Guardar roleIds tal como vienen de la base de datos (strings)
       setRoleIds(detail.roleIds || []);
       
     } catch (error) {
@@ -192,41 +194,57 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
     try {
       if (isEditing) {
         await employeeService.update(employee.id, {
-          phoneNumber: person.phoneNumber || undefined,
-          email: person.email || undefined,
-          branchId: Number(contract.branchId),
+          firstName: person.firstName,
+          paternalSurname: person.paternalSurname || "",
+          maternalSurname: person.maternalSurname || "",
+          documentType: Number(person.documentType),
+          documentNumber: person.documentNumber,
+          documentExtension: person.extension ? Number(person.extension) : undefined,
+          phoneNumber: person.phoneNumber || "",
+          email: person.email || "",
+          branchId: contract.branchId,
           baseSalary: contract.baseSalary ? Number(contract.baseSalary) : undefined,
           paymentFrequency: Number(contract.paymentFrequency),
-          roleIds: roleIds as number[],
+          roleIds: roleIds,
           userEnabled
         });
+        onSaved();
       } else {
-        await employeeService.create({
+        const response = await employeeService.create({
           person: {
             firstName: person.firstName,
-            paternalSurname: person.paternalSurname || undefined,
-            maternalSurname: person.maternalSurname || undefined,
+            paternalSurname: person.paternalSurname || "",
+            maternalSurname: person.maternalSurname || "",
             documentType: Number(person.documentType),
             documentNumber: person.documentNumber,
             extension: person.extension ? Number(person.extension) : undefined,
-            phoneNumber: person.phoneNumber || undefined,
-            email: person.email || undefined
+            phoneNumber: person.phoneNumber || "",
+            email: person.email || ""
           },
           contract: {
-            branchId: Number(contract.branchId),
+            branchId: contract.branchId,
             employmentStartDate: new Date(contract.employmentStartDate).toISOString().split('T')[0],
             paymentFrequency: Number(contract.paymentFrequency),
             baseSalary: contract.baseSalary ? Number(contract.baseSalary) : undefined
           },
           access: {
-            roleIds: roleIds as number[]
+            roleIds: roleIds
           }
         });
+        onSaved(response);
       }
-      onSaved();
       onClose();
-    } catch (error) {
-      console.error("Error saving employee", error);      
+    } catch (err: any) {
+      console.error("Error saving employee", err);      
+      const apiMsg = err.response?.data?.message || err.response?.data?.error;
+      if (apiMsg) {
+        toastError(apiMsg);
+      } else if (err.response?.data) {
+        // Fallback for when backend sends an array of errors or a different structure
+        toastError(JSON.stringify(err.response.data).slice(0, 150));
+      } else {
+        toastError("Error al guardar el empleado. Verifica los datos.");
+      }
       setShakeKey(prev => prev + 1);
     } finally {
       setIsLoading(false);
@@ -234,10 +252,8 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
   };
 
   const toggleRole = (roleId: string) => {
-    const idToUse = isNaN(Number(roleId)) ? roleId : Number(roleId);
-    
     setRoleIds(prev => 
-      prev.includes(idToUse) ? prev.filter(r => r !== idToUse) : [...prev, idToUse]
+      prev.includes(roleId) ? prev.filter(r => r !== roleId) : [...prev, roleId]
     );
   };
 
@@ -422,18 +438,15 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
-                  {roles.map(role => {
-                    const idToUse = isNaN(Number(role.id)) ? role.id : Number(role.id);
-                    return (
+                  {roles.map(role => (
                       <ComerziaSelectableCard 
                         key={role.id}
                         title={role.name}
                         description={role.description}
-                        selected={roleIds.includes(idToUse)}
+                        selected={roleIds.includes(role.id)}
                         onClick={() => toggleRole(role.id)}
                       />
-                    );
-                  })}
+                  ))}
                 </div>
               )}
               

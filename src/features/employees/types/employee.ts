@@ -12,14 +12,14 @@ export interface PersonDetails {
 }
 
 export interface ContractDetails {
-  branchId: number;
+  branchId: string;
   employmentStartDate: string; // ISO format date (YYYY-MM-DD) or UTC string
   paymentFrequency: number; // 'MONTHLY' | 'BIWEEKLY' | 'WEEKLY'
   baseSalary?: number;
 }
 
 export interface AccessDetails {
-  roleIds: number[];
+  roleIds: string[];
 }
 
 export interface CreateEmployeeRequest {
@@ -29,12 +29,18 @@ export interface CreateEmployeeRequest {
 }
 
 export interface UpdateEmployeeRequest {
+  firstName: string;
+  paternalSurname?: string;
+  maternalSurname?: string;
+  documentType: number;
+  documentNumber: string;
+  documentExtension?: number;
   phoneNumber?: string;
   email?: string;
-  branchId: number;
+  branchId: string;
   baseSalary?: number;
   paymentFrequency: number;
-  roleIds: number[];
+  roleIds: string[];
   userEnabled: boolean;
 }
 
@@ -58,7 +64,7 @@ export interface EmployeeDetailResponse {
   documentExtension?: number;
   phoneNumber?: string;
   email?: string;
-  branchId: number;
+  branchId: string;
   branchName?: string;
   employmentStartDate: string;
   employmentEndDate?: string;
@@ -67,7 +73,7 @@ export interface EmployeeDetailResponse {
   username?: string;
   userEnabled: boolean;
   requiresPasswordChange: boolean;
-  roleIds: number[];
+  roleIds: string[];
 }
 
 export interface EmployeeCreatedResponse {
