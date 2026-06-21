@@ -12,9 +12,11 @@ import type {
 
 export const employeeService = {
   getAll: async (page: number, size: number, sort?: string[]): Promise<PageResponse<EmployeeSummaryResponse>> => {
-    const params: Record<string, any> = { page, size };
+    const params = new URLSearchParams();
+    params.append('page', page.toString());
+    params.append('size', size.toString());
     if (sort && sort.length > 0) {
-      params.sort = sort;
+      sort.forEach(s => params.append('sort', s));
     }
     const response = await api.get<PageResponse<EmployeeSummaryResponse>>('/tenant/employees', { params });
     return response.data;

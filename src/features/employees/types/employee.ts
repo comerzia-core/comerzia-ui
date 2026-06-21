@@ -54,26 +54,32 @@ export interface EmployeeSummaryResponse {
   requiresPasswordChange: boolean;
 }
 
+export interface DictionaryResponse {
+  code: number;
+  label: string;
+}
+
 export interface EmployeeDetailResponse {
   id: string;
   firstName: string;
   paternalSurname?: string;
   maternalSurname?: string;
-  documentType: number;
+  documentType: DictionaryResponse | null;
   documentNumber: string;
-  documentExtension?: number;
-  phoneNumber?: string;
-  email?: string;
+  documentExtension: DictionaryResponse | null;
+  phoneNumber: string;
+  email: string;
   branchId: string;
-  branchName?: string;
+  branchName: string;
   employmentStartDate: string;
-  employmentEndDate?: string;
-  baseSalary?: number;
-  paymentFrequency: number;
-  username?: string;
+  employmentEndDate: string | null;
+  baseSalary: number;
+  paymentFrequency: DictionaryResponse | null;
+  username: string;
   userEnabled: boolean;
   requiresPasswordChange: boolean;
   roleIds: string[];
+  roleNames: string[];
 }
 
 export interface EmployeeCreatedResponse {

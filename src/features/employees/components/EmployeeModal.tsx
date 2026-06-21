@@ -11,6 +11,7 @@ import { DICTIONARIES } from '../../../config/dictionaries';
 import { employeeService } from '../services/employeeService';
 import { branchService } from '../../organization/services/branchService';
 import { useToast } from '../../../context/ToastContext';
+import { SubscriptionLimitModal } from '../../../components/ui/SubscriptionLimitModal';
 import type { EmployeeSummaryResponse, RoleResponse, EmployeeCreatedResponse } from '../types/employee';
 
 interface Props {
@@ -28,6 +29,8 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
     DICTIONARIES.PAYMENT_FREQUENCY,
   ]);
   const { error: toastError } = useToast();
+
+  const [backendLimitError, setBackendLimitError] = useState<string | null>(null);
 
   const [isLoading, setIsLoading] = useState(false);
   const [shakeKey, setShakeKey] = useState(0);
@@ -100,9 +103,9 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
         firstName: detail.firstName || '',
         paternalSurname: detail.paternalSurname || '',
         maternalSurname: detail.maternalSurname || '',
-        documentType: detail.documentType || '',
+        documentType: detail.documentType?.code || '',
         documentNumber: detail.documentNumber || '',
-        extension: detail.documentExtension || '',
+        extension: detail.documentExtension?.code || '',
         phoneNumber: detail.phoneNumber || '',
         email: detail.email || ''
       });
@@ -110,7 +113,7 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
       setContract({
         branchId: detail.branchId || '',
         employmentStartDate: detail.employmentStartDate || '',
-        paymentFrequency: detail.paymentFrequency || '',
+        paymentFrequency: detail.paymentFrequency?.code || '',
         baseSalary: detail.baseSalary || ''
       });
 
@@ -155,13 +158,12 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
 
   const validateStep = (step: number) => {
     if (step === 1) {
-      if (!person.firstName || !person.documentType || !person.documentNumber) return false;
-      if (!person.paternalSurname && !person.maternalSurname) return false;
+      if (!person.firstName || !person.paternalSurname || !person.maternalSurname || !person.documentType || !person.documentNumber || !person.extension || !person.phoneNumber || !person.email) return false;
       if (person.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(person.email)) return false;
       return true;
     }
     if (step === 2) {
-      if (!contract.branchId || !contract.paymentFrequency) return false;
+      if (!contract.branchId || !contract.paymentFrequency || !contract.baseSalary) return false;
       if (!isEditing && !contract.employmentStartDate) return false;
       return true;
     }
@@ -236,6 +238,14 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
       onClose();
     } catch (err: any) {
       console.error("Error saving employee", err);      
+      
+      // VALIDACIÓN LÍMITES DE SUSCRIPCIÓN
+      if (err.response?.data?.code === 'business_rule_violation') {
+        setBackendLimitError(err.response.data.message);
+        setIsLoading(false);
+        return;
+      }
+
       const apiMsg = err.response?.data?.message || err.response?.data?.error;
       if (apiMsg) {
         toastError(apiMsg);
@@ -258,6 +268,7 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
   };
 
   return (
+    <>
     <ComerziaModal 
       isOpen={isOpen} 
       onClose={onClose} 
@@ -291,15 +302,17 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
                 label="Ap. Paterno" 
                 value={person.paternalSurname}
                 onChange={e => setPerson({...person, paternalSurname: e.target.value})}
+                isRequired
                 shakeKey={shakeKey}
-                error={!person.paternalSurname && !person.maternalSurname && shakeKey > 0 ? 'Requerido' : ''}
+                error={!person.paternalSurname && shakeKey > 0 ? 'Requerido' : ''}
               />
               <ComerziaInput 
                 label="Ap. Materno" 
                 value={person.maternalSurname}
                 onChange={e => setPerson({...person, maternalSurname: e.target.value})}
+                isRequired
                 shakeKey={shakeKey}
-                error={!person.paternalSurname && !person.maternalSurname && shakeKey > 0 ? 'Requerido' : ''}
+                error={!person.maternalSurname && shakeKey > 0 ? 'Requerido' : ''}
               />
             </div>
             
@@ -336,6 +349,9 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
                   onChange={e => setPerson({...person, extension: e.target.value})}
                   isLoading={isLoadingDicts}
                   enableDefaultOption
+                  isRequired
+                  shakeKey={shakeKey}
+                  error={!person.extension && shakeKey > 0 ? 'Requerido' : ''}
                 />
               </div>
             </div>
@@ -345,14 +361,18 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
                 label="Teléfono" 
                 value={person.phoneNumber}
                 onChange={e => setPerson({...person, phoneNumber: handleNumericInput(e.target.value, 8)})}
+                isRequired
+                shakeKey={shakeKey}
+                error={!person.phoneNumber && shakeKey > 0 ? 'Requerido' : ''}
               />
               <ComerziaInput 
                 label="Email" 
                 type="email"
                 value={person.email}
                 onChange={e => setPerson({...person, email: e.target.value})}
+                isRequired
                 shakeKey={shakeKey}
-                error={person.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(person.email) && shakeKey > 0 ? 'Email inválido' : ''}
+                error={!person.email && shakeKey > 0 ? 'Requerido' : (person.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(person.email) && shakeKey > 0 ? 'Email inválido' : '')}
               />
             </div>
           </div>
@@ -393,6 +413,9 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
                 type="number"
                 value={contract.baseSalary}
                 onChange={e => setContract({...contract, baseSalary: e.target.value})}
+                isRequired
+                shakeKey={shakeKey}
+                error={!contract.baseSalary && shakeKey > 0 ? 'Requerido' : ''}
               />
               <ComerziaSelect 
                 label="Frecuencia Pago"
@@ -474,5 +497,12 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
         )}
       </div>
     </ComerziaModal>
+
+    <SubscriptionLimitModal
+      isOpen={!!backendLimitError}
+      onClose={() => setBackendLimitError(null)}
+      backendMessage={backendLimitError || ''}
+    />
+    </>
   );
 };

@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { EmployeeTable } from '../components/EmployeeTable';
 import { EmployeeModal } from '../components/EmployeeModal';
+import { EmployeeCard } from '../components/EmployeeCard';
+import { EmployeeDetailModal } from '../components/EmployeeDetailModal';
 import { employeeService } from '../services/employeeService';
 import type { EmployeeSummaryResponse, EmployeeCreatedResponse } from '../types/employee';
-import type { TablePaginationConfig, ColumnSort } from '../../../components/ui/ComerziaTable';
 import { BtnCreate } from '../../../components/ui/CrudButtons';
 import { useToast } from '../../../context/ToastContext';
 import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
@@ -12,15 +12,21 @@ import { EmployeeCredentialsModal } from '../components/EmployeeCredentialsModal
 export const EmployeePage = () => {
   const [data, setData] = useState<EmployeeSummaryResponse[]>([]);
   const [totalElements, setTotalElements] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
   
   const [page, setPage] = useState(0);
-  const [size, setSize] = useState(20);
-  const [sorting, setSorting] = useState<ColumnSort[]>([]);
+  const size = 10;
+  const [hasMore, setHasMore] = useState(true);
+  
+  const [search, setSearch] = useState('');
+  const [selectedBranch, setSelectedBranch] = useState('');
+  
   const [isLoading, setIsLoading] = useState(false);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeSummaryResponse | null>(null);
+
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [selectedDetailId, setSelectedDetailId] = useState<string | null>(null);
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [employeeToDelete, setEmployeeToDelete] = useState<EmployeeSummaryResponse | null>(null);
@@ -29,14 +35,21 @@ export const EmployeePage = () => {
 
   const { success, error } = useToast();
 
-  const loadData = async () => {
+  const loadData = async (reset = false) => {
     setIsLoading(true);
     try {
-      const sortParams = sorting.map(s => `${s.id},${s.desc ? 'desc' : 'asc'}`);
-      const response = await employeeService.getAll(page, size, sortParams);
-      setData(response.content);
+      const targetPage = reset ? 0 : page;
+      const response = await employeeService.getAll(targetPage, size, ['fullName,asc']);
+      
+      if (reset) {
+        setData(response.content);
+        setPage(0);
+      } else {
+        setData(prev => [...prev, ...response.content]);
+      }
+      
       setTotalElements(response.totalElements);
-      setTotalPages(response.totalPages);
+      setHasMore(!response.last);
     } catch (err) {
       console.error("Error loading employees", err);
       error("No se pudo cargar la lista de empleados.");
@@ -46,8 +59,9 @@ export const EmployeePage = () => {
   };
 
   useEffect(() => {
-    loadData();
-  }, [page, size, sorting]);
+    loadData(page === 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
 
   const handleCreate = () => {
     setSelectedEmployee(null);
@@ -57,6 +71,11 @@ export const EmployeePage = () => {
   const handleEdit = (employee: EmployeeSummaryResponse) => {
     setSelectedEmployee(employee);
     setIsModalOpen(true);
+  };
+
+  const handleCardClick = (employee: EmployeeSummaryResponse) => {
+    setSelectedDetailId(employee.id);
+    setDetailModalOpen(true);
   };
 
   const handleDeleteRequest = (employee: EmployeeSummaryResponse) => {
@@ -69,7 +88,7 @@ export const EmployeePage = () => {
     try {
       await employeeService.delete(employeeToDelete.id);
       success("Empleado eliminado exitosamente.");
-      loadData();
+      loadData(true);
     } catch (err) {
       console.error("Error deleting employee", err);
       error("Error al eliminar el empleado.");
@@ -79,17 +98,18 @@ export const EmployeePage = () => {
     }
   };
 
-  const pagination: TablePaginationConfig = {
-    currentPage: page,
-    pageSize: size,
-    totalElements,
-    totalPages,
-    onPageChange: setPage,
-    onPageSizeChange: (newSize) => {
-      setSize(newSize);
-      setPage(0);
-    }
-  };
+  // Filtros de cliente
+  const uniqueBranches = Array.from(new Set(data.filter(e => e.branchName).map(e => e.branchName)));
+  
+  const filteredData = data.filter(employee => {
+    const matchesSearch = search === '' || 
+      (employee.fullName || '').toLowerCase().includes(search.toLowerCase()) || 
+      (employee.documentNumber || '').includes(search);
+      
+    const matchesBranch = selectedBranch === '' || employee.branchName === selectedBranch;
+    
+    return matchesSearch && matchesBranch;
+  });
 
   return (
     <div className="flex flex-col gap-6 w-full max-w-[1400px] mx-auto p-4 md:p-6 lg:p-8 animate-fade-in-up">
@@ -107,23 +127,69 @@ export const EmployeePage = () => {
         </div>
       </div>
 
+      {/* Barra de Filtros */}
+      <div className="bg-base-100 p-4 rounded-2xl shadow-sm border border-base-200 flex flex-col sm:flex-row gap-4 items-center justify-between">
+        <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+          <input 
+            type="text" 
+            placeholder="Buscar por Nombre o CI..." 
+            className="input input-bordered w-full sm:w-64"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <select 
+            className="select select-bordered w-full sm:w-48"
+            value={selectedBranch}
+            onChange={(e) => setSelectedBranch(e.target.value)}
+          >
+            <option value="">Todas las sucursales</option>
+            {uniqueBranches.map(branch => (
+              <option key={branch} value={branch}>{branch}</option>
+            ))}
+          </select>
+        </div>
+        
+        <div className="text-base-content/60 font-semibold px-2">
+          {totalElements} {totalElements === 1 ? 'empleado' : 'empleados'}
+        </div>
+      </div>
+
       <div className="flex-1 w-full relative">
-        <EmployeeTable
-          data={data}
-          isLoading={isLoading}
-          pagination={pagination}
-          sorting={sorting}
-          onSortingChange={setSorting}
-          onEdit={handleEdit}
-          onDelete={handleDeleteRequest}
-        />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {filteredData.map((employee, index) => (
+            <EmployeeCard 
+              key={employee.id} 
+              employee={employee} 
+              index={index} 
+              onClick={handleCardClick} 
+            />
+          ))}
+        </div>
+
+        {filteredData.length === 0 && !isLoading && (
+          <div className="flex flex-col items-center justify-center py-20 text-base-content/40">
+            <p>No se encontraron empleados con los filtros aplicados.</p>
+          </div>
+        )}
+
+        {hasMore && (
+          <div className="flex justify-center mt-10 mb-8">
+            <button 
+              className="btn btn-outline btn-primary px-8 rounded-full"
+              onClick={() => setPage(p => p + 1)}
+              disabled={isLoading}
+            >
+              {isLoading ? <span className="loading loading-spinner"></span> : 'Cargar más empleados'}
+            </button>
+          </div>
+        )}
       </div>
 
       <EmployeeModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSaved={(data) => {
-          loadData();
+          loadData(true);
           if (data) {
             setCredentialsData(data);
           }
@@ -143,6 +209,14 @@ export const EmployeePage = () => {
         isOpen={!!credentialsData}
         data={credentialsData}
         onClose={() => setCredentialsData(null)}
+      />
+
+      <EmployeeDetailModal
+        isOpen={detailModalOpen}
+        onClose={() => setDetailModalOpen(false)}
+        employeeId={selectedDetailId}
+        onEdit={handleEdit}
+        onDelete={handleDeleteRequest}
       />
     </div>
   );
