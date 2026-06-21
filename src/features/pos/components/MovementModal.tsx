@@ -14,7 +14,7 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  shiftId: string;
+  shiftId?: string;
   movementToEdit?: MovementResponse | null;
 }
 
@@ -35,8 +35,15 @@ export const MovementModal = ({ isOpen, onClose, onSuccess, shiftId, movementToE
     observation: ''
   });
 
+  const [selectedShiftId, setSelectedShiftId] = useState(shiftId || '');
+  const [activeShifts, setActiveShifts] = useState<{value: string, label: string}[]>([]);
+  const [isLoadingShifts, setIsLoadingShifts] = useState(false);
+
   useEffect(() => {
     if (isOpen) {
+      if (!shiftId && !movementToEdit) {
+        loadActiveShifts();
+      }
       if (movementToEdit) {
         setForm({
           movementType: String(movementToEdit.movementType.code),
@@ -44,6 +51,7 @@ export const MovementModal = ({ isOpen, onClose, onSuccess, shiftId, movementToE
           amount: String(movementToEdit.amount),
           observation: movementToEdit.observation || ''
         });
+        setSelectedShiftId(movementToEdit.shiftId);
       } else {
         setForm({
           movementType: '',
@@ -51,12 +59,29 @@ export const MovementModal = ({ isOpen, onClose, onSuccess, shiftId, movementToE
           amount: '',
           observation: ''
         });
+        setSelectedShiftId(shiftId || '');
       }
     }
-  }, [isOpen, movementToEdit]);
+  }, [isOpen, movementToEdit, shiftId]);
+
+  const loadActiveShifts = async () => {
+    setIsLoadingShifts(true);
+    try {
+      const data = await posService.getAllActiveShiftSummaries();
+      setActiveShifts(data.map(s => ({ 
+        value: s.id, 
+        label: `${s.cashName} (${s.employeeName}) - ${s.branchName}` 
+      })));
+    } catch {
+      toastError("Error al cargar turnos activos.");
+    } finally {
+      setIsLoadingShifts(false);
+    }
+  };
 
   const handleSubmit = async () => {
-    if (!form.movementType || !form.paymentType || !form.amount) {
+    const finalShiftId = shiftId || selectedShiftId;
+    if (!form.movementType || !form.paymentType || !form.amount || (!movementToEdit && !finalShiftId)) {
       setShakeKey(prev => prev + 1);
       return;
     }
@@ -73,7 +98,7 @@ export const MovementModal = ({ isOpen, onClose, onSuccess, shiftId, movementToE
         toastSuccess("Movimiento actualizado exitosamente.");
       } else {
         await posService.createMovement({
-          shiftId,
+          shiftId: finalShiftId,
           movementType: Number(form.movementType),
           paymentType: Number(form.paymentType),
           amount: Number(form.amount),
@@ -105,6 +130,20 @@ export const MovementModal = ({ isOpen, onClose, onSuccess, shiftId, movementToE
       }
     >
       <div className="space-y-4 pt-2">
+        {!shiftId && !movementToEdit && (
+          <ComerziaSelect
+            label="Caja (Turno Activo)"
+            options={activeShifts}
+            value={selectedShiftId}
+            onChange={e => setSelectedShiftId(e.target.value)}
+            isLoading={isLoadingShifts}
+            enableDefaultOption
+            isRequired
+            shakeKey={shakeKey}
+            error={!selectedShiftId && shakeKey > 0 ? "Requerido" : ""}
+          />
+        )}
+
         <div className="grid grid-cols-2 gap-4">
           <ComerziaSelect
             label="Tipo de Movimiento"

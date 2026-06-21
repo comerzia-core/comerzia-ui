@@ -29,15 +29,20 @@ export const MovementsPage = () => {
 
   const [movementToDelete, setMovementToDelete] = useState<string | null>(null);
 
+  const { userProfile } = useAuthStore();
+  const roles = userProfile?.roles || [];
+  const isOwner = roles.includes('OWNER');
+  const isManager = roles.includes('BRANCH_MANAGER');
+  const isCashier = roles.includes('CASHIER');
+
   useEffect(() => {
     loadActiveShift();
     loadMovements();
   }, [page, size]);
 
-  const { userProfile } = useAuthStore();
-  const isCashier = userProfile?.roles.includes('CASHIER');
-
   const loadActiveShift = async () => {
+    // Si no es un cajero, no tiene un turno personal activo, 
+    // pero igual puede hacer operaciones sobre los de otros
     if (!isCashier) {
       setActiveShiftId(null);
       return;
@@ -76,19 +81,22 @@ export const MovementsPage = () => {
     }
   };
 
-  const columns: Column<MovementResponse>[] = [
+  const columns = [
     { 
       header: 'Fecha', 
-      render: (row) => new Date(row.date).toLocaleString() 
+      render: (row: MovementResponse) => new Date(row.date).toLocaleString() 
     },
-    { header: 'Tipo', render: (row) => row.movementType.label },
-    { header: 'Método', render: (row) => row.paymentType.label },
-    { header: 'Monto', render: (row) => `$${row.amount.toFixed(2)}` },
+    isOwner && { header: 'Sucursal', accessorKey: 'branchName' },
+    (isOwner || isManager) && { header: 'Caja', accessorKey: 'cashRegisterName' },
+    (isOwner || isManager) && { header: 'Empleado', accessorKey: 'employeeName' },
+    { header: 'Tipo', render: (row: MovementResponse) => row.movementType.label },
+    { header: 'Método', render: (row: MovementResponse) => row.paymentType.label },
+    { header: 'Monto', render: (row: MovementResponse) => `$${row.amount.toFixed(2)}` },
     { header: 'Observación', accessorKey: 'observation' },
     {
       header: 'Acciones',
       className: 'w-24',
-      render: (row) => (
+      render: (row: MovementResponse) => (
         <CrudButtons 
           onEdit={() => {
             setMovementToEdit(row);
@@ -98,7 +106,7 @@ export const MovementsPage = () => {
         />
       )
     }
-  ];
+  ].filter(Boolean) as Column<MovementResponse>[];
 
   const pagination: TablePaginationConfig = {
     currentPage: page,
@@ -125,8 +133,8 @@ export const MovementsPage = () => {
             setMovementToEdit(null);
             setIsModalOpen(true);
           }}
-          disabled={!activeShiftId}
-          title={!activeShiftId ? "Debes tener un turno activo para crear movimientos" : ""}
+          disabled={isCashier && !isOwner && !isManager && !activeShiftId}
+          title={isCashier && !isOwner && !isManager && !activeShiftId ? "Debes tener un turno activo para crear movimientos" : ""}
         />
       </div>
 
@@ -137,12 +145,12 @@ export const MovementsPage = () => {
         pagination={pagination}
       />
 
-      {activeShiftId && (
+      {isModalOpen && (
         <MovementModal 
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
           onSuccess={loadMovements}
-          shiftId={activeShiftId}
+          shiftId={(isOwner || isManager) ? undefined : (activeShiftId || undefined)}
           movementToEdit={movementToEdit}
         />
       )}

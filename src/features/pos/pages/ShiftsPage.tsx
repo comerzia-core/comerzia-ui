@@ -19,6 +19,10 @@ export const ShiftsPage = () => {
   const [isOpenerOpen, setIsOpenerOpen] = useState(false);
   const [closerShiftId, setCloserShiftId] = useState<string | null>(null);
 
+  const roles = userProfile?.roles || [];
+  const isOwner = roles.includes('OWNER');
+  const isManager = roles.includes('BRANCH_MANAGER');
+
   useEffect(() => {
     loadShifts();
   }, []);
@@ -48,19 +52,19 @@ export const ShiftsPage = () => {
     }
   };
 
-  const columns: Column<ShiftSummaryResponse>[] = [
-    { header: 'Caja', accessorKey: 'cashName' },
-    { header: 'Sucursal', accessorKey: 'branchName' },
-    { header: 'Cajero', accessorKey: 'employeeName' },
+  const columns = [
+    isOwner && { header: 'Sucursal', accessorKey: 'branchName' },
+    (isOwner || isManager) && { header: 'Caja', accessorKey: 'cashName' },
+    (isOwner || isManager) && { header: 'Cajero', accessorKey: 'employeeName' },
     { 
       header: 'Apertura', 
-      render: (row) => row.openedAt ? new Date(row.openedAt).toLocaleString() : '-' 
+      render: (row: ShiftSummaryResponse) => row.openedAt ? new Date(row.openedAt).toLocaleString() : '-' 
     },
-    { header: 'Ingresos', render: (row) => `$${row.totalInflows.toFixed(2)}` },
-    { header: 'Egresos', render: (row) => `$${row.totalOutflows.toFixed(2)}` },
+    { header: 'Ingresos', render: (row: ShiftSummaryResponse) => `$${row.totalInflows.toFixed(2)}` },
+    { header: 'Egresos', render: (row: ShiftSummaryResponse) => `$${row.totalOutflows.toFixed(2)}` },
     {
       header: 'Acciones',
-      render: (row) => (
+      render: (row: ShiftSummaryResponse) => (
         <button 
           className="btn btn-sm btn-error btn-outline"
           onClick={() => setCloserShiftId(row.id)}
@@ -69,7 +73,7 @@ export const ShiftsPage = () => {
         </button>
       )
     }
-  ];
+  ].filter(Boolean) as Column<ShiftSummaryResponse>[];
 
   return (
     <div className="space-y-6 animate-fade-in">

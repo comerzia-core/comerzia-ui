@@ -28,6 +28,7 @@ export interface EmployeePosResponse {
 export interface CashRegisterResponse {
   id: string;
   branchId: string;
+  branchName: string;
   name: string;
   status: boolean;
   hasActiveShift: boolean;
@@ -130,7 +131,10 @@ export interface MovementResponse {
   paymentType: DictionaryResponse;
   observation: string;
   employeeId: string;
+  employeeName: string;
   shiftId: string;
+  cashRegisterName: string;
+  branchName: string;
 }
 
 export interface PageMovementResponse {

@@ -4,7 +4,7 @@ import type { CashRegisterResponse } from '../types/pos';
 import { BtnCreate, BtnEdit } from '../../../components/ui/CrudButtons';
 import { RegisterModal } from '../components/RegisterModal';
 import { useToast } from '../../../context/ToastContext';
-import { Monitor, AlertCircle } from 'lucide-react';
+import { Monitor, AlertCircle, MapPin } from 'lucide-react';
 import { ComerziaBadge } from '../../../components/ui/ComerziaBadge';
 
 export const RegistersPage = () => {
@@ -90,8 +90,9 @@ export const RegistersPage = () => {
                 <h3 className="text-xl font-bold text-base-content mb-1 truncate" title={register.name}>
                   {register.name}
                 </h3>
-                <p className="text-sm text-base-content/60 font-mono">
-                  ID: {register.id}
+                <p className="text-sm text-base-content/60 font-medium flex items-center gap-1">
+                  <MapPin size={14} />
+                  {register.branchName}
                 </p>
               </div>
 
