@@ -54,6 +54,7 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
   const [contract, setContract] = useState({
     branchId: '' as string,
     employmentStartDate: '',
+    employmentEndDate: '',
     paymentFrequency: '' as string | number,
     baseSalary: '' as string | number
   });
@@ -113,6 +114,7 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
       setContract({
         branchId: detail.branchId || '',
         employmentStartDate: detail.employmentStartDate || '',
+        employmentEndDate: detail.employmentEndDate || '',
         paymentFrequency: detail.paymentFrequency?.code || '',
         baseSalary: detail.baseSalary || ''
       });
@@ -143,6 +145,7 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
     setContract({
       branchId: '',
       employmentStartDate: '',
+      employmentEndDate: '',
       paymentFrequency: '',
       baseSalary: ''
     });
@@ -163,8 +166,7 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
       return true;
     }
     if (step === 2) {
-      if (!contract.branchId || !contract.paymentFrequency || !contract.baseSalary) return false;
-      if (!isEditing && !contract.employmentStartDate) return false;
+      if (!contract.branchId || !contract.paymentFrequency || !contract.baseSalary || !contract.employmentStartDate) return false;
       return true;
     }
     if (step === 3) {
@@ -205,6 +207,8 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
           phoneNumber: person.phoneNumber || "",
           email: person.email || "",
           branchId: contract.branchId,
+          employmentStartDate: contract.employmentStartDate,
+          employmentEndDate: contract.employmentEndDate || null,
           baseSalary: contract.baseSalary ? Number(contract.baseSalary) : undefined,
           paymentFrequency: Number(contract.paymentFrequency),
           roleIds: roleIds,
@@ -225,7 +229,7 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
           },
           contract: {
             branchId: contract.branchId,
-            employmentStartDate: new Date(contract.employmentStartDate).toISOString().split('T')[0],
+            employmentStartDate: contract.employmentStartDate,
             paymentFrequency: Number(contract.paymentFrequency),
             baseSalary: contract.baseSalary ? Number(contract.baseSalary) : undefined
           },
@@ -395,7 +399,25 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
               error={!contract.branchId && shakeKey > 0 ? 'Requerido' : ''}
             />
 
-            {!isEditing && (
+            {isEditing ? (
+              <div className="grid grid-cols-2 gap-3">
+                <ComerziaInput 
+                  label="Fecha Inicio Contrato" 
+                  type="date"
+                  value={contract.employmentStartDate}
+                  onChange={e => setContract({...contract, employmentStartDate: e.target.value})}
+                  isRequired
+                  shakeKey={shakeKey}
+                  error={!contract.employmentStartDate && shakeKey > 0 ? 'Requerido' : ''}
+                />
+                <ComerziaInput 
+                  label="Fecha Fin Contrato" 
+                  type="date"
+                  value={contract.employmentEndDate}
+                  onChange={e => setContract({...contract, employmentEndDate: e.target.value})}
+                />
+              </div>
+            ) : (
               <ComerziaInput 
                 label="Fecha Inicio Contrato" 
                 type="date"

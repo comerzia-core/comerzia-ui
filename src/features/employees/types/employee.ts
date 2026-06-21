@@ -38,6 +38,8 @@ export interface UpdateEmployeeRequest {
   phoneNumber?: string;
   email?: string;
   branchId: string;
+  employmentStartDate: string;
+  employmentEndDate?: string | null;
   baseSalary?: number;
   paymentFrequency: number;
   roleIds: string[];
