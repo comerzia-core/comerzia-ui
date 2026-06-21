@@ -88,7 +88,7 @@ export const EmployeeDetailModal = ({ isOpen, onClose, employeeId, onEdit, onDel
             disabled={isLoading || !detail}
           />
           <ComerziaButton 
-            variant="primary" 
+            variant="edit" 
             label="Editar" 
             icon={<Edit2 size={16} />} 
             onClick={handleEditClick} 
