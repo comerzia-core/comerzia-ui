@@ -8,7 +8,7 @@ interface Props extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
     isRequired?: boolean;
 }
 
-export const TravesiaTextarea = forwardRef<HTMLTextAreaElement, Props>(
+export const ComerziaTextarea = forwardRef<HTMLTextAreaElement, Props>(
     ({ label, error, className = "", shakeKey = 0, isRequired, ...props }, ref) => {
         
         // Lógica de animación "Shake" (idéntica a TravesiaInput)
@@ -60,4 +60,4 @@ export const TravesiaTextarea = forwardRef<HTMLTextAreaElement, Props>(
     }
 );
 
-TravesiaTextarea.displayName = "TravesiaTextarea";
+ComerziaTextarea.displayName = "ComerziaTextarea";

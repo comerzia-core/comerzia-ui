@@ -9,7 +9,9 @@ export const DICTIONARIES = {
     DOCUMENT_TYPE: 'document-type',
     DOCUMENT_EXTENSION: 'document-extension',
     PAYMENT_FREQUENCY: 'payment-frequency',
-
+    PAYMENT_TYPE: 'payment-type',
+    MOVEMENT_TYPE: 'movement-type',
+    SHIFT_STATUS: 'shift-status',
 } as const;
 
 // Este type mágico extrae los valores ("user-status", "plan-type", etc.)

@@ -14,6 +14,12 @@ import { CompanyProfilePage } from "../features/organization/pages/CompanyProfil
 import { BranchesPage } from "../features/organization/pages/BranchesPage";
 import { EmployeePage } from "../features/employees/pages/EmployeePage";
 
+// --- POINT OF SALE ---
+import { TerminalPage } from "../features/pos/pages/TerminalPage";
+import { ShiftsPage } from "../features/pos/pages/ShiftsPage";
+import { MovementsPage } from "../features/pos/pages/MovementsPage";
+import { RegistersPage } from "../features/pos/pages/RegistersPage";
+
 export const AppRouter = () => {
   useTheme();
 
@@ -35,6 +41,12 @@ export const AppRouter = () => {
             <Route path="/organization/company" element={<CompanyProfilePage />} />
             <Route path="/organization/branches" element={<BranchesPage />} />
             <Route path="/hrm/staff" element={<EmployeePage />} />
+
+            {/* --- POINT OF SALE --- */}
+            <Route path="/pos/terminal" element={<TerminalPage />} />
+            <Route path="/pos/shifts" element={<ShiftsPage />} />
+            <Route path="/pos/movements" element={<MovementsPage />} />
+            <Route path="/pos/registers" element={<RegistersPage />} />
 
 
             {/* --- MÓDULO SAAS --- */}
