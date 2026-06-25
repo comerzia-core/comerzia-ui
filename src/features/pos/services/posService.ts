@@ -26,11 +26,20 @@ export const posService = {
   },
 
   // --- Cajas Registradoras ---
-  getAllCashRegisters: async (page: number, size: number): Promise<PageCashRegisterResponse> => {
-    const params = new URLSearchParams();
-    params.append('page', page.toString());
-    params.append('size', size.toString());
-    const response = await api.get<PageCashRegisterResponse>('/tenant/cash-registers', { params });
+  getAllCashRegisters: async (page: number, size: number, sort: string[] = []): Promise<PageCashRegisterResponse> => {
+    const response = await api.get<PageCashRegisterResponse>('/tenant/cash-registers', {
+      params: { page, size, sort }
+    });
+    return response.data;
+  },
+
+  getAvailableCashRegisters: async (): Promise<CashRegisterResponse[]> => {
+    const response = await api.get<CashRegisterResponse[]>('/tenant/cash-registers/available');
+    return response.data;
+  },
+
+  getCashRegisterById: async (id: string): Promise<CashRegisterResponse> => {
+    const response = await api.get<CashRegisterResponse>(`/tenant/cash-registers/${id}`);
     return response.data;
   },
 

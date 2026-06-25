@@ -47,8 +47,8 @@ export const OpenShiftModal = ({ isOpen, onClose, onSuccess }: Props) => {
   const loadExternalData = async () => {
     setLoadingExternals(true);
     try {
-      const regRes = await posService.getAllCashRegisters(0, 100);
-      setRegisters(regRes.content.map(r => ({ value: r.id, label: r.name })));
+      const regRes = await posService.getAvailableCashRegisters();
+      setRegisters(regRes.map(r => ({ value: r.id, label: r.name })));
 
       if (!isCashier) {
         try {
@@ -92,7 +92,14 @@ export const OpenShiftModal = ({ isOpen, onClose, onSuccess }: Props) => {
       onSuccess();
       onClose();
     } catch (err: any) {
-      toastError(err.response?.data?.message || "Error al abrir el turno.");
+      const msg = err.response?.data?.message || err.response?.data?.error || "";
+      if (msg.includes("already has an active shift")) {
+        toastError("Este cajero ya tiene un turno abierto.");
+      } else if (msg.includes("already has an open shift") || msg.includes("already an active")) {
+        toastError("Esta caja registradora ya tiene un turno abierto.");
+      } else {
+        toastError("Error al abrir el turno. Verifica los datos.");
+      }
       setShakeKey(prev => prev + 1);
     } finally {
       setIsLoading(false);

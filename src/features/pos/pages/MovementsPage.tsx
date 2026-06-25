@@ -35,6 +35,8 @@ export const MovementsPage = () => {
   const isManager = roles.includes('BRANCH_MANAGER');
   const isCashier = roles.includes('CASHIER');
 
+  const currency = userProfile?.companySettings?.currencyCode || '$';
+
   useEffect(() => {
     loadActiveShift();
     loadMovements();
@@ -91,7 +93,7 @@ export const MovementsPage = () => {
     (isOwner || isManager) && { header: 'Empleado', accessorKey: 'employeeName' },
     { header: 'Tipo', render: (row: MovementResponse) => row.movementType.label },
     { header: 'Método', render: (row: MovementResponse) => row.paymentType.label },
-    { header: 'Monto', render: (row: MovementResponse) => `$${row.amount.toFixed(2)}` },
+    { header: 'Monto', render: (row: MovementResponse) => `${currency} ${row.amount.toFixed(2)}` },
     { header: 'Observación', accessorKey: 'observation' },
     {
       header: 'Acciones',
@@ -143,6 +145,7 @@ export const MovementsPage = () => {
         columns={columns}
         isLoading={isLoading}
         pagination={pagination}
+        showRowNumbers={true}
       />
 
       {isModalOpen && (

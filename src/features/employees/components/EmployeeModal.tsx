@@ -161,7 +161,8 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
 
   const validateStep = (step: number) => {
     if (step === 1) {
-      if (!person.firstName || !person.paternalSurname || !person.maternalSurname || !person.documentType || !person.documentNumber || !person.extension || !person.phoneNumber || !person.email) return false;
+      if (!person.firstName || !person.documentType || !person.documentNumber || !person.extension || !person.phoneNumber || !person.email) return false;
+      if (!person.paternalSurname && !person.maternalSurname) return false;
       if (person.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(person.email)) return false;
       return true;
     }
@@ -306,17 +307,17 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
                 label="Ap. Paterno" 
                 value={person.paternalSurname}
                 onChange={e => setPerson({...person, paternalSurname: e.target.value})}
-                isRequired
+                isRequired={!person.maternalSurname}
                 shakeKey={shakeKey}
-                error={!person.paternalSurname && shakeKey > 0 ? 'Requerido' : ''}
+                error={!person.paternalSurname && !person.maternalSurname && shakeKey > 0 ? 'Al menos un apellido es requerido' : ''}
               />
               <ComerziaInput 
                 label="Ap. Materno" 
                 value={person.maternalSurname}
                 onChange={e => setPerson({...person, maternalSurname: e.target.value})}
-                isRequired
+                isRequired={!person.paternalSurname}
                 shakeKey={shakeKey}
-                error={!person.maternalSurname && shakeKey > 0 ? 'Requerido' : ''}
+                error={!person.paternalSurname && !person.maternalSurname && shakeKey > 0 ? 'Al menos un apellido es requerido' : ''}
               />
             </div>
             

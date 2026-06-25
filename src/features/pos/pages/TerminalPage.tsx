@@ -11,24 +11,27 @@ export const TerminalPage = () => {
   const [error, setError] = useState<string | null>(null);
 
   const { userProfile } = useAuthStore();
-  const isCashier = userProfile?.roles.includes('CASHIER');
+  const roles = userProfile?.roles || [];
+  const isCashier = roles.includes('CASHIER');
+  
+  const currency = userProfile?.companySettings?.currencyCode || '$';
 
   useEffect(() => {
-    loadSummary();
-  }, []);
-
-  const loadSummary = async () => {
     if (!isCashier) {
       setError("Vista exclusiva para el rol CAJERO.");
       setIsLoading(false);
       return;
     }
+    loadSummary();
+  }, [isCashier]);
+
+  const loadSummary = async () => {
     try {
       const data = await posService.getMyActiveShiftSummary();
       setSummary(data);
     } catch (err: any) {
-      if (err.response?.status === 404) {
-        setError("Aún no tienes un turno asignado.");
+      if (err.response?.status === 404 || err.response?.status === 400 || err.response?.data?.message?.includes("OPEN shift") || err.response?.data?.message?.includes("active shift")) {
+        setError("Aún no tienes un turno asignado. Ve a Turnos y Arqueos para abrir tu caja.");
       } else {
         setError("Ocurrió un error al cargar la terminal.");
       }

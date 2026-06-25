@@ -22,6 +22,8 @@ export const ShiftsPage = () => {
   const roles = userProfile?.roles || [];
   const isOwner = roles.includes('OWNER');
   const isManager = roles.includes('BRANCH_MANAGER');
+  
+  const currency = userProfile?.companySettings?.currencyCode || '$';
 
   useEffect(() => {
     loadShifts();
@@ -35,7 +37,7 @@ export const ShiftsPage = () => {
           const data = await posService.getMyActiveShiftSummary();
           setShifts([data]);
         } catch(err: any) {
-          if (err.response?.status === 404) {
+          if (err.response?.status === 404 || err.response?.status === 400 || err.response?.data?.message?.includes("OPEN shift") || err.response?.data?.message?.includes("active shift")) {
             setShifts([]);
           } else {
             throw err;
@@ -58,10 +60,10 @@ export const ShiftsPage = () => {
     (isOwner || isManager) && { header: 'Cajero', accessorKey: 'employeeName' },
     { 
       header: 'Apertura', 
-      render: (row: ShiftSummaryResponse) => row.openedAt ? new Date(row.openedAt).toLocaleString() : '-' 
+      render: (row: ShiftSummaryResponse) => row.openedAt ? (isOwner ? new Date(row.openedAt).toLocaleString() : new Date(row.openedAt).toLocaleTimeString()) : '-' 
     },
-    { header: 'Ingresos', render: (row: ShiftSummaryResponse) => `$${row.totalInflows.toFixed(2)}` },
-    { header: 'Egresos', render: (row: ShiftSummaryResponse) => `$${row.totalOutflows.toFixed(2)}` },
+    { header: 'Ingresos', render: (row: ShiftSummaryResponse) => `${currency} ${row.totalInflows.toFixed(2)}` },
+    { header: 'Egresos', render: (row: ShiftSummaryResponse) => `${currency} ${row.totalOutflows.toFixed(2)}` },
     {
       header: 'Acciones',
       render: (row: ShiftSummaryResponse) => (
@@ -93,6 +95,7 @@ export const ShiftsPage = () => {
         data={shifts}
         columns={columns}
         isLoading={isLoading}
+        showRowNumbers={true}
       />
 
       <OpenShiftModal 
