@@ -13,6 +13,7 @@ import { branchService } from '../../organization/services/branchService';
 import { useToast } from '../../../context/ToastContext';
 import { SubscriptionLimitModal } from '../../../components/ui/SubscriptionLimitModal';
 import type { EmployeeSummaryResponse, RoleResponse, EmployeeCreatedResponse } from '../types/employee';
+import { useAuthStore } from '../../../stores/useAuthStore';
 
 interface Props {
   isOpen: boolean;
@@ -29,6 +30,8 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
     DICTIONARIES.PAYMENT_FREQUENCY,
   ]);
   const { error: toastError } = useToast();
+  const { userProfile } = useAuthStore();
+  const isCurrentUserOwner = userProfile?.roles?.includes('OWNER') || false;
 
   const [backendLimitError, setBackendLimitError] = useState<string | null>(null);
 
@@ -167,7 +170,7 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
       return true;
     }
     if (step === 2) {
-      if (!contract.branchId || !contract.paymentFrequency || !contract.baseSalary || !contract.employmentStartDate) return false;
+      if ((!isCurrentUserOwner && !contract.branchId) || !contract.paymentFrequency || !contract.baseSalary || !contract.employmentStartDate) return false;
       return true;
     }
     if (step === 3) {
@@ -207,7 +210,7 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
           documentExtension: person.extension ? Number(person.extension) : undefined,
           phoneNumber: person.phoneNumber || "",
           email: person.email || "",
-          branchId: contract.branchId,
+          branchId: contract.branchId || null,
           employmentStartDate: contract.employmentStartDate,
           employmentEndDate: contract.employmentEndDate || null,
           baseSalary: contract.baseSalary ? Number(contract.baseSalary) : undefined,
@@ -229,7 +232,7 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
             email: person.email || ""
           },
           contract: {
-            branchId: contract.branchId,
+            branchId: contract.branchId || null,
             employmentStartDate: contract.employmentStartDate,
             paymentFrequency: Number(contract.paymentFrequency),
             baseSalary: contract.baseSalary ? Number(contract.baseSalary) : undefined
@@ -395,9 +398,9 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
               onChange={e => setContract({...contract, branchId: e.target.value})}
               isLoading={isLoadingExternals}
               enableDefaultOption
-              isRequired
+              isRequired={!isCurrentUserOwner}
               shakeKey={shakeKey}
-              error={!contract.branchId && shakeKey > 0 ? 'Requerido' : ''}
+              error={!isCurrentUserOwner && !contract.branchId && shakeKey > 0 ? 'Requerido' : ''}
             />
 
             {isEditing ? (

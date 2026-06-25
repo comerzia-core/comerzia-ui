@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { posService } from '../services/posService';
 import type { CashRegisterResponse, ShiftResponse } from '../types/pos';
-import { ComerziaTable, Column, TablePaginationConfig } from '../../../components/ui/ComerziaTable';
+import { ComerziaTable, type Column, type TablePaginationConfig } from '../../../components/ui/ComerziaTable';
 import { useToast } from '../../../context/ToastContext';
 import { BtnBack } from '../../../components/ui/CrudButtons';
 import { ShiftDetailsModal } from '../components/ShiftDetailsModal';

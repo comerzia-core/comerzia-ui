@@ -12,7 +12,7 @@ export interface PersonDetails {
 }
 
 export interface ContractDetails {
-  branchId: string;
+  branchId?: string | null;
   employmentStartDate: string; // ISO format date (YYYY-MM-DD) or UTC string
   paymentFrequency: number; // 'MONTHLY' | 'BIWEEKLY' | 'WEEKLY'
   baseSalary?: number;
@@ -37,7 +37,7 @@ export interface UpdateEmployeeRequest {
   documentExtension?: number;
   phoneNumber?: string;
   email?: string;
-  branchId: string;
+  branchId?: string | null;
   employmentStartDate: string;
   employmentEndDate?: string | null;
   baseSalary?: number;

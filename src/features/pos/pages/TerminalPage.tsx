@@ -14,7 +14,6 @@ export const TerminalPage = () => {
   const roles = userProfile?.roles || [];
   const isCashier = roles.includes('CASHIER');
   
-  const currency = userProfile?.companySettings?.currencyCode || '$';
 
   useEffect(() => {
     if (!isCashier) {
