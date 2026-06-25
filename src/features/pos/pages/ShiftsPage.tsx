@@ -60,7 +60,7 @@ export const ShiftsPage = () => {
     (isOwner || isManager) && { header: 'Cajero', accessorKey: 'employeeName' },
     { 
       header: 'Apertura', 
-      render: (row: ShiftSummaryResponse) => row.openedAt ? (isOwner ? new Date(row.openedAt).toLocaleString() : new Date(row.openedAt).toLocaleTimeString()) : '-' 
+      render: (row: ShiftSummaryResponse) => row.openedAt ? new Date(row.openedAt).toLocaleTimeString() : '-' 
     },
     { header: 'Ingresos', render: (row: ShiftSummaryResponse) => `${currency} ${row.totalInflows.toFixed(2)}` },
     { header: 'Egresos', render: (row: ShiftSummaryResponse) => `${currency} ${row.totalOutflows.toFixed(2)}` },

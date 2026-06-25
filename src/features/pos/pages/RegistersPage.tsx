@@ -4,8 +4,9 @@ import type { CashRegisterResponse } from '../types/pos';
 import { BtnCreate, BtnEdit } from '../../../components/ui/CrudButtons';
 import { RegisterModal } from '../components/RegisterModal';
 import { useToast } from '../../../context/ToastContext';
-import { Monitor, AlertCircle, MapPin } from 'lucide-react';
+import { Monitor, MapPin } from 'lucide-react';
 import { ComerziaBadge } from '../../../components/ui/ComerziaBadge';
+import { CashRegisterHistoryView } from './CashRegisterHistoryView';
 
 export const RegistersPage = () => {
   const { error: toastError } = useToast();
@@ -15,6 +16,8 @@ export const RegistersPage = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [registerToEdit, setRegisterToEdit] = useState<CashRegisterResponse | null>(null);
+
+  const [selectedRegister, setSelectedRegister] = useState<CashRegisterResponse | null>(null);
 
   useEffect(() => {
     loadRegisters();
@@ -32,6 +35,15 @@ export const RegistersPage = () => {
       setIsLoading(false);
     }
   };
+
+  if (selectedRegister) {
+    return (
+      <CashRegisterHistoryView 
+        register={selectedRegister} 
+        onBack={() => setSelectedRegister(null)} 
+      />
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -68,9 +80,9 @@ export const RegistersPage = () => {
                 transition-all duration-300 hover:shadow-md
               `}
             >
-              <div>
+              <div className="cursor-pointer group" onClick={() => setSelectedRegister(register)}>
                 <div className="flex justify-between items-start mb-4">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${register.status ? 'bg-primary/10 text-primary' : 'bg-base-200 text-base-content/40'}`}>
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${register.status ? 'bg-primary/10 text-primary group-hover:bg-primary/20' : 'bg-base-200 text-base-content/40'}`}>
                     <Monitor size={24} />
                   </div>
                   <div className="flex flex-col items-end gap-2">
@@ -87,7 +99,7 @@ export const RegistersPage = () => {
                   </div>
                 </div>
                 
-                <h3 className="text-xl font-bold text-base-content mb-1 truncate" title={register.name}>
+                <h3 className="text-xl font-bold text-base-content mb-1 truncate group-hover:text-primary transition-colors" title={register.name}>
                   {register.name}
                 </h3>
                 <p className="text-sm text-base-content/60 font-medium flex items-center gap-1">

@@ -85,8 +85,8 @@ export const MovementsPage = () => {
 
   const columns = [
     { 
-      header: 'Fecha', 
-      render: (row: MovementResponse) => new Date(row.date).toLocaleString() 
+      header: 'Hora', 
+      render: (row: MovementResponse) => new Date(row.date).toLocaleTimeString() 
     },
     isOwner && { header: 'Sucursal', accessorKey: 'branchName' },
     (isOwner || isManager) && { header: 'Caja', accessorKey: 'cashRegisterName' },

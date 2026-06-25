@@ -1,5 +1,4 @@
 import api from '../../../lib/axios';
-import type { PageResponse } from '../../../types/api';
 import type {
   EmployeePosResponse,
   CashRegisterResponse,
@@ -64,11 +63,15 @@ export const posService = {
     return response.data;
   },
 
-  getShiftShiftsByCashRegister: async (registerId: string, page: number, size: number): Promise<PageShiftResponse> => {
-    const params = new URLSearchParams();
-    params.append('page', page.toString());
-    params.append('size', size.toString());
-    const response = await api.get<PageShiftResponse>(`/tenant/cash-registers/${registerId}/shifts`, { params });
+  getShiftsByCashRegister: async (registerId: string, page: number, size: number, sort: string[] = []): Promise<PageShiftResponse> => {
+    const response = await api.get<PageShiftResponse>(`/tenant/cash-registers/${registerId}/shifts`, { 
+      params: { page, size, sort } 
+    });
+    return response.data;
+  },
+
+  getShiftDetails: async (shiftId: string): Promise<ShiftDetailResponse[]> => {
+    const response = await api.get<ShiftDetailResponse[]>(`/tenant/cash-registers/shifts/${shiftId}/details`);
     return response.data;
   },
 
