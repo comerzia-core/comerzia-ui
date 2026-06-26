@@ -41,7 +41,7 @@ export const MovementModal = ({ isOpen, onClose, onSuccess, shiftId, movementToE
 
   useEffect(() => {
     if (isOpen) {
-      if (!shiftId && !movementToEdit) {
+      if (!shiftId) {
         loadActiveShifts();
       }
       if (movementToEdit) {
@@ -130,7 +130,7 @@ export const MovementModal = ({ isOpen, onClose, onSuccess, shiftId, movementToE
       }
     >
       <div className="space-y-4 pt-2">
-        {!shiftId && !movementToEdit && (
+        {!shiftId && (
           <ComerziaSelect
             label="Caja (Turno Activo)"
             options={activeShifts}
