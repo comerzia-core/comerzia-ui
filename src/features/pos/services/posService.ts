@@ -99,12 +99,15 @@ export const posService = {
   },
 
   // --- Movimientos ---
-  getMovements: async (page: number, size: number, shiftId?: string): Promise<PageMovementResponse> => {
+  getMovements: async (page: number, size: number, shiftId?: string, activeOnly?: boolean): Promise<PageMovementResponse> => {
     const params = new URLSearchParams();
     params.append('page', page.toString());
     params.append('size', size.toString());
     if (shiftId) {
       params.append('shiftId', shiftId);
+    }
+    if (activeOnly) {
+      params.append('activeOnly', 'true');
     }
     const response = await api.get<PageMovementResponse>('/tenant/movements', { params });
     return response.data;

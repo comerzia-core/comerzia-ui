@@ -60,7 +60,7 @@ export const MovementsPage = () => {
   const loadMovements = async () => {
     setIsLoading(true);
     try {
-      const data = await posService.getMovements(page, size);
+      const data = await posService.getMovements(page, size, undefined, true);
       setMovements(data.content);
       setTotalElements(data.totalElements);
       setTotalPages(data.totalPages);
