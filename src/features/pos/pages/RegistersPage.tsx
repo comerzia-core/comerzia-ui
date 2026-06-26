@@ -27,7 +27,7 @@ export const RegistersPage = () => {
     setIsLoading(true);
     try {
       // Assuming one page of max 100 registers for simplicity
-      const data = await posService.getAllCashRegisters(0, 100);
+      const data = await posService.getAllCashRegisters(0, 100, ['b.name,asc', 'c.name,asc']);
       setRegisters(data.content);
     } catch (error) {
       toastError("Error al cargar las cajas registradoras");

@@ -39,7 +39,7 @@ export const EmployeePage = () => {
     setIsLoading(true);
     try {
       const targetPage = reset ? 0 : page;
-      const response = await employeeService.getAll(targetPage, size, ['fullName,asc']);
+      const response = await employeeService.getAll(targetPage, size, ['branchName,asc', 'fullName,asc']);
       
       if (reset) {
         setData(response.content);

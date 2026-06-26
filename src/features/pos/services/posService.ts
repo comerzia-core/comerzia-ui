@@ -26,9 +26,13 @@ export const posService = {
 
   // --- Cajas Registradoras ---
   getAllCashRegisters: async (page: number, size: number, sort: string[] = []): Promise<PageCashRegisterResponse> => {
-    const response = await api.get<PageCashRegisterResponse>('/tenant/cash-registers', {
-      params: { page, size, sort }
-    });
+    const params = new URLSearchParams();
+    params.append('page', page.toString());
+    params.append('size', size.toString());
+    if (sort && sort.length > 0) {
+      sort.forEach(s => params.append('sort', s));
+    }
+    const response = await api.get<PageCashRegisterResponse>('/tenant/cash-registers', { params });
     return response.data;
   },
 
@@ -64,9 +68,13 @@ export const posService = {
   },
 
   getShiftsByCashRegister: async (registerId: string, page: number, size: number, sort: string[] = []): Promise<PageShiftResponse> => {
-    const response = await api.get<PageShiftResponse>(`/tenant/cash-registers/${registerId}/shifts`, { 
-      params: { page, size, sort } 
-    });
+    const params = new URLSearchParams();
+    params.append('page', page.toString());
+    params.append('size', size.toString());
+    if (sort && sort.length > 0) {
+      sort.forEach(s => params.append('sort', s));
+    }
+    const response = await api.get<PageShiftResponse>(`/tenant/cash-registers/${registerId}/shifts`, { params });
     return response.data;
   },
 
