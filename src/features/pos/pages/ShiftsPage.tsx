@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { posService } from '../services/posService';
 import type { ShiftSummaryResponse } from '../types/pos';
-import { BtnCreate } from '../../../components/ui/CrudButtons';
+import { BtnCreate, BtnCloseShift } from '../../../components/ui/CrudButtons';
 import { Monitor, User, MapPin, Clock, TrendingUp, TrendingDown } from 'lucide-react';
 import { OpenShiftModal } from '../components/OpenShiftModal';
 import { CloseShiftModal } from '../components/CloseShiftModal';
@@ -125,12 +125,10 @@ export const ShiftsPage = () => {
                 </div>
               </div>
               
-              <button
-                className="btn btn-error btn-outline w-full gap-2"
+              <BtnCloseShift
                 onClick={() => setCloserShiftId(shift.id)}
-              >
-                Arqueo y Cierre
-              </button>
+                fullWidth
+              />
             </div>
           ))}
         </div>

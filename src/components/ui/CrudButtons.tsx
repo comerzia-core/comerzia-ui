@@ -1,11 +1,12 @@
-import { Save, X, Trash2, Pencil, FileSpreadsheet, FileText, Plus, ArrowLeft, ArrowRight, RefreshCw } from "lucide-react";
+import { Save, X, Trash2, Pencil, FileSpreadsheet, FileText, Plus, ArrowLeft, ArrowRight, RefreshCw, Eye, Unlock, Lock } from "lucide-react";
 import { ComerziaButton } from "./ComerziaButton";
 
 // Tipos para pasar props extra (como onClick)
 interface BaseBtnProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     isLoading?: boolean;
     label?: string; // Por si quieres sobreescribir el texto por defecto
-    responsive?: boolean
+    responsive?: boolean;
+    fullWidth?: boolean;
 }
 
 // 1. BOTÓN GUARDAR (Verde + Icono Save)
@@ -245,6 +246,39 @@ export const BtnRemove = ({ label = "Quitar", responsive = true, ...props }: Bas
         variant="overlay" 
         label={label} 
         icon={<X size={16} />} 
+        responsive={responsive}
+        {...props} 
+    />
+);
+
+// 17. BOTÓN DETALLES (Primario + Ojo, para ver detalles de un registro)
+export const BtnDetails = ({ label = "Ver Detalles", responsive = true, ...props }: BaseBtnProps) => (
+    <ComerziaButton 
+        variant="primary" 
+        label={label} 
+        icon={<Eye size={18} />} 
+        responsive={responsive}
+        {...props} 
+    />
+);
+
+// 18. BOTÓN REABRIR (Warning + Candado Abierto, para reabrir turnos o registros cerrados)
+export const BtnReopen = ({ label = "Reabrir", responsive = true, ...props }: BaseBtnProps) => (
+    <ComerziaButton 
+        variant="warning" 
+        label={label} 
+        icon={<Unlock size={18} />} 
+        responsive={responsive}
+        {...props} 
+    />
+);
+
+// 19. BOTÓN CERRAR TURNO (Error + Candado Cerrado, para realizar arqueo o cierre)
+export const BtnCloseShift = ({ label = "Arqueo y Cierre", responsive = true, ...props }: BaseBtnProps) => (
+    <ComerziaButton 
+        variant="error" 
+        label={label} 
+        icon={<Lock size={18} />} 
         responsive={responsive}
         {...props} 
     />

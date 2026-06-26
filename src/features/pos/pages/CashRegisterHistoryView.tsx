@@ -3,7 +3,7 @@ import { posService } from '../services/posService';
 import type { CashRegisterResponse, ShiftResponse } from '../types/pos';
 import { ComerziaTable, type Column, type TablePaginationConfig } from '../../../components/ui/ComerziaTable';
 import { useToast } from '../../../context/ToastContext';
-import { BtnBack } from '../../../components/ui/CrudButtons';
+import { BtnBack, BtnDetails, BtnReopen } from '../../../components/ui/CrudButtons';
 import { ShiftDetailsModal } from '../components/ShiftDetailsModal';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
@@ -80,19 +80,15 @@ export const CashRegisterHistoryView = ({ register, onBack }: Props) => {
       header: 'Acciones', 
       render: row => (
         <div className="flex gap-2">
-          <button 
-            className="btn btn-sm btn-outline btn-primary"
+          <BtnDetails 
             onClick={() => setSelectedShiftId(row.id)}
-          >
-            Ver Detalles
-          </button>
+            className="btn-sm min-h-0 h-9"
+          />
           {row.closedAt && (
-            <button 
-              className="btn btn-sm btn-outline btn-warning"
+            <BtnReopen 
               onClick={() => setShiftToReopen(row.id)}
-            >
-              Reabrir
-            </button>
+              className="btn-sm min-h-0 h-9"
+            />
           )}
         </div>
       )
