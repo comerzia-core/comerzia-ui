@@ -15,7 +15,10 @@ interface Props {
 
 export const OpenShiftModal = ({ isOpen, onClose, onSuccess }: Props) => {
   const { userProfile } = useAuthStore();
-  const isCashier = userProfile?.roles.includes('CASHIER');
+  const roles = userProfile?.roles || [];
+  const isOwner = roles.includes('OWNER');
+  const isManager = roles.includes('BRANCH_MANAGER');
+  const canAssignCashier = isOwner || isManager;
   const { error: toastError, success: toastSuccess } = useToast();
 
   const [isLoading, setIsLoading] = useState(false);
@@ -50,7 +53,7 @@ export const OpenShiftModal = ({ isOpen, onClose, onSuccess }: Props) => {
       const regRes = await posService.getAvailableCashRegisters();
       setRegisters(regRes.map(r => ({ value: r.id, label: r.name })));
 
-      if (!isCashier) {
+      if (canAssignCashier) {
         try {
           const cashRes = await posService.getCashiers();
           setCashiers(cashRes.map(c => ({ value: c.id, label: c.fullName })));
@@ -75,7 +78,7 @@ export const OpenShiftModal = ({ isOpen, onClose, onSuccess }: Props) => {
   };
 
   const handleSubmit = async () => {
-    if (!form.cashRegisterId || !form.initialAmount || (!isCashier && !form.cashierEmployeeId)) {
+    if (!form.cashRegisterId || !form.initialAmount || (canAssignCashier && !form.cashierEmployeeId)) {
       setShakeKey(prev => prev + 1);
       return;
     }
@@ -85,7 +88,7 @@ export const OpenShiftModal = ({ isOpen, onClose, onSuccess }: Props) => {
       await posService.openShift({
         cashRegisterId: form.cashRegisterId,
         initialAmount: Number(form.initialAmount),
-        cashierEmployeeId: isCashier ? undefined : form.cashierEmployeeId,
+        cashierEmployeeId: canAssignCashier ? form.cashierEmployeeId : undefined,
         observation: form.observation || undefined
       });
       toastSuccess("Turno abierto exitosamente.");
@@ -132,7 +135,7 @@ export const OpenShiftModal = ({ isOpen, onClose, onSuccess }: Props) => {
           error={!form.cashRegisterId && shakeKey > 0 ? "Requerido" : ""}
         />
 
-        {!isCashier && (
+        {canAssignCashier && (
           <ComerziaSelect
             label="Asignar Cajero"
             options={cashiers}

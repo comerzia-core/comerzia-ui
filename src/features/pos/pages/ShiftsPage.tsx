@@ -32,7 +32,10 @@ export const ShiftsPage = () => {
   const loadShifts = async () => {
     setIsLoading(true);
     try {
-      if (isCashier) {
+      if (isOwner || isManager) {
+        const data = await posService.getAllActiveShiftSummaries();
+        setShifts(data);
+      } else if (isCashier) {
         try {
           const data = await posService.getMyActiveShiftSummary();
           setShifts([data]);
@@ -43,9 +46,6 @@ export const ShiftsPage = () => {
             throw err;
           }
         }
-      } else {
-        const data = await posService.getAllActiveShiftSummaries();
-        setShifts(data);
       }
     } catch (error) {
       toastError("Error al cargar los turnos activos");
@@ -87,7 +87,7 @@ export const ShiftsPage = () => {
         <BtnCreate
           label="Abrir Turno"
           onClick={() => setIsOpenerOpen(true)}
-          disabled={isCashier && shifts.length > 0} // Un cajero no puede abrir otro si ya tiene uno
+          disabled={isCashier && !isOwner && !isManager && shifts.length > 0} // Un cajero puro no puede abrir otro si ya tiene uno
         />
       </div>
 
