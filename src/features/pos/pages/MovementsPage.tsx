@@ -9,7 +9,7 @@ import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
 import { useAuthStore } from '../../../stores/useAuthStore';
 
 export const MovementsPage = () => {
-  const { error: toastError, success: toastSuccess } = useToast();
+  const { error: toastError, success: toastSuccess, info: toastInfo } = useToast();
 
   const [movements, setMovements] = useState<MovementResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -45,15 +45,18 @@ export const MovementsPage = () => {
   const loadActiveShift = async () => {
     // Si no es un cajero, no tiene un turno personal activo, 
     // pero igual puede hacer operaciones sobre los de otros
-    if (!isCashier) {
+    if (!isCashier || isOwner) {
       setActiveShiftId(null);
       return;
     }
     try {
       const summary = await posService.getMyActiveShiftSummary();
       setActiveShiftId(summary.id);
-    } catch {
+    } catch (err: any) {
       setActiveShiftId(null);
+      if (err.response?.data?.code === 'business_rule_violation' || err.response?.status === 404 || err.response?.status === 400 || err.response?.data?.message?.includes("OPEN shift") || err.response?.data?.message?.includes("active shift")) {
+        toastInfo("Aún no tienes un turno asignado. Debes abrir una caja para realizar movimientos.");
+      }
     }
   };
 

@@ -11,7 +11,7 @@ import { useToast } from '../../../context/ToastContext';
 export const ShiftsPage = () => {
   const { userProfile } = useAuthStore();
   const isCashier = userProfile?.roles.includes('CASHIER');
-  const { error: toastError } = useToast();
+  const { error: toastError, info: toastInfo } = useToast();
 
   const [shifts, setShifts] = useState<ShiftSummaryResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -40,8 +40,9 @@ export const ShiftsPage = () => {
           const data = await posService.getMyActiveShiftSummary();
           setShifts([data]);
         } catch (err: any) {
-          if (err.response?.status === 404 || err.response?.status === 400 || err.response?.data?.message?.includes("OPEN shift") || err.response?.data?.message?.includes("active shift")) {
+          if (err.response?.data?.code === 'business_rule_violation' || err.response?.status === 404 || err.response?.status === 400 || err.response?.data?.message?.includes("OPEN shift") || err.response?.data?.message?.includes("active shift")) {
             setShifts([]);
+            toastInfo("Aún no tienes un turno asignado. Abre tu caja para comenzar.");
           } else {
             throw err;
           }

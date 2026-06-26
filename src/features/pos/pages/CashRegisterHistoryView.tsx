@@ -6,6 +6,7 @@ import { useToast } from '../../../context/ToastContext';
 import { BtnBack } from '../../../components/ui/CrudButtons';
 import { ShiftDetailsModal } from '../components/ShiftDetailsModal';
 import { useAuthStore } from '../../../stores/useAuthStore';
+import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
 
 interface Props {
   register: CashRegisterResponse;
@@ -13,9 +14,10 @@ interface Props {
 }
 
 export const CashRegisterHistoryView = ({ register, onBack }: Props) => {
-  const { error: toastError } = useToast();
   const { userProfile } = useAuthStore();
   const currency = userProfile?.companySettings?.currencyCode || '$';
+  
+  const { error: toastError, success: toastSuccess } = useToast();
   
   const [shifts, setShifts] = useState<ShiftResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -25,6 +27,7 @@ export const CashRegisterHistoryView = ({ register, onBack }: Props) => {
   const [totalElements, setTotalElements] = useState(0);
 
   const [selectedShiftId, setSelectedShiftId] = useState<string | null>(null);
+  const [shiftToReopen, setShiftToReopen] = useState<string | null>(null);
 
   useEffect(() => {
     loadShifts();
@@ -41,6 +44,21 @@ export const CashRegisterHistoryView = ({ register, onBack }: Props) => {
       toastError("Error al cargar el historial de turnos de la caja.");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleReopen = async () => {
+    if (!shiftToReopen) return;
+    setIsLoading(true);
+    try {
+      await posService.reopenShift(shiftToReopen);
+      toastSuccess("Turno reabierto exitosamente.");
+      loadShifts();
+    } catch (err: any) {
+      toastError(err.response?.data?.message || "Error al reabrir el turno.");
+    } finally {
+      setIsLoading(false);
+      setShiftToReopen(null);
     }
   };
 
@@ -61,12 +79,22 @@ export const CashRegisterHistoryView = ({ register, onBack }: Props) => {
     { 
       header: 'Acciones', 
       render: row => (
-        <button 
-          className="btn btn-sm btn-outline btn-primary"
-          onClick={() => setSelectedShiftId(row.id)}
-        >
-          Ver Detalles
-        </button>
+        <div className="flex gap-2">
+          <button 
+            className="btn btn-sm btn-outline btn-primary"
+            onClick={() => setSelectedShiftId(row.id)}
+          >
+            Ver Detalles
+          </button>
+          {row.closedAt && (
+            <button 
+              className="btn btn-sm btn-outline btn-warning"
+              onClick={() => setShiftToReopen(row.id)}
+            >
+              Reabrir
+            </button>
+          )}
+        </div>
       )
     }
   ];
@@ -96,6 +124,16 @@ export const CashRegisterHistoryView = ({ register, onBack }: Props) => {
           shiftId={selectedShiftId}
         />
       )}
+
+      <ConfirmationModal
+        isOpen={!!shiftToReopen}
+        onClose={() => setShiftToReopen(null)}
+        onConfirm={handleReopen}
+        title="Reabrir Turno"
+        message="¿Estás seguro que deseas reabrir este turno? Volverá a estar activo y el cajero asignado podrá registrar nuevos movimientos o ventas."
+        confirmText="Sí, Reabrir"
+        cancelText="Cancelar"
+      />
     </div>
   );
 };

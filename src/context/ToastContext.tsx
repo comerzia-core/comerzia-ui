@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useState, useRef, type ReactNode } from "react";
 import { CheckCircle, AlertTriangle, XCircle, Info, X } from "lucide-react";
 
 type ToastType = "success" | "error" | "warning" | "info";
@@ -22,10 +22,14 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
 export const ToastProvider = ({ children }: { children: ReactNode }) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const activeMessages = useRef<Set<string>>(new Set());
 
   const addToast = (message: string, type: ToastType) => {
+    if (activeMessages.current.has(message)) return;
+    
     const id = Date.now();
-    // Agregamos con closing: false
+    activeMessages.current.add(message);
+    
     setToasts((prev) => [...prev, { id, message, type, closing: false }]);
 
     // Lógica del "Tren de vuelta":
@@ -37,7 +41,13 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
 
   // Inicia la animación de salida
   const startClosing = (id: number) => {
-    setToasts((prev) => prev.map(t => t.id === id ? { ...t, closing: true } : t));
+    setToasts((prev) => {
+      const toast = prev.find(t => t.id === id);
+      if (toast) {
+        activeMessages.current.delete(toast.message);
+      }
+      return prev.map(t => t.id === id ? { ...t, closing: true } : t);
+    });
     
     // 2. Esperamos 400ms (lo que dura la animación CSS) y eliminamos real
     setTimeout(() => {
