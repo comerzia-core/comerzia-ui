@@ -13,17 +13,16 @@ export const TerminalPage = () => {
   const { userProfile } = useAuthStore();
   const roles = userProfile?.roles || [];
   const isCashier = roles.includes('CASHIER');
-  const isOwner = roles.includes('OWNER');
   
 
   useEffect(() => {
-    if (!isCashier || isOwner) {
+    if (!isCashier) {
       setError("Vista exclusiva para el rol CAJERO.");
       setIsLoading(false);
       return;
     }
     loadSummary();
-  }, [isCashier, isOwner]);
+  }, [isCashier]);
 
   const loadSummary = async () => {
     try {
