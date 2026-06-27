@@ -20,6 +20,13 @@ import { ShiftsPage } from "../features/pos/pages/ShiftsPage";
 import { MovementsPage } from "../features/pos/pages/MovementsPage";
 import { RegistersPage } from "../features/pos/pages/RegistersPage";
 
+// --- COMMERCIAL ---
+import { CatalogPage } from "../features/commercial/pages/CatalogPage";
+import { StockQueryPage } from "../features/commercial/pages/StockQueryPage";
+import { StockMovementsPage } from "../features/commercial/pages/StockMovementsPage";
+import { PricesPage } from "../features/commercial/pages/PricesPage";
+import { InventoriesPage } from "../features/commercial/pages/InventoriesPage";
+
 export const AppRouter = () => {
   useTheme();
 
@@ -41,6 +48,12 @@ export const AppRouter = () => {
             <Route path="/organization/company" element={<CompanyProfilePage />} />
             <Route path="/organization/branches" element={<BranchesPage />} />
             <Route path="/hrm/staff" element={<EmployeePage />} />
+            
+            <Route path="/commercial/catalog" element={<CatalogPage />} />
+            <Route path="/commercial/stock-query" element={<StockQueryPage />} />
+            <Route path="/commercial/stock-movements" element={<StockMovementsPage />} />
+            <Route path="/commercial/prices" element={<PricesPage />} />
+            <Route path="/commercial/inventories" element={<InventoriesPage />} />
 
             {/* --- POINT OF SALE --- */}
             <Route path="/pos/terminal" element={<TerminalPage />} />

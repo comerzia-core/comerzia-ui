@@ -44,6 +44,7 @@ interface Props<T> {
     pagination?: TablePaginationConfig;
     sorting?: ColumnSort[]; // Estado actual del ordenamiento
     onSortingChange?: (newSorting: ColumnSort[]) => void;
+    onRowClick?: (row: T) => void;
 }
 
 // Opciones de paginación por defecto (pueden venir de un constants.ts)
@@ -57,7 +58,8 @@ export const ComerziaTable = <T extends { id: number | string }>({
     showRowNumbers = false,
     pagination,
     sorting = [],
-    onSortingChange
+    onSortingChange,
+    onRowClick
 }: Props<T>) => {
     
     // --- LÓGICA DE ORDENAMIENTO MÚLTIPLE ---
@@ -153,7 +155,11 @@ export const ComerziaTable = <T extends { id: number | string }>({
                                 : index + 1;
 
                             return (
-                                <tr key={row.id} className={`hover transition-colors duration-200 ${customClasses}`}>
+                                <tr 
+                                    key={row.id} 
+                                    className={`hover transition-colors duration-200 ${customClasses} ${onRowClick ? 'cursor-pointer' : ''}`}
+                                    onClick={() => onRowClick && onRowClick(row)}
+                                >
                                     
                                     {showRowNumbers && (
                                         <td className="text-center text-base-content/50 font-medium">
