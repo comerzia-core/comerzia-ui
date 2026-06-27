@@ -31,6 +31,20 @@ export const commercialService = {
     const response = await api.get('/tenant/categories');
     return response.data;
   },
+  
+  createCategory: async (name: string): Promise<CategoryResponse> => {
+    const response = await api.post('/tenant/categories', { name });
+    return response.data;
+  },
+
+  updateCategory: async (id: string, name: string, status: boolean): Promise<CategoryResponse> => {
+    const response = await api.put(`/tenant/categories/${id}`, { name, status });
+    return response.data;
+  },
+
+  deleteCategory: async (id: string): Promise<void> => {
+    await api.delete(`/tenant/categories/${id}`);
+  },
 
   // Segments
   getSegmentsByCategory: async (categoryId: string): Promise<SegmentResponse[]> => {
@@ -38,10 +52,38 @@ export const commercialService = {
     return response.data;
   },
 
+  createSegment: async (name: string, categoryId: string): Promise<SegmentResponse> => {
+    const response = await api.post('/tenant/segments', { name, categoryId });
+    return response.data;
+  },
+
+  updateSegment: async (id: string, name: string, status: boolean, categoryId: string): Promise<SegmentResponse> => {
+    const response = await api.put(`/tenant/segments/${id}`, { name, status, categoryId }); 
+    return response.data;
+  },
+
+  deleteSegment: async (id: string): Promise<void> => {
+    await api.delete(`/tenant/segments/${id}`);
+  },
+
   // Brands
   getBrandsBySegment: async (segmentId: string): Promise<BrandResponse[]> => {
     const response = await api.get(`/tenant/brands/segment/${segmentId}`);
     return response.data;
+  },
+
+  createBrand: async (name: string, segmentId: string): Promise<BrandResponse> => {
+    const response = await api.post('/tenant/brands', { name, segmentId });
+    return response.data;
+  },
+
+  updateBrand: async (id: string, name: string, status: boolean, segmentId: string): Promise<BrandResponse> => {
+    const response = await api.put(`/tenant/brands/${id}`, { name, status, segmentId });
+    return response.data;
+  },
+
+  deleteBrand: async (id: string): Promise<void> => {
+    await api.delete(`/tenant/brands/${id}`);
   },
 
   // Products
