@@ -109,7 +109,10 @@ export const ProductTable = ({ brandId, selectedProducts, setSelectedProducts, r
       )
     },
     { header: 'Nombre', accessorKey: 'name' },
-    { header: 'Descripción', accessorKey: 'description' },
+    { 
+      header: 'Descripción', 
+      render: (row) => row.description ? row.description : <span className="text-base-content/40 italic">(sin descripción)</span>
+    },
     { 
       header: 'Tipo de Variante', 
       render: (row) => row.variantType === 1 ? 'Simple' : row.variantType === 2 ? 'Color' : 'Color/Talla'

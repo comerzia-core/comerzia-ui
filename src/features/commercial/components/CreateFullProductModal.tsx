@@ -4,13 +4,12 @@ import { ComerziaStepper } from '../../../components/ui/ComerziaStepper';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
 import { ComerziaTextarea } from '../../../components/ui/ComerziaTextarea';
 import { ComerziaSelect } from '../../../components/ui/ComerziaSelect';
-import { BtnCancel, BtnSave } from '../../../components/ui/CrudButtons';
+import { BtnCancel, BtnSave, BtnBack, BtnNext } from '../../../components/ui/CrudButtons';
 import { commercialService } from '../services/commercialService';
-import type { 
-  BrandResponse, 
-  PriceTypeResponse, 
-  CreateFullVariantRequest, 
-  CreateInitialPriceRequest,
+import type {
+  BrandResponse,
+  PriceTypeResponse,
+  CreateFullVariantRequest,
   CategoryResponse,
   SegmentResponse
 } from '../types/commercial';
@@ -28,7 +27,7 @@ interface Props {
 export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCategoryId, initialSegmentId, initialBrandId }: Props) => {
   const [step, setStep] = useState(1);
   const steps = ["Información Base", "Variantes", "Precios Iniciales"];
-  
+
   // Data State
   const [categories, setCategories] = useState<CategoryResponse[]>([]);
   const [segments, setSegments] = useState<SegmentResponse[]>([]);
@@ -37,7 +36,7 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
 
   const [categoryId, setCategoryId] = useState('');
   const [segmentId, setSegmentId] = useState('');
-  
+
   // Payload State
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -103,7 +102,7 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
           return;
         }
       }
-      
+
       // Initialize prices for step 3 if empty
       const updatedVariants = variants.map(v => {
         if (v.prices.length === 0) {
@@ -111,8 +110,8 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
             ...v,
             prices: priceTypes.map(pt => ({
               priceTypeId: pt.id,
-              salePrice: 0,
-              discountPrice: 0
+              salePrice: '' as unknown as number,
+              discountPrice: '' as unknown as number
             }))
           };
         }
@@ -124,8 +123,17 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
   };
 
   const handleSubmit = async () => {
+    const processedVariants = variants.map(v => ({
+      ...v,
+      prices: v.prices.map(p => ({
+        ...p,
+        salePrice: Number(p.salePrice) || 0,
+        discountPrice: Number(p.discountPrice) || 0
+      })).filter(p => p.salePrice > 0)
+    }));
+
     // Price validations
-    for (const v of variants) {
+    for (const v of processedVariants) {
       for (const p of v.prices) {
         if (p.discountPrice > p.salePrice) {
           toastError(`El precio de descuento no puede ser mayor al de venta en: ${v.name}`);
@@ -141,7 +149,7 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
         description: description || undefined,
         variantType: Number(variantType),
         brandId,
-        variants
+        variants: processedVariants
       });
       toastSuccess("Producto creado exitosamente.");
       onSuccess();
@@ -159,7 +167,7 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
     setVariants(updated);
   };
 
-  const updatePrice = (variantIndex: number, priceIndex: number, field: string, value: number) => {
+  const updatePrice = (variantIndex: number, priceIndex: number, field: string, value: number | string) => {
     const updated = [...variants];
     (updated[variantIndex].prices[priceIndex] as any)[field] = value;
     setVariants(updated);
@@ -208,7 +216,7 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
               shakeKey={shakeKey}
               isRequired
             />
-            
+
             <ComerziaSelect
               label="Categoría"
               options={categories.map(c => ({ value: c.id, label: c.name }))}
@@ -239,7 +247,7 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
               disabled={!segmentId}
               isRequired
             />
-            
+
             <div className="md:col-span-2">
               <ComerziaTextarea
                 label="Descripción (Opcional)"
@@ -255,7 +263,7 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
             {variants.map((variant, index) => (
               <div key={index} className="bg-base-200/50 p-4 rounded-xl relative border border-base-200">
                 {variants.length > 1 && (
-                  <button 
+                  <button
                     className="btn btn-circle btn-sm btn-ghost absolute top-2 right-2 text-error"
                     onClick={() => removeVariant(index)}
                   >
@@ -298,72 +306,96 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
           <div className="space-y-6 animate-fade-in">
             {variants.map((variant, vIdx) => {
               const isFirstVariantComplete = variant.prices.length > 0 && variant.prices.every(p => p.salePrice > 0);
-              
-              return (
-              <div key={vIdx} className="bg-base-200/50 p-4 rounded-xl border border-base-200">
-                <h4 className="font-bold mb-4">Precios para: {variant.name || `Variante ${vIdx + 1}`}</h4>
-                
-                {variant.prices.map((price, pIdx) => {
-                  const typeName = priceTypes.find(pt => pt.id === price.priceTypeId)?.name || 'Precio';
-                  return (
-                    <div key={pIdx} className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 items-end">
-                      <div className="text-sm font-semibold opacity-70 mb-2 md:mb-0">
-                        {typeName}
-                      </div>
-                      <ComerziaInput
-                        label="Precio de Venta"
-                        type="number"
-                        value={price.salePrice}
-                        onChange={(e) => updatePrice(vIdx, pIdx, 'salePrice', Number(e.target.value))}
-                      />
-                      <ComerziaInput
-                        label="Precio Descuento"
-                        type="number"
-                        value={price.discountPrice || 0}
-                        onChange={(e) => updatePrice(vIdx, pIdx, 'discountPrice', Number(e.target.value))}
-                      />
-                    </div>
-                  );
-                })}
 
-                {vIdx === 0 && variants.length > 1 && (
-                  <div className="mt-4 pt-4 border-t border-base-300">
-                    <label className="label cursor-pointer justify-start gap-4">
-                      <input 
-                        type="checkbox" 
-                        className="checkbox checkbox-primary" 
-                        disabled={!isFirstVariantComplete}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            const newVariants = [...variants];
-                            for (let i = 1; i < newVariants.length; i++) {
-                              newVariants[i].prices = JSON.parse(JSON.stringify(variant.prices));
+              return (
+                <div key={vIdx} className="bg-base-200/50 p-4 rounded-xl border border-base-200">
+                  <h4 className="font-bold mb-4">Precios para: {variant.name || `Variante ${vIdx + 1}`}</h4>
+
+                  {variant.prices.map((price, pIdx) => {
+                    const priceTypeObj = priceTypes.find(pt => pt.id === price.priceTypeId);
+                    const typeName = priceTypeObj?.name || 'Precio';
+                    const equivalenceFactor = priceTypeObj?.equivalenceFactor || 1;
+                    
+                    const saleTotal = (Number(price.salePrice) || 0) * equivalenceFactor;
+                    const discountTotal = (Number(price.discountPrice) || 0) * equivalenceFactor;
+
+                    return (
+                      <div key={pIdx} className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 items-start">
+                        <div className="text-sm font-semibold opacity-70 mb-2 md:mb-0 mt-8">
+                          {typeName}
+                          <span className="block text-xs font-normal opacity-60 mt-1">
+                            (Equivalencia: x{equivalenceFactor})
+                          </span>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <ComerziaInput
+                            label="Precio Descuento Unit."
+                            type="number"
+                            value={price.discountPrice}
+                            onChange={(e) => updatePrice(vIdx, pIdx, 'discountPrice', e.target.value.replace(/^0+(?=\d)/, ''))}
+                          />
+                          {discountTotal > 0 && (
+                            <div className="text-xs text-accent font-medium px-1 flex justify-between">
+                              <span>Total Descuento:</span>
+                              <span>${discountTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <ComerziaInput
+                            label="Precio Venta Unit."
+                            type="number"
+                            value={price.salePrice}
+                            onChange={(e) => updatePrice(vIdx, pIdx, 'salePrice', e.target.value.replace(/^0+(?=\d)/, ''))}
+                          />
+                          {saleTotal > 0 && (
+                            <div className="text-xs text-primary font-bold px-1 flex justify-between">
+                              <span>Total Venta:</span>
+                              <span>${saleTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {vIdx === 0 && variants.length > 1 && (
+                    <div className="mt-4 pt-4 border-t border-base-300">
+                      <label className="label cursor-pointer justify-start gap-4">
+                        <input
+                          type="checkbox"
+                          className="checkbox checkbox-primary"
+                          disabled={!isFirstVariantComplete}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              const newVariants = [...variants];
+                              for (let i = 1; i < newVariants.length; i++) {
+                                newVariants[i].prices = JSON.parse(JSON.stringify(variant.prices));
+                              }
+                              setVariants(newVariants);
                             }
-                            setVariants(newVariants);
-                          }
-                        }}
-                      />
-                      <span className={`label-text font-medium ${!isFirstVariantComplete ? 'opacity-50' : ''}`}>
-                        Asignar estos precios a todas las variantes
-                      </span>
-                    </label>
-                  </div>
-                )}
-              </div>
-            )})}
+                          }}
+                        />
+                        <span className={`label-text font-medium ${!isFirstVariantComplete ? 'opacity-50' : ''}`}>
+                          Asignar estos precios a todas las variantes
+                        </span>
+                      </label>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         )}
 
         <div className="flex justify-between mt-8 pt-4 border-t border-base-200">
-          <BtnCancel 
-            label={step === 1 ? "Cancelar" : "Atrás"} 
-            onClick={() => step === 1 ? onClose() : setStep(prev => prev - 1)} 
-            disabled={isSubmitting}
-          />
+          {step === 1 ? (
+            <BtnCancel onClick={onClose} disabled={isSubmitting} />
+          ) : (
+            <BtnBack onClick={() => setStep(prev => prev - 1)} disabled={isSubmitting} />
+          )}
           {step < 3 ? (
-            <button className="btn btn-primary" onClick={handleNext}>
-              Siguiente
-            </button>
+            <BtnNext onClick={handleNext} disabled={isSubmitting} />
           ) : (
             <BtnSave onClick={handleSubmit} isLoading={isSubmitting} />
           )}

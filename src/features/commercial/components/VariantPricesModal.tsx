@@ -163,21 +163,34 @@ export const VariantPricesModal = ({ isOpen, onClose, variantId, variantName }: 
                     index !== priceTypes.length - 1 ? 'border-b border-base-200' : ''
                   }`}
                 >
-                  <div className="font-medium text-base-content md:w-1/3">{pt.name}</div>
+                  <div className="font-medium text-base-content md:w-1/3 mt-2 md:mt-0">
+                    {pt.name}
+                    <span className="block text-xs font-normal opacity-60 mt-1">
+                      (Equivalencia: x{pt.equivalenceFactor || 1})
+                    </span>
+                  </div>
                   
-                  <div className="flex-1">
+                  <div className="flex-1 mt-4 md:mt-0">
                     {!isEditing ? (
                       <div className="flex justify-end items-center gap-8 text-sm">
                         {currentActive ? (
                           <>
                             <div className="flex flex-col items-end">
-                              <span className="text-base-content/50 text-xs">Precio Venta</span>
+                              <span className="text-base-content/50 text-xs">Precio Venta Unit.</span>
                               <span className="font-semibold text-base">${currentActive.salePrice}</span>
+                              {currentActive.salePrice > 0 && (
+                                <span className="text-xs text-primary font-bold mt-1">
+                                  Total: ${(currentActive.salePrice * (pt.equivalenceFactor || 1)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
+                              )}
                             </div>
                             {currentActive.discountPrice > 0 && (
                               <div className="flex flex-col items-end text-success">
-                                <span className="opacity-70 text-xs">Descuento</span>
+                                <span className="opacity-70 text-xs">Descuento Unit.</span>
                                 <span className="font-semibold text-base">${currentActive.discountPrice}</span>
+                                <span className="text-xs text-accent font-medium mt-1">
+                                  Total: ${(currentActive.discountPrice * (pt.equivalenceFactor || 1)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
                               </div>
                             )}
                           </>
@@ -186,22 +199,34 @@ export const VariantPricesModal = ({ isOpen, onClose, variantId, variantName }: 
                         )}
                       </div>
                     ) : (
-                      <div className="flex gap-4 justify-end">
-                        <div className="w-full md:w-32">
+                      <div className="flex flex-col sm:flex-row gap-4 justify-end">
+                        <div className="w-full md:w-36 flex flex-col gap-1">
                           <ComerziaInput
-                            label="Venta"
-                            type="number"
-                            value={form?.salePrice || 0}
-                            onChange={(e) => handleUpdate(pt.id, 'salePrice', Number(e.target.value))}
-                          />
-                        </div>
-                        <div className="w-full md:w-32">
-                          <ComerziaInput
-                            label="Descuento"
+                            label="Descuento Unit."
                             type="number"
                             value={form?.discountPrice || 0}
-                            onChange={(e) => handleUpdate(pt.id, 'discountPrice', Number(e.target.value))}
+                            onChange={(e) => handleUpdate(pt.id, 'discountPrice', Number(e.target.value.replace(/^0+(?=\d)/, '')))}
                           />
+                          {(form?.discountPrice || 0) > 0 && (
+                            <div className="text-xs text-accent font-medium px-1 flex justify-between">
+                              <span>Total:</span>
+                              <span>${((form?.discountPrice || 0) * (pt.equivalenceFactor || 1)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="w-full md:w-36 flex flex-col gap-1">
+                          <ComerziaInput
+                            label="Venta Unit."
+                            type="number"
+                            value={form?.salePrice || 0}
+                            onChange={(e) => handleUpdate(pt.id, 'salePrice', Number(e.target.value.replace(/^0+(?=\d)/, '')))}
+                          />
+                          {(form?.salePrice || 0) > 0 && (
+                            <div className="text-xs text-primary font-bold px-1 flex justify-between">
+                              <span>Total:</span>
+                              <span>${((form?.salePrice || 0) * (pt.equivalenceFactor || 1)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}

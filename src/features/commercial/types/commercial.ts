@@ -48,6 +48,7 @@ export interface FamilyResponse {
 export interface PriceTypeResponse {
   id: string;
   name: string;
+  description?: string;
   equivalenceFactor: number;
 }
 
