@@ -49,7 +49,7 @@ export const ComerziaContextMenu = ({ isOpen, x, y, onClose, children }: Comerzi
   return createPortal(
     <ul
       ref={menuRef}
-      className="menu bg-base-100 w-52 rounded-box shadow-xl border border-base-200 fixed z-[10000] p-2"
+      className="menu menu-md bg-base-100 w-60 rounded-box shadow-2xl border border-base-200 fixed z-[10000] p-2 gap-1"
       style={{ top: adjustedY, left: adjustedX }}
       onClick={(e) => {
         e.stopPropagation();
