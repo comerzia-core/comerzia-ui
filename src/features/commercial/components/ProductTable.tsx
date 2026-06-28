@@ -5,10 +5,10 @@ import type { ProductResponse } from '../types/commercial';
 import { ProductVariantsModal } from './ProductVariantsModal';
 import { useAuthStore } from '../../../stores/useAuthStore';
 
-import { EditProductModal } from './EditProductModal';
 import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
 import { useToast } from '../../../context/ToastContext';
-import { ComerziaContextMenu } from '../../../components/ui/ComerziaContextMenu';
+import { ComerziaContextMenu, ContextMenuItem } from '../../../components/ui/ComerziaContextMenu';
+import { EditProductModal } from './EditProductModal';
 import { Edit, Trash2 } from 'lucide-react';
 
 interface Props {
@@ -166,22 +166,17 @@ export const ProductTable = ({ brandId, selectedProducts, setSelectedProducts, r
       >
         {isOwner && (
           <>
-            <li>
-              <button 
-                onClick={(e) => { e.stopPropagation(); setProductToEdit(contextMenu.row); setContextMenu({ ...contextMenu, isOpen: false }); }}
-                className="flex items-center gap-2 px-3 py-2 hover:bg-base-200 hover:text-primary transition-colors rounded-md"
-              >
-                <Edit size={16} /> Editar
-              </button>
-            </li>
-            <li>
-              <button 
-                onClick={(e) => { e.stopPropagation(); setProductToDelete(contextMenu.row); setContextMenu({ ...contextMenu, isOpen: false }); }}
-                className="flex items-center gap-2 px-3 py-2 text-error hover:bg-error/10 hover:text-error transition-colors rounded-md"
-              >
-                <Trash2 size={16} /> Eliminar
-              </button>
-            </li>
+            <ContextMenuItem 
+              icon={Edit}
+              label="Editar"
+              onClick={() => { setProductToEdit(contextMenu.row); setContextMenu({ ...contextMenu, isOpen: false }); }} 
+            />
+            <ContextMenuItem 
+              icon={Trash2}
+              label="Eliminar"
+              variant="error"
+              onClick={() => { setProductToDelete(contextMenu.row); setContextMenu({ ...contextMenu, isOpen: false }); }} 
+            />
           </>
         )}
       </ComerziaContextMenu>

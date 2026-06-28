@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { Edit, Trash2, DollarSign, type LucideIcon } from "lucide-react";
 
 export interface ComerziaContextMenuProps {
   isOpen: boolean;
@@ -60,5 +61,41 @@ export const ComerziaContextMenu = ({ isOpen, x, y, onClose, children }: Comerzi
       {children}
     </ul>,
     document.body
+  );
+};
+
+export interface ContextMenuItemProps {
+  icon?: LucideIcon;
+  label: string;
+  onClick: () => void;
+  variant?: "default" | "error";
+  disabled?: boolean;
+}
+
+export const ContextMenuItem = ({
+  icon: Icon,
+  label,
+  onClick,
+  variant = "default",
+  disabled = false,
+}: ContextMenuItemProps) => {
+  const baseClasses = "flex items-center gap-2 px-3 py-2 transition-colors rounded-md";
+  const variantClasses = variant === "error" 
+    ? "text-error hover:bg-error hover:text-error-content" 
+    : "hover:bg-base-200 hover:text-primary";
+  const disabledClasses = disabled ? "opacity-50 cursor-not-allowed" : "";
+
+  return (
+    <li>
+      <button
+        type="button"
+        className={`${baseClasses} ${variantClasses} ${disabledClasses}`}
+        onClick={onClick}
+        disabled={disabled}
+      >
+        {Icon && <Icon size={16} />}
+        {label}
+      </button>
+    </li>
   );
 };

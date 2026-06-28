@@ -9,7 +9,7 @@ import { VariantPricesModal } from './VariantPricesModal';
 import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
 import { BtnCreate } from '../../../components/ui/CrudButtons';
 import { useToast } from '../../../context/ToastContext';
-import { ComerziaContextMenu } from '../../../components/ui/ComerziaContextMenu';
+import { ComerziaContextMenu, ContextMenuItem } from '../../../components/ui/ComerziaContextMenu';
 import { Edit, Trash2, DollarSign } from 'lucide-react';
 
 interface Props {
@@ -142,32 +142,24 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
         y={contextMenu.y}
         onClose={() => setContextMenu({ ...contextMenu, isOpen: false })}
       >
-        <li>
-          <button 
-            onClick={(e) => { e.stopPropagation(); setVariantToPrices(contextMenu.row); setContextMenu({ ...contextMenu, isOpen: false }); }}
-            className="flex items-center gap-2 px-3 py-2 hover:bg-base-200 hover:text-primary transition-colors rounded-md"
-          >
-            <DollarSign size={16} /> Ver/Actualizar Precios
-          </button>
-        </li>
+        <ContextMenuItem 
+          icon={DollarSign}
+          label="Ver/Actualizar Precios"
+          onClick={() => { setVariantToPrices(contextMenu.row); setContextMenu({ ...contextMenu, isOpen: false }); }} 
+        />
         {isOwner && (
           <>
-            <li>
-              <button 
-                onClick={(e) => { e.stopPropagation(); setVariantToEdit(contextMenu.row); setContextMenu({ ...contextMenu, isOpen: false }); }}
-                className="flex items-center gap-2 px-3 py-2 hover:bg-base-200 hover:text-primary transition-colors rounded-md"
-              >
-                <Edit size={16} /> Editar
-              </button>
-            </li>
-            <li>
-              <button 
-                onClick={(e) => { e.stopPropagation(); setVariantToDelete(contextMenu.row); setContextMenu({ ...contextMenu, isOpen: false }); }}
-                className="flex items-center gap-2 px-3 py-2 text-error hover:bg-error/10 hover:text-error transition-colors rounded-md"
-              >
-                <Trash2 size={16} /> Eliminar
-              </button>
-            </li>
+            <ContextMenuItem 
+              icon={Edit}
+              label="Editar"
+              onClick={() => { setVariantToEdit(contextMenu.row); setContextMenu({ ...contextMenu, isOpen: false }); }} 
+            />
+            <ContextMenuItem 
+              icon={Trash2}
+              label="Eliminar"
+              variant="error"
+              onClick={() => { setVariantToDelete(contextMenu.row); setContextMenu({ ...contextMenu, isOpen: false }); }} 
+            />
           </>
         )}
       </ComerziaContextMenu>
