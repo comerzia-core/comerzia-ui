@@ -7,8 +7,9 @@ import { useAuthStore } from '../../../stores/useAuthStore';
 
 import { EditProductModal } from './EditProductModal';
 import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
-import { BtnEdit, BtnDeleteIcon } from '../../../components/ui/CrudButtons';
 import { useToast } from '../../../context/ToastContext';
+import { ComerziaContextMenu } from '../../../components/ui/ComerziaContextMenu';
+import { Edit, Trash2 } from 'lucide-react';
 
 interface Props {
   brandId: string;
@@ -34,6 +35,7 @@ export const ProductTable = ({ brandId, selectedProducts, setSelectedProducts, r
   const [productToEdit, setProductToEdit] = useState<ProductResponse | null>(null);
   const [productToDelete, setProductToDelete] = useState<ProductResponse | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ isOpen: boolean; x: number; y: number; row: ProductResponse | null }>({ isOpen: false, x: 0, y: 0, row: null });
 
   useEffect(() => {
     loadData();
@@ -122,17 +124,7 @@ export const ProductTable = ({ brandId, selectedProducts, setSelectedProducts, r
     }
   ];
 
-  if (isOwner) {
-    columns.push({
-      header: 'Acciones',
-      render: (row) => (
-        <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-          <BtnEdit onClick={() => setProductToEdit(row)} />
-          <BtnDeleteIcon onClick={() => setProductToDelete(row)} />
-        </div>
-      )
-    });
-  }
+  // Se eliminó la columna de Acciones para usar menú contextual
 
   const pagination: TablePaginationConfig = {
     currentPage: page,
@@ -155,7 +147,41 @@ export const ProductTable = ({ brandId, selectedProducts, setSelectedProducts, r
           setSelectedProductId(row.id);
           setSelectedProductName(row.name);
         }}
+        onRowContextMenu={(e, row) => {
+          e.preventDefault();
+          if (isOwner) {
+            setContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, row });
+          }
+        }}
       />
+      
+      <ComerziaContextMenu
+        isOpen={contextMenu.isOpen}
+        x={contextMenu.x}
+        y={contextMenu.y}
+        onClose={() => setContextMenu({ ...contextMenu, isOpen: false })}
+      >
+        {isOwner && (
+          <>
+            <li>
+              <button 
+                onClick={(e) => { e.stopPropagation(); setProductToEdit(contextMenu.row); setContextMenu({ ...contextMenu, isOpen: false }); }}
+                className="flex items-center gap-2"
+              >
+                <Edit size={16} /> Editar
+              </button>
+            </li>
+            <li>
+              <button 
+                onClick={(e) => { e.stopPropagation(); setProductToDelete(contextMenu.row); setContextMenu({ ...contextMenu, isOpen: false }); }}
+                className="flex items-center gap-2 text-error"
+              >
+                <Trash2 size={16} /> Eliminar
+              </button>
+            </li>
+          </>
+        )}
+      </ComerziaContextMenu>
       <ProductVariantsModal 
         isOpen={!!selectedProductId}
         onClose={() => setSelectedProductId(null)}

@@ -7,8 +7,10 @@ import { useAuthStore } from '../../../stores/useAuthStore';
 import { EditVariantModal } from './EditVariantModal';
 import { VariantPricesModal } from './VariantPricesModal';
 import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
-import { BtnEdit, BtnDeleteIcon, BtnCreate, BtnPriceIcon } from '../../../components/ui/CrudButtons';
+import { BtnCreate } from '../../../components/ui/CrudButtons';
 import { useToast } from '../../../context/ToastContext';
+import { ComerziaContextMenu } from '../../../components/ui/ComerziaContextMenu';
+import { Edit, Trash2, DollarSign } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
@@ -33,6 +35,7 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
   const [variantToPrices, setVariantToPrices] = useState<ProductVariantResponse | null>(null);
   const [isCreatingVariant, setIsCreatingVariant] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ isOpen: boolean; x: number; y: number; row: ProductVariantResponse | null }>({ isOpen: false, x: 0, y: 0, row: null });
 
   useEffect(() => {
     if (isOpen && productId) {
@@ -95,18 +98,7 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
     }
   ];
 
-  if (isOwner) {
-    columns.push({
-      header: 'Acciones',
-      render: (row) => (
-        <div className="flex gap-2">
-          <BtnPriceIcon onClick={() => setVariantToPrices(row)} title="Actualizar precio" />
-          <BtnEdit onClick={() => setVariantToEdit(row)} title="Editar variante" />
-          <BtnDeleteIcon onClick={() => setVariantToDelete(row)} title="Eliminar variante" />
-        </div>
-      )
-    });
-  }
+  // Se eliminó la columna de Acciones para usar menú contextual
 
   const pagination: TablePaginationConfig = {
     currentPage: page,
@@ -137,8 +129,49 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
         isLoading={isLoading}
         pagination={pagination}
         showRowNumbers={true}
+        onRowContextMenu={(e, row) => {
+          e.preventDefault();
+          setContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, row });
+        }}
       />
       </ComerziaModal>
+
+      <ComerziaContextMenu
+        isOpen={contextMenu.isOpen}
+        x={contextMenu.x}
+        y={contextMenu.y}
+        onClose={() => setContextMenu({ ...contextMenu, isOpen: false })}
+      >
+        <li>
+          <button 
+            onClick={(e) => { e.stopPropagation(); setVariantToPrices(contextMenu.row); setContextMenu({ ...contextMenu, isOpen: false }); }}
+            className="flex items-center gap-2"
+          >
+            <DollarSign size={16} /> Ver/Actualizar Precios
+          </button>
+        </li>
+        {isOwner && (
+          <>
+            <li>
+              <button 
+                onClick={(e) => { e.stopPropagation(); setVariantToEdit(contextMenu.row); setContextMenu({ ...contextMenu, isOpen: false }); }}
+                className="flex items-center gap-2"
+              >
+                <Edit size={16} /> Editar
+              </button>
+            </li>
+            <li>
+              <button 
+                onClick={(e) => { e.stopPropagation(); setVariantToDelete(contextMenu.row); setContextMenu({ ...contextMenu, isOpen: false }); }}
+                className="flex items-center gap-2 text-error"
+              >
+                <Trash2 size={16} /> Eliminar
+              </button>
+            </li>
+          </>
+        )}
+      </ComerziaContextMenu>
+
       <VariantPricesModal
         isOpen={!!variantToPrices}
         onClose={() => setVariantToPrices(null)}
