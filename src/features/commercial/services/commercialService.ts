@@ -86,8 +86,11 @@ export const commercialService = {
     await api.delete(`/tenant/brands/${id}`);
   },
 
-  getProductsByBrand: async (brandId: string, page = 0, size = 20): Promise<PageProductResponse> => {
+  getProductsByBrand: async (brandId: string, page = 0, size = 20, activeOnly?: boolean): Promise<PageProductResponse> => {
     const params = new URLSearchParams({ page: String(page), size: String(size) });
+    if (activeOnly !== undefined) {
+      params.append('activeOnly', String(activeOnly));
+    }
     const response = await api.get(`/tenant/products/brand/${brandId}?${params.toString()}`);
     return response.data;
   },

@@ -44,7 +44,8 @@ export const ProductTable = ({ brandId, selectedProducts, setSelectedProducts, r
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const res = await commercialService.getProductsByBrand(brandId, page, size);
+      const activeOnly = isOwner ? false : undefined;
+      const res = await commercialService.getProductsByBrand(brandId, page, size, activeOnly);
       setData(res.content);
       setTotalElements(res.totalElements);
     } catch (e) {
