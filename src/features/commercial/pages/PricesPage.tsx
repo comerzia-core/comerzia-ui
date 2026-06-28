@@ -78,7 +78,7 @@ export const PricesPage = () => {
   const columns: Column<SalePriceResponse>[] = [
     { 
       header: 'Tipo de Precio', 
-      render: (row) => row.priceType.name 
+      render: (row) => row.priceType?.name || row.priceTypeName || 'Desconocido'
     },
     { header: 'Costo Base', render: (row) => `$${row.basePrice.toFixed(2)}` },
     { header: 'Precio Venta', render: (row) => <span className="font-bold text-success">${row.salePrice.toFixed(2)}</span> },

@@ -86,18 +86,39 @@ export const commercialService = {
     await api.delete(`/tenant/brands/${id}`);
   },
 
-  // Products
   getProductsByBrand: async (brandId: string, page = 0, size = 20): Promise<PageProductResponse> => {
     const params = new URLSearchParams({ page: String(page), size: String(size) });
     const response = await api.get(`/tenant/products/brand/${brandId}?${params.toString()}`);
     return response.data;
   },
 
-  // Product Variants
+  updateProduct: async (id: string, data: any): Promise<ProductResponse> => {
+    const response = await api.put(`/tenant/products/${id}`, data);
+    return response.data;
+  },
+
+  deleteProduct: async (id: string): Promise<void> => {
+    await api.delete(`/tenant/products/${id}`);
+  },
+
   getVariantsByProduct: async (productId: string, page = 0, size = 20): Promise<PageProductVariantResponse> => {
     const params = new URLSearchParams({ page: String(page), size: String(size) });
     const response = await api.get(`/tenant/product-variants/product/${productId}?${params.toString()}`);
     return response.data;
+  },
+
+  createProductVariant: async (data: any): Promise<ProductVariantResponse> => {
+    const response = await api.post('/tenant/product-variants', data);
+    return response.data;
+  },
+
+  updateProductVariant: async (id: string, data: any): Promise<ProductVariantResponse> => {
+    const response = await api.put(`/tenant/product-variants/${id}`, data);
+    return response.data;
+  },
+
+  deleteProductVariant: async (id: string): Promise<void> => {
+    await api.delete(`/tenant/product-variants/${id}`);
   },
 
   // Catalog Master (Families)

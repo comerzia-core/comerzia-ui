@@ -20,9 +20,12 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  initialCategoryId?: string;
+  initialSegmentId?: string;
+  initialBrandId?: string;
 }
 
-export const CreateFullProductModal = ({ isOpen, onClose, onSuccess }: Props) => {
+export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCategoryId, initialSegmentId, initialBrandId }: Props) => {
   const [step, setStep] = useState(1);
   const steps = ["Información Base", "Variantes", "Precios Iniciales"];
   
@@ -53,9 +56,9 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess }: Props) =>
       setStep(1);
       setName('');
       setDescription('');
-      setBrandId('');
-      setCategoryId('');
-      setSegmentId('');
+      setCategoryId(initialCategoryId || '');
+      setSegmentId(initialSegmentId || '');
+      setBrandId(initialBrandId || '');
       setVariantType('1');
       setVariants([{ name: '', sku: '', barCode: '', prices: [] }]);
       loadInitialData();
@@ -76,15 +79,12 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess }: Props) =>
   useEffect(() => {
     if (categoryId) {
       commercialService.getSegmentsByCategory(categoryId).then(setSegments);
-      setSegmentId('');
-      setBrandId('');
     }
   }, [categoryId]);
 
   useEffect(() => {
     if (segmentId) {
       commercialService.getBrandsBySegment(segmentId).then(setBrands);
-      setBrandId('');
     }
   }, [segmentId]);
 
@@ -111,7 +111,6 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess }: Props) =>
             ...v,
             prices: priceTypes.map(pt => ({
               priceTypeId: pt.id,
-              basePrice: 0,
               salePrice: 0,
               discountPrice: 0
             }))
@@ -125,6 +124,16 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess }: Props) =>
   };
 
   const handleSubmit = async () => {
+    // Price validations
+    for (const v of variants) {
+      for (const p of v.prices) {
+        if (p.discountPrice > p.salePrice) {
+          toastError(`El precio de descuento no puede ser mayor al de venta en: ${v.name}`);
+          return;
+        }
+      }
+    }
+
     setIsSubmitting(true);
     try {
       await commercialService.createFullProduct({
@@ -204,13 +213,20 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess }: Props) =>
               label="Categoría"
               options={categories.map(c => ({ value: c.id, label: c.name }))}
               value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
+              onChange={(e) => {
+                setCategoryId(e.target.value);
+                setSegmentId('');
+                setBrandId('');
+              }}
             />
             <ComerziaSelect
               label="Segmento/Rubro"
               options={segments.map(s => ({ value: s.id, label: s.name }))}
               value={segmentId}
-              onChange={(e) => setSegmentId(e.target.value)}
+              onChange={(e) => {
+                setSegmentId(e.target.value);
+                setBrandId('');
+              }}
               disabled={!categoryId}
             />
             <ComerziaSelect
@@ -280,7 +296,10 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess }: Props) =>
 
         {step === 3 && (
           <div className="space-y-6 animate-fade-in">
-            {variants.map((variant, vIdx) => (
+            {variants.map((variant, vIdx) => {
+              const isFirstVariantComplete = variant.prices.length > 0 && variant.prices.every(p => p.salePrice > 0);
+              
+              return (
               <div key={vIdx} className="bg-base-200/50 p-4 rounded-xl border border-base-200">
                 <h4 className="font-bold mb-4">Precios para: {variant.name || `Variante ${vIdx + 1}`}</h4>
                 
@@ -292,22 +311,46 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess }: Props) =>
                         {typeName}
                       </div>
                       <ComerziaInput
-                        label="Costo Base"
-                        type="number"
-                        value={price.basePrice}
-                        onChange={(e) => updatePrice(vIdx, pIdx, 'basePrice', Number(e.target.value))}
-                      />
-                      <ComerziaInput
                         label="Precio de Venta"
                         type="number"
                         value={price.salePrice}
                         onChange={(e) => updatePrice(vIdx, pIdx, 'salePrice', Number(e.target.value))}
                       />
+                      <ComerziaInput
+                        label="Precio Descuento"
+                        type="number"
+                        value={price.discountPrice || 0}
+                        onChange={(e) => updatePrice(vIdx, pIdx, 'discountPrice', Number(e.target.value))}
+                      />
                     </div>
                   );
                 })}
+
+                {vIdx === 0 && variants.length > 1 && (
+                  <div className="mt-4 pt-4 border-t border-base-300">
+                    <label className="label cursor-pointer justify-start gap-4">
+                      <input 
+                        type="checkbox" 
+                        className="checkbox checkbox-primary" 
+                        disabled={!isFirstVariantComplete}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            const newVariants = [...variants];
+                            for (let i = 1; i < newVariants.length; i++) {
+                              newVariants[i].prices = JSON.parse(JSON.stringify(variant.prices));
+                            }
+                            setVariants(newVariants);
+                          }
+                        }}
+                      />
+                      <span className={`label-text font-medium ${!isFirstVariantComplete ? 'opacity-50' : ''}`}>
+                        Asignar estos precios a todas las variantes
+                      </span>
+                    </label>
+                  </div>
+                )}
               </div>
-            ))}
+            )})}
           </div>
         )}
 

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { commercialService } from '../services/commercialService';
-import { ComerziaSelect } from '../../../components/ui/ComerziaSelect';
 import { ComerziaCreatableSelect } from '../../../components/ui/ComerziaCreatableSelect';
 import type { CategoryResponse, SegmentResponse, BrandResponse } from '../types/commercial';
 import { ProductTable } from '../components/ProductTable';
@@ -27,6 +26,7 @@ export const CatalogPage = () => {
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     loadCategories();
@@ -257,6 +257,7 @@ export const CatalogPage = () => {
             brandId={selectedBrandId}
             selectedProducts={selectedProducts}
             setSelectedProducts={setSelectedProducts}
+            refreshKey={refreshKey}
           />
         ) : (
           <div className="text-center py-10 text-base-content/50 bg-base-200 rounded-xl">
@@ -279,10 +280,12 @@ export const CatalogPage = () => {
       <CreateFullProductModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
+        initialCategoryId={selectedCategoryId}
+        initialSegmentId={selectedSegmentId}
+        initialBrandId={selectedBrandId}
         onSuccess={() => {
           if (selectedBrandId) {
-            loadBrands(selectedSegmentId); // Hack to reload products if needed, actually we just need to retrigger ProductTable
-            // we can handle reloading products elegantly, but for now closing modal is fine.
+            setRefreshKey(prev => prev + 1);
           }
         }}
       />

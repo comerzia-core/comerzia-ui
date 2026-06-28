@@ -3,6 +3,12 @@ import { ComerziaModal } from '../../../components/ui/ComerziaModal';
 import { ComerziaTable, type Column, type TablePaginationConfig } from '../../../components/ui/ComerziaTable';
 import { commercialService } from '../services/commercialService';
 import type { ProductVariantResponse } from '../types/commercial';
+import { useAuthStore } from '../../../stores/useAuthStore';
+import { EditVariantModal } from './EditVariantModal';
+import { VariantPricesModal } from './VariantPricesModal';
+import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
+import { BtnEdit, BtnDeleteIcon, BtnCreate, BtnPriceIcon } from '../../../components/ui/CrudButtons';
+import { useToast } from '../../../context/ToastContext';
 
 interface Props {
   isOpen: boolean;
@@ -17,6 +23,16 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(20);
   const [totalElements, setTotalElements] = useState(0);
+
+  const { hasRole } = useAuthStore();
+  const isOwner = hasRole('OWNER');
+  const { error: toastError, success: toastSuccess } = useToast();
+
+  const [variantToEdit, setVariantToEdit] = useState<ProductVariantResponse | null>(null);
+  const [variantToDelete, setVariantToDelete] = useState<ProductVariantResponse | null>(null);
+  const [variantToPrices, setVariantToPrices] = useState<ProductVariantResponse | null>(null);
+  const [isCreatingVariant, setIsCreatingVariant] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (isOpen && productId) {
@@ -35,6 +51,21 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
       setData([]);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!variantToDelete) return;
+    setIsDeleting(true);
+    try {
+      await commercialService.deleteProductVariant(variantToDelete.id);
+      toastSuccess("Variante eliminada exitosamente");
+      loadData();
+      setVariantToDelete(null);
+    } catch (e: any) {
+      toastError(e.response?.data?.message || "Error al eliminar la variante");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -64,6 +95,19 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
     }
   ];
 
+  if (isOwner) {
+    columns.push({
+      header: 'Acciones',
+      render: (row) => (
+        <div className="flex gap-2">
+          <BtnPriceIcon onClick={() => setVariantToPrices(row)} title="Actualizar precio" />
+          <BtnEdit onClick={() => setVariantToEdit(row)} title="Editar variante" />
+          <BtnDeleteIcon onClick={() => setVariantToDelete(row)} title="Eliminar variante" />
+        </div>
+      )
+    });
+  }
+
   const pagination: TablePaginationConfig = {
     currentPage: page,
     pageSize: size,
@@ -74,12 +118,19 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
   };
 
   return (
-    <ComerziaModal
-      isOpen={isOpen}
+    <>
+      <ComerziaModal
+        isOpen={isOpen}
       onClose={onClose}
       title={`Variantes de ${productName}`}
       size="xl"
     >
+      <div className="mb-4 flex justify-between items-center">
+        <h3 className="font-semibold text-base-content/70">Listado de Variantes</h3>
+        {isOwner && (
+          <BtnCreate onClick={() => setIsCreatingVariant(true)} label="Añadir Variante" />
+        )}
+      </div>
       <ComerziaTable
         data={data}
         columns={columns}
@@ -87,6 +138,31 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
         pagination={pagination}
         showRowNumbers={true}
       />
-    </ComerziaModal>
+      </ComerziaModal>
+      <VariantPricesModal
+        isOpen={!!variantToPrices}
+        onClose={() => setVariantToPrices(null)}
+        variantId={variantToPrices?.id || ''}
+        variantName={variantToPrices?.name || ''}
+      />
+      <EditVariantModal
+        isOpen={!!variantToEdit || isCreatingVariant}
+        onClose={() => {
+          setVariantToEdit(null);
+          setIsCreatingVariant(false);
+        }}
+        variant={variantToEdit}
+        productId={productId}
+        onSuccess={loadData}
+      />
+      <ConfirmationModal
+        isOpen={!!variantToDelete}
+        onClose={() => setVariantToDelete(null)}
+        onConfirm={handleDelete}
+        title="Eliminar Variante"
+        message={`¿Estás seguro de que deseas eliminar la variante "${variantToDelete?.name}"? Esta acción no se puede deshacer.`}
+        isLoading={isDeleting}
+      />
+    </>
   );
 };

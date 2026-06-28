@@ -53,7 +53,9 @@ export interface PriceTypeResponse {
 
 export interface SalePriceResponse {
   id: string;
-  priceType: PriceTypeResponse;
+  priceType?: PriceTypeResponse;
+  priceTypeId?: string;
+  priceTypeName?: string;
   basePrice: number;
   salePrice: number;
   discountPrice: number;
@@ -63,7 +65,6 @@ export interface SalePriceResponse {
 
 export interface CreateInitialPriceRequest {
   priceTypeId: string;
-  basePrice: number;
   salePrice: number;
   discountPrice: number;
 }

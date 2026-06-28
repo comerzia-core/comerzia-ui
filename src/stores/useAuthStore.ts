@@ -17,6 +17,7 @@ interface AuthState {
     initializeSession: () => Promise<void>;
     fetchUserProfile: () => Promise<void>;
     fetchMenuTree: () => Promise<void>;
+    hasRole: (role: string) => boolean;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => {
@@ -76,6 +77,10 @@ export const useAuthStore = create<AuthState>((set, get) => {
             // Utilizamos el servicio que ya limpia la estructura del backend
             const tree = await getMyMenuTree(); 
             set({ menuTree: tree });
+        },
+
+        hasRole: (role: string) => {
+            return get().userProfile?.roles.includes(role) ?? false;
         }
     };
 });
