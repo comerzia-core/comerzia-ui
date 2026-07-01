@@ -27,8 +27,10 @@ import type {
 
 export const commercialService = {
   // Categories
-  getCategories: async (): Promise<CategoryResponse[]> => {
-    const response = await api.get('/tenant/categories');
+  getCategories: async (activeOnly?: boolean): Promise<CategoryResponse[]> => {
+    const params = new URLSearchParams();
+    if (activeOnly !== undefined) params.append('activeOnly', String(activeOnly));
+    const response = await api.get(`/tenant/categories${params.toString() ? `?${params.toString()}` : ''}`);
     return response.data;
   },
   
@@ -47,8 +49,10 @@ export const commercialService = {
   },
 
   // Segments
-  getSegmentsByCategory: async (categoryId: string): Promise<SegmentResponse[]> => {
-    const response = await api.get(`/tenant/segments/category/${categoryId}`);
+  getSegmentsByCategory: async (categoryId: string, activeOnly?: boolean): Promise<SegmentResponse[]> => {
+    const params = new URLSearchParams();
+    if (activeOnly !== undefined) params.append('activeOnly', String(activeOnly));
+    const response = await api.get(`/tenant/segments/category/${categoryId}${params.toString() ? `?${params.toString()}` : ''}`);
     return response.data;
   },
 
@@ -67,8 +71,10 @@ export const commercialService = {
   },
 
   // Brands
-  getBrandsBySegment: async (segmentId: string): Promise<BrandResponse[]> => {
-    const response = await api.get(`/tenant/brands/segment/${segmentId}`);
+  getBrandsBySegment: async (segmentId: string, activeOnly?: boolean): Promise<BrandResponse[]> => {
+    const params = new URLSearchParams();
+    if (activeOnly !== undefined) params.append('activeOnly', String(activeOnly));
+    const response = await api.get(`/tenant/brands/segment/${segmentId}${params.toString() ? `?${params.toString()}` : ''}`);
     return response.data;
   },
 

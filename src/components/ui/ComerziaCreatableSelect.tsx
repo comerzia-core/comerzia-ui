@@ -3,10 +3,12 @@ import { useShake } from "../../hooks/useShake";
 import { Search, Plus, MoreHorizontal, X } from "lucide-react";
 import { ConfirmationModal } from "./ConfirmationModal";
 import { BtnDelete } from "./CrudButtons";
+import { ComerziaSwitch } from "./ComerziaSwitch";
 
 export interface SelectOption {
     value: string | number;
     label: string;
+    status?: boolean;
 }
 
 interface Props {
@@ -15,8 +17,9 @@ interface Props {
     value: string | number;
     onChange: (value: string | number) => void;
     onCreate?: (inputValue: string) => Promise<string | number>;
-    onUpdate?: (id: string | number, newLabel: string) => Promise<void>;
+    onUpdate?: (id: string | number, newLabel: string, status: boolean) => Promise<void>;
     onDelete?: (id: string | number) => Promise<void>;
+    canManage?: boolean;
     entityName?: string;
     error?: string;
     placeholder?: string;
@@ -35,6 +38,7 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
     onCreate,
     onUpdate,
     onDelete,
+    canManage = true,
     entityName = "Elemento",
     error,
     placeholder = "Buscar o crear...",
@@ -52,6 +56,7 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
     // Inline Edit State
     const [editOptionId, setEditOptionId] = useState<string | number | null>(null);
     const [editOptionLabel, setEditOptionLabel] = useState("");
+    const [editOptionStatus, setEditOptionStatus] = useState(true);
     const [isDeletingId, setIsDeletingId] = useState<string | number | null>(null);
     const editInputRef = useRef<HTMLInputElement>(null);
     
@@ -119,14 +124,15 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
         e.stopPropagation();
         setEditOptionId(opt.value);
         setEditOptionLabel(opt.label);
+        setEditOptionStatus(opt.status ?? true);
     };
 
     const handleUpdate = async () => {
         if (!editOptionId || !onUpdate) return;
         const opt = options.find(o => o.value === editOptionId);
-        if (opt && opt.label !== editOptionLabel.trim() && editOptionLabel.trim() !== "") {
+        if (opt && (opt.label !== editOptionLabel.trim() || opt.status !== editOptionStatus) && editOptionLabel.trim() !== "") {
             try {
-                await onUpdate(editOptionId, editOptionLabel.trim());
+                await onUpdate(editOptionId, editOptionLabel.trim(), editOptionStatus);
                 // If it was the selected one, update local search term
                 if (value === editOptionId) setSearchTerm(editOptionLabel.trim());
             } catch (error) {
@@ -223,20 +229,28 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
                             filteredOptions.map((opt) => (
                                 <li key={opt.value} className="relative group w-full">
                                     {editOptionId === opt.value ? (
-                                        <div className="flex flex-col gap-2 p-2" onClick={e => e.stopPropagation()}>
-                                            <input 
-                                                ref={editInputRef}
-                                                autoFocus
-                                                type="text" 
-                                                className="input input-sm input-bordered w-full uppercase" 
-                                                value={editOptionLabel}
-                                                onChange={e => setEditOptionLabel(e.target.value.toUpperCase())}
-                                                onBlur={handleUpdate}
-                                                onKeyDown={e => {
-                                                    if (e.key === 'Enter') handleUpdate();
-                                                    if (e.key === 'Escape') setEditOptionId(null);
-                                                }}
-                                            />
+                                        <div className="flex flex-col gap-2 p-2 w-full" onClick={e => e.stopPropagation()}>
+                                            <div className="flex items-center gap-2 w-full">
+                                                <input 
+                                                    ref={editInputRef}
+                                                    autoFocus
+                                                    type="text" 
+                                                    className="input input-sm input-bordered flex-1 uppercase w-full" 
+                                                    value={editOptionLabel}
+                                                    onChange={e => setEditOptionLabel(e.target.value.toUpperCase())}
+                                                    onBlur={handleUpdate}
+                                                    onKeyDown={e => {
+                                                        if (e.key === 'Enter') handleUpdate();
+                                                        if (e.key === 'Escape') setEditOptionId(null);
+                                                    }}
+                                                />
+                                                <div className="flex-shrink-0" onMouseDown={(e) => { e.preventDefault(); /* Prevent blur before toggle */ }}>
+                                                    <ComerziaSwitch 
+                                                        checked={editOptionStatus} 
+                                                        onChange={() => setEditOptionStatus(!editOptionStatus)} 
+                                                    />
+                                                </div>
+                                            </div>
                                             {onDelete && (
                                                 <BtnDelete 
                                                     label={`Eliminar ${entityName}`}
@@ -253,11 +267,16 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
                                         </div>
                                     ) : (
                                         <a 
-                                            className={`flex justify-between items-center w-full ${opt.value === value ? "active" : ""}`}
+                                            className={`flex justify-between items-center w-full ${opt.value === value ? "active" : ""} ${opt.status === false ? "max-md:bg-error/10 max-md:text-error" : ""}`}
                                             onClick={() => handleSelect(opt.value)}
                                         >
-                                            <span className="flex-1 truncate">{opt.label}</span>
-                                            {onUpdate && (
+                                            <span className="flex-1 truncate flex items-center gap-2">
+                                                {opt.label}
+                                                {opt.status === false && (
+                                                    <span className="badge badge-error badge-sm hidden md:inline-flex">Inactivo</span>
+                                                )}
+                                            </span>
+                                            {onUpdate && canManage && (
                                                 <button 
                                                     className="btn btn-ghost btn-xs btn-square opacity-0 group-hover:opacity-100 transition-opacity z-10"
                                                     onClick={(e) => startEditing(e, opt)}
@@ -273,7 +292,7 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
                             <li className="disabled w-full"><a className="text-base-content/50 italic w-full">No se encontraron resultados</a></li>
                         ) : null}
 
-                        {canCreate && (
+                        {canCreate && canManage && (
                             <li className="w-full">
                                 <a 
                                     className="text-primary font-medium flex items-center gap-2 hover:bg-primary/10 w-full"

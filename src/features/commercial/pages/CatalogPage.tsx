@@ -7,9 +7,12 @@ import { BtnCreate } from '../../../components/ui/CrudButtons';
 import { GroupFamilyModal } from '../components/GroupFamilyModal';
 import { CreateFullProductModal } from '../components/CreateFullProductModal';
 import { useToast } from '../../../context/ToastContext';
+import { useAuthStore } from '../../../stores/useAuthStore';
 
 export const CatalogPage = () => {
   const { error: toastError, success: toastSuccess } = useToast();
+  const { hasRole } = useAuthStore();
+  const isOwner = hasRole('OWNER');
   
   const [categories, setCategories] = useState<CategoryResponse[]>([]);
   const [segments, setSegments] = useState<SegmentResponse[]>([]);
@@ -30,12 +33,13 @@ export const CatalogPage = () => {
 
   useEffect(() => {
     loadCategories();
-  }, []);
+  }, [isOwner]);
 
   const loadCategories = async () => {
     setIsLoadingCategories(true);
     try {
-      const res = await commercialService.getCategories();
+      const activeOnly = isOwner ? false : undefined;
+      const res = await commercialService.getCategories(activeOnly);
       setCategories(res);
     } catch (e) {
       console.error(e);
@@ -52,12 +56,13 @@ export const CatalogPage = () => {
       setSelectedBrandId('');
       setBrands([]);
     }
-  }, [selectedCategoryId]);
+  }, [selectedCategoryId, isOwner]);
 
   const loadSegments = async (categoryId: string) => {
     setIsLoadingSegments(true);
     try {
-      const res = await commercialService.getSegmentsByCategory(categoryId);
+      const activeOnly = isOwner ? false : undefined;
+      const res = await commercialService.getSegmentsByCategory(categoryId, activeOnly);
       setSegments(res);
     } catch (e) {
       console.error(e);
@@ -72,12 +77,13 @@ export const CatalogPage = () => {
       setSelectedBrandId('');
       setBrands([]);
     }
-  }, [selectedSegmentId]);
+  }, [selectedSegmentId, isOwner]);
 
   const loadBrands = async (segmentId: string) => {
     setIsLoadingBrands(true);
     try {
-      const res = await commercialService.getBrandsBySegment(segmentId);
+      const activeOnly = isOwner ? false : undefined;
+      const res = await commercialService.getBrandsBySegment(segmentId, activeOnly);
       setBrands(res);
     } catch (e) {
       console.error(e);
@@ -107,7 +113,8 @@ export const CatalogPage = () => {
           <ComerziaCreatableSelect
             label="1. Categoría"
             entityName="Categoría"
-            options={categories.map(c => ({ value: c.id, label: c.name }))}
+            canManage={isOwner}
+            options={categories.map(c => ({ value: c.id, label: c.name, status: c.status }))}
             value={selectedCategoryId}
             onChange={(val) => {
               setSelectedCategoryId(val as string);
@@ -127,11 +134,10 @@ export const CatalogPage = () => {
                 throw e;
               }
             }}
-            onUpdate={async (id, newLabel) => {
+            onUpdate={async (id, newLabel, status) => {
               try {
-                const existing = categories.find(c => c.id === id);
-                await commercialService.updateCategory(id as string, newLabel, existing?.status ?? true);
-                setCategories(prev => prev.map(c => c.id === id ? { ...c, name: newLabel } : c));
+                await commercialService.updateCategory(id as string, newLabel, status);
+                setCategories(prev => prev.map(c => c.id === id ? { ...c, name: newLabel, status } : c));
               } catch (e: any) {
                 toastError(e.response?.data?.message || "Error al actualizar la categoría");
                 throw e;
@@ -153,7 +159,8 @@ export const CatalogPage = () => {
           <ComerziaCreatableSelect
             label="2. Rubro"
             entityName="Rubro"
-            options={segments.map(s => ({ value: s.id, label: s.name }))}
+            canManage={isOwner}
+            options={segments.map(s => ({ value: s.id, label: s.name, status: s.status }))}
             value={selectedSegmentId}
             onChange={(val) => {
               setSelectedSegmentId(val as string);
@@ -172,11 +179,11 @@ export const CatalogPage = () => {
                 throw e;
               }
             }}
-            onUpdate={async (id, newLabel) => {
+            onUpdate={async (id, newLabel, status) => {
               try {
                 const existing = segments.find(s => s.id === id);
-                await commercialService.updateSegment(id as string, newLabel, existing?.status ?? true, existing?.category?.id ?? selectedCategoryId);
-                setSegments(prev => prev.map(s => s.id === id ? { ...s, name: newLabel } : s));
+                await commercialService.updateSegment(id as string, newLabel, status, existing?.category?.id ?? selectedCategoryId);
+                setSegments(prev => prev.map(s => s.id === id ? { ...s, name: newLabel, status } : s));
               } catch (e: any) {
                 toastError(e.response?.data?.message || "Error al actualizar rubro");
                 throw e;
@@ -199,7 +206,8 @@ export const CatalogPage = () => {
           <ComerziaCreatableSelect
             label="3. Marca"
             entityName="Marca"
-            options={brands.map(b => ({ value: b.id, label: b.name }))}
+            canManage={isOwner}
+            options={brands.map(b => ({ value: b.id, label: b.name, status: b.status }))}
             value={selectedBrandId}
             onChange={(val) => setSelectedBrandId(val as string)}
             onCreate={async (name) => {
@@ -213,11 +221,11 @@ export const CatalogPage = () => {
                 throw e;
               }
             }}
-            onUpdate={async (id, newLabel) => {
+            onUpdate={async (id, newLabel, status) => {
               try {
                 const existing = brands.find(b => b.id === id);
-                await commercialService.updateBrand(id as string, newLabel, existing?.status ?? true, existing?.segment?.id ?? selectedSegmentId);
-                setBrands(prev => prev.map(b => b.id === id ? { ...b, name: newLabel } : b));
+                await commercialService.updateBrand(id as string, newLabel, status, existing?.segment?.id ?? selectedSegmentId);
+                setBrands(prev => prev.map(b => b.id === id ? { ...b, name: newLabel, status } : b));
               } catch (e: any) {
                 toastError(e.response?.data?.message || "Error al actualizar marca");
                 throw e;
