@@ -46,7 +46,8 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const res = await commercialService.getVariantsByProduct(productId, page, size);
+      const activeOnly = isOwner ? false : undefined;
+      const res = await commercialService.getVariantsByProduct(productId, page, size, activeOnly);
       setData(res.content);
       setTotalElements(res.totalElements);
     } catch (e) {

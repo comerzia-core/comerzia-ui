@@ -104,8 +104,11 @@ export const commercialService = {
     await api.delete(`/tenant/products/${id}`);
   },
 
-  getVariantsByProduct: async (productId: string, page = 0, size = 20): Promise<PageProductVariantResponse> => {
+  getVariantsByProduct: async (productId: string, page = 0, size = 20, activeOnly?: boolean): Promise<PageProductVariantResponse> => {
     const params = new URLSearchParams({ page: String(page), size: String(size) });
+    if (activeOnly !== undefined) {
+      params.append('activeOnly', String(activeOnly));
+    }
     const response = await api.get(`/tenant/product-variants/product/${productId}?${params.toString()}`);
     return response.data;
   },
