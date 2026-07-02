@@ -142,6 +142,9 @@ export interface StockEntryResponse {
   note?: string;
   status: boolean;
   variantId: string;
+  branchId?: string;
+  branchName?: string;
+  currencyCode?: string;
 }
 
 export interface CreateStockEntryRequest {
@@ -158,6 +161,7 @@ export interface StockAdjustmentResponse {
   totalCost: number;
   adjustmentType: number;
   observation: string;
+  currencyCode?: string;
   date: string;
   stockId: string;
   inventoryId?: string;

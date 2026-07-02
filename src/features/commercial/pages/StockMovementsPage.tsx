@@ -11,6 +11,42 @@ import { ComerziaTextarea } from '../../../components/ui/ComerziaTextarea';
 import { BtnSave, BtnCreate } from '../../../components/ui/CrudButtons';
 import { ComerziaTable, type Column, type TablePaginationConfig } from '../../../components/ui/ComerziaTable';
 import { CreateFullProductModal } from '../components/CreateFullProductModal';
+import { ComerziaSelect } from '../../../components/ui/ComerziaSelect';
+import { useAuthStore } from '../../../stores/useAuthStore';
+import { branchService } from '../../organization/services/branchService';
+import type { BranchResponse } from '../../organization/types/branch';
+
+const CurrencyCell = ({ amount, currencyCode = 'USD' }: { amount: number, currencyCode?: string }) => {
+  let currencySymbol = currencyCode;
+  let formattedAmount = amount.toFixed(2).replace(/\\B(?=(\\d{3})+(?!\\d))/g, ",");
+  
+  try {
+    const formatter = new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currencyCode,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+    const parts = formatter.formatToParts(amount);
+    const currPart = parts.find(p => p.type === 'currency');
+    if (currPart) {
+      currencySymbol = currPart.value;
+      formattedAmount = parts
+        .filter(p => p.type !== 'currency' && (p.type !== 'literal' || p.value.trim() !== ''))
+        .map(p => p.value)
+        .join('');
+    }
+  } catch (e) {
+    // Fallback si currencyCode es inválido
+  }
+
+  return (
+    <div className="flex items-center justify-between min-w-[90px] w-full">
+      <span className="text-base-content/50 mr-3">{currencySymbol}</span>
+      <span className="font-medium text-right flex-1">{formattedAmount}</span>
+    </div>
+  );
+};
 
 export const StockMovementsPage = () => {
   const [barcode, setBarcode] = useState('');
@@ -25,14 +61,21 @@ export const StockMovementsPage = () => {
   const [unitCost, setUnitCost] = useState<number | ''>('');
   const [note, setNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedBranchId, setSelectedBranchId] = useState('');
+  const [branches, setBranches] = useState<BranchResponse[]>([]);
+
+  const { hasRole, userProfile } = useAuthStore();
+  const isOwner = hasRole('OWNER');
+  const currencyCode = userProfile?.companySettings?.currencyCode || 'USD';
 
   // Tabs and Kardex State
   const [activeTab, setActiveTab] = useState<'entries' | 'adjustments'>('entries');
   const [kardexData, setKardexData] = useState<any[]>([]);
   const [isLoadingKardex, setIsLoadingKardex] = useState(false);
   const [page, setPage] = useState(0);
-  const [size, setSize] = useState(20);
+  const [size, setSize] = useState(5);
   const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
@@ -41,6 +84,12 @@ export const StockMovementsPage = () => {
       inputRef.current.focus();
     }
   }, []);
+
+  useEffect(() => {
+    if (isOwner) {
+      branchService.getBranches(0, 100).then(res => setBranches(res.content));
+    }
+  }, [isOwner]);
 
   const scannedVariant = productData?.variants.find(v => v.isScannedVariant) || productData?.variants[0];
 
@@ -58,10 +107,12 @@ export const StockMovementsPage = () => {
         const res = await commercialService.getStockEntries(scannedVariant.variantId, page, size);
         setKardexData(res.content);
         setTotalElements(res.totalElements);
+        setTotalPages(res.totalPages);
       } else {
         const res = await commercialService.getStockAdjustments(scannedVariant.variantId, page, size);
         setKardexData(res.content);
         setTotalElements(res.totalElements);
+        setTotalPages(res.totalPages);
       }
     } catch (e) {
       console.error(e);
@@ -86,7 +137,11 @@ export const StockMovementsPage = () => {
         const res = await commercialService.scanBarcode(barcode.trim());
         setProductData(res);
       } catch (err: any) {
-        toastError(err.response?.data?.message || 'Producto no encontrado');
+        if (err.response?.status === 404) {
+          toastError("No se encontró el producto escaneado");
+        } else {
+          toastError(err.response?.data?.message || 'Producto no encontrado');
+        }
         setShakeKey(prev => prev + 1);
       } finally {
         setIsLoadingScan(false);
@@ -99,8 +154,8 @@ export const StockMovementsPage = () => {
   };
 
   const handleSubmitEntry = async () => {
-    if (!scannedVariant || !quantityIn || !unitCost) {
-      toastError("Completa la cantidad y el costo unitario.");
+    if (!scannedVariant || !quantityIn || (isOwner && unitCost === '')) {
+      toastError("Completa todos los campos obligatorios.");
       return;
     }
     setIsSubmitting(true);
@@ -108,9 +163,9 @@ export const StockMovementsPage = () => {
       await commercialService.createStockEntry({
         variantId: scannedVariant.variantId,
         quantityIn: Number(quantityIn),
-        unitCost: Number(unitCost),
+        unitCost: isOwner ? Number(unitCost) : 0,
         note: note || undefined
-      });
+      }, isOwner ? (selectedBranchId || undefined) : undefined);
       toastSuccess("Entrada registrada exitosamente.");
       setQuantityIn('');
       setUnitCost('');
@@ -124,39 +179,43 @@ export const StockMovementsPage = () => {
   };
 
   const entryColumns: Column<StockEntryResponse>[] = [
-    { header: 'Fecha', render: (row) => new Date(row.entryDate).toLocaleString() },
+    { header: 'Fecha', render: (row: StockEntryResponse) => new Date(row.entryDate).toLocaleString() },
+    isOwner && { header: 'Sucursal', accessorKey: 'branchName' },
     { header: 'Cant. Inicial', accessorKey: 'quantityIn' },
     { header: 'Disponible', accessorKey: 'availableQuantity' },
-    { header: 'Costo Unit.', render: (row) => `$${row.unitCost.toFixed(2)}` },
-    { header: 'Costo Total', render: (row) => `$${row.totalCost.toFixed(2)}` },
+    isOwner && { header: 'Costo Unit.', render: (row: StockEntryResponse) => <CurrencyCell amount={row.unitCost} currencyCode={currencyCode} /> },
+    isOwner && { header: 'Costo Total', render: (row: StockEntryResponse) => <CurrencyCell amount={row.totalCost} currencyCode={currencyCode} /> },
     { header: 'Nota', accessorKey: 'note' },
-    { header: 'Estado', render: (row) => (
+    { header: 'Estado', render: (row: StockEntryResponse) => (
       <span className={`badge badge-sm ${row.status ? 'badge-success' : 'badge-error'}`}>
         {row.status ? 'Activo' : 'Agotado/Anulado'}
       </span>
     )}
-  ];
+  ].filter(Boolean) as Column<StockEntryResponse>[];
 
   const adjustmentColumns: Column<StockAdjustmentResponse>[] = [
-    { header: 'Fecha', render: (row) => new Date(row.date).toLocaleString() },
-    { header: 'Tipo', render: (row) => row.adjustmentType === 1 ? 'Merma' : 'Sobrante' },
+    { header: 'Fecha', render: (row: StockAdjustmentResponse) => new Date(row.date).toLocaleString() },
+    { header: 'Tipo', render: (row: StockAdjustmentResponse) => row.adjustmentType === 1 ? 'Merma' : 'Sobrante' },
     { header: 'Cantidad', accessorKey: 'quantity' },
-    { header: 'Costo Unit.', render: (row) => `$${row.unitCost.toFixed(2)}` },
-    { header: 'Costo Total', render: (row) => `$${row.totalCost.toFixed(2)}` },
+    isOwner && { header: 'Costo Unit.', render: (row: StockAdjustmentResponse) => <CurrencyCell amount={row.unitCost} currencyCode={currencyCode} /> },
+    isOwner && { header: 'Costo Total', render: (row: StockAdjustmentResponse) => <CurrencyCell amount={row.totalCost} currencyCode={currencyCode} /> },
     { header: 'Observación', accessorKey: 'observation' },
-  ];
+  ].filter(Boolean) as Column<StockAdjustmentResponse>[];
 
   const pagination: TablePaginationConfig = {
     currentPage: page,
     pageSize: size,
     totalElements,
-    totalPages: Math.ceil(totalElements / size),
+    totalPages: totalPages,
     onPageChange: setPage,
-    onPageSizeChange: setSize
+    onPageSizeChange: (newSize) => {
+      setSize(newSize);
+      setPage(0);
+    }
   };
 
   return (
-    <div className="space-y-6 animate-fade-in max-w-7xl mx-auto">
+    <div className="space-y-6 animate-fade-in">
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold text-base-content tracking-tight">Kardex y Movimientos</h1>
@@ -212,18 +271,28 @@ export const StockMovementsPage = () => {
                 onChange={(e) => setQuantityIn(e.target.value ? Number(e.target.value) : '')}
                 isRequired
               />
-              <ComerziaInput
-                label="Costo Unitario de Entrada"
-                type="number"
-                value={unitCost}
-                onChange={(e) => setUnitCost(e.target.value ? Number(e.target.value) : '')}
-                isRequired
-              />
+              {isOwner && (
+                <ComerziaInput
+                  label="Costo Unitario de Entrada"
+                  type="number"
+                  value={unitCost}
+                  onChange={(e) => setUnitCost(e.target.value ? Number(e.target.value) : '')}
+                  isRequired
+                />
+              )}
               <ComerziaTextarea
                 label="Nota (Opcional)"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
               />
+              {isOwner && (
+                <ComerziaSelect
+                  label="Sucursal/Tienda (Opcional)"
+                  options={branches.map(b => ({ value: b.id, label: b.name }))}
+                  value={selectedBranchId}
+                  onChange={(e) => setSelectedBranchId(e.target.value)}
+                />
+              )}
               <BtnSave 
                 className="w-full mt-4" 
                 label="Guardar Entrada" 
@@ -258,6 +327,7 @@ export const StockMovementsPage = () => {
               columns={(activeTab === 'entries' ? entryColumns : adjustmentColumns) as any}
               isLoading={isLoadingKardex}
               pagination={pagination}
+              showRowNumbers={true}
             />
           </div>
         </div>

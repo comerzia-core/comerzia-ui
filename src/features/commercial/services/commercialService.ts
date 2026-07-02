@@ -166,8 +166,10 @@ export const commercialService = {
     return response.data;
   },
 
-  createStockEntry: async (data: CreateStockEntryRequest): Promise<void> => {
-    await api.post('/tenant/stock/entries', data);
+  createStockEntry: async (data: CreateStockEntryRequest, branchId?: string): Promise<void> => {
+    const params = new URLSearchParams();
+    if (branchId) params.append('branchId', branchId);
+    await api.post(`/tenant/stock/entries${params.toString() ? `?${params.toString()}` : ''}`, data);
   },
 
   // Stock Adjustments
