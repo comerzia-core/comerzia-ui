@@ -7,16 +7,18 @@ import { BtnCancel, BtnSave } from '../../../components/ui/CrudButtons';
 import { commercialService } from '../services/commercialService';
 import type { ProductVariantResponse } from '../types/commercial';
 import { useToast } from '../../../context/ToastContext';
+import { generateSku } from '../../../utils/skuGenerator';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
   productId: string;
+  productName: string;
   variant: ProductVariantResponse | null;
 }
 
-export const EditVariantModal = ({ isOpen, onClose, onSuccess, productId, variant }: Props) => {
+export const EditVariantModal = ({ isOpen, onClose, onSuccess, productId, productName, variant }: Props) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [sku, setSku] = useState('');
@@ -93,7 +95,17 @@ export const EditVariantModal = ({ isOpen, onClose, onSuccess, productId, varian
         <ComerziaInput
           label="Nombre/Atributo (Ej: Azul - XL)"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          uppercase
+          onChange={(e) => {
+            const val = e.target.value.toUpperCase();
+            setName(val);
+            if (!variant) {
+              const prevAutoSku = generateSku(productName, name);
+              if (!sku || sku === prevAutoSku) {
+                setSku(generateSku(productName, val));
+              }
+            }
+          }}
           error={!name && shakeKey > 0 ? "Requerido" : ""}
           shakeKey={shakeKey}
           isRequired
@@ -101,10 +113,12 @@ export const EditVariantModal = ({ isOpen, onClose, onSuccess, productId, varian
         <ComerziaInput
           label="SKU Interno"
           value={sku}
-          onChange={(e) => setSku(e.target.value)}
+          uppercase
+          onChange={(e) => setSku(e.target.value.toUpperCase())}
           error={!sku && shakeKey > 0 ? "Requerido" : ""}
           shakeKey={shakeKey}
           isRequired
+          disabled={!!variant}
         />
         <ComerziaInput
           label="Código de Barras"
@@ -113,6 +127,7 @@ export const EditVariantModal = ({ isOpen, onClose, onSuccess, productId, varian
           error={!barCode && shakeKey > 0 ? "Requerido" : ""}
           shakeKey={shakeKey}
           isRequired
+          disabled={!!variant}
         />
         <ComerziaInput
           label="URL de Imagen (Opcional)"

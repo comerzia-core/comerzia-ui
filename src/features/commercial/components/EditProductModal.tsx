@@ -73,7 +73,8 @@ export const EditProductModal = ({ isOpen, onClose, onSuccess, product }: Props)
         <ComerziaInput
           label="Nombre del Producto"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          uppercase
+          onChange={(e) => setName(e.target.value.toUpperCase())}
           error={!name && shakeKey > 0 ? "Requerido" : ""}
           shakeKey={shakeKey}
           isRequired

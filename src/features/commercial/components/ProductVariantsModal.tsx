@@ -179,6 +179,7 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
         }}
         variant={variantToEdit}
         productId={productId}
+        productName={productName}
         onSuccess={loadData}
       />
       <ConfirmationModal

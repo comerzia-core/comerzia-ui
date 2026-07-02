@@ -14,6 +14,7 @@ import type {
   SegmentResponse
 } from '../types/commercial';
 import { useToast } from '../../../context/ToastContext';
+import { generateSku } from '../../../utils/skuGenerator';
 
 interface Props {
   isOpen: boolean;
@@ -198,7 +199,19 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
             <ComerziaInput
               label="Nombre del Producto"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              uppercase
+              onChange={(e) => {
+                const newName = e.target.value.toUpperCase();
+                const oldName = name;
+                setName(newName);
+                setVariants(prev => prev.map(v => {
+                  const prevAutoSku = generateSku(oldName, v.name);
+                  if (!v.sku || v.sku === prevAutoSku) {
+                    return { ...v, sku: generateSku(newName, v.name) };
+                  }
+                  return v;
+                }));
+              }}
               error={!name && shakeKey > 0 ? "Requerido" : ""}
               shakeKey={shakeKey}
               isRequired
@@ -275,14 +288,26 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
                   <ComerziaInput
                     label="Nombre/Atributo (Ej: Azul - XL)"
                     value={variant.name}
-                    onChange={(e) => updateVariant(index, 'name', e.target.value)}
+                    uppercase
+                    onChange={(e) => {
+                      const val = e.target.value.toUpperCase();
+                      const prevAutoSku = generateSku(name, variant.name);
+                      
+                      const updated = [...variants];
+                      updated[index].name = val;
+                      if (!variant.sku || variant.sku === prevAutoSku) {
+                        updated[index].sku = generateSku(name, val);
+                      }
+                      setVariants(updated);
+                    }}
                     error={!variant.name && shakeKey > 0 ? "Requerido" : ""}
                     shakeKey={shakeKey}
                   />
                   <ComerziaInput
                     label="SKU Interno"
                     value={variant.sku}
-                    onChange={(e) => updateVariant(index, 'sku', e.target.value)}
+                    uppercase
+                    onChange={(e) => updateVariant(index, 'sku', e.target.value.toUpperCase())}
                     error={!variant.sku && shakeKey > 0 ? "Requerido" : ""}
                     shakeKey={shakeKey}
                   />
