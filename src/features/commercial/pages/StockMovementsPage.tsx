@@ -12,9 +12,13 @@ import { BtnSave, BtnCreate } from '../../../components/ui/CrudButtons';
 import { ComerziaTable, type Column, type TablePaginationConfig } from '../../../components/ui/ComerziaTable';
 import { CreateFullProductModal } from '../components/CreateFullProductModal';
 import { ComerziaSelect } from '../../../components/ui/ComerziaSelect';
+import { ComerziaContextMenu, ContextMenuItem } from '../../../components/ui/ComerziaContextMenu';
+import { Settings2, X, Barcode } from 'lucide-react';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { branchService } from '../../organization/services/branchService';
 import type { BranchResponse } from '../../organization/types/branch';
+import { DICTIONARIES } from '../../../config/dictionaries';
+import { useLoadDictionaries } from '../../../hooks/useLoadDictionaries';
 
 const CurrencyCell = ({ amount, currencyCode = 'USD' }: { amount: number, currencyCode?: string }) => {
   let currencySymbol = currencyCode;
@@ -76,6 +80,23 @@ export const StockMovementsPage = () => {
   const [size, setSize] = useState(5);
   const [totalElements, setTotalElements] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+
+  // Adjustment Form State
+  const [adjustmentTarget, setAdjustmentTarget] = useState<StockEntryResponse | null>(null);
+  const [adjustmentQty, setAdjustmentQty] = useState<number | ''>('');
+  const [adjustmentType, setAdjustmentType] = useState<number | ''>('');
+  const [adjustmentObs, setAdjustmentObs] = useState('');
+  const [isSubmittingAdjustment, setIsSubmittingAdjustment] = useState(false);
+
+  const [contextMenu, setContextMenu] = useState<{ isOpen: boolean; x: number; y: number; row: StockEntryResponse | null }>({
+    isOpen: false,
+    x: 0,
+    y: 0,
+    row: null
+  });
+
+  const { options } = useLoadDictionaries([DICTIONARIES.ADJUSTMENT_TYPE]);
+  const adjustmentTypeOptions = options[DICTIONARIES.ADJUSTMENT_TYPE] || [];
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
@@ -178,6 +199,29 @@ export const StockMovementsPage = () => {
     }
   };
 
+  const handleSubmitAdjustment = async () => {
+    if (!adjustmentTarget || !adjustmentQty || !adjustmentType || !adjustmentObs) {
+      toastError("Completa todos los campos obligatorios.");
+      return;
+    }
+    setIsSubmittingAdjustment(true);
+    try {
+      await commercialService.createManualAdjustment({
+        stockId: adjustmentTarget.id,
+        quantity: Number(adjustmentQty),
+        adjustmentType: Number(adjustmentType),
+        observation: adjustmentObs
+      });
+      toastSuccess("Ajuste registrado exitosamente.");
+      setAdjustmentTarget(null);
+      loadKardex();
+    } catch (e: any) {
+      toastError(e.response?.data?.message || "Error al registrar el ajuste.");
+    } finally {
+      setIsSubmittingAdjustment(false);
+    }
+  };
+
   const entryColumns: Column<StockEntryResponse>[] = [
     { header: 'Fecha', render: (row: StockEntryResponse) => new Date(row.entryDate).toLocaleString() },
     isOwner && { header: 'Sucursal', accessorKey: 'branchName' },
@@ -195,7 +239,7 @@ export const StockMovementsPage = () => {
 
   const adjustmentColumns: Column<StockAdjustmentResponse>[] = [
     { header: 'Fecha', render: (row: StockAdjustmentResponse) => new Date(row.date).toLocaleString() },
-    { header: 'Tipo', render: (row: StockAdjustmentResponse) => row.adjustmentType === 1 ? 'Merma' : 'Sobrante' },
+    { header: 'Tipo', render: (row: StockAdjustmentResponse) => adjustmentTypeOptions.find(opt => Number(opt.value) === row.adjustmentType)?.label || row.adjustmentType },
     { header: 'Cantidad', accessorKey: 'quantity' },
     isOwner && { header: 'Costo Unit.', render: (row: StockAdjustmentResponse) => <CurrencyCell amount={row.unitCost} currencyCode={currencyCode} /> },
     isOwner && { header: 'Costo Total', render: (row: StockAdjustmentResponse) => <CurrencyCell amount={row.totalCost} currencyCode={currencyCode} /> },
@@ -231,9 +275,7 @@ export const StockMovementsPage = () => {
         <h2 className="text-lg font-bold mb-4">Escanear Producto</h2>
         <div className={`relative w-full max-w-md ${shakeKey > 0 ? 'animate-shake' : ''}`} key={shakeKey}>
           <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-base-content/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
+            <Barcode className="h-5 w-5 text-base-content/40" strokeWidth={1.5} />
           </div>
           <input 
             ref={inputRef}
@@ -255,51 +297,107 @@ export const StockMovementsPage = () => {
 
       {scannedVariant && productData && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-slide-up">
-          {/* Formulario de Entrada Rápida */}
-          <div className="lg:col-span-1 bg-base-100 p-6 rounded-2xl shadow-sm border border-base-200">
-            <h2 className="text-xl font-bold mb-2 text-primary">Registrar Entrada</h2>
-            <p className="text-sm text-base-content/60 mb-6">
-              Producto: <strong>{productData.productName}</strong><br />
-              Variante: <strong>{scannedVariant.variantName}</strong>
-            </p>
+          {/* Formulario Lateral */}
+          <div className="lg:col-span-1 bg-base-100 p-6 rounded-2xl shadow-sm border border-base-200 relative">
+            {adjustmentTarget ? (
+              <>
+                <div className="flex justify-between items-start mb-2">
+                  <h2 className="text-xl font-bold text-primary">Ajuste Manual Stock</h2>
+                  <button onClick={() => setAdjustmentTarget(null)} className="btn btn-ghost btn-xs btn-circle"><X size={16}/></button>
+                </div>
+                <div className="text-sm text-base-content/60 mb-6 space-y-1">
+                  <p>Producto: <strong>{productData.productName}</strong></p>
+                  <p>Variante: <strong>{scannedVariant.variantName}</strong></p>
+                  <p>Fecha Stock: <strong>{new Date(adjustmentTarget.entryDate).toLocaleString()}</strong></p>
+                  {isOwner && <p>Sucursal: <strong>{adjustmentTarget.branchName || 'Principal'}</strong></p>}
+                  <p>Cant. Inicial: <strong>{adjustmentTarget.quantityIn}</strong></p>
+                  <p>Cant. Disponible: <strong>{adjustmentTarget.availableQuantity}</strong></p>
+                </div>
 
-            <div className="space-y-4">
-              <ComerziaInput
-                label="Cantidad a Ingresar"
-                type="number"
-                value={quantityIn}
-                onChange={(e) => setQuantityIn(e.target.value ? Number(e.target.value) : '')}
-                isRequired
-              />
-              {isOwner && (
-                <ComerziaInput
-                  label="Costo Unitario de Entrada"
-                  type="number"
-                  value={unitCost}
-                  onChange={(e) => setUnitCost(e.target.value ? Number(e.target.value) : '')}
-                  isRequired
-                />
-              )}
-              <ComerziaTextarea
-                label="Nota (Opcional)"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-              />
-              {isOwner && (
-                <ComerziaSelect
-                  label="Sucursal/Tienda (Opcional)"
-                  options={branches.map(b => ({ value: b.id, label: b.name }))}
-                  value={selectedBranchId}
-                  onChange={(e) => setSelectedBranchId(e.target.value)}
-                />
-              )}
-              <BtnSave 
-                className="w-full mt-4" 
-                label="Guardar Entrada" 
-                onClick={handleSubmitEntry} 
-                isLoading={isSubmitting} 
-              />
-            </div>
+                <div className="space-y-4">
+                  <ComerziaSelect
+                    label="Tipo de Ajuste"
+                    options={adjustmentTypeOptions}
+                    value={adjustmentType}
+                    onChange={(e) => setAdjustmentType(e.target.value ? Number(e.target.value) : '')}
+                    isRequired
+                  />
+                  <ComerziaInput
+                    label="Cantidad a Ajustar"
+                    type="number"
+                    value={adjustmentQty}
+                    onChange={(e) => setAdjustmentQty(e.target.value ? Number(e.target.value) : '')}
+                    isRequired
+                  />
+                  {adjustmentQty !== '' && (
+                    <div className="text-sm text-base-content/70 bg-base-200 p-3 rounded-lg flex justify-between">
+                      <span>Nueva cant. disp. estimada:</span>
+                      <span className="font-bold text-primary">
+                        {adjustmentTarget.availableQuantity - Number(adjustmentQty)}
+                      </span>
+                    </div>
+                  )}
+                  <ComerziaTextarea
+                    label="Observación"
+                    value={adjustmentObs}
+                    onChange={(e) => setAdjustmentObs(e.target.value)}
+                    isRequired
+                  />
+                  <BtnSave 
+                    className="w-full mt-4" 
+                    label="Guardar Ajuste" 
+                    onClick={handleSubmitAdjustment} 
+                    isLoading={isSubmittingAdjustment} 
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 className="text-xl font-bold mb-2 text-primary">Registrar Entrada</h2>
+                <p className="text-sm text-base-content/60 mb-6">
+                  Producto: <strong>{productData.productName}</strong><br />
+                  Variante: <strong>{scannedVariant.variantName}</strong>
+                </p>
+
+                <div className="space-y-4">
+                  <ComerziaInput
+                    label="Cantidad a Ingresar"
+                    type="number"
+                    value={quantityIn}
+                    onChange={(e) => setQuantityIn(e.target.value ? Number(e.target.value) : '')}
+                    isRequired
+                  />
+                  {isOwner && (
+                    <ComerziaInput
+                      label="Costo Unitario de Entrada"
+                      type="number"
+                      value={unitCost}
+                      onChange={(e) => setUnitCost(e.target.value ? Number(e.target.value) : '')}
+                      isRequired
+                    />
+                  )}
+                  <ComerziaTextarea
+                    label="Nota (Opcional)"
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                  />
+                  {isOwner && (
+                    <ComerziaSelect
+                      label="Sucursal/Tienda (Opcional)"
+                      options={branches.map(b => ({ value: b.id, label: b.name }))}
+                      value={selectedBranchId}
+                      onChange={(e) => setSelectedBranchId(e.target.value)}
+                    />
+                  )}
+                  <BtnSave 
+                    className="w-full mt-4" 
+                    label="Guardar Entrada" 
+                    onClick={handleSubmitEntry} 
+                    isLoading={isSubmitting} 
+                  />
+                </div>
+              </>
+            )}
           </div>
 
           {/* Kardex Tabs */}
@@ -328,10 +426,35 @@ export const StockMovementsPage = () => {
               isLoading={isLoadingKardex}
               pagination={pagination}
               showRowNumbers={true}
+              onRowContextMenu={(e, row) => {
+                if (activeTab === 'entries' && (isOwner || userProfile?.permissions?.includes('COM_STOCK_ADJUSTMENT_MANAGE'))) {
+                  e.preventDefault();
+                  setContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, row: row as StockEntryResponse });
+                }
+              }}
             />
           </div>
         </div>
       )}
+
+      <ComerziaContextMenu
+        isOpen={contextMenu.isOpen}
+        x={contextMenu.x}
+        y={contextMenu.y}
+        onClose={() => setContextMenu(prev => ({ ...prev, isOpen: false }))}
+      >
+        <ContextMenuItem
+          icon={Settings2}
+          label="Crear Ajuste Manual"
+          onClick={() => {
+            setAdjustmentTarget(contextMenu.row);
+            setAdjustmentQty('');
+            setAdjustmentType('');
+            setAdjustmentObs('');
+            setContextMenu(prev => ({ ...prev, isOpen: false }));
+          }}
+        />
+      </ComerziaContextMenu>
 
       <CreateFullProductModal
         isOpen={isCreateModalOpen}

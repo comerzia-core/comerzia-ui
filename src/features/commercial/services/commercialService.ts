@@ -22,7 +22,8 @@ import type {
   PageProductVariantResponse,
   PageInventoryResponse,
   PageSalePriceResponse,
-  ChangePriceRequest
+  ChangePriceRequest,
+  CreateManualAdjustmentRequest
 } from '../types/commercial';
 
 export const commercialService = {
@@ -173,10 +174,15 @@ export const commercialService = {
   },
 
   // Stock Adjustments
-  getStockAdjustments: async (variantId: string, page = 0, size = 20): Promise<PageStockAdjustmentResponse> => {
-    const params = new URLSearchParams({ variantId, page: String(page), size: String(size) });
+  getStockAdjustments: async (variantId: string | undefined, page = 0, size = 20): Promise<PageStockAdjustmentResponse> => {
+    const params = new URLSearchParams({ page: String(page), size: String(size) });
+    if (variantId) params.append('variantId', variantId);
     const response = await api.get(`/tenant/stock-adjustments?${params.toString()}`);
     return response.data;
+  },
+
+  createManualAdjustment: async (data: CreateManualAdjustmentRequest): Promise<void> => {
+    await api.post('/tenant/stock-adjustments', data);
   },
 
   // Sale Prices

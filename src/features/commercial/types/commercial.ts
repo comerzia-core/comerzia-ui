@@ -154,6 +154,13 @@ export interface CreateStockEntryRequest {
   note?: string;
 }
 
+export interface CreateManualAdjustmentRequest {
+  stockId: string;
+  quantity: number;
+  adjustmentType: number;
+  observation: string;
+}
+
 export interface StockAdjustmentResponse {
   id: string;
   quantity: number;
