@@ -6,7 +6,7 @@ import { useToast } from '../../../context/ToastContext';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { ComerziaBadge } from '../../../components/ui/ComerziaBadge';
 import { ComerziaSelectableCard } from '../../../components/ui/ComerziaSelectableCard';
-import { ImageOff, Store, Tag, Copy, ChevronRight, Layers, Barcode } from 'lucide-react';
+import { ImageOff, Store, Tag, Layers, Barcode } from 'lucide-react';
 
 export const StockQueryPage = () => {
   const [searchParams] = useSearchParams();
@@ -181,14 +181,14 @@ export const StockQueryPage = () => {
                       <p className="text-xs text-base-content/50 mt-1">{price.equivalenceFactor} Unidades</p>
                     </div>
                     <div className="flex items-center gap-2">
+                      {price.discountPrice != null && price.discountPrice !== price.salePrice && (
+                        <div className="text-sm font-medium text-error font-mono px-2 py-1 bg-error/10 rounded-md">
+                          {currencyCode} {price.discountPrice.toFixed(2)}
+                        </div>
+                      )}
                       <div className="text-2xl font-bold text-success font-mono">
                         {currencyCode} {price.salePrice.toFixed(2)}
                       </div>
-                      {price.discountPrice != null && price.discountPrice !== price.salePrice && (
-                        <div className="text-sm font-medium text-error font-mono px-2 py-1 bg-error/10 rounded-md">
-                          Desc: {currencyCode} {price.discountPrice.toFixed(2)}
-                        </div>
-                      )}
                     </div>
                   </div>
                 ))}
