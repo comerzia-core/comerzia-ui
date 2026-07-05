@@ -1,6 +1,6 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Edit, Trash2, DollarSign, type LucideIcon } from "lucide-react";
+import { Edit, Trash2, DollarSign, ExternalLink, type LucideIcon } from "lucide-react";
 
 export interface ComerziaContextMenuProps {
   isOpen: boolean;
@@ -70,6 +70,7 @@ export interface ContextMenuItemProps {
   onClick: () => void;
   variant?: "default" | "error";
   disabled?: boolean;
+  isExternalLink?: boolean;
 }
 
 export const ContextMenuItem = ({
@@ -78,8 +79,9 @@ export const ContextMenuItem = ({
   onClick,
   variant = "default",
   disabled = false,
+  isExternalLink = false,
 }: ContextMenuItemProps) => {
-  const baseClasses = "flex items-center gap-2 px-3 py-2 transition-colors rounded-md";
+  const baseClasses = "flex items-center justify-between px-3 py-2 transition-colors rounded-md w-full";
   const variantClasses = variant === "error" 
     ? "text-error hover:bg-error hover:text-error-content" 
     : "hover:bg-base-200 hover:text-primary";
@@ -93,8 +95,11 @@ export const ContextMenuItem = ({
         onClick={onClick}
         disabled={disabled}
       >
-        {Icon && <Icon size={16} />}
-        {label}
+        <div className="flex items-center gap-2">
+          {Icon && <Icon size={16} />}
+          {label}
+        </div>
+        {isExternalLink && <ExternalLink size={14} className="opacity-50" />}
       </button>
     </li>
   );

@@ -10,7 +10,7 @@ import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
 import { BtnCreate } from '../../../components/ui/CrudButtons';
 import { useToast } from '../../../context/ToastContext';
 import { ComerziaContextMenu, ContextMenuItem } from '../../../components/ui/ComerziaContextMenu';
-import { Edit, Trash2, DollarSign } from 'lucide-react';
+import { Edit, Trash2, DollarSign, Search, ArrowRightLeft } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
@@ -148,16 +148,38 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
           label="Ver/Actualizar Precios"
           onClick={() => { setVariantToPrices(contextMenu.row); setContextMenu({ ...contextMenu, isOpen: false }); }} 
         />
+        <ContextMenuItem 
+          icon={Search}
+          label="Consultar Stock"
+          isExternalLink
+          onClick={() => {
+            if (contextMenu.row?.barCode) {
+              window.open(`/commercial/stock-query?barcode=${encodeURIComponent(contextMenu.row.barCode)}`, '_blank');
+            }
+            setContextMenu({ ...contextMenu, isOpen: false });
+          }} 
+        />
+        <ContextMenuItem 
+          icon={ArrowRightLeft}
+          label="Movimientos de Stock"
+          isExternalLink
+          onClick={() => {
+            if (contextMenu.row?.barCode) {
+              window.open(`/commercial/stock-movements?barcode=${encodeURIComponent(contextMenu.row.barCode)}`, '_blank');
+            }
+            setContextMenu({ ...contextMenu, isOpen: false });
+          }} 
+        />
         {isOwner && (
           <>
             <ContextMenuItem 
               icon={Edit}
-              label="Editar"
+              label="Editar Variante"
               onClick={() => { setVariantToEdit(contextMenu.row); setContextMenu({ ...contextMenu, isOpen: false }); }} 
             />
             <ContextMenuItem 
               icon={Trash2}
-              label="Eliminar"
+              label="Eliminar Variante"
               variant="error"
               onClick={() => { setVariantToDelete(contextMenu.row); setContextMenu({ ...contextMenu, isOpen: false }); }} 
             />

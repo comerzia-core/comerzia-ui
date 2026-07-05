@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { commercialService } from '../services/commercialService';
 import type { ScannerProductResponse } from '../types/commercial';
 import { useToast } from '../../../context/ToastContext';
 
 export const StockQueryPage = () => {
+  const [searchParams] = useSearchParams();
   const [barcode, setBarcode] = useState('');
   const [productData, setProductData] = useState<ScannerProductResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -16,7 +18,32 @@ export const StockQueryPage = () => {
     if (inputRef.current) {
       inputRef.current.focus();
     }
-  }, []);
+    
+    // Check for barcode in URL
+    const urlBarcode = searchParams.get('barcode');
+    if (urlBarcode) {
+      setBarcode(urlBarcode);
+      executeScan(urlBarcode);
+    }
+  }, [searchParams]);
+
+  const executeScan = async (codeToScan: string) => {
+    setIsLoading(true);
+    setProductData(null);
+    try {
+      const res = await commercialService.scanBarcode(codeToScan.trim());
+      setProductData(res);
+    } catch (err: any) {
+      toastError(err.response?.data?.message || 'Producto no encontrado');
+      setShakeKey(prev => prev + 1);
+    } finally {
+      setIsLoading(false);
+      setBarcode(''); // Clear after scan
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+    }
+  };
 
   const handleScan = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
@@ -24,21 +51,7 @@ export const StockQueryPage = () => {
         setShakeKey(prev => prev + 1);
         return;
       }
-      setIsLoading(true);
-      setProductData(null);
-      try {
-        const res = await commercialService.scanBarcode(barcode.trim());
-        setProductData(res);
-      } catch (err: any) {
-        toastError(err.response?.data?.message || 'Producto no encontrado');
-        setShakeKey(prev => prev + 1);
-      } finally {
-        setIsLoading(false);
-        setBarcode(''); // Clear after scan
-        if (inputRef.current) {
-          inputRef.current.focus();
-        }
-      }
+      await executeScan(barcode);
     }
   };
 

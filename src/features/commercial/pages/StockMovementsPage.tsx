@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { commercialService } from '../services/commercialService';
 import type { 
   ScannerProductResponse, 
@@ -53,6 +54,7 @@ const CurrencyCell = ({ amount, currencyCode = 'USD' }: { amount: number, curren
 };
 
 export const StockMovementsPage = () => {
+  const [searchParams] = useSearchParams();
   const [barcode, setBarcode] = useState('');
   const [productData, setProductData] = useState<ScannerProductResponse | null>(null);
   const [isLoadingScan, setIsLoadingScan] = useState(false);
@@ -104,7 +106,12 @@ export const StockMovementsPage = () => {
     if (inputRef.current) {
       inputRef.current.focus();
     }
-  }, []);
+    const urlBarcode = searchParams.get('barcode');
+    if (urlBarcode) {
+      setBarcode(urlBarcode);
+      executeScan(urlBarcode);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (isOwner) {
@@ -143,34 +150,38 @@ export const StockMovementsPage = () => {
     }
   };
 
+  const executeScan = async (codeToScan: string) => {
+    setIsLoadingScan(true);
+    setProductData(null);
+    setQuantityIn('');
+    setUnitCost('');
+    setNote('');
+    try {
+      const res = await commercialService.scanBarcode(codeToScan.trim());
+      setProductData(res);
+    } catch (err: any) {
+      if (err.response?.status === 404) {
+        toastError("No se encontró el producto escaneado");
+      } else {
+        toastError(err.response?.data?.message || 'Producto no encontrado');
+      }
+      setShakeKey(prev => prev + 1);
+    } finally {
+      setIsLoadingScan(false);
+      setBarcode('');
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+    }
+  };
+
   const handleScan = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       if (!barcode.trim()) {
         setShakeKey(prev => prev + 1);
         return;
       }
-      setIsLoadingScan(true);
-      setProductData(null);
-      setQuantityIn('');
-      setUnitCost('');
-      setNote('');
-      try {
-        const res = await commercialService.scanBarcode(barcode.trim());
-        setProductData(res);
-      } catch (err: any) {
-        if (err.response?.status === 404) {
-          toastError("No se encontró el producto escaneado");
-        } else {
-          toastError(err.response?.data?.message || 'Producto no encontrado');
-        }
-        setShakeKey(prev => prev + 1);
-      } finally {
-        setIsLoadingScan(false);
-        setBarcode('');
-        if (inputRef.current) {
-          inputRef.current.focus();
-        }
-      }
+      await executeScan(barcode);
     }
   };
 
