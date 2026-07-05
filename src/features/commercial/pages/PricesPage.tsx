@@ -1,18 +1,24 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { commercialService } from '../services/commercialService';
 import type { ScannerProductResponse, SalePriceResponse } from '../types/commercial';
 import { useToast } from '../../../context/ToastContext';
 import { ComerziaTable, type Column, type TablePaginationConfig } from '../../../components/ui/ComerziaTable';
 import { BtnCreate } from '../../../components/ui/CrudButtons';
 import { ChangePriceModal } from '../components/ChangePriceModal';
+import { Barcode } from 'lucide-react';
+import { useAuthStore } from '../../../stores/useAuthStore';
 
 export const PricesPage = () => {
+  const [searchParams] = useSearchParams();
   const [barcode, setBarcode] = useState('');
   const [productData, setProductData] = useState<ScannerProductResponse | null>(null);
   const [isLoadingScan, setIsLoadingScan] = useState(false);
   const [shakeKey, setShakeKey] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const { error: toastError } = useToast();
+  const { userProfile } = useAuthStore();
+  const currencyCode = userProfile?.companySettings?.currencyCode || 'USD';
 
   const [pricesData, setPricesData] = useState<SalePriceResponse[]>([]);
   const [isLoadingPrices, setIsLoadingPrices] = useState(false);
@@ -22,13 +28,40 @@ export const PricesPage = () => {
 
   const [isChangeModalOpen, setIsChangeModalOpen] = useState(false);
 
+  const executeScan = useCallback(async (code: string) => {
+    setIsLoadingScan(true);
+    setProductData(null);
+    try {
+      const res = await commercialService.scanBarcode(code);
+      setProductData(res);
+    } catch (err: any) {
+      const errorCode = err.response?.data?.errorCode;
+      if (errorCode === 'not_found' || err.response?.status === 404) {
+        toastError('No se encontró ningún producto con este código de barras.');
+      } else {
+        toastError(err.response?.data?.message || 'Error al buscar el producto.');
+      }
+      setShakeKey(prev => prev + 1);
+    } finally {
+      setIsLoadingScan(false);
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+    }
+  }, [toastError]);
+
   useEffect(() => {
     if (inputRef.current) {
       inputRef.current.focus();
     }
-  }, []);
+    const urlBarcode = searchParams.get('barcode');
+    if (urlBarcode) {
+      setBarcode(urlBarcode);
+      executeScan(urlBarcode);
+    }
+  }, [searchParams, executeScan]);
 
-  const scannedVariant = productData?.variants.find(v => v.isScannedVariant) || productData?.variants[0];
+  const scannedVariant = productData?.scannedVariant;
 
   useEffect(() => {
     if (scannedVariant) {
@@ -57,21 +90,7 @@ export const PricesPage = () => {
         setShakeKey(prev => prev + 1);
         return;
       }
-      setIsLoadingScan(true);
-      setProductData(null);
-      try {
-        const res = await commercialService.scanBarcode(barcode.trim());
-        setProductData(res);
-      } catch (err: any) {
-        toastError(err.response?.data?.message || 'Producto no encontrado');
-        setShakeKey(prev => prev + 1);
-      } finally {
-        setIsLoadingScan(false);
-        setBarcode('');
-        if (inputRef.current) {
-          inputRef.current.focus();
-        }
-      }
+      await executeScan(barcode.trim());
     }
   };
 
@@ -80,9 +99,9 @@ export const PricesPage = () => {
       header: 'Tipo de Precio', 
       render: (row) => row.priceType?.name || row.priceTypeName || 'Desconocido'
     },
-    { header: 'Costo Base', render: (row) => `$${row.basePrice.toFixed(2)}` },
-    { header: 'Precio Venta', render: (row) => <span className="font-bold text-success">${row.salePrice.toFixed(2)}</span> },
-    { header: 'Precio Descuento', render: (row) => `$${row.discountPrice.toFixed(2)}` },
+    { header: 'Costo Base', render: (row) => `${currencyCode} ${(row.basePrice || 0).toFixed(2)}` },
+    { header: 'Precio Venta', render: (row) => <span className="font-bold text-success">{currencyCode} {(row.salePrice || 0).toFixed(2)}</span> },
+    { header: 'Precio Descuento', render: (row) => `${currencyCode} ${(row.discountPrice || 0).toFixed(2)}` },
     { header: 'Válido Desde', render: (row) => new Date(row.validFrom).toLocaleString() },
     { header: 'Válido Hasta', render: (row) => row.validTo ? new Date(row.validTo).toLocaleString() : '-' },
     { 
@@ -117,9 +136,7 @@ export const PricesPage = () => {
         <h2 className="text-lg font-bold mb-4">Buscar Variante (Escáner)</h2>
         <div className={`relative w-full max-w-md ${shakeKey > 0 ? 'animate-shake' : ''}`} key={shakeKey}>
           <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-base-content/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
+            <Barcode className="h-5 w-5 text-base-content/40" />
           </div>
           <input 
             ref={inputRef}

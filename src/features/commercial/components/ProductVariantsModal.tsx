@@ -10,7 +10,7 @@ import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
 import { BtnCreate } from '../../../components/ui/CrudButtons';
 import { useToast } from '../../../context/ToastContext';
 import { ComerziaContextMenu, ContextMenuItem } from '../../../components/ui/ComerziaContextMenu';
-import { Edit, Trash2, DollarSign, Search, ArrowRightLeft } from 'lucide-react';
+import { Edit, Trash2, DollarSign, Search, ArrowRightLeft, History } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
@@ -144,11 +144,6 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
         onClose={() => setContextMenu({ ...contextMenu, isOpen: false })}
       >
         <ContextMenuItem 
-          icon={DollarSign}
-          label="Ver/Actualizar Precios"
-          onClick={() => { setVariantToPrices(contextMenu.row); setContextMenu({ ...contextMenu, isOpen: false }); }} 
-        />
-        <ContextMenuItem 
           icon={Search}
           label="Consultar Stock"
           isExternalLink
@@ -172,6 +167,22 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
         />
         {isOwner && (
           <>
+            <ContextMenuItem 
+              icon={History}
+              label="Histórico de Precios"
+              isExternalLink
+              onClick={() => {
+                if (contextMenu.row?.barCode) {
+                  window.open(`/commercial/prices?barcode=${encodeURIComponent(contextMenu.row.barCode)}`, '_blank');
+                }
+                setContextMenu({ ...contextMenu, isOpen: false });
+              }} 
+            />
+            <ContextMenuItem 
+              icon={DollarSign}
+              label="Ver/Actualizar Precios"
+              onClick={() => { setVariantToPrices(contextMenu.row); setContextMenu({ ...contextMenu, isOpen: false }); }} 
+            />
             <ContextMenuItem 
               icon={Edit}
               label="Editar Variante"

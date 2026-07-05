@@ -144,9 +144,9 @@ export const StockQueryPage = () => {
               </div>
 
               <div className="space-y-3">
-                {scannedVariant.stockByBranch.map((sb) => (
+                {scannedVariant.stockByBranch.map((sb, idx) => (
                   <div
-                    key={sb.branchId}
+                    key={`${sb.branchId}-${idx}`}
                     className={`flex justify-between items-center p-4 rounded-xl border ${sb.isCurrentBranch ? 'bg-primary/5 border-primary/20' : 'bg-base-100 border-base-200'}`}
                   >
                     <div className="flex items-center gap-3">
@@ -174,8 +174,8 @@ export const StockQueryPage = () => {
               </h3>
 
               <div className="grid gap-4">
-                {scannedVariant.activePrices.map((price) => (
-                  <div key={price.priceTypeId} className="bg-base-100 border border-base-200 p-4 rounded-xl flex justify-between items-center hover:shadow-md transition-shadow">
+                {scannedVariant.activePrices.map((price, idx) => (
+                  <div key={`${price.priceTypeId}-${idx}`} className="bg-base-100 border border-base-200 p-4 rounded-xl flex justify-between items-center hover:shadow-md transition-shadow">
                     <div>
                       <h4 className="font-bold text-base-content">{price.priceTypeName}</h4>
                       <p className="text-xs text-base-content/50 mt-1">{price.equivalenceFactor} Unidades</p>
@@ -203,9 +203,9 @@ export const StockQueryPage = () => {
                 Otras variantes de este producto
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                {productData.otherVariants.map((variant) => (
+                {productData.otherVariants.map((variant, idx) => (
                   <ComerziaSelectableCard
-                    key={variant.variantId}
+                    key={`${variant.variantId}-${idx}`}
                     title={variant.variantName}
                     description={variant.barCode}
                     selected={false}
