@@ -4,7 +4,9 @@ import { commercialService } from '../services/commercialService';
 import type { ScannerProductResponse } from '../types/commercial';
 import { useToast } from '../../../context/ToastContext';
 import { useAuthStore } from '../../../stores/useAuthStore';
-import { Barcode, ImageOff, Store, Tag, Copy, ChevronRight, Layers } from 'lucide-react';
+import { ComerziaBadge } from '../../../components/ui/ComerziaBadge';
+import { ComerziaSelectableCard } from '../../../components/ui/ComerziaSelectableCard';
+import { ImageOff, Store, Tag, Copy, ChevronRight, Layers, Barcode } from 'lucide-react';
 
 export const StockQueryPage = () => {
   const [searchParams] = useSearchParams();
@@ -65,26 +67,25 @@ export const StockQueryPage = () => {
     <div className="space-y-6 animate-fade-in max-w-5xl mx-auto mt-8">
       <div className="text-center mb-8">
         <h1 className="text-4xl font-bold text-base-content tracking-tight">Consulta de Stock</h1>
-        <p className="text-base-content/60 mt-2">Escanea el código de barras para ver detalles, precios y stock.</p>
       </div>
 
       <div className="flex justify-center mb-10">
         <div className={`relative w-full max-w-2xl ${shakeKey > 0 ? 'animate-shake' : ''}`} key={shakeKey}>
-          <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-            <Barcode className="h-6 w-6 text-base-content/40" />
-          </div>
           <input
             ref={inputRef}
             type="text"
             placeholder="Escanea o escribe el código y presiona Enter..."
-            className="input input-lg input-bordered w-full pl-12 shadow-lg text-xl bg-base-100 focus:outline-none focus:ring-4 focus:ring-primary/20 transition-shadow"
+            className="input input-lg input-bordered w-full pl-12 shadow-lg text-xl bg-base-100 focus:outline-none focus:ring-4 focus:ring-primary/20 transition-shadow relative z-0"
             value={barcode}
             onChange={(e) => setBarcode(e.target.value)}
             onKeyDown={handleScan}
             disabled={isLoading}
           />
+          <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none z-10">
+            <Barcode className="h-6 w-6 text-base-content/40" />
+          </div>
           {isLoading && (
-            <div className="absolute inset-y-0 right-4 flex items-center">
+            <div className="absolute inset-y-0 right-4 flex items-center z-10">
               <span className="loading loading-spinner loading-md text-primary"></span>
             </div>
           )}
@@ -125,7 +126,7 @@ export const StockQueryPage = () => {
               </div>
 
               <div className="flex items-center gap-4 mt-4">
-                <span className="badge badge-neutral">{productData.brandName}</span>
+                <ComerziaBadge variant="neutral" label={productData.brandName} />
                 <span className="text-sm text-base-content/60">{productData.description || 'Sin descripción adicional'}</span>
               </div>
             </div>
@@ -203,30 +204,23 @@ export const StockQueryPage = () => {
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 {productData.otherVariants.map((variant) => (
-                  <button
+                  <ComerziaSelectableCard
                     key={variant.variantId}
-                    type="button"
+                    title={variant.variantName}
+                    description={variant.barCode}
+                    selected={false}
                     onClick={() => {
                       setBarcode(variant.barCode);
                       executeScan(variant.barCode);
                     }}
-                    className="flex items-center gap-3 p-3 rounded-xl border border-base-200 hover:border-primary hover:bg-primary/5 transition-all text-left group"
-                  >
-                    <div className="w-12 h-12 rounded-lg bg-base-200 flex-shrink-0 overflow-hidden border border-base-300">
-                      {variant.imageUrl ? (
-                        <img src={variant.imageUrl} alt={variant.variantName} className="w-full h-full object-cover" />
+                    icon={
+                      variant.imageUrl ? (
+                        <img src={variant.imageUrl} alt={variant.variantName} className="w-8 h-8 rounded object-cover" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-base-content/30">
-                          <ImageOff className="h-5 w-5" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="overflow-hidden flex-1">
-                      <p className="font-semibold text-base-content truncate group-hover:text-primary transition-colors">{variant.variantName}</p>
-                      <p className="text-xs text-base-content/50 font-mono truncate">{variant.barCode}</p>
-                    </div>
-                    <ChevronRight className="h-5 w-5 text-base-content/20 group-hover:text-primary transition-colors" />
-                  </button>
+                        <ImageOff className="h-6 w-6" />
+                      )
+                    }
+                  />
                 ))}
               </div>
             </div>

@@ -12,10 +12,10 @@ export const ComerziaSelectableCard = ({ title, description, selected, onClick, 
     return (
         <label
             className={`
-                cursor-pointer border rounded-xl p-4 flex gap-4 transition-all items-start relative overflow-hidden group
+                cursor-pointer border rounded-2xl p-5 flex gap-4 transition-all duration-300 ease-out items-center relative overflow-hidden group
                 ${selected
-                    ? 'border-primary bg-primary/5 shadow-sm ring-1 ring-primary/20'
-                    : 'border-base-300 bg-base-100 hover:border-base-content/30 hover:bg-base-200/50 hover:shadow-sm'
+                    ? 'border-primary bg-primary/5 shadow-lg shadow-primary/10 ring-2 ring-primary translate-y-[1px]'
+                    : 'border-base-300 bg-base-100 hover:border-primary/50 hover:bg-base-200/50 hover:shadow-xl hover:-translate-y-1'
                 }
                 ${className}
             `}
@@ -33,13 +33,13 @@ export const ComerziaSelectableCard = ({ title, description, selected, onClick, 
             />
             {/* Icono Principal (Opcional) */}
             {icon && (
-                <div className={`mt-0.5 p-2 rounded-lg ${selected ? 'bg-primary/10 text-primary' : 'bg-base-200 text-base-content/60 group-hover:text-base-content/80'}`}>
+                <div className={`flex items-center justify-center rounded-xl transition-all duration-300 ${selected ? 'text-primary scale-110 drop-shadow-sm' : 'text-base-content/50 group-hover:text-primary group-hover:scale-110'}`}>
                     {icon}
                 </div>
             )}
             {/* Contenido de Textos */}
-            <div className="flex flex-col flex-1 min-w-0 pr-6">
-                <span className={`font-bold text-sm leading-tight transition-colors ${selected ? 'text-primary' : 'text-base-content'}`}>
+            <div className="flex flex-col flex-1 min-w-0 pr-8">
+                <span className={`font-bold text-base leading-tight transition-colors duration-300 ${selected ? 'text-primary' : 'text-base-content group-hover:text-primary'}`}>
                     {title}
                 </span>
                 {description && (
@@ -50,10 +50,10 @@ export const ComerziaSelectableCard = ({ title, description, selected, onClick, 
             </div>
             {/* Indicador Check de Selección */}
             <div className={`
-                absolute top-4 right-4 flex items-center justify-center w-5 h-5 rounded-full transition-all duration-300
-                ${selected ? 'bg-primary text-primary-content scale-100' : 'bg-base-300 text-transparent scale-75 opacity-0 group-hover:opacity-50'}
+                absolute top-1/2 -translate-y-1/2 right-4 flex items-center justify-center w-6 h-6 rounded-full transition-all duration-300
+                ${selected ? 'bg-primary text-primary-content scale-100 shadow-md' : 'bg-base-300 text-base-content/20 scale-75 opacity-0 group-hover:opacity-100 group-hover:scale-90 group-hover:bg-primary/20 group-hover:text-primary'}
             `}>
-                <Check size={12} strokeWidth={3} />
+                <Check size={14} strokeWidth={3} />
             </div>
 
         </label>
