@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { ComerziaModal } from '../../../components/ui/ComerziaModal';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
+import { ComerziaRadioGroup } from '../../../components/ui/ComerziaRadioGroup';
 import { BtnSave } from '../../../components/ui/CrudButtons';
 import { useToast } from '../../../context/ToastContext';
+import { Coins, Banknote } from 'lucide-react';
 import { commercialService } from '../services/commercialService';
 import type { StockEntryResponse } from '../types/commercial';
 
@@ -67,19 +69,16 @@ export const ValuateStockModal = ({ isOpen, onClose, onSuccess, stockEntry }: Pr
           <p>Fecha de Ingreso: <strong>{new Date(stockEntry.entryDate).toLocaleString()}</strong></p>
         </div>
         
-        <div className="form-control">
-          <label className="label cursor-pointer justify-start gap-4">
-            <span className="label-text">Ingresar por:</span>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="radio" name="costInputTypeModal" className="radio radio-primary radio-sm" checked={costInputType === 'unit'} onChange={() => { setCostInputType('unit'); setCostInputValue(''); }} />
-              <span className="text-sm">Costo Unitario</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="radio" name="costInputTypeModal" className="radio radio-primary radio-sm" checked={costInputType === 'total'} onChange={() => { setCostInputType('total'); setCostInputValue(''); }} />
-              <span className="text-sm">Costo Total</span>
-            </label>
-          </label>
-        </div>
+        <ComerziaRadioGroup
+          label="Ingresar por:"
+          name="costInputTypeModal"
+          value={costInputType}
+          onChange={(val) => { setCostInputType(val as any); setCostInputValue(''); }}
+          options={[
+            { value: 'unit', label: 'Costo Unitario', icon: <Coins size={20} /> },
+            { value: 'total', label: 'Costo Total', icon: <Banknote size={20} /> }
+          ]}
+        />
 
         <ComerziaInput
           label={costInputType === 'unit' ? 'Costo Unitario' : 'Costo Total'}

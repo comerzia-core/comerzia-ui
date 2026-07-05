@@ -82,10 +82,12 @@ export const ContextMenuItem = ({
   isExternalLink = false,
 }: ContextMenuItemProps) => {
   const baseClasses = "flex items-center justify-between px-3 py-2 transition-colors rounded-md w-full";
-  const variantClasses = variant === "error" 
-    ? "text-error hover:bg-error hover:text-error-content" 
-    : "hover:bg-base-200 hover:text-primary";
-  const disabledClasses = disabled ? "opacity-50 cursor-not-allowed" : "";
+  const variantClasses = disabled
+    ? ""
+    : variant === "error" 
+      ? "text-error hover:bg-error hover:text-error-content" 
+      : "hover:bg-base-200 hover:text-primary";
+  const disabledClasses = disabled ? "opacity-50 cursor-not-allowed pointer-events-none" : "";
 
   return (
     <li>

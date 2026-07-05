@@ -14,7 +14,8 @@ import { ComerziaTable, type Column, type TablePaginationConfig } from '../../..
 import { CreateFullProductModal } from '../components/CreateFullProductModal';
 import { ComerziaSelect } from '../../../components/ui/ComerziaSelect';
 import { ComerziaContextMenu, ContextMenuItem } from '../../../components/ui/ComerziaContextMenu';
-import { Settings2, X, Barcode, DollarSign } from 'lucide-react';
+import { ComerziaRadioGroup } from '../../../components/ui/ComerziaRadioGroup';
+import { Settings2, X, Barcode, DollarSign, Coins, Banknote } from 'lucide-react';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { branchService } from '../../organization/services/branchService';
 import type { BranchResponse } from '../../organization/types/branch';
@@ -23,8 +24,9 @@ import { useLoadDictionaries } from '../../../hooks/useLoadDictionaries';
 import { ValuateStockModal } from '../components/ValuateStockModal';
 
 const CurrencyCell = ({ amount, currencyCode = 'USD' }: { amount: number, currencyCode?: string }) => {
+  const safeAmount = Number(amount) || 0;
   let currencySymbol = currencyCode;
-  let formattedAmount = amount.toFixed(2).replace(/\\B(?=(\\d{3})+(?!\\d))/g, ",");
+  let formattedAmount = safeAmount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   
   try {
     const formatter = new Intl.NumberFormat('en-US', {
@@ -33,7 +35,7 @@ const CurrencyCell = ({ amount, currencyCode = 'USD' }: { amount: number, curren
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     });
-    const parts = formatter.formatToParts(amount);
+    const parts = formatter.formatToParts(safeAmount);
     const currPart = parts.find(p => p.type === 'currency');
     if (currPart) {
       currencySymbol = currPart.value;
@@ -208,8 +210,8 @@ export const StockMovementsPage = () => {
       await commercialService.createStockEntry({
         variantId: scannedVariant.variantId,
         quantityIn: Number(quantityIn),
-        unitCost: hasCostPermission ? finalUnitCost : null,
-        totalCost: hasCostPermission ? finalTotalCost : null,
+        unitCost: hasCostPermission ? finalUnitCost : 0,
+        totalCost: hasCostPermission ? finalTotalCost : 0,
         note: note || undefined
       }, hasCostPermission ? (selectedBranchId || undefined) : undefined);
       toastSuccess("Entrada registrada exitosamente.");
@@ -370,7 +372,13 @@ export const StockMovementsPage = () => {
                     label="Cantidad a Ajustar"
                     type="number"
                     value={adjustmentQty}
-                    onChange={(e) => setAdjustmentQty(e.target.value ? Number(e.target.value) : '')}
+                    onChange={(e) => {
+                      let val: number | '' = e.target.value ? Number(e.target.value) : '';
+                      if (typeof val === 'number' && adjustmentTarget && val > adjustmentTarget.availableQuantity) {
+                        val = adjustmentTarget.availableQuantity;
+                      }
+                      setAdjustmentQty(val);
+                    }}
                     isRequired
                   />
                   {adjustmentQty !== '' && (
@@ -420,19 +428,16 @@ export const StockMovementsPage = () => {
                   />
                   {hasCostPermission && (
                     <>
-                      <div className="form-control">
-                        <label className="label cursor-pointer justify-start gap-4">
-                          <span className="label-text">Ingresar por:</span>
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input type="radio" name="costInputType" className="radio radio-primary radio-sm" checked={costInputType === 'unit'} onChange={() => { setCostInputType('unit'); setCostInputValue(''); }} />
-                            <span className="text-sm">Costo Unitario</span>
-                          </label>
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input type="radio" name="costInputType" className="radio radio-primary radio-sm" checked={costInputType === 'total'} onChange={() => { setCostInputType('total'); setCostInputValue(''); }} />
-                            <span className="text-sm">Costo Total</span>
-                          </label>
-                        </label>
-                      </div>
+                      <ComerziaRadioGroup
+                        label="Ingresar por:"
+                        name="costInputType"
+                        value={costInputType}
+                        onChange={(val) => { setCostInputType(val); setCostInputValue(''); }}
+                        options={[
+                          { value: 'unit', label: 'Costo Unitario', icon: <Coins size={20} /> },
+                          { value: 'total', label: 'Costo Total', icon: <Banknote size={20} /> }
+                        ]}
+                      />
 
                       <ComerziaInput
                         label={costInputType === 'unit' ? 'Costo Unitario' : 'Costo Total'}
@@ -527,8 +532,10 @@ export const StockMovementsPage = () => {
         <ContextMenuItem
           icon={Settings2}
           label="Crear Ajuste Manual"
+          disabled={contextMenu.row?.availableQuantity === 0}
           onClick={() => {
-            setAdjustmentTarget(contextMenu.row);
+            if (contextMenu.row?.availableQuantity === 0) return;
+            setAdjustmentTarget(contextMenu.row as StockEntryResponse);
             setAdjustmentQty('');
             setAdjustmentType('');
             setAdjustmentObs('');

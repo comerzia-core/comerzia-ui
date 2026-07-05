@@ -181,7 +181,7 @@ export const StockQueryPage = () => {
                   <div key={price.priceTypeId} className="bg-base-100 border border-base-200 p-4 rounded-xl flex justify-between items-center hover:shadow-md transition-shadow">
                     <div>
                       <h4 className="font-bold text-base-content">{price.priceTypeName}</h4>
-                      <p className="text-xs text-base-content/50 mt-1">Factor: x{price.equivalenceFactor}</p>
+                      <p className="text-xs text-base-content/50 mt-1">{price.equivalenceFactor} Unidades</p>
                     </div>
                     <div className="text-2xl font-bold text-success font-mono">
                       ${price.salePrice.toFixed(2)}
