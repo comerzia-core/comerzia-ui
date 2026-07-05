@@ -6,6 +6,7 @@ import { commercialService } from '../services/commercialService';
 import type { SalePriceResponse, PriceTypeResponse } from '../types/commercial';
 import { useToast } from '../../../context/ToastContext';
 import { DollarSign } from 'lucide-react';
+import { useAuthStore } from '../../../stores/useAuthStore';
 
 interface Props {
   isOpen: boolean;
@@ -15,14 +16,16 @@ interface Props {
 }
 
 export const VariantPricesModal = ({ isOpen, onClose, variantId, variantName }: Props) => {
+  const { userProfile } = useAuthStore();
+  const currencyCode = userProfile?.companySettings?.currencyCode || 'USD';
   const [activePrices, setActivePrices] = useState<SalePriceResponse[]>([]);
   const [priceTypes, setPriceTypes] = useState<PriceTypeResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  
+
   // State for editing forms. We map priceTypeId -> { salePrice, discountPrice }
   const [editForms, setEditForms] = useState<Record<string, { salePrice: number; discountPrice: number }>>({});
-  
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { error: toastError, success: toastSuccess } = useToast();
 
@@ -42,18 +45,18 @@ export const VariantPricesModal = ({ isOpen, onClose, variantId, variantName }: 
         commercialService.getSalePricesByVariant(variantId, 0, 100),
         commercialService.getPriceTypes()
       ]);
-      
+
       setPriceTypes(typesRes);
-      
+
       // Filter only active prices (assuming validTo is null/undefined means active)
       const active = pricesRes.content.filter(p => !p.validTo);
       setActivePrices(active);
-      
+
       // Initialize edit forms with current active prices
       const initialForms: Record<string, { salePrice: number; discountPrice: number }> = {};
       typesRes.forEach(pt => {
-        const currentPrice = active.find(ap => 
-          ap.priceType?.id === pt.id || ap.priceTypeId === pt.id || 
+        const currentPrice = active.find(ap =>
+          ap.priceType?.id === pt.id || ap.priceTypeId === pt.id ||
           ap.priceType?.name === pt.name || ap.priceTypeName === pt.name
         );
         initialForms[pt.id] = {
@@ -62,7 +65,7 @@ export const VariantPricesModal = ({ isOpen, onClose, variantId, variantName }: 
         };
       });
       setEditForms(initialForms);
-      
+
     } catch (e: any) {
       console.error(e);
       toastError("Error al cargar los precios");
@@ -98,11 +101,11 @@ export const VariantPricesModal = ({ isOpen, onClose, variantId, variantName }: 
       // Find which prices actually changed or are new
       const promises = priceTypes.map(async (pt) => {
         const form = editForms[pt.id];
-        const currentActive = activePrices.find(ap => 
-          ap.priceType?.id === pt.id || ap.priceTypeId === pt.id || 
+        const currentActive = activePrices.find(ap =>
+          ap.priceType?.id === pt.id || ap.priceTypeId === pt.id ||
           ap.priceType?.name === pt.name || ap.priceTypeName === pt.name
         );
-        
+
         // Only update if there's a valid sale price and it differs from current
         if (form && form.salePrice > 0) {
           if (!currentActive || currentActive.salePrice !== form.salePrice || currentActive.discountPrice !== form.discountPrice) {
@@ -116,7 +119,7 @@ export const VariantPricesModal = ({ isOpen, onClose, variantId, variantName }: 
           }
         }
       });
-      
+
       await Promise.all(promises);
       toastSuccess("Precios actualizados exitosamente");
       setIsEditing(false);
@@ -150,18 +153,17 @@ export const VariantPricesModal = ({ isOpen, onClose, variantId, variantName }: 
         ) : (
           <div className="flex flex-col border border-base-200 rounded-xl overflow-hidden">
             {priceTypes.map((pt, index) => {
-              const currentActive = activePrices.find(ap => 
-                ap.priceType?.id === pt.id || ap.priceTypeId === pt.id || 
+              const currentActive = activePrices.find(ap =>
+                ap.priceType?.id === pt.id || ap.priceTypeId === pt.id ||
                 ap.priceType?.name === pt.name || ap.priceTypeName === pt.name
               );
               const form = editForms[pt.id];
 
               return (
-                <div 
-                  key={pt.id} 
-                  className={`p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-base-100 transition-colors hover:bg-base-200/30 ${
-                    index !== priceTypes.length - 1 ? 'border-b border-base-200' : ''
-                  }`}
+                <div
+                  key={pt.id}
+                  className={`p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-base-100 transition-colors hover:bg-base-200/30 ${index !== priceTypes.length - 1 ? 'border-b border-base-200' : ''
+                    }`}
                 >
                   <div className="font-medium text-base-content md:w-1/3 mt-2 md:mt-0">
                     {pt.name}
@@ -169,7 +171,7 @@ export const VariantPricesModal = ({ isOpen, onClose, variantId, variantName }: 
                       (Equivalencia: x{pt.equivalenceFactor || 1})
                     </span>
                   </div>
-                  
+
                   <div className="flex-1 mt-4 md:mt-0">
                     {!isEditing ? (
                       <div className="flex justify-end items-center gap-8 text-sm">
@@ -177,19 +179,19 @@ export const VariantPricesModal = ({ isOpen, onClose, variantId, variantName }: 
                           <>
                             <div className="flex flex-col items-end">
                               <span className="text-base-content/50 text-xs">Precio Venta Unit.</span>
-                              <span className="font-semibold text-base">${currentActive.salePrice}</span>
+                              <span className="font-semibold text-base">{currencyCode} {currentActive.salePrice}</span>
                               {currentActive.salePrice > 0 && (
                                 <span className="text-xs text-primary font-bold mt-1">
-                                  Total: ${(currentActive.salePrice * (pt.equivalenceFactor || 1)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  Total: {currencyCode} {(currentActive.salePrice * (pt.equivalenceFactor || 1)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </span>
                               )}
                             </div>
                             {currentActive.discountPrice > 0 && (
                               <div className="flex flex-col items-end text-success">
                                 <span className="opacity-70 text-xs">Descuento Unit.</span>
-                                <span className="font-semibold text-base">${currentActive.discountPrice}</span>
+                                <span className="font-semibold text-base">{currencyCode} {currentActive.discountPrice}</span>
                                 <span className="text-xs text-accent font-medium mt-1">
-                                  Total: ${(currentActive.discountPrice * (pt.equivalenceFactor || 1)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  Total: {currencyCode} {(currentActive.discountPrice * (pt.equivalenceFactor || 1)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </span>
                               </div>
                             )}
@@ -210,7 +212,7 @@ export const VariantPricesModal = ({ isOpen, onClose, variantId, variantName }: 
                           {(form?.discountPrice || 0) > 0 && (
                             <div className="text-xs text-accent font-medium px-1 flex justify-between">
                               <span>Total:</span>
-                              <span>${((form?.discountPrice || 0) * (pt.equivalenceFactor || 1)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              <span>{currencyCode} {((form?.discountPrice || 0) * (pt.equivalenceFactor || 1)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
                           )}
                         </div>
@@ -224,7 +226,7 @@ export const VariantPricesModal = ({ isOpen, onClose, variantId, variantName }: 
                           {(form?.salePrice || 0) > 0 && (
                             <div className="text-xs text-primary font-bold px-1 flex justify-between">
                               <span>Total:</span>
-                              <span>${((form?.salePrice || 0) * (pt.equivalenceFactor || 1)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              <span>{currencyCode} {((form?.salePrice || 0) * (pt.equivalenceFactor || 1)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
                           )}
                         </div>

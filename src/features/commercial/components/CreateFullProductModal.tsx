@@ -15,6 +15,9 @@ import type {
 } from '../types/commercial';
 import { useToast } from '../../../context/ToastContext';
 import { generateSku } from '../../../utils/skuGenerator';
+import { useLoadDictionaries } from '../../../hooks/useLoadDictionaries';
+import { DICTIONARIES } from '../../../config/dictionaries';
+import { useAuthStore } from '../../../stores/useAuthStore';
 
 interface Props {
   isOpen: boolean;
@@ -46,6 +49,12 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
   const [variants, setVariants] = useState<CreateFullVariantRequest[]>([
     { name: '', sku: '', barCode: '', prices: [] }
   ]);
+
+  const { options, isLoading: isLoadingDict } = useLoadDictionaries([DICTIONARIES.VARIANT_TYPE]);
+  const variantTypeOptions = options[DICTIONARIES.VARIANT_TYPE] || [];
+
+  const { userProfile } = useAuthStore();
+  const currencyCode = userProfile?.companySettings?.currencyCode || 'USD';
 
   const [shakeKey, setShakeKey] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -218,11 +227,8 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
             />
             <ComerziaSelect
               label="Tipo de Variante"
-              options={[
-                { value: '1', label: 'Simple (Sin variaciones)' },
-                { value: '2', label: 'Color' },
-                { value: '3', label: 'Talla/Color' }
-              ]}
+              options={variantTypeOptions}
+              isLoading={isLoadingDict}
               value={variantType}
               onChange={(e) => setVariantType(e.target.value)}
               error={!variantType && shakeKey > 0 ? "Requerido" : ""}
@@ -292,7 +298,7 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
                     onChange={(e) => {
                       const val = e.target.value.toUpperCase();
                       const prevAutoSku = generateSku(name, variant.name);
-                      
+
                       const updated = [...variants];
                       updated[index].name = val;
                       if (!variant.sku || variant.sku === prevAutoSku) {
@@ -340,7 +346,7 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
                     const priceTypeObj = priceTypes.find(pt => pt.id === price.priceTypeId);
                     const typeName = priceTypeObj?.name || 'Precio';
                     const equivalenceFactor = priceTypeObj?.equivalenceFactor || 1;
-                    
+
                     const saleTotal = (Number(price.salePrice) || 0) * equivalenceFactor;
                     const discountTotal = (Number(price.discountPrice) || 0) * equivalenceFactor;
 
@@ -362,7 +368,7 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
                           {discountTotal > 0 && (
                             <div className="text-xs text-accent font-medium px-1 flex justify-between">
                               <span>Total Descuento:</span>
-                              <span>${discountTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              <span>{currencyCode} {discountTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
                           )}
                         </div>
@@ -376,7 +382,7 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
                           {saleTotal > 0 && (
                             <div className="text-xs text-primary font-bold px-1 flex justify-between">
                               <span>Total Venta:</span>
-                              <span>${saleTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              <span>{currencyCode} {saleTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
                           )}
                         </div>

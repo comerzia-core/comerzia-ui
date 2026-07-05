@@ -12,7 +12,11 @@ export const DICTIONARIES = {
     PAYMENT_TYPE: 'payment-type',
     MOVEMENT_TYPE: 'movement-type',
     SHIFT_STATUS: 'shift-status',
+    // COMMERCIAL
     ADJUSTMENT_TYPE: 'adjustment-type',
+    INVENTORY_STATUS: 'inventory-status',
+    STOCK_STATUS: 'stock-status',
+    VARIANT_TYPE: 'variant-type',
 } as const;
 
 // Este type mágico extrae los valores ("user-status", "plan-type", etc.)
