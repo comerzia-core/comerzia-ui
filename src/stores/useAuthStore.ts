@@ -18,6 +18,7 @@ interface AuthState {
     fetchUserProfile: () => Promise<void>;
     fetchMenuTree: () => Promise<void>;
     hasRole: (role: string) => boolean;
+    hasPermission: (permission: string) => boolean;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => {
@@ -81,6 +82,10 @@ export const useAuthStore = create<AuthState>((set, get) => {
 
         hasRole: (role: string) => {
             return get().userProfile?.roles.includes(role) ?? false;
+        },
+
+        hasPermission: (permission: string) => {
+            return get().userProfile?.permissions?.includes(permission) ?? false;
         }
     };
 });

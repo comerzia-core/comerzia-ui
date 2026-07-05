@@ -23,7 +23,8 @@ import type {
   PageInventoryResponse,
   PageSalePriceResponse,
   ChangePriceRequest,
-  CreateManualAdjustmentRequest
+  CreateManualAdjustmentRequest,
+  ValuateStockRequest
 } from '../types/commercial';
 
 export const commercialService = {
@@ -171,6 +172,10 @@ export const commercialService = {
     const params = new URLSearchParams();
     if (branchId) params.append('branchId', branchId);
     await api.post(`/tenant/stock/entries${params.toString() ? `?${params.toString()}` : ''}`, data);
+  },
+
+  valuateStockEntry: async (stockId: string, data: ValuateStockRequest): Promise<void> => {
+    await api.patch(`/tenant/stock/entries/${stockId}/cost`, data);
   },
 
   // Stock Adjustments

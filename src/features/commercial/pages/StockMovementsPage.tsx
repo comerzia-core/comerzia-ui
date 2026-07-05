@@ -14,12 +14,13 @@ import { ComerziaTable, type Column, type TablePaginationConfig } from '../../..
 import { CreateFullProductModal } from '../components/CreateFullProductModal';
 import { ComerziaSelect } from '../../../components/ui/ComerziaSelect';
 import { ComerziaContextMenu, ContextMenuItem } from '../../../components/ui/ComerziaContextMenu';
-import { Settings2, X, Barcode } from 'lucide-react';
+import { Settings2, X, Barcode, DollarSign } from 'lucide-react';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { branchService } from '../../organization/services/branchService';
 import type { BranchResponse } from '../../organization/types/branch';
 import { DICTIONARIES } from '../../../config/dictionaries';
 import { useLoadDictionaries } from '../../../hooks/useLoadDictionaries';
+import { ValuateStockModal } from '../components/ValuateStockModal';
 
 const CurrencyCell = ({ amount, currencyCode = 'USD' }: { amount: number, currencyCode?: string }) => {
   let currencySymbol = currencyCode;
@@ -64,13 +65,15 @@ export const StockMovementsPage = () => {
   
   // Entry Form State
   const [quantityIn, setQuantityIn] = useState<number | ''>('');
-  const [unitCost, setUnitCost] = useState<number | ''>('');
+  const [costInputType, setCostInputType] = useState<'unit' | 'total'>('unit');
+  const [costInputValue, setCostInputValue] = useState<number | ''>('');
   const [note, setNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedBranchId, setSelectedBranchId] = useState('');
   const [branches, setBranches] = useState<BranchResponse[]>([]);
 
-  const { hasRole, userProfile } = useAuthStore();
+  const { hasPermission, hasRole, userProfile } = useAuthStore();
+  const hasCostPermission = hasPermission('COM_STOCK_COST_MANAGE');
   const isOwner = hasRole('OWNER');
   const currencyCode = userProfile?.companySettings?.currencyCode || 'USD';
 
@@ -97,10 +100,12 @@ export const StockMovementsPage = () => {
     row: null
   });
 
-  const { options } = useLoadDictionaries([DICTIONARIES.ADJUSTMENT_TYPE]);
+  const { options } = useLoadDictionaries([DICTIONARIES.ADJUSTMENT_TYPE, DICTIONARIES.STOCK_STATUS]);
   const adjustmentTypeOptions = options[DICTIONARIES.ADJUSTMENT_TYPE] || [];
+  const stockStatusOptions = options[DICTIONARIES.STOCK_STATUS] || [];
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isValuateModalOpen, setIsValuateModalOpen] = useState(false);
 
   useEffect(() => {
     if (inputRef.current) {
@@ -114,10 +119,10 @@ export const StockMovementsPage = () => {
   }, [searchParams]);
 
   useEffect(() => {
-    if (isOwner) {
+    if (hasCostPermission) {
       branchService.getBranches(0, 100).then(res => setBranches(res.content));
     }
-  }, [isOwner]);
+  }, [hasCostPermission]);
 
   const scannedVariant = productData?.variants.find(v => v.isScannedVariant) || productData?.variants[0];
 
@@ -154,7 +159,7 @@ export const StockMovementsPage = () => {
     setIsLoadingScan(true);
     setProductData(null);
     setQuantityIn('');
-    setUnitCost('');
+    setCostInputValue('');
     setNote('');
     try {
       const res = await commercialService.scanBarcode(codeToScan.trim());
@@ -186,7 +191,12 @@ export const StockMovementsPage = () => {
   };
 
   const handleSubmitEntry = async () => {
-    if (!scannedVariant || !quantityIn || (isOwner && unitCost === '')) {
+    const qty = typeof quantityIn === 'number' ? quantityIn : 0;
+    const val = typeof costInputValue === 'number' ? costInputValue : 0;
+    const finalUnitCost = costInputType === 'unit' ? val : (qty > 0 ? val / qty : 0);
+    const finalTotalCost = costInputType === 'total' ? val : (qty * val);
+
+    if (!scannedVariant || !quantityIn || (hasCostPermission && costInputValue === '')) {
       toastError("Completa todos los campos obligatorios.");
       return;
     }
@@ -195,16 +205,21 @@ export const StockMovementsPage = () => {
       await commercialService.createStockEntry({
         variantId: scannedVariant.variantId,
         quantityIn: Number(quantityIn),
-        unitCost: isOwner ? Number(unitCost) : 0,
+        unitCost: hasCostPermission ? finalUnitCost : null,
+        totalCost: hasCostPermission ? finalTotalCost : null,
         note: note || undefined
-      }, isOwner ? (selectedBranchId || undefined) : undefined);
+      }, hasCostPermission ? (selectedBranchId || undefined) : undefined);
       toastSuccess("Entrada registrada exitosamente.");
       setQuantityIn('');
-      setUnitCost('');
+      setCostInputValue('');
       setNote('');
       loadKardex(); // Reload kardex
     } catch (e: any) {
-      toastError(e.response?.data?.message || "Error al registrar la entrada.");
+      if (e.response?.data?.errorCode === 'invalid_cost_calculation') {
+        toastError('El costo total proporcionado no coincide con la cantidad * costo unitario');
+      } else {
+        toastError(e.response?.data?.message || "Error al registrar la entrada.");
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -235,25 +250,28 @@ export const StockMovementsPage = () => {
 
   const entryColumns: Column<StockEntryResponse>[] = [
     { header: 'Fecha', render: (row: StockEntryResponse) => new Date(row.entryDate).toLocaleString() },
-    isOwner && { header: 'Sucursal', accessorKey: 'branchName' },
+    hasCostPermission && { header: 'Sucursal', accessorKey: 'branchName' },
     { header: 'Cant. Inicial', accessorKey: 'quantityIn' },
     { header: 'Disponible', accessorKey: 'availableQuantity' },
-    isOwner && { header: 'Costo Unit.', render: (row: StockEntryResponse) => <CurrencyCell amount={row.unitCost} currencyCode={currencyCode} /> },
-    isOwner && { header: 'Costo Total', render: (row: StockEntryResponse) => <CurrencyCell amount={row.totalCost} currencyCode={currencyCode} /> },
+    hasCostPermission && { header: 'Costo Unit.', render: (row: StockEntryResponse) => <CurrencyCell amount={row.unitCost} currencyCode={currencyCode} /> },
+    hasCostPermission && { header: 'Costo Total', render: (row: StockEntryResponse) => <CurrencyCell amount={row.totalCost} currencyCode={currencyCode} /> },
     { header: 'Nota', accessorKey: 'note' },
-    { header: 'Estado', render: (row: StockEntryResponse) => (
-      <span className={`badge badge-sm ${row.status ? 'badge-success' : 'badge-error'}`}>
-        {row.status ? 'Activo' : 'Agotado/Anulado'}
-      </span>
-    )}
+    { header: 'Estado', render: (row: StockEntryResponse) => {
+      const statusLabel = stockStatusOptions.find(opt => Number(opt.value) === row.statusType)?.label || 'Desconocido';
+      return (
+        <span className={`badge badge-sm ${row.statusType === 331 ? 'badge-warning' : row.statusType === 332 ? 'badge-success' : 'badge-ghost'}`}>
+          {statusLabel}
+        </span>
+      );
+    }}
   ].filter(Boolean) as Column<StockEntryResponse>[];
 
   const adjustmentColumns: Column<StockAdjustmentResponse>[] = [
     { header: 'Fecha', render: (row: StockAdjustmentResponse) => new Date(row.date).toLocaleString() },
     { header: 'Tipo', render: (row: StockAdjustmentResponse) => adjustmentTypeOptions.find(opt => Number(opt.value) === row.adjustmentType)?.label || row.adjustmentType },
     { header: 'Cantidad', accessorKey: 'quantity' },
-    isOwner && { header: 'Costo Unit.', render: (row: StockAdjustmentResponse) => <CurrencyCell amount={row.unitCost} currencyCode={currencyCode} /> },
-    isOwner && { header: 'Costo Total', render: (row: StockAdjustmentResponse) => <CurrencyCell amount={row.totalCost} currencyCode={currencyCode} /> },
+    hasCostPermission && { header: 'Costo Unit.', render: (row: StockAdjustmentResponse) => <CurrencyCell amount={row.unitCost} currencyCode={currencyCode} /> },
+    hasCostPermission && { header: 'Costo Total', render: (row: StockAdjustmentResponse) => <CurrencyCell amount={row.totalCost} currencyCode={currencyCode} /> },
     { header: 'Observación', accessorKey: 'observation' },
   ].filter(Boolean) as Column<StockAdjustmentResponse>[];
 
@@ -375,24 +393,59 @@ export const StockMovementsPage = () => {
                     label="Cantidad a Ingresar"
                     type="number"
                     value={quantityIn}
-                    onChange={(e) => setQuantityIn(e.target.value ? Number(e.target.value) : '')}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === '') {
+                        setQuantityIn('');
+                      } else if (/^\d+$/.test(val)) {
+                        setQuantityIn(Number(val));
+                      }
+                    }}
                     isRequired
                   />
-                  {isOwner && (
-                    <ComerziaInput
-                      label="Costo Unitario de Entrada"
-                      type="number"
-                      value={unitCost}
-                      onChange={(e) => setUnitCost(e.target.value ? Number(e.target.value) : '')}
-                      isRequired
-                    />
+                  {hasCostPermission && (
+                    <>
+                      <div className="form-control">
+                        <label className="label cursor-pointer justify-start gap-4">
+                          <span className="label-text">Ingresar por:</span>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="costInputType" className="radio radio-primary radio-sm" checked={costInputType === 'unit'} onChange={() => { setCostInputType('unit'); setCostInputValue(''); }} />
+                            <span className="text-sm">Costo Unitario</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="costInputType" className="radio radio-primary radio-sm" checked={costInputType === 'total'} onChange={() => { setCostInputType('total'); setCostInputValue(''); }} />
+                            <span className="text-sm">Costo Total</span>
+                          </label>
+                        </label>
+                      </div>
+
+                      <ComerziaInput
+                        label={costInputType === 'unit' ? 'Costo Unitario' : 'Costo Total'}
+                        type="number"
+                        value={costInputValue}
+                        onChange={(e) => setCostInputValue(e.target.value ? Number(e.target.value) : '')}
+                        isRequired
+                      />
+                      
+                      {costInputValue !== '' && (
+                        <div className="text-sm text-base-content/70 bg-primary/10 p-3 rounded-lg flex justify-between items-center border border-primary/20">
+                          <span>{costInputType === 'unit' ? 'Costo Total Calculado:' : 'Costo Unitario Calculado:'}</span>
+                          <span className="font-bold text-primary text-lg">
+                            {costInputType === 'unit' 
+                              ? (typeof quantityIn === 'number' ? quantityIn * Number(costInputValue) : 0).toFixed(2)
+                              : (typeof quantityIn === 'number' && quantityIn > 0 ? Number(costInputValue) / quantityIn : 0).toFixed(2)
+                            }
+                          </span>
+                        </div>
+                      )}
+                    </>
                   )}
                   <ComerziaTextarea
                     label="Nota (Opcional)"
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
                   />
-                  {isOwner && (
+                  {hasCostPermission && (
                     <ComerziaSelect
                       label="Sucursal/Tienda (Opcional)"
                       options={branches.map(b => ({ value: b.id, label: b.name }))}
@@ -422,12 +475,14 @@ export const StockMovementsPage = () => {
                 >
                   Entradas
                 </a>
-                <a 
-                  className={`tab ${activeTab === 'adjustments' ? 'tab-active' : ''}`}
-                  onClick={() => { setActiveTab('adjustments'); setPage(0); }}
-                >
-                  Ajustes Manuales
-                </a>
+                {hasCostPermission && (
+                  <a 
+                    className={`tab ${activeTab === 'adjustments' ? 'tab-active' : ''}`}
+                    onClick={() => { setActiveTab('adjustments'); setPage(0); }}
+                  >
+                    Ajustes Manuales
+                  </a>
+                )}
               </div>
             </div>
 
@@ -438,7 +493,7 @@ export const StockMovementsPage = () => {
               pagination={pagination}
               showRowNumbers={true}
               onRowContextMenu={(e, row) => {
-                if (activeTab === 'entries' && (isOwner || userProfile?.permissions?.includes('COM_STOCK_ADJUSTMENT_MANAGE'))) {
+                if (activeTab === 'entries' && hasCostPermission) {
                   e.preventDefault();
                   setContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, row: row as StockEntryResponse });
                 }
@@ -465,7 +520,24 @@ export const StockMovementsPage = () => {
             setContextMenu(prev => ({ ...prev, isOpen: false }));
           }}
         />
+        {hasCostPermission && contextMenu.row?.statusType === 331 && (
+          <ContextMenuItem
+            icon={DollarSign}
+            label="Valorizar Stock"
+            onClick={() => {
+              setIsValuateModalOpen(true);
+              setContextMenu(prev => ({ ...prev, isOpen: false }));
+            }}
+          />
+        )}
       </ComerziaContextMenu>
+
+      <ValuateStockModal
+        isOpen={isValuateModalOpen}
+        onClose={() => setIsValuateModalOpen(false)}
+        onSuccess={() => loadKardex()}
+        stockEntry={contextMenu.row}
+      />
 
       <CreateFullProductModal
         isOpen={isCreateModalOpen}

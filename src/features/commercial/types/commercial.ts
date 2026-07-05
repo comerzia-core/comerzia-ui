@@ -145,13 +145,20 @@ export interface StockEntryResponse {
   branchId?: string;
   branchName?: string;
   currencyCode?: string;
+  statusType: number;
 }
 
 export interface CreateStockEntryRequest {
   variantId: string;
   quantityIn: number;
-  unitCost: number;
+  unitCost?: number | null;
+  totalCost?: number | null;
   note?: string;
+}
+
+export interface ValuateStockRequest {
+  unitCost: number;
+  totalCost: number;
 }
 
 export interface CreateManualAdjustmentRequest {
