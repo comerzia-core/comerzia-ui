@@ -165,10 +165,13 @@ export const StockMovementsPage = () => {
       const res = await commercialService.scanBarcode(codeToScan.trim());
       setProductData(res);
     } catch (err: any) {
-      if (err.response?.status === 404) {
-        toastError("No se encontró el producto escaneado");
+      const status = err.response?.status;
+      const errorCode = err.response?.data?.errorCode;
+      
+      if (status === 404 || errorCode === 'not_found') {
+        toastError("No se encontró ningún producto con este código de barras.");
       } else {
-        toastError(err.response?.data?.message || 'Producto no encontrado');
+        toastError(err.response?.data?.message || 'Error al conectar con el servidor.');
       }
       setShakeKey(prev => prev + 1);
     } finally {
@@ -193,8 +196,8 @@ export const StockMovementsPage = () => {
   const handleSubmitEntry = async () => {
     const qty = typeof quantityIn === 'number' ? quantityIn : 0;
     const val = typeof costInputValue === 'number' ? costInputValue : 0;
-    const finalUnitCost = costInputType === 'unit' ? val : (qty > 0 ? val / qty : 0);
-    const finalTotalCost = costInputType === 'total' ? val : (qty * val);
+    const finalUnitCost = costInputType === 'unit' ? val : (qty > 0 ? Number((val / qty).toFixed(4)) : 0);
+    const finalTotalCost = costInputType === 'total' ? val : Number((qty * val).toFixed(4));
 
     if (!scannedVariant || !quantityIn || (hasCostPermission && costInputValue === '')) {
       toastError("Completa todos los campos obligatorios.");
@@ -215,8 +218,11 @@ export const StockMovementsPage = () => {
       setNote('');
       loadKardex(); // Reload kardex
     } catch (e: any) {
-      if (e.response?.data?.errorCode === 'invalid_cost_calculation') {
-        toastError('El costo total proporcionado no coincide con la cantidad * costo unitario');
+      const errorCode = e.response?.data?.errorCode;
+      if (errorCode === 'invalid_cost_calculation') {
+        toastError('El cálculo de costos es incorrecto. Verifica los montos.');
+      } else if (errorCode === 'invalid_quantity') {
+        toastError('La cantidad de entrada debe ser mayor a cero.');
       } else {
         toastError(e.response?.data?.message || "Error al registrar la entrada.");
       }
@@ -242,7 +248,16 @@ export const StockMovementsPage = () => {
       setAdjustmentTarget(null);
       loadKardex();
     } catch (e: any) {
-      toastError(e.response?.data?.message || "Error al registrar el ajuste.");
+      const errorCode = e.response?.data?.errorCode;
+      if (errorCode === 'insufficient_stock') {
+        toastError("Stock insuficiente. No puedes retirar una cantidad mayor a la disponible.");
+      } else if (errorCode === 'invalid_adjustment_type') {
+        toastError("El tipo de ajuste seleccionado no es válido.");
+      } else if (errorCode === 'negative_quantity') {
+        toastError("La cantidad a ajustar debe ser mayor a cero.");
+      } else {
+        toastError(e.response?.data?.message || "Error al registrar el ajuste.");
+      }
     } finally {
       setIsSubmittingAdjustment(false);
     }

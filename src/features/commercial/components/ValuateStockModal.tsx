@@ -24,8 +24,8 @@ export const ValuateStockModal = ({ isOpen, onClose, onSuccess, stockEntry }: Pr
   const qty = stockEntry.quantityIn;
   const val = typeof costInputValue === 'number' ? costInputValue : 0;
   
-  const visualUnitCost = costInputType === 'unit' ? val : (qty > 0 ? val / qty : 0);
-  const visualTotalCost = costInputType === 'total' ? val : (qty * val);
+  const visualUnitCost = costInputType === 'unit' ? val : (qty > 0 ? Number((val / qty).toFixed(4)) : 0);
+  const visualTotalCost = costInputType === 'total' ? val : Number((qty * val).toFixed(4));
 
   const handleSubmit = async () => {
     if (costInputValue === '') {
@@ -44,10 +44,13 @@ export const ValuateStockModal = ({ isOpen, onClose, onSuccess, stockEntry }: Pr
       onSuccess();
       onClose();
     } catch (e: any) {
-      if (e.response?.data?.errorCode === 'invalid_cost_calculation') {
-        toastError('El costo total proporcionado no coincide con la cantidad * costo unitario');
-      } else if (e.response?.data?.errorCode === 'bad_request') {
-        toastError('La entrada de stock no está en estado PENDIENTE DE COSTO (331).');
+      const errorCode = e.response?.data?.errorCode;
+      if (errorCode === 'invalid_cost_calculation') {
+        toastError('Incongruencia de costos: El total no corresponde al unitario por la cantidad.');
+      } else if (errorCode === 'bad_request') {
+        toastError('Esta entrada ya fue valorizada o no está pendiente de costo.');
+      } else if (errorCode === 'not_found' || e.response?.status === 404) {
+        toastError('El registro de stock que intentas valorizar no existe.');
       } else {
         toastError(e.response?.data?.message || 'Error al valorizar el stock.');
       }
