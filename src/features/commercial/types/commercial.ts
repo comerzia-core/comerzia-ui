@@ -102,6 +102,7 @@ export interface ScannerPriceResponse {
   priceTypeName: string;
   equivalenceFactor: number;
   salePrice: number;
+  discountPrice: number;
 }
 
 export interface ScannerStockBranchResponse {
@@ -117,10 +118,17 @@ export interface ScannerVariantDetailResponse {
   sku: string;
   barCode: string;
   imageUrl?: string;
-  isScannedVariant: boolean;
   activePrices: ScannerPriceResponse[];
   totalAvailableStock: number;
   stockByBranch: ScannerStockBranchResponse[];
+}
+
+export interface ScannerSiblingVariantResponse {
+  variantId: string;
+  variantName: string;
+  sku: string;
+  barCode: string;
+  imageUrl?: string;
 }
 
 export interface ScannerProductResponse {
@@ -128,7 +136,8 @@ export interface ScannerProductResponse {
   productName: string;
   description?: string;
   brandName: string;
-  variants: ScannerVariantDetailResponse[];
+  scannedVariant: ScannerVariantDetailResponse;
+  otherVariants: ScannerSiblingVariantResponse[];
 }
 
 export interface StockEntryResponse {

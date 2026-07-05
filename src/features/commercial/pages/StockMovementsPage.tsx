@@ -126,7 +126,7 @@ export const StockMovementsPage = () => {
     }
   }, [hasCostPermission]);
 
-  const scannedVariant = productData?.variants.find(v => v.isScannedVariant) || productData?.variants[0];
+  const scannedVariant = productData?.scannedVariant;
 
   useEffect(() => {
     if (scannedVariant) {

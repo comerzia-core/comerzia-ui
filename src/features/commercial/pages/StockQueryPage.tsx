@@ -3,6 +3,8 @@ import { useSearchParams } from 'react-router-dom';
 import { commercialService } from '../services/commercialService';
 import type { ScannerProductResponse } from '../types/commercial';
 import { useToast } from '../../../context/ToastContext';
+import { useAuthStore } from '../../../stores/useAuthStore';
+import { Barcode, ImageOff, Store, Tag, Copy, ChevronRight, Layers } from 'lucide-react';
 
 export const StockQueryPage = () => {
   const [searchParams] = useSearchParams();
@@ -12,13 +14,15 @@ export const StockQueryPage = () => {
   const [shakeKey, setShakeKey] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const { error: toastError } = useToast();
+  const { userProfile } = useAuthStore();
+  const currencyCode = userProfile?.companySettings?.currencyCode || 'USD';
 
   useEffect(() => {
     // Auto-focus on mount
     if (inputRef.current) {
       inputRef.current.focus();
     }
-    
+
     // Check for barcode in URL
     const urlBarcode = searchParams.get('barcode');
     if (urlBarcode) {
@@ -55,7 +59,7 @@ export const StockQueryPage = () => {
     }
   };
 
-  const scannedVariant = productData?.variants.find(v => v.isScannedVariant) || productData?.variants[0];
+  const scannedVariant = productData?.scannedVariant;
 
   return (
     <div className="space-y-6 animate-fade-in max-w-5xl mx-auto mt-8">
@@ -67,14 +71,12 @@ export const StockQueryPage = () => {
       <div className="flex justify-center mb-10">
         <div className={`relative w-full max-w-2xl ${shakeKey > 0 ? 'animate-shake' : ''}`} key={shakeKey}>
           <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-base-content/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
+            <Barcode className="h-6 w-6 text-base-content/40" />
           </div>
-          <input 
+          <input
             ref={inputRef}
-            type="text" 
-            placeholder="Escanea o escribe el código y presiona Enter..." 
+            type="text"
+            placeholder="Escanea o escribe el código y presiona Enter..."
             className="input input-lg input-bordered w-full pl-12 shadow-lg text-xl bg-base-100 focus:outline-none focus:ring-4 focus:ring-primary/20 transition-shadow"
             value={barcode}
             onChange={(e) => setBarcode(e.target.value)}
@@ -97,15 +99,13 @@ export const StockQueryPage = () => {
               {scannedVariant.imageUrl ? (
                 <img src={scannedVariant.imageUrl} alt={scannedVariant.variantName} className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center text-base-content/30">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
+                <div className="w-full h-full flex flex-col items-center justify-center text-base-content/30 bg-base-200">
+                  <ImageOff className="h-10 w-10 mb-2" />
                   <span className="text-xs font-medium">Sin imagen</span>
                 </div>
               )}
             </div>
-            
+
             <div className="flex-1">
               <div className="flex justify-between items-start">
                 <div>
@@ -123,7 +123,7 @@ export const StockQueryPage = () => {
                   <div className="text-sm text-base-content/50 mt-2 font-mono">SKU: {scannedVariant.sku}</div>
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-4 mt-4">
                 <span className="badge badge-neutral">{productData.brandName}</span>
                 <span className="text-sm text-base-content/60">{productData.description || 'Sin descripción adicional'}</span>
@@ -136,18 +136,16 @@ export const StockQueryPage = () => {
             <div className="p-8 bg-base-50">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-bold flex items-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-primary" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                  </svg>
+                  <Store className="h-5 w-5 text-primary" />
                   Disponibilidad en Tiendas
                 </h3>
                 <span className="badge badge-primary font-bold">Total: {scannedVariant.totalAvailableStock}</span>
               </div>
-              
+
               <div className="space-y-3">
                 {scannedVariant.stockByBranch.map((sb) => (
-                  <div 
-                    key={sb.branchId} 
+                  <div
+                    key={sb.branchId}
                     className={`flex justify-between items-center p-4 rounded-xl border ${sb.isCurrentBranch ? 'bg-primary/5 border-primary/20' : 'bg-base-100 border-base-200'}`}
                   >
                     <div className="flex items-center gap-3">
@@ -170,12 +168,10 @@ export const StockQueryPage = () => {
             {/* Lista de Precios */}
             <div className="p-8">
               <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-success" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                </svg>
+                <Tag className="h-5 w-5 text-success" />
                 Listas de Precio Activas
               </h3>
-              
+
               <div className="grid gap-4">
                 {scannedVariant.activePrices.map((price) => (
                   <div key={price.priceTypeId} className="bg-base-100 border border-base-200 p-4 rounded-xl flex justify-between items-center hover:shadow-md transition-shadow">
@@ -183,14 +179,58 @@ export const StockQueryPage = () => {
                       <h4 className="font-bold text-base-content">{price.priceTypeName}</h4>
                       <p className="text-xs text-base-content/50 mt-1">{price.equivalenceFactor} Unidades</p>
                     </div>
-                    <div className="text-2xl font-bold text-success font-mono">
-                      ${price.salePrice.toFixed(2)}
+                    <div className="flex items-center gap-2">
+                      <div className="text-2xl font-bold text-success font-mono">
+                        {currencyCode} {price.salePrice.toFixed(2)}
+                      </div>
+                      {price.discountPrice != null && price.discountPrice !== price.salePrice && (
+                        <div className="text-sm font-medium text-error font-mono px-2 py-1 bg-error/10 rounded-md">
+                          Desc: {currencyCode} {price.discountPrice.toFixed(2)}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
             </div>
           </div>
+          {/* Otras variantes */}
+          {productData.otherVariants && productData.otherVariants.length > 0 && (
+            <div className="p-8 bg-base-100 border-t border-base-200">
+              <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                <Layers className="h-5 w-5 text-primary" />
+                Otras variantes de este producto
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {productData.otherVariants.map((variant) => (
+                  <button
+                    key={variant.variantId}
+                    type="button"
+                    onClick={() => {
+                      setBarcode(variant.barCode);
+                      executeScan(variant.barCode);
+                    }}
+                    className="flex items-center gap-3 p-3 rounded-xl border border-base-200 hover:border-primary hover:bg-primary/5 transition-all text-left group"
+                  >
+                    <div className="w-12 h-12 rounded-lg bg-base-200 flex-shrink-0 overflow-hidden border border-base-300">
+                      {variant.imageUrl ? (
+                        <img src={variant.imageUrl} alt={variant.variantName} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-base-content/30">
+                          <ImageOff className="h-5 w-5" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="overflow-hidden flex-1">
+                      <p className="font-semibold text-base-content truncate group-hover:text-primary transition-colors">{variant.variantName}</p>
+                      <p className="text-xs text-base-content/50 font-mono truncate">{variant.barCode}</p>
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-base-content/20 group-hover:text-primary transition-colors" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
