@@ -275,9 +275,31 @@ export interface PageSalePriceResponse {
   number: number;
 }
 
+export interface SalePriceTrendResponse {
+  salePrice: number;
+  date: string;
+}
+
+export interface SalePriceHistoryResponse {
+  id: string;
+  salePrice: number;
+  discountPrice?: number;
+  previousPrice?: number;
+  variationPercentage?: number;
+  validFrom: string;
+  validTo?: string | null;
+}
+
+export interface PageSalePriceHistoryResponse {
+  content: SalePriceHistoryResponse[];
+  totalElements: number;
+  totalPages: number;
+  size: number;
+  number: number;
+}
+
 export interface ChangePriceRequest {
   priceTypeId: string;
-  basePrice: number;
   salePrice: number;
   discountPrice: number;
   variantId: string;

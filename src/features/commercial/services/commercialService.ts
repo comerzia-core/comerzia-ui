@@ -22,6 +22,8 @@ import type {
   PageProductVariantResponse,
   PageInventoryResponse,
   PageSalePriceResponse,
+  PageSalePriceHistoryResponse,
+  SalePriceTrendResponse,
   ChangePriceRequest,
   CreateManualAdjustmentRequest,
   ValuateStockRequest
@@ -192,9 +194,21 @@ export const commercialService = {
 
   // Sale Prices
   getSalePricesByVariant: async (variantId: string, page = 0, size = 20): Promise<PageSalePriceResponse> => {
-    // Assuming this endpoint exists based on the requirements
+    // Legacy endpoint if needed
     const params = new URLSearchParams({ page: String(page), size: String(size) });
     const response = await api.get(`/tenant/sale-prices/variant/${variantId}?${params.toString()}`);
+    return response.data;
+  },
+
+  getSalePriceHistory: async (variantId: string, priceTypeId: string, page = 0, size = 20): Promise<PageSalePriceHistoryResponse> => {
+    const params = new URLSearchParams({ priceTypeId, page: String(page), size: String(size) });
+    const response = await api.get(`/tenant/sale-prices/variant/${variantId}?${params.toString()}`);
+    return response.data;
+  },
+
+  getSalePriceTrend: async (variantId: string, priceTypeId: string, months = 6): Promise<SalePriceTrendResponse[]> => {
+    const params = new URLSearchParams({ priceTypeId, months: String(months) });
+    const response = await api.get(`/tenant/sale-prices/variant/${variantId}/trend?${params.toString()}`);
     return response.data;
   },
 

@@ -1,21 +1,23 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { ComerziaModal } from '../../../components/ui/ComerziaModal';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
 import { ComerziaSelect } from '../../../components/ui/ComerziaSelect';
 import { BtnCancel, BtnSave } from '../../../components/ui/CrudButtons';
 import { commercialService } from '../services/commercialService';
-import type { PriceTypeResponse } from '../types/commercial';
+import type { PriceTypeResponse, ScannerPriceResponse } from '../types/commercial';
 import { useToast } from '../../../context/ToastContext';
+import { TrendingUp, TrendingDown } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   variantId: string;
   variantName: string;
+  activePrices?: ScannerPriceResponse[];
   onSuccess: () => void;
 }
 
-export const ChangePriceModal = ({ isOpen, onClose, variantId, variantName, onSuccess }: Props) => {
+export const ChangePriceModal = ({ isOpen, onClose, variantId, variantName, activePrices = [], onSuccess }: Props) => {
   const [priceTypes, setPriceTypes] = useState<PriceTypeResponse[]>([]);
   const [priceTypeId, setPriceTypeId] = useState('');
   const [basePrice, setBasePrice] = useState<number | ''>('');
@@ -57,7 +59,7 @@ export const ChangePriceModal = ({ isOpen, onClose, variantId, variantName, onSu
         priceTypeId,
         basePrice: Number(basePrice),
         salePrice: Number(salePrice),
-        discountPrice: Number(discountPrice)
+        discountPrice: Number(discountPrice) || Number(salePrice)
       });
       toastSuccess("Precio actualizado exitosamente. SCD Type 2 generado.");
       onSuccess();
@@ -69,11 +71,31 @@ export const ChangePriceModal = ({ isOpen, onClose, variantId, variantName, onSu
     }
   };
 
+  const currentPrice = useMemo(() => {
+    if (!priceTypeId || !activePrices.length) return null;
+    return activePrices.find(p => p.priceTypeId === priceTypeId)?.salePrice || null;
+  }, [priceTypeId, activePrices]);
+
+  const variationData = useMemo(() => {
+    if (currentPrice == null || salePrice === '' || Number(salePrice) === 0) return null;
+    const newPrice = Number(salePrice);
+    if (newPrice === currentPrice) return null;
+    
+    const diff = newPrice - currentPrice;
+    const percentage = (diff / currentPrice) * 100;
+    
+    return {
+      isUp: diff > 0,
+      percentage: Math.abs(percentage).toFixed(2),
+      diff: Math.abs(diff).toFixed(2)
+    };
+  }, [currentPrice, salePrice]);
+
   return (
     <ComerziaModal
       isOpen={isOpen}
       onClose={onClose}
-      title="Cambiar Precio"
+      title="Actualizar Precio"
       size="md"
     >
       <div className="space-y-4">
@@ -85,11 +107,20 @@ export const ChangePriceModal = ({ isOpen, onClose, variantId, variantName, onSu
           label="Tipo de Precio"
           options={priceTypes.map(pt => ({ value: pt.id, label: pt.name }))}
           value={priceTypeId}
-          onChange={(e) => setPriceTypeId(e.target.value)}
+          onChange={(e) => {
+            setPriceTypeId(e.target.value);
+            // Autofill current base and sale price if available in active prices? (optional, let's keep it manual for safety)
+          }}
           error={!priceTypeId && shakeKey > 0 ? "Requerido" : ""}
           shakeKey={shakeKey}
           isRequired
         />
+
+        {currentPrice != null && (
+          <div className="text-sm text-base-content/60 font-mono">
+            Precio actual vigente: <strong>{currentPrice.toFixed(2)}</strong>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-4">
           <ComerziaInput
@@ -101,15 +132,23 @@ export const ChangePriceModal = ({ isOpen, onClose, variantId, variantName, onSu
             shakeKey={shakeKey}
             isRequired
           />
-          <ComerziaInput
-            label="Precio de Venta"
-            type="number"
-            value={salePrice}
-            onChange={(e) => setSalePrice(e.target.value ? Number(e.target.value) : '')}
-            error={salePrice === '' && shakeKey > 0 ? "Requerido" : ""}
-            shakeKey={shakeKey}
-            isRequired
-          />
+          <div>
+            <ComerziaInput
+              label="Precio de Venta"
+              type="number"
+              value={salePrice}
+              onChange={(e) => setSalePrice(e.target.value ? Number(e.target.value) : '')}
+              error={salePrice === '' && shakeKey > 0 ? "Requerido" : ""}
+              shakeKey={shakeKey}
+              isRequired
+            />
+            {variationData && (
+              <div className={`text-xs mt-1 flex items-center gap-1 ${variationData.isUp ? 'text-error' : 'text-success'}`}>
+                {variationData.isUp ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                Estás {variationData.isUp ? 'subiendo' : 'bajando'} el precio un {variationData.percentage}%
+              </div>
+            )}
+          </div>
         </div>
 
         <ComerziaInput

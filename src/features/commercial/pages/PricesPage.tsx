@@ -1,13 +1,17 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { commercialService } from '../services/commercialService';
-import type { ScannerProductResponse, SalePriceResponse } from '../types/commercial';
+import type { ScannerProductResponse, ScannerPriceResponse, SalePriceHistoryResponse, SalePriceTrendResponse } from '../types/commercial';
 import { useToast } from '../../../context/ToastContext';
 import { ComerziaTable, type Column, type TablePaginationConfig } from '../../../components/ui/ComerziaTable';
-import { BtnCreate } from '../../../components/ui/CrudButtons';
+import { BtnCreate, BtnCancel } from '../../../components/ui/CrudButtons';
+import { ComerziaButton } from '../../../components/ui/ComerziaButton';
 import { ChangePriceModal } from '../components/ChangePriceModal';
-import { Barcode } from 'lucide-react';
+import { Barcode, History, ArrowLeft, TrendingUp } from 'lucide-react';
 import { useAuthStore } from '../../../stores/useAuthStore';
+import { ComerziaBadge } from '../../../components/ui/ComerziaBadge';
+import { ComerziaLineChart } from '../../../components/ui/charts';
+import { ComerziaSelect } from '../../../components/ui/ComerziaSelect';
 
 export const PricesPage = () => {
   const [searchParams] = useSearchParams();
@@ -20,17 +24,29 @@ export const PricesPage = () => {
   const { userProfile } = useAuthStore();
   const currencyCode = userProfile?.companySettings?.currencyCode || 'USD';
 
-  const [pricesData, setPricesData] = useState<SalePriceResponse[]>([]);
-  const [isLoadingPrices, setIsLoadingPrices] = useState(false);
+  // State B
+  const [selectedPriceType, setSelectedPriceType] = useState<ScannerPriceResponse | null>(null);
+  
+  // Table Data
+  const [historyData, setHistoryData] = useState<SalePriceHistoryResponse[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [page, setPage] = useState(0);
-  const [size, setSize] = useState(20);
+  const [size, setSize] = useState(10);
   const [totalElements, setTotalElements] = useState(0);
 
+  // Trend Data
+  const [trendData, setTrendData] = useState<SalePriceTrendResponse[]>([]);
+  const [isLoadingTrend, setIsLoadingTrend] = useState(false);
+  const [trendMonths, setTrendMonths] = useState('6');
+
   const [isChangeModalOpen, setIsChangeModalOpen] = useState(false);
+
+  const scannedVariant = productData?.scannedVariant;
 
   const executeScan = useCallback(async (code: string) => {
     setIsLoadingScan(true);
     setProductData(null);
+    setSelectedPriceType(null);
     try {
       const res = await commercialService.scanBarcode(code);
       setProductData(res);
@@ -61,28 +77,43 @@ export const PricesPage = () => {
     }
   }, [searchParams, executeScan]);
 
-  const scannedVariant = productData?.scannedVariant;
-
-  useEffect(() => {
-    if (scannedVariant) {
-      loadPrices();
-    }
-  }, [scannedVariant, page, size]);
-
-  const loadPrices = async () => {
-    if (!scannedVariant) return;
-    setIsLoadingPrices(true);
+  const loadHistoryAndTrend = useCallback(async () => {
+    if (!scannedVariant || !selectedPriceType) return;
+    
+    // Load History
+    setIsLoadingHistory(true);
     try {
-      const res = await commercialService.getSalePricesByVariant(scannedVariant.variantId, page, size);
-      setPricesData(res.content);
+      const res = await commercialService.getSalePriceHistory(scannedVariant.variantId, selectedPriceType.priceTypeId, page, size);
+      setHistoryData(res.content);
       setTotalElements(res.totalElements);
     } catch (e) {
       console.error(e);
-      setPricesData([]);
+      setHistoryData([]);
     } finally {
-      setIsLoadingPrices(false);
+      setIsLoadingHistory(false);
     }
-  };
+
+    // Load Trend
+    setIsLoadingTrend(true);
+    try {
+      const trendRes = await commercialService.getSalePriceTrend(scannedVariant.variantId, selectedPriceType.priceTypeId, Number(trendMonths));
+      setTrendData(trendRes.map(item => ({
+        ...item,
+        date: new Date(item.date).toLocaleDateString() // Format date for x-axis
+      })));
+    } catch (e) {
+      console.error(e);
+      setTrendData([]);
+    } finally {
+      setIsLoadingTrend(false);
+    }
+  }, [scannedVariant, selectedPriceType, page, size, trendMonths]);
+
+  useEffect(() => {
+    if (selectedPriceType) {
+      loadHistoryAndTrend();
+    }
+  }, [selectedPriceType, page, size, trendMonths, loadHistoryAndTrend]);
 
   const handleScan = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
@@ -94,16 +125,20 @@ export const PricesPage = () => {
     }
   };
 
-  const columns: Column<SalePriceResponse>[] = [
+  const columns: Column<SalePriceHistoryResponse>[] = [
+    { header: 'Fecha Desde', render: (row) => new Date(row.validFrom).toLocaleString() },
+    { header: 'Fecha Hasta', render: (row) => row.validTo ? new Date(row.validTo).toLocaleString() : '-' },
+    { header: 'Precio Anterior', render: (row) => row.previousPrice != null ? `${currencyCode} ${row.previousPrice.toFixed(2)}` : '-' },
+    { header: 'Nuevo Precio', render: (row) => <span className="font-bold">{currencyCode} {(row.salePrice || 0).toFixed(2)}</span> },
     { 
-      header: 'Tipo de Precio', 
-      render: (row) => row.priceType?.name || row.priceTypeName || 'Desconocido'
+      header: 'Variación', 
+      render: (row) => {
+        if (row.variationPercentage == null) return '-';
+        const isUp = row.variationPercentage > 0;
+        const type = isUp ? 'error' : row.variationPercentage < 0 ? 'success' : 'neutral';
+        return <ComerziaBadge variant={type} label={`${isUp ? '+' : ''}${row.variationPercentage.toFixed(2)}%`} />;
+      }
     },
-    { header: 'Costo Base', render: (row) => `${currencyCode} ${(row.basePrice || 0).toFixed(2)}` },
-    { header: 'Precio Venta', render: (row) => <span className="font-bold text-success">{currencyCode} {(row.salePrice || 0).toFixed(2)}</span> },
-    { header: 'Precio Descuento', render: (row) => `${currencyCode} ${(row.discountPrice || 0).toFixed(2)}` },
-    { header: 'Válido Desde', render: (row) => new Date(row.validFrom).toLocaleString() },
-    { header: 'Válido Hasta', render: (row) => row.validTo ? new Date(row.validTo).toLocaleString() : '-' },
     { 
       header: 'Estado', 
       render: (row) => (
@@ -133,7 +168,10 @@ export const PricesPage = () => {
       </div>
 
       <div className="bg-base-100 p-6 rounded-2xl shadow-sm border border-base-200">
-        <h2 className="text-lg font-bold mb-4">Buscar Variante (Escáner)</h2>
+        <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+          <Barcode className="h-5 w-5 text-primary" />
+          Buscar Variante
+        </h2>
         <div className={`relative w-full max-w-md ${shakeKey > 0 ? 'animate-shake' : ''}`} key={shakeKey}>
           <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
             <Barcode className="h-5 w-5 text-base-content/40" />
@@ -156,25 +194,132 @@ export const PricesPage = () => {
         </div>
       </div>
 
-      {scannedVariant && productData && (
-        <div className="bg-base-100 p-6 rounded-2xl shadow-sm border border-base-200 animate-slide-up">
-          <div className="flex justify-between items-center mb-6">
+      {scannedVariant && productData && !selectedPriceType && (
+        <div className="bg-base-100 p-6 rounded-2xl shadow-sm border border-base-200 animate-slide-up space-y-6">
+          <div className="flex justify-between items-center">
             <div>
               <h2 className="text-2xl font-bold text-primary">{scannedVariant.variantName}</h2>
-              <p className="text-sm text-base-content/60">{productData.productName} | SKU: {scannedVariant.sku}</p>
+              <div className="flex items-center gap-3 mt-2">
+                <ComerziaBadge variant="neutral" label={productData.productName} />
+                <span className="text-sm text-base-content/60 font-mono">SKU: {scannedVariant.sku}</span>
+                <span className="text-sm text-base-content/60 font-mono">Barcode: {scannedVariant.barCode}</span>
+              </div>
             </div>
             <BtnCreate 
-              label="Cambiar Precio" 
+              label="Actualizar Precios" 
               onClick={() => setIsChangeModalOpen(true)} 
             />
           </div>
 
-          <ComerziaTable
-            data={pricesData}
-            columns={columns}
-            isLoading={isLoadingPrices}
-            pagination={pagination}
-          />
+          <div>
+            <h3 className="text-lg font-bold mb-4 text-base-content/80">Listas de Precio Activas</h3>
+            {scannedVariant.activePrices && scannedVariant.activePrices.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {scannedVariant.activePrices.map((price, idx) => (
+                  <div key={`${price.priceTypeId}-${idx}`} className="bg-base-50 border border-base-200 rounded-box p-5 flex flex-col justify-between hover:shadow-md transition-shadow">
+                    <div>
+                      <h4 className="font-bold text-lg text-base-content">{price.priceTypeName}</h4>
+                      <div className="mt-4 flex items-baseline gap-2">
+                        <span className="text-3xl font-bold text-success font-mono">
+                          {currencyCode} {(price.salePrice || 0).toFixed(2)}
+                        </span>
+                      </div>
+                      {price.equivalenceFactor > 1 && (
+                        <p className="text-xs text-base-content/50 mt-1">
+                          Precio Unitario: {currencyCode} {((price.salePrice || 0) * price.equivalenceFactor).toFixed(2)}
+                        </p>
+                      )}
+                      {price.discountPrice != null && price.discountPrice !== price.salePrice && (
+                         <p className="text-sm text-error mt-2 font-mono">
+                           Descuento: {currencyCode} {price.discountPrice.toFixed(2)}
+                         </p>
+                      )}
+                    </div>
+                    <div className="mt-6">
+                      <ComerziaButton 
+                        type="button" 
+                        label="Ver Historial" 
+                        variant="primary"
+                        icon={<History className="w-4 h-4" />}
+                        onClick={() => setSelectedPriceType(price)}
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center p-8 text-base-content/50 bg-base-50 rounded-box border border-base-200">
+                Esta variante no tiene precios configurados.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {scannedVariant && productData && selectedPriceType && (
+        <div className="space-y-6 animate-slide-up">
+          <div className="flex items-center gap-4">
+            <BtnCancel 
+              label="Volver a Resumen" 
+              onClick={() => setSelectedPriceType(null)} 
+            />
+            <h2 className="text-2xl font-bold text-base-content flex items-center gap-2">
+              <History className="h-6 w-6 text-primary" />
+              Historial: {selectedPriceType.priceTypeName}
+            </h2>
+          </div>
+
+          <div className="bg-base-100 p-6 rounded-2xl shadow-sm border border-base-200">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-lg font-bold flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-secondary" />
+                Tendencia de Precios
+              </h3>
+              <div className="w-48">
+                <ComerziaSelect
+                  value={trendMonths}
+                  onChange={(e) => setTrendMonths(e.target.value)}
+                  options={[
+                    { value: '3', label: 'Últimos 3 meses' },
+                    { value: '6', label: 'Últimos 6 meses' },
+                    { value: '12', label: 'Este Año' }
+                  ]}
+                />
+              </div>
+            </div>
+            
+            {isLoadingTrend ? (
+              <div className="h-[300px] flex items-center justify-center">
+                <span className="loading loading-spinner loading-lg text-primary"></span>
+              </div>
+            ) : trendData.length > 0 ? (
+              <ComerziaLineChart
+                data={trendData}
+                xAxisDataKey="date"
+                series={[
+                  { dataKey: 'salePrice', name: 'Precio de Venta', color: 'oklch(var(--p))' }
+                ]}
+              />
+            ) : (
+               <div className="h-[300px] flex items-center justify-center text-base-content/50 border border-dashed border-base-300 rounded-box">
+                No hay suficientes datos para graficar la tendencia en este rango.
+              </div>
+            )}
+          </div>
+
+          <div className="bg-base-100 p-6 rounded-2xl shadow-sm border border-base-200">
+            <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+              <History className="h-5 w-5 text-primary" />
+              Tabla de Histórico (SCD Tipo 2)
+            </h3>
+            <ComerziaTable
+              data={historyData}
+              columns={columns}
+              isLoading={isLoadingHistory}
+              pagination={pagination}
+            />
+          </div>
         </div>
       )}
 
@@ -184,9 +329,10 @@ export const PricesPage = () => {
           onClose={() => setIsChangeModalOpen(false)}
           variantId={scannedVariant.variantId}
           variantName={scannedVariant.variantName}
+          activePrices={scannedVariant.activePrices}
           onSuccess={() => {
-            setPage(0);
-            loadPrices();
+            // Re-fetch to update the active prices list
+            executeScan(barcode);
           }}
         />
       )}
