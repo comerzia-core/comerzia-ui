@@ -275,6 +275,15 @@ export interface PageSalePriceResponse {
   number: number;
 }
 
+export interface VariantWithPricesResponse {
+  variantId: string;
+  productName: string;
+  variantName: string;
+  sku: string;
+  barCode: string;
+  activePrices: SalePriceResponse[];
+}
+
 export interface SalePriceTrendResponse {
   salePrice: number;
   date: string;

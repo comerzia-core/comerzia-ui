@@ -1,10 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { ComerziaModal } from '../../../components/ui/ComerziaModal';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
-import { ComerziaSelect } from '../../../components/ui/ComerziaSelect';
 import { BtnCancel, BtnSave } from '../../../components/ui/CrudButtons';
 import { commercialService } from '../services/commercialService';
-import type { PriceTypeResponse, ScannerPriceResponse } from '../types/commercial';
+import type { SalePriceResponse } from '../types/commercial';
 import { useToast } from '../../../context/ToastContext';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 
@@ -13,14 +12,13 @@ interface Props {
   onClose: () => void;
   variantId: string;
   variantName: string;
-  activePrices?: ScannerPriceResponse[];
+  activePrices?: SalePriceResponse[];
+  initialPriceTypeId?: string;
   onSuccess: () => void;
 }
 
-export const ChangePriceModal = ({ isOpen, onClose, variantId, variantName, activePrices = [], onSuccess }: Props) => {
-  const [priceTypes, setPriceTypes] = useState<PriceTypeResponse[]>([]);
-  const [priceTypeId, setPriceTypeId] = useState('');
-  const [basePrice, setBasePrice] = useState<number | ''>('');
+export const ChangePriceModal = ({ isOpen, onClose, variantId, variantName, activePrices = [], initialPriceTypeId = '', onSuccess }: Props) => {
+  const [priceTypeId, setPriceTypeId] = useState(initialPriceTypeId);
   const [salePrice, setSalePrice] = useState<number | ''>('');
   const [discountPrice, setDiscountPrice] = useState<number | ''>(0);
 
@@ -30,25 +28,14 @@ export const ChangePriceModal = ({ isOpen, onClose, variantId, variantName, acti
 
   useEffect(() => {
     if (isOpen) {
-      loadPriceTypes();
-      setPriceTypeId('');
-      setBasePrice('');
+      setPriceTypeId(initialPriceTypeId);
       setSalePrice('');
       setDiscountPrice(0);
     }
-  }, [isOpen]);
-
-  const loadPriceTypes = async () => {
-    try {
-      const pts = await commercialService.getPriceTypes();
-      setPriceTypes(pts);
-    } catch (e) {
-      console.error(e);
-    }
-  };
+  }, [isOpen, initialPriceTypeId]);
 
   const handleSubmit = async () => {
-    if (!priceTypeId || basePrice === '' || salePrice === '') {
+    if (!priceTypeId || salePrice === '') {
       setShakeKey(prev => prev + 1);
       return;
     }
@@ -57,7 +44,6 @@ export const ChangePriceModal = ({ isOpen, onClose, variantId, variantName, acti
       await commercialService.changePrice({
         variantId,
         priceTypeId,
-        basePrice: Number(basePrice),
         salePrice: Number(salePrice),
         discountPrice: Number(discountPrice) || Number(salePrice)
       });
@@ -100,22 +86,10 @@ export const ChangePriceModal = ({ isOpen, onClose, variantId, variantName, acti
     >
       <div className="space-y-4">
         <div className="bg-info/10 text-info p-3 rounded-lg text-sm mb-4">
-          Actualizando precio para: <strong>{variantName}</strong>. El sistema cerrará el precio anterior y activará este nuevo (SCD Type 2).
+          Actualizando precio para: <strong>{variantName}</strong>.<br/>
+          Tipo de precio: <strong>{activePrices.find(p => p.priceTypeId === priceTypeId)?.priceTypeName || 'Desconocido'}</strong>.<br/>
+          El sistema cerrará el precio anterior y activará este nuevo (SCD Type 2).
         </div>
-
-        <ComerziaSelect
-          label="Tipo de Precio"
-          options={priceTypes.map(pt => ({ value: pt.id, label: pt.name }))}
-          value={priceTypeId}
-          onChange={(e) => {
-            setPriceTypeId(e.target.value);
-            // Autofill current base and sale price if available in active prices? (optional, let's keep it manual for safety)
-          }}
-          error={!priceTypeId && shakeKey > 0 ? "Requerido" : ""}
-          shakeKey={shakeKey}
-          isRequired
-        />
-
         {currentPrice != null && (
           <div className="text-sm text-base-content/60 font-mono">
             Precio actual vigente: <strong>{currentPrice.toFixed(2)}</strong>
@@ -123,15 +97,6 @@ export const ChangePriceModal = ({ isOpen, onClose, variantId, variantName, acti
         )}
 
         <div className="grid grid-cols-2 gap-4">
-          <ComerziaInput
-            label="Costo Base"
-            type="number"
-            value={basePrice}
-            onChange={(e) => setBasePrice(e.target.value ? Number(e.target.value) : '')}
-            error={basePrice === '' && shakeKey > 0 ? "Requerido" : ""}
-            shakeKey={shakeKey}
-            isRequired
-          />
           <div>
             <ComerziaInput
               label="Precio de Venta"
@@ -149,14 +114,13 @@ export const ChangePriceModal = ({ isOpen, onClose, variantId, variantName, acti
               </div>
             )}
           </div>
+          <ComerziaInput
+            label="Precio con Descuento"
+            type="number"
+            value={discountPrice}
+            onChange={(e) => setDiscountPrice(e.target.value ? Number(e.target.value) : '')}
+          />
         </div>
-
-        <ComerziaInput
-          label="Precio con Descuento (Opcional)"
-          type="number"
-          value={discountPrice}
-          onChange={(e) => setDiscountPrice(e.target.value ? Number(e.target.value) : '')}
-        />
 
         <div className="flex justify-end gap-2 mt-8">
           <BtnCancel onClick={onClose} disabled={isSubmitting} />

@@ -1,22 +1,22 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { commercialService } from '../services/commercialService';
-import type { ScannerProductResponse, ScannerPriceResponse, SalePriceHistoryResponse, SalePriceTrendResponse } from '../types/commercial';
+import type { VariantWithPricesResponse, SalePriceResponse, SalePriceHistoryResponse, SalePriceTrendResponse } from '../types/commercial';
 import { useToast } from '../../../context/ToastContext';
 import { ComerziaTable, type Column, type TablePaginationConfig } from '../../../components/ui/ComerziaTable';
-import { BtnCreate, BtnCancel } from '../../../components/ui/CrudButtons';
-import { ComerziaButton } from '../../../components/ui/ComerziaButton';
+import { BtnCancel } from '../../../components/ui/CrudButtons';
 import { ChangePriceModal } from '../components/ChangePriceModal';
-import { Barcode, History, ArrowLeft, TrendingUp } from 'lucide-react';
+import { Barcode, History, TrendingUp, DollarSign, LineChart } from 'lucide-react';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { ComerziaBadge } from '../../../components/ui/ComerziaBadge';
 import { ComerziaLineChart } from '../../../components/ui/charts';
 import { ComerziaSelect } from '../../../components/ui/ComerziaSelect';
+import { ComerziaContextMenu, ContextMenuItem } from '../../../components/ui/ComerziaContextMenu';
 
 export const PricesPage = () => {
   const [searchParams] = useSearchParams();
   const [barcode, setBarcode] = useState('');
-  const [productData, setProductData] = useState<ScannerProductResponse | null>(null);
+  const [productData, setProductData] = useState<VariantWithPricesResponse | null>(null);
   const [isLoadingScan, setIsLoadingScan] = useState(false);
   const [shakeKey, setShakeKey] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -25,8 +25,16 @@ export const PricesPage = () => {
   const currencyCode = userProfile?.companySettings?.currencyCode || 'USD';
 
   // State B
-  const [selectedPriceType, setSelectedPriceType] = useState<ScannerPriceResponse | null>(null);
+  const [selectedPriceType, setSelectedPriceType] = useState<SalePriceResponse | null>(null);
   
+  // Context Menu State
+  const [contextMenu, setContextMenu] = useState<{ isOpen: boolean; x: number; y: number; row: SalePriceResponse | null }>({
+    isOpen: false,
+    x: 0,
+    y: 0,
+    row: null
+  });
+
   // Table Data
   const [historyData, setHistoryData] = useState<SalePriceHistoryResponse[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
@@ -40,15 +48,16 @@ export const PricesPage = () => {
   const [trendMonths, setTrendMonths] = useState('6');
 
   const [isChangeModalOpen, setIsChangeModalOpen] = useState(false);
-
-  const scannedVariant = productData?.scannedVariant;
+  
+  // Used to pre-fill ChangePriceModal if opened from context menu
+  const [priceTypeToEdit, setPriceTypeToEdit] = useState<string>(''); 
 
   const executeScan = useCallback(async (code: string) => {
     setIsLoadingScan(true);
     setProductData(null);
     setSelectedPriceType(null);
     try {
-      const res = await commercialService.scanBarcode(code);
+      const res = await commercialService.getPricesByBarcode(code);
       setProductData(res);
     } catch (err: any) {
       const errorCode = err.response?.data?.errorCode;
@@ -78,12 +87,12 @@ export const PricesPage = () => {
   }, [searchParams, executeScan]);
 
   const loadHistoryAndTrend = useCallback(async () => {
-    if (!scannedVariant || !selectedPriceType) return;
+    if (!productData || !selectedPriceType || !selectedPriceType.priceTypeId) return;
     
     // Load History
     setIsLoadingHistory(true);
     try {
-      const res = await commercialService.getSalePriceHistory(scannedVariant.variantId, selectedPriceType.priceTypeId, page, size);
+      const res = await commercialService.getSalePriceHistory(productData.variantId, selectedPriceType.priceTypeId, page, size);
       setHistoryData(res.content);
       setTotalElements(res.totalElements);
     } catch (e) {
@@ -96,7 +105,7 @@ export const PricesPage = () => {
     // Load Trend
     setIsLoadingTrend(true);
     try {
-      const trendRes = await commercialService.getSalePriceTrend(scannedVariant.variantId, selectedPriceType.priceTypeId, Number(trendMonths));
+      const trendRes = await commercialService.getSalePriceTrend(productData.variantId, selectedPriceType.priceTypeId, Number(trendMonths));
       setTrendData(trendRes.map(item => ({
         ...item,
         date: new Date(item.date).toLocaleDateString() // Format date for x-axis
@@ -107,7 +116,7 @@ export const PricesPage = () => {
     } finally {
       setIsLoadingTrend(false);
     }
-  }, [scannedVariant, selectedPriceType, page, size, trendMonths]);
+  }, [productData, selectedPriceType, page, size, trendMonths]);
 
   useEffect(() => {
     if (selectedPriceType) {
@@ -125,11 +134,46 @@ export const PricesPage = () => {
     }
   };
 
-  const columns: Column<SalePriceHistoryResponse>[] = [
+  const handleContextMenu = (e: React.MouseEvent, row: SalePriceResponse) => {
+    e.preventDefault();
+    setContextMenu({
+      isOpen: true,
+      x: e.clientX,
+      y: e.clientY,
+      row
+    });
+  };
+
+  const activePricesColumns: Column<SalePriceResponse>[] = [
+    { 
+      header: 'Nombre', 
+      render: (row) => <span className="font-semibold">{row.priceTypeName}</span> 
+    },
+    { 
+      header: 'Descuento', 
+      render: (row) => row.discountPrice != null && row.salePrice != null && row.discountPrice !== row.salePrice 
+        ? <span className="text-error">{currencyCode} {row.discountPrice.toFixed(2)}</span> 
+        : '-'
+    },
+    { 
+      header: 'Venta', 
+      render: (row) => row.salePrice != null 
+        ? <span className="font-bold text-success">{currencyCode} {row.salePrice.toFixed(2)}</span> 
+        : <span className="text-warning text-xs">No configurado</span>
+    },
+    { 
+      header: 'Total', 
+      render: (row) => row.salePrice != null
+        ? <span className="text-base-content/80 font-mono">{currencyCode} {(row.salePrice * (row.priceType?.equivalenceFactor || 1)).toFixed(2)}</span>
+        : '-'
+    }
+  ];
+
+  const historyColumns: Column<SalePriceHistoryResponse>[] = [
     { header: 'Fecha Desde', render: (row) => new Date(row.validFrom).toLocaleString() },
     { header: 'Fecha Hasta', render: (row) => row.validTo ? new Date(row.validTo).toLocaleString() : '-' },
-    { header: 'Precio Anterior', render: (row) => row.previousPrice != null ? `${currencyCode} ${row.previousPrice.toFixed(2)}` : '-' },
-    { header: 'Nuevo Precio', render: (row) => <span className="font-bold">{currencyCode} {(row.salePrice || 0).toFixed(2)}</span> },
+    { header: 'Anterior', render: (row) => row.previousPrice != null ? `${currencyCode} ${row.previousPrice.toFixed(2)}` : '-' },
+    { header: 'Nuevo', render: (row) => <span className="font-bold">{currencyCode} {(row.salePrice || 0).toFixed(2)}</span> },
     { 
       header: 'Variación', 
       render: (row) => {
@@ -138,14 +182,6 @@ export const PricesPage = () => {
         const type = isUp ? 'error' : row.variationPercentage < 0 ? 'success' : 'neutral';
         return <ComerziaBadge variant={type} label={`${isUp ? '+' : ''}${row.variationPercentage.toFixed(2)}%`} />;
       }
-    },
-    { 
-      header: 'Estado', 
-      render: (row) => (
-        <span className={`badge badge-sm ${row.validTo === null ? 'badge-primary' : 'badge-neutral'}`}>
-          {row.validTo === null ? 'Activo' : 'Histórico'}
-        </span>
-      )
     }
   ];
 
@@ -159,7 +195,7 @@ export const PricesPage = () => {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in max-w-7xl mx-auto">
+    <div className="space-y-6 animate-fade-in">
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold text-base-content tracking-tight">Gestión de Precios</h1>
@@ -194,142 +230,176 @@ export const PricesPage = () => {
         </div>
       </div>
 
-      {scannedVariant && productData && !selectedPriceType && (
-        <div className="bg-base-100 p-6 rounded-2xl shadow-sm border border-base-200 animate-slide-up space-y-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <h2 className="text-2xl font-bold text-primary">{scannedVariant.variantName}</h2>
-              <div className="flex items-center gap-3 mt-2">
-                <ComerziaBadge variant="neutral" label={productData.productName} />
-                <span className="text-sm text-base-content/60 font-mono">SKU: {scannedVariant.sku}</span>
-                <span className="text-sm text-base-content/60 font-mono">Barcode: {scannedVariant.barCode}</span>
+      {productData && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-slide-up">
+          {/* COLUMNA IZQUIERDA: Listado Actual o Historial */}
+          <div className="bg-base-100 p-6 rounded-2xl shadow-sm border border-base-200 space-y-6 flex flex-col">
+            <div className="flex justify-between items-start">
+              <div>
+                <h2 className="text-2xl font-bold text-primary">{productData.variantName}</h2>
+                <div className="flex flex-col gap-1 mt-2">
+                  <span className="text-sm font-semibold">{productData.productName}</span>
+                  <span className="text-xs text-base-content/60 font-mono">SKU: {productData.sku} | Barcode: {productData.barCode}</span>
+                </div>
               </div>
             </div>
-            <BtnCreate 
-              label="Actualizar Precios" 
-              onClick={() => setIsChangeModalOpen(true)} 
-            />
-          </div>
 
-          <div>
-            <h3 className="text-lg font-bold mb-4 text-base-content/80">Listas de Precio Activas</h3>
-            {scannedVariant.activePrices && scannedVariant.activePrices.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {scannedVariant.activePrices.map((price, idx) => (
-                  <div key={`${price.priceTypeId}-${idx}`} className="bg-base-50 border border-base-200 rounded-box p-5 flex flex-col justify-between hover:shadow-md transition-shadow">
-                    <div>
-                      <h4 className="font-bold text-lg text-base-content">{price.priceTypeName}</h4>
-                      <div className="mt-4 flex items-baseline gap-2">
-                        <span className="text-3xl font-bold text-success font-mono">
-                          {currencyCode} {(price.salePrice || 0).toFixed(2)}
-                        </span>
-                      </div>
-                      {price.equivalenceFactor > 1 && (
-                        <p className="text-xs text-base-content/50 mt-1">
-                          Precio Unitario: {currencyCode} {((price.salePrice || 0) * price.equivalenceFactor).toFixed(2)}
-                        </p>
-                      )}
-                      {price.discountPrice != null && price.discountPrice !== price.salePrice && (
-                         <p className="text-sm text-error mt-2 font-mono">
-                           Descuento: {currencyCode} {price.discountPrice.toFixed(2)}
-                         </p>
-                      )}
-                    </div>
-                    <div className="mt-6">
-                      <ComerziaButton 
-                        type="button" 
-                        label="Ver Historial" 
-                        variant="primary"
-                        icon={<History className="w-4 h-4" />}
-                        onClick={() => setSelectedPriceType(price)}
-                        className="w-full"
-                      />
-                    </div>
+            <div className="divider my-0"></div>
+
+            {!selectedPriceType ? (
+              <div className="flex-1">
+                <h3 className="text-lg font-bold mb-4 text-base-content/80">Precios Activos</h3>
+                <p className="text-sm text-base-content/50 mb-4">Haz clic derecho sobre un precio para ver opciones.</p>
+                {productData.activePrices && productData.activePrices.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="table table-sm w-full">
+                      <thead>
+                        <tr>
+                          <th>#</th>
+                          {activePricesColumns.map((col, idx) => (
+                            <th key={idx}>{col.header as React.ReactNode}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {productData.activePrices.map((price, idx) => (
+                          <tr 
+                            key={price.priceTypeId} 
+                            className="hover hover:bg-base-200 transition-colors cursor-context-menu"
+                            onContextMenu={(e) => handleContextMenu(e, price)}
+                          >
+                            <td><span className="text-base-content/50">{idx + 1}</span></td>
+                            {activePricesColumns.map((col, colIdx) => (
+                              <td key={colIdx}>{col.render ? col.render(price) : null}</td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-                ))}
+                ) : (
+                  <div className="text-center p-8 text-base-content/50 bg-base-50 rounded-box border border-base-200">
+                    Esta variante no tiene precios configurados.
+                  </div>
+                )}
               </div>
             ) : (
-              <div className="text-center p-8 text-base-content/50 bg-base-50 rounded-box border border-base-200">
-                Esta variante no tiene precios configurados.
+              <div className="flex-1 flex flex-col space-y-4">
+                <div className="flex items-center gap-4">
+                  <BtnCancel 
+                    label="Volver" 
+                    onClick={() => setSelectedPriceType(null)} 
+                  />
+                  <h3 className="text-lg font-bold flex items-center gap-2">
+                    <History className="h-5 w-5 text-primary" />
+                    Historial: {selectedPriceType.priceTypeName}
+                  </h3>
+                </div>
+                <div className="flex-1">
+                  <ComerziaTable
+                    data={historyData}
+                    columns={historyColumns}
+                    isLoading={isLoadingHistory}
+                    pagination={pagination}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* COLUMNA DERECHA: Gráfica Analítica */}
+          <div className="bg-base-100 p-6 rounded-2xl shadow-sm border border-base-200 flex flex-col">
+            {!selectedPriceType ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-base-content/40 space-y-4 min-h-[400px]">
+                <div className="bg-base-200 p-6 rounded-full">
+                  <LineChart className="h-12 w-12 opacity-50" />
+                </div>
+                <p className="text-center max-w-sm">
+                  Selecciona el historial de un precio activo para ver su gráfica de tendencias aquí.
+                </p>
+              </div>
+            ) : (
+              <div className="flex-1 flex flex-col space-y-6">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-bold flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5 text-secondary" />
+                    Tendencia de Precio
+                  </h3>
+                  <div className="w-48">
+                    <ComerziaSelect
+                      value={trendMonths}
+                      onChange={(e) => setTrendMonths(e.target.value)}
+                      options={[
+                        { value: '3', label: 'Últimos 3 meses' },
+                        { value: '6', label: 'Últimos 6 meses' },
+                        { value: '12', label: 'Últimos 12 meses' }
+                      ]}
+                    />
+                  </div>
+                </div>
+                
+                <div className="flex-1 min-h-[350px]">
+                  {isLoadingTrend ? (
+                    <div className="h-full flex items-center justify-center">
+                      <span className="loading loading-spinner loading-lg text-primary"></span>
+                    </div>
+                  ) : trendData.length > 0 ? (
+                    <ComerziaLineChart
+                      data={trendData}
+                      xAxisDataKey="date"
+                      series={[
+                        { dataKey: 'salePrice', name: 'Precio de Venta', color: 'oklch(var(--p))' }
+                      ]}
+                    />
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-base-content/50 border border-dashed border-base-300 rounded-box">
+                      No hay suficientes datos para graficar la tendencia en este rango.
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
         </div>
       )}
 
-      {scannedVariant && productData && selectedPriceType && (
-        <div className="space-y-6 animate-slide-up">
-          <div className="flex items-center gap-4">
-            <BtnCancel 
-              label="Volver a Resumen" 
-              onClick={() => setSelectedPriceType(null)} 
-            />
-            <h2 className="text-2xl font-bold text-base-content flex items-center gap-2">
-              <History className="h-6 w-6 text-primary" />
-              Historial: {selectedPriceType.priceTypeName}
-            </h2>
-          </div>
+      {/* Menú Contextual para Precios Activos */}
+      <ComerziaContextMenu
+        isOpen={contextMenu.isOpen}
+        x={contextMenu.x}
+        y={contextMenu.y}
+        onClose={() => setContextMenu({ ...contextMenu, isOpen: false })}
+      >
+        <ContextMenuItem
+          icon={History}
+          label="Ver Historial y Tendencia"
+          onClick={() => {
+            if (contextMenu.row) setSelectedPriceType(contextMenu.row);
+            setContextMenu({ ...contextMenu, isOpen: false });
+          }}
+        />
+        <ContextMenuItem
+          icon={DollarSign}
+          label="Actualizar Precio"
+          onClick={() => {
+            if (contextMenu.row) setPriceTypeToEdit(contextMenu.row.priceTypeId || '');
+            setIsChangeModalOpen(true);
+            setContextMenu({ ...contextMenu, isOpen: false });
+          }}
+        />
+      </ComerziaContextMenu>
 
-          <div className="bg-base-100 p-6 rounded-2xl shadow-sm border border-base-200">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-bold flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-secondary" />
-                Tendencia de Precios
-              </h3>
-              <div className="w-48">
-                <ComerziaSelect
-                  value={trendMonths}
-                  onChange={(e) => setTrendMonths(e.target.value)}
-                  options={[
-                    { value: '3', label: 'Últimos 3 meses' },
-                    { value: '6', label: 'Últimos 6 meses' },
-                    { value: '12', label: 'Este Año' }
-                  ]}
-                />
-              </div>
-            </div>
-            
-            {isLoadingTrend ? (
-              <div className="h-[300px] flex items-center justify-center">
-                <span className="loading loading-spinner loading-lg text-primary"></span>
-              </div>
-            ) : trendData.length > 0 ? (
-              <ComerziaLineChart
-                data={trendData}
-                xAxisDataKey="date"
-                series={[
-                  { dataKey: 'salePrice', name: 'Precio de Venta', color: 'oklch(var(--p))' }
-                ]}
-              />
-            ) : (
-               <div className="h-[300px] flex items-center justify-center text-base-content/50 border border-dashed border-base-300 rounded-box">
-                No hay suficientes datos para graficar la tendencia en este rango.
-              </div>
-            )}
-          </div>
-
-          <div className="bg-base-100 p-6 rounded-2xl shadow-sm border border-base-200">
-            <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-              <History className="h-5 w-5 text-primary" />
-              Tabla de Histórico (SCD Tipo 2)
-            </h3>
-            <ComerziaTable
-              data={historyData}
-              columns={columns}
-              isLoading={isLoadingHistory}
-              pagination={pagination}
-            />
-          </div>
-        </div>
-      )}
-
-      {scannedVariant && (
+      {productData && (
         <ChangePriceModal
           isOpen={isChangeModalOpen}
-          onClose={() => setIsChangeModalOpen(false)}
-          variantId={scannedVariant.variantId}
-          variantName={scannedVariant.variantName}
-          activePrices={scannedVariant.activePrices}
+          onClose={() => {
+            setIsChangeModalOpen(false);
+            setPriceTypeToEdit('');
+          }}
+          variantId={productData.variantId}
+          variantName={productData.variantName}
+          activePrices={productData.activePrices}
+          initialPriceTypeId={priceTypeToEdit}
           onSuccess={() => {
             // Re-fetch to update the active prices list
             executeScan(barcode);

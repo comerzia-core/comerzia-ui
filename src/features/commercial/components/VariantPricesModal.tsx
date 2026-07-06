@@ -5,7 +5,6 @@ import { BtnCancel, BtnSave, BtnUpdatePrices } from '../../../components/ui/Crud
 import { commercialService } from '../services/commercialService';
 import type { SalePriceResponse, PriceTypeResponse } from '../types/commercial';
 import { useToast } from '../../../context/ToastContext';
-import { DollarSign } from 'lucide-react';
 import { useAuthStore } from '../../../stores/useAuthStore';
 
 interface Props {
@@ -41,21 +40,18 @@ export const VariantPricesModal = ({ isOpen, onClose, variantId, variantName }: 
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [pricesRes, typesRes] = await Promise.all([
-        commercialService.getSalePricesByVariant(variantId, 0, 100),
+      const [activePricesRes, typesRes] = await Promise.all([
+        commercialService.getActiveSalePricesByVariant(variantId),
         commercialService.getPriceTypes()
       ]);
 
       setPriceTypes(typesRes);
-
-      // Filter only active prices (assuming validTo is null/undefined means active)
-      const active = pricesRes.content.filter(p => !p.validTo);
-      setActivePrices(active);
+      setActivePrices(activePricesRes);
 
       // Initialize edit forms with current active prices
       const initialForms: Record<string, { salePrice: number; discountPrice: number }> = {};
       typesRes.forEach(pt => {
-        const currentPrice = active.find(ap =>
+        const currentPrice = activePricesRes.find(ap =>
           ap.priceType?.id === pt.id || ap.priceTypeId === pt.id ||
           ap.priceType?.name === pt.name || ap.priceTypeName === pt.name
         );
@@ -114,7 +110,6 @@ export const VariantPricesModal = ({ isOpen, onClose, variantId, variantName }: 
               variantId: variantId,
               salePrice: form.salePrice,
               discountPrice: form.discountPrice,
-              basePrice: 0 // Optional fallback if the backend still requires it
             });
           }
         }

@@ -7,7 +7,6 @@ import type {
   ProductVariantResponse,
   FamilyResponse,
   PriceTypeResponse,
-  SalePriceResponse,
   CreateFullProductRequest,
   CreateFamilyGroupRequest,
   AddProductsToFamilyRequest,
@@ -26,7 +25,9 @@ import type {
   SalePriceTrendResponse,
   ChangePriceRequest,
   CreateManualAdjustmentRequest,
-  ValuateStockRequest
+  ValuateStockRequest,
+  VariantWithPricesResponse,
+  SalePriceResponse
 } from '../types/commercial';
 
 export const commercialService = {
@@ -193,10 +194,20 @@ export const commercialService = {
   },
 
   // Sale Prices
+  getPricesByBarcode: async (barcode: string): Promise<VariantWithPricesResponse> => {
+    const response = await api.get(`/tenant/sale-prices/variant/barcode/${barcode}`);
+    return response.data;
+  },
+
   getSalePricesByVariant: async (variantId: string, page = 0, size = 20): Promise<PageSalePriceResponse> => {
     // Legacy endpoint if needed
     const params = new URLSearchParams({ page: String(page), size: String(size) });
     const response = await api.get(`/tenant/sale-prices/variant/${variantId}?${params.toString()}`);
+    return response.data;
+  },
+
+  getActiveSalePricesByVariant: async (variantId: string): Promise<SalePriceResponse[]> => {
+    const response = await api.get(`/tenant/sale-prices/variant/${variantId}/active`);
     return response.data;
   },
 
