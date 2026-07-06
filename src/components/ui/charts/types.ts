@@ -13,4 +13,8 @@ export interface ComerziaChartProps {
   xAxisDataKey: string;
   /** Altura del contenedor del gráfico, por defecto 300px */
   height?: number | string;
+  /** Función opcional para formatear los valores numéricos (ej. moneda) */
+  valueFormatter?: (value: any) => string;
+  /** Función opcional para formatear las etiquetas del eje X */
+  xTickFormatter?: (value: any) => string;
 }

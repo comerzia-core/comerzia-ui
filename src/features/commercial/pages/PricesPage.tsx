@@ -106,10 +106,14 @@ export const PricesPage = () => {
     setIsLoadingTrend(true);
     try {
       const trendRes = await commercialService.getSalePriceTrend(productData.variantId, selectedPriceType.priceTypeId, Number(trendMonths));
-      setTrendData(trendRes.map(item => ({
-        ...item,
-        date: new Date(item.date).toLocaleDateString() // Format date for x-axis
-      })));
+      
+      setTrendData(trendRes.map(item => {
+        const d = new Date(item.validFrom);
+        return {
+          ...item,
+          date: isNaN(d.getTime()) ? String(item.validFrom) : d.toLocaleDateString()
+        };
+      }));
     } catch (e) {
       console.error(e);
       setTrendData([]);
@@ -172,15 +176,14 @@ export const PricesPage = () => {
   const historyColumns: Column<SalePriceHistoryResponse>[] = [
     { header: 'Fecha Desde', render: (row) => new Date(row.validFrom).toLocaleString() },
     { header: 'Fecha Hasta', render: (row) => row.validTo ? new Date(row.validTo).toLocaleString() : '-' },
-    { header: 'Anterior', render: (row) => row.previousPrice != null ? `${currencyCode} ${row.previousPrice.toFixed(2)}` : '-' },
     { header: 'Nuevo', render: (row) => <span className="font-bold">{currencyCode} {(row.salePrice || 0).toFixed(2)}</span> },
     { 
       header: 'Variación', 
       render: (row) => {
         if (row.variationPercentage == null) return '-';
-        const isUp = row.variationPercentage > 0;
-        const type = isUp ? 'error' : row.variationPercentage < 0 ? 'success' : 'neutral';
-        return <ComerziaBadge variant={type} label={`${isUp ? '+' : ''}${row.variationPercentage.toFixed(2)}%`} />;
+        const isUp = row.variationPercentage < 0;
+        const type = isUp ? 'error' : row.variationPercentage > 0 ? 'success' : 'neutral';
+        return <ComerziaBadge variant={type} label={`${isUp ? '' : '+'}${row.variationPercentage.toFixed(2)}%`} />;
       }
     }
   ];
@@ -346,9 +349,14 @@ export const PricesPage = () => {
                   ) : trendData.length > 0 ? (
                     <ComerziaLineChart
                       data={trendData}
-                      xAxisDataKey="date"
+                      xAxisDataKey="validFrom"
+                      xTickFormatter={(val) => {
+                        const d = new Date(val);
+                        return isNaN(d.getTime()) ? String(val) : d.toLocaleDateString();
+                      }}
+                      valueFormatter={(val) => `${currencyCode} ${Number(val).toFixed(2)}`}
                       series={[
-                        { dataKey: 'salePrice', name: 'Precio de Venta', color: 'oklch(var(--p))' }
+                        { dataKey: 'salePrice', name: 'Precio de Venta', color: '#4f46e5' }
                       ]}
                     />
                   ) : (

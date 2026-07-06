@@ -115,7 +115,7 @@ export const ChangePriceModal = ({ isOpen, onClose, variantId, variantName, acti
               isRequired
             />
             {variationData && (
-              <div className={`text-xs mt-1 flex items-center gap-1 ${variationData.isUp ? 'text-error' : 'text-success'}`}>
+              <div className={`text-xs mt-1 flex items-center gap-1 ${variationData.isUp ? 'text-success' : 'text-error'}`}>
                 {variationData.isUp ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
                 Estás {variationData.isUp ? 'subiendo' : 'bajando'} el precio un {variationData.percentage}%
               </div>

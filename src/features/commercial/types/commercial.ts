@@ -285,8 +285,14 @@ export interface VariantWithPricesResponse {
 }
 
 export interface SalePriceTrendResponse {
+  id: string;
   salePrice: number;
-  date: string;
+  discountPrice?: number;
+  previousPrice?: number;
+  variationPercentage?: number;
+  validFrom: string;
+  validTo?: string | null;
+  date?: string; // added for chart mapping
 }
 
 export interface SalePriceHistoryResponse {
