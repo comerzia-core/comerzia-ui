@@ -29,10 +29,11 @@ export const ChangePriceModal = ({ isOpen, onClose, variantId, variantName, acti
   useEffect(() => {
     if (isOpen) {
       setPriceTypeId(initialPriceTypeId);
-      setSalePrice('');
-      setDiscountPrice(0);
+      const currentPrice = activePrices.find(p => p.priceTypeId === initialPriceTypeId);
+      setSalePrice(currentPrice?.salePrice || '');
+      setDiscountPrice(currentPrice?.discountPrice || 0);
     }
-  }, [isOpen, initialPriceTypeId]);
+  }, [isOpen, initialPriceTypeId, activePrices]);
 
   const handleSubmit = async () => {
     if (!priceTypeId || salePrice === '') {
@@ -97,6 +98,12 @@ export const ChangePriceModal = ({ isOpen, onClose, variantId, variantName, acti
         )}
 
         <div className="grid grid-cols-2 gap-4">
+          <ComerziaInput
+            label="Precio con Descuento"
+            type="number"
+            value={discountPrice}
+            onChange={(e) => setDiscountPrice(e.target.value ? Number(e.target.value) : '')}
+          />
           <div>
             <ComerziaInput
               label="Precio de Venta"
@@ -114,12 +121,6 @@ export const ChangePriceModal = ({ isOpen, onClose, variantId, variantName, acti
               </div>
             )}
           </div>
-          <ComerziaInput
-            label="Precio con Descuento"
-            type="number"
-            value={discountPrice}
-            onChange={(e) => setDiscountPrice(e.target.value ? Number(e.target.value) : '')}
-          />
         </div>
 
         <div className="flex justify-end gap-2 mt-8">
