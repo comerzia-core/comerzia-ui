@@ -211,7 +211,7 @@ export const commercialService = {
     return response.data;
   },
 
-  getSalePriceHistory: async (variantId: string, priceTypeId: string, page = 0, size = 20): Promise<PageSalePriceHistoryResponse> => {
+  getSalePriceHistory: async (variantId: string, priceTypeId: string, page = 0, size = 5): Promise<PageSalePriceHistoryResponse> => {
     const params = new URLSearchParams({ priceTypeId, page: String(page), size: String(size) });
     const response = await api.get(`/tenant/sale-prices/variant/${variantId}?${params.toString()}`);
     return response.data;
