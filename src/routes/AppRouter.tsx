@@ -27,6 +27,12 @@ import { StockMovementsPage } from "../features/commercial/pages/StockMovementsP
 import { PricesPage } from "../features/commercial/pages/PricesPage";
 import { InventoriesPage } from "../features/commercial/pages/InventoriesPage";
 
+// --- SALES MODULES ---
+import { NewSalePage } from "../features/sales/pages/NewSalePage";
+import { SalesHistoryPage } from "../features/sales/pages/SalesHistoryPage";
+import { CustomersManagementPage } from "../features/sales/pages/CustomersManagementPage";
+import { ReturnsPage } from "../features/sales/pages/ReturnsPage";
+
 export const AppRouter = () => {
   useTheme();
 
@@ -60,6 +66,14 @@ export const AppRouter = () => {
             <Route path="/pos/shifts" element={<ShiftsPage />} />
             <Route path="/pos/movements" element={<MovementsPage />} />
             <Route path="/pos/registers" element={<RegistersPage />} />
+
+            {/* --- SALES MODULES --- */}
+            <Route path="/sales/new" element={<NewSalePage />} />
+            <Route path="/sales/history" element={<SalesHistoryPage />} />
+            <Route path="/sales/customers" element={<CustomersManagementPage />} />
+            <Route element={<PermissionGuard code="SAL_RETURNS_MANAGE" />}>
+              <Route path="/sales/returns" element={<ReturnsPage />} />
+            </Route>
 
 
             {/* --- MÓDULO SAAS --- */}

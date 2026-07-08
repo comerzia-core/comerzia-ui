@@ -17,6 +17,9 @@ export const DICTIONARIES = {
     INVENTORY_STATUS: 'inventory-status',
     STOCK_STATUS: 'stock-status',
     VARIANT_TYPE: 'variant-type',
+    // SALES
+    SALE_STATUS: 'sale-status',
+    CUSTOMER_TYPE: 'customer-type',
 } as const;
 
 // Este type mágico extrae los valores ("user-status", "plan-type", etc.)
