@@ -4,9 +4,9 @@ import type { PageResponse } from '../../../types/api';
 import type { BranchResponse, CreateBranchRequest, UpdateBranchRequest } from '../types/branch';
 
 export const branchService = {
-  getBranches: async (page: number, size: number): Promise<PageResponse<BranchResponse>> => {
+  getBranches: async (page: number, size: number, onlyActive = false): Promise<PageResponse<BranchResponse>> => {
     const response = await api.get<PageResponse<BranchResponse>>('/tenant/branches', {
-      params: { page, size }
+      params: { page, size, onlyActive }
     });
     return response.data;
   },

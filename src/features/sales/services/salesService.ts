@@ -1,6 +1,8 @@
 import api from '../../../lib/axios';
 import type {
   SalesCatalogItem,
+  SalesCatalogSuggestionResponse,
+  SalesProductResponse,
   CreateSaleRequest,
   SaleResponse,
   PageSaleResponse,
@@ -14,17 +16,33 @@ import type {
 } from '../types/sales';
 
 export const salesService = {
-  // --- Catálogo de Ventas ---
-  searchSalesCatalog: async (term: string): Promise<SalesCatalogItem[]> => {
-    const response = await api.get<SalesCatalogItem[]>('/tenant/commercial/sales-catalog/search', {
-      params: { term }
+  getSuggestions: async (term: string, signal?: AbortSignal): Promise<SalesCatalogSuggestionResponse[]> => {
+    const response = await api.get<SalesCatalogSuggestionResponse[]>('/tenant/sales-catalog/suggestions', {
+      params: { q: term },
+      signal
     });
     return response.data;
   },
 
+  getProductDetailsById: async (variantId: string): Promise<SalesProductResponse> => {
+    const response = await api.get<SalesProductResponse>(`/tenant/sales-catalog/variants/${variantId}`);
+    return response.data;
+  },
+
+  getProductDetailsByBarcode: async (barcode: string): Promise<SalesProductResponse> => {
+    const response = await api.get<SalesProductResponse>(`/tenant/sales-catalog/barcodes/${barcode}`);
+    return response.data;
+  },
+
+  getProductDetailsBySku: async (sku: string): Promise<SalesProductResponse> => {
+    const response = await api.get<SalesProductResponse>(`/tenant/sales-catalog/skus/${sku}`);
+    return response.data;
+  },
+
   // --- Ventas (Shift Sales) ---
-  createSale: async (data: CreateSaleRequest): Promise<SaleResponse> => {
-    const response = await api.post<SaleResponse>('/tenant/sales', data);
+  createSale: async (data: CreateSaleRequest, branchId?: string | null): Promise<SaleResponse> => {
+    const config = branchId ? { headers: { 'BRANCH_CONTEXT_HEADER': branchId } } : undefined;
+    const response = await api.post<SaleResponse>('/tenant/sales', data, config);
     return response.data;
   },
 

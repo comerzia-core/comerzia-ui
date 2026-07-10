@@ -6,8 +6,6 @@ export interface SaleDetailRequest {
 }
 
 export interface CreateSaleRequest {
-  branchId: string;
-  customerId?: string | null;
   expectedTotalAmount: number;
   details: SaleDetailRequest[];
 }
@@ -142,7 +140,7 @@ export interface PageCustomerProfileResponse {
   empty: boolean;
 }
 
-// Búsqueda de catálogo
+// Búsqueda de catálogo (Legacy / Cart Model)
 export interface SalesCatalogItem {
   productVariantId: string;
   productName: string;
@@ -155,4 +153,28 @@ export interface SalesCatalogItem {
   priceTypeId: string;
   priceTypeName: string;
   equivalenceFactor: number;
+}
+
+// Nuevos Modelos de Catálogo (Backend API)
+export interface SalesCatalogSuggestionResponse {
+  variantId: string;
+  label: string;
+}
+
+export interface ActivePriceResponse {
+  id: string;
+  salePrice: number;
+  discountPrice: number;
+  priceTypeId: string;
+  priceTypeName: string;
+  equivalenceFactor: number;
+}
+
+export interface SalesProductResponse {
+  variantId: string;
+  sku: string;
+  name: string;
+  nameVariant: string;
+  availableStock: number;
+  activePrices: ActivePriceResponse[];
 }

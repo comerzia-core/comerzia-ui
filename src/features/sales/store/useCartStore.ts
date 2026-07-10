@@ -12,7 +12,7 @@ interface CartState {
   customerName: string | null;
   branchId: string | null;
 
-  addItem: (item: SalesCatalogItem) => { success: boolean; message?: string };
+  addItem: (item: SalesCatalogItem, quantity?: number, discountAmount?: number) => { success: boolean; message?: string };
   removeItem: (productVariantId: string) => void;
   updateQuantity: (productVariantId: string, quantity: number) => { success: boolean; message?: string };
   updateDiscount: (productVariantId: string, discountAmount: number) => { success: boolean; message?: string };
@@ -32,12 +32,12 @@ export const useCartStore = create<CartState>((set, get) => ({
   customerName: null,
   branchId: null,
 
-  addItem: (item) => {
+  addItem: (item, quantity = 1, discountAmount = 0) => {
     const { items } = get();
     const existing = items.find((i) => i.productVariantId === item.productVariantId);
 
     if (existing) {
-      const newQty = existing.quantity + 1;
+      const newQty = existing.quantity + quantity;
       if (newQty > item.stock) {
         return { 
           success: false, 
@@ -46,19 +46,19 @@ export const useCartStore = create<CartState>((set, get) => ({
       }
       set({
         items: items.map((i) =>
-          i.productVariantId === item.productVariantId ? { ...i, quantity: newQty } : i
+          i.productVariantId === item.productVariantId ? { ...i, quantity: newQty, discountAmount } : i
         )
       });
       return { success: true };
     } else {
-      if (item.stock < 1) {
+      if (quantity > item.stock) {
         return { 
           success: false, 
-          message: `El producto seleccionado no tiene stock disponible.` 
+          message: `Stock insuficiente. Disponible: ${item.stock}` 
         };
       }
       set({
-        items: [...items, { ...item, quantity: 1, discountAmount: 0 }]
+        items: [...items, { ...item, quantity, discountAmount }]
       });
       return { success: true };
     }
