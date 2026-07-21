@@ -16,6 +16,8 @@ interface CartState {
   removeItem: (productVariantId: string) => void;
   updateQuantity: (productVariantId: string, quantity: number) => { success: boolean; message?: string };
   updateDiscount: (productVariantId: string, discountAmount: number) => { success: boolean; message?: string };
+  updateTotalDiscount: (productVariantId: string, totalDiscountAmount: number) => { success: boolean; message?: string };
+  updatePriceType: (productVariantId: string, priceTypeId: string) => { success: boolean; message?: string };
   setCustomer: (customerId: string | null, customerName: string | null) => void;
   setBranchId: (branchId: string | null) => void;
   clearCart: () => void;
@@ -138,6 +140,46 @@ export const useCartStore = create<CartState>((set, get) => ({
     set({
       items: items.map((i) =>
         i.productVariantId === productVariantId ? { ...i, discountAmount } : i
+      )
+    });
+    return { success: true };
+  },
+
+  updateTotalDiscount: (productVariantId, totalDiscountAmount) => {
+    const { items, updateDiscount } = get();
+    const item = items.find((i) => i.productVariantId === productVariantId);
+    if (!item) return { success: false, message: 'Producto no encontrado' };
+
+    if (item.quantity === 0) {
+      return { success: false, message: 'La cantidad debe ser mayor a 0 para aplicar descuento total' };
+    }
+
+    const unitDiscount = totalDiscountAmount / item.quantity;
+    return updateDiscount(productVariantId, unitDiscount);
+  },
+
+  updatePriceType: (productVariantId, priceTypeId) => {
+    const { items } = get();
+    const item = items.find((i) => i.productVariantId === productVariantId);
+    if (!item) return { success: false, message: 'Producto no encontrado' };
+
+    const newPrice = item.activePrices.find(p => p.priceTypeId === priceTypeId);
+    if (!newPrice) return { success: false, message: 'Tipo de precio no válido' };
+
+    set({
+      items: items.map((i) =>
+        i.productVariantId === productVariantId
+          ? {
+              ...i,
+              priceTypeId: newPrice.priceTypeId,
+              priceTypeName: newPrice.priceTypeName,
+              salePrice: newPrice.salePrice,
+              discountPrice: newPrice.discountPrice,
+              equivalenceFactor: newPrice.equivalenceFactor,
+              quantity: 1,
+              discountAmount: 0
+            }
+          : i
       )
     });
     return { success: true };

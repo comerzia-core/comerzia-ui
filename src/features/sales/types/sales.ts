@@ -153,6 +153,7 @@ export interface SalesCatalogItem {
   priceTypeId: string;
   priceTypeName: string;
   equivalenceFactor: number;
+  activePrices: ActivePriceResponse[];
 }
 
 // Nuevos Modelos de Catálogo (Backend API)
