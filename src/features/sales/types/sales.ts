@@ -1,8 +1,8 @@
 export interface SaleDetailRequest {
   productVariantId: string;
   priceTypeId: string;
-  unitQuantity: number;
-  unitDiscountAmount: number;
+  receiptQuantity: number;
+  lineDiscountAmount: number;
 }
 
 export interface CreateSaleRequest {

@@ -150,8 +150,8 @@ export const NewSalePage = () => {
         details: items.map(i => ({
           productVariantId: i.productVariantId,
           priceTypeId: i.priceTypeId,
-          unitQuantity: i.quantity,
-          unitDiscountAmount: i.discountAmount
+          receiptQuantity: i.quantity,
+          lineDiscountAmount: i.discountAmount
         }))
       };
 
