@@ -27,7 +27,9 @@ import { StockMovementsPage } from "../features/commercial/pages/StockMovementsP
 import { PricesPage } from "../features/commercial/pages/PricesPage";
 import { InventoriesPage } from "../features/commercial/pages/InventoriesPage";
 
-// --- SALES MODULES ---
+// --- SECURITY ---
+import { AuditPage } from "../features/security/pages/AuditPage";
+
 import { NewSalePage } from "../features/sales/pages/NewSalePage";
 import { SalesHistoryPage } from "../features/sales/pages/SalesHistoryPage";
 import { CustomersManagementPage } from "../features/sales/pages/CustomersManagementPage";
@@ -85,6 +87,9 @@ export const AppRouter = () => {
               <Route path="/saas/subscriptions" element={<UnderConstruction />} />
             </Route>
 
+
+            {/* --- SECURITY --- */}
+            <Route path="/security/audit" element={<AuditPage />} />
 
             {/* --- MÓDULOS DEL SISTEMA --- */}
             <Route path="/saas/tenants" element={<CompaniesPage />} />
