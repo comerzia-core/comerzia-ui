@@ -8,6 +8,7 @@ import { ComerziaInput } from '../../../components/ui/ComerziaInput';
 import { branchService } from '../services/branchService';
 import { useToast } from '../../../context/ToastContext';
 import type { BranchResponse } from '../types/branch';
+import axios from 'axios';
 import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
 import { useBranchesInfinite, type BranchStatusFilter } from '../hooks/useBranchesInfinite';
 
@@ -62,10 +63,18 @@ export const BranchesPage = () => {
       showToast('Sucursal eliminada exitosamente', 'success');
       setIsDeleteModalOpen(false);
       setBranchToDelete(null);
-      refetch(); // Recargar la lista desde el servidor
+      refetch(); // Recargar la lista desde el servidor (liberando cupo en la suscripción)
     } catch (error) {
       console.error('Error deleting branch:', error);
-      showToast('Error al eliminar la sucursal', 'error');
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 404) {
+          showToast('Sucursal no encontrada', 'error');
+        } else {
+          showToast(error.response?.data?.message || 'Error al eliminar la sucursal', 'error');
+        }
+      } else {
+        showToast('Error al eliminar la sucursal', 'error');
+      }
     } finally {
       setIsDeleting(false);
     }

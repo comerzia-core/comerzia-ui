@@ -141,8 +141,49 @@ export const BranchModal = ({ isOpen, onClose, branchToEdit, onSuccess }: Props)
     } catch (error) {
       console.error('Error saving branch:', error);
 
-      if (axios.isAxiosError(error) && error.response?.data?.code === 'business_rule_violation') {
-        setBackendLimitError(error.response.data.message);
+      if (axios.isAxiosError(error)) {
+        const status = error.response?.status;
+        const resData = error.response?.data;
+        const code = (resData?.code || resData?.errorCode || '').toString().toLowerCase();
+        const message = resData?.message || resData?.error || '';
+        const lowerMessage = message.toLowerCase();
+
+        // 1. Manejar error 400 al crear sucursal (Límite de sucursales alcanzado para el plan de suscripción actual)
+        const isLimitError =
+          status === 400 ||
+          code === 'business_rule_violation' ||
+          lowerMessage.includes('branch') ||
+          lowerMessage.includes('limit') ||
+          lowerMessage.includes('plan') ||
+          lowerMessage.includes('subscription') ||
+          lowerMessage.includes('sucursal') ||
+          lowerMessage.includes('límite');
+
+        if (!isEditing && isLimitError) {
+          setBackendLimitError(
+            message || 'Límite de sucursales alcanzado para el plan de suscripción actual (branch limit)'
+          );
+          return;
+        }
+
+        // 2. Manejar error 404 (Sucursal no encontrada)
+        if (status === 404) {
+          showToast('Sucursal no encontrada', 'error');
+          return;
+        }
+
+        // 3. Manejar error 409 (Conflicto / Nombre o código duplicado)
+        if (status === 409) {
+          showToast(message || 'Ya existe una sucursal con ese nombre o código', 'error');
+          return;
+        }
+
+        // 4. Fallback para otros errores
+        if (message) {
+          showToast(message, 'error');
+        } else {
+          showToast('Error al guardar la sucursal', 'error');
+        }
       } else {
         showToast('Error al guardar la sucursal', 'error');
       }
