@@ -4,10 +4,9 @@ import { Store } from 'lucide-react';
 import axios from 'axios';
 import { ComerziaModal } from '../../../../components/ui/ComerziaModal';
 import { ComerziaInput } from '../../../../components/ui/ComerziaInput';
-import { ComerziaSelect } from '../../../../components/ui/ComerziaSelect';
+import { ComerziaSwitch } from '../../../../components/ui/ComerziaSwitch';
 import { BtnCancel, BtnSave } from '../../../../components/ui/CrudButtons';
-// IMPORTAMOS EL NUEVO COMPONENTE GLOBAL
-import { SubscriptionLimitModal } from '../../../../components/ui/SubscriptionLimitModal'; 
+import { SubscriptionLimitModal } from '../../../../components/ui/SubscriptionLimitModal';
 import { branchService } from '../../services/branchService';
 import { useToast } from '../../../../context/ToastContext';
 import type { BranchResponse, CreateBranchRequest, UpdateBranchRequest } from '../../types/branch';
@@ -16,23 +15,23 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   branchToEdit: BranchResponse | null;
-  onSuccess: () => void; 
+  onSuccess: () => void;
 }
 
 export const BranchModal = ({ isOpen, onClose, branchToEdit, onSuccess }: Props) => {
   const { addToast: showToast } = useToast();
-  
+
   const [isSaving, setIsSaving] = useState(false);
   const [shakeKey, setShakeKey] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // ESTADO SIMPLIFICADO: Solo guardamos el mensaje crudo del backend
+  // Mensaje de límite de suscripción del backend
   const [backendLimitError, setBackendLimitError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     name: '',
     address: '',
-    status: 'true' 
+    status: 'true'
   });
 
   const isEditing = !!branchToEdit;
@@ -49,14 +48,14 @@ export const BranchModal = ({ isOpen, onClose, branchToEdit, onSuccess }: Props)
         setFormData({ name: '', address: '', status: 'true' });
       }
       setErrors({});
-      setBackendLimitError(null); // Limpiamos errores previos al abrir
+      setBackendLimitError(null);
     }
   }, [isOpen, branchToEdit]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    
+
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
@@ -71,7 +70,7 @@ export const BranchModal = ({ isOpen, onClose, branchToEdit, onSuccess }: Props)
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
-      setShakeKey(prev => prev + 1); 
+      setShakeKey(prev => prev + 1);
       return false;
     }
     return true;
@@ -82,7 +81,7 @@ export const BranchModal = ({ isOpen, onClose, branchToEdit, onSuccess }: Props)
 
     try {
       setIsSaving(true);
-      
+
       if (isEditing) {
         const payload: UpdateBranchRequest = {
           name: formData.name,
@@ -99,15 +98,13 @@ export const BranchModal = ({ isOpen, onClose, branchToEdit, onSuccess }: Props)
         await branchService.createBranch(payload);
         showToast('Sucursal creada exitosamente', 'success');
       }
-      
-      onSuccess(); 
-      onClose(); 
+
+      onSuccess();
+      onClose();
     } catch (error) {
       console.error('Error saving branch:', error);
-      
-      // VALIDACIÓN: Verificamos si es un error de regla de negocio
+
       if (axios.isAxiosError(error) && error.response?.data?.code === 'business_rule_violation') {
-        // Le pasamos el mensaje crudo en inglés al estado
         setBackendLimitError(error.response.data.message);
       } else {
         showToast('Error al guardar la sucursal', 'error');
@@ -161,17 +158,27 @@ export const BranchModal = ({ isOpen, onClose, branchToEdit, onSuccess }: Props)
             maxLength={200}
           />
 
+          {/* ESTADO DE LA SUCURSAL CON COMERZIASWITCH */}
           {isEditing && (
-            <ComerziaSelect
-              label="Estado de la Sucursal"
-              name="status"
-              value={formData.status}
-              onChange={handleChange}
-              options={[
-                { value: 'true', label: 'Activa' },
-                { value: 'false', label: 'Inactiva' }
-              ]}
-            />
+            <div className="flex items-center justify-between p-3.5 bg-base-200/50 rounded-xl border border-base-200 mt-3">
+              <div className="space-y-0.5">
+                <span className="text-sm font-semibold text-base-content block">
+                  Estado de la Sucursal
+                </span>
+                <span className="text-xs text-base-content/60">
+                  {formData.status === 'true' ? 'Sucursal Activa (Habilitada)' : 'Sucursal Inactiva (Deshabilitada)'}
+                </span>
+              </div>
+              <ComerziaSwitch
+                checked={formData.status === 'true'}
+                onChange={() =>
+                  setFormData(prev => ({
+                    ...prev,
+                    status: prev.status === 'true' ? 'false' : 'true'
+                  }))
+                }
+              />
+            </div>
           )}
         </div>
       </ComerziaModal>
