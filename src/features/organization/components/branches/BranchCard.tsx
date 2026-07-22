@@ -16,10 +16,18 @@ export const BranchCard = ({ branch, onContextMenu }: Props) => {
       title="Haz clic derecho para ver más opciones"
       className="card bg-base-100 border border-base-200 shadow-xs hover:shadow-md transition-all duration-300 hover:border-primary/40 rounded-2xl group overflow-hidden flex flex-col justify-between cursor-pointer select-none"
     >
-      {/* CABECERA CON ICONO Y INSIGNIA DE ESTADO */}
+      {/* CABECERA CON ICONO, CÓDIGO Y INSIGNIA DE ESTADO */}
       <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-4 flex items-center justify-between">
-        <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-semibold group-hover:scale-105 transition-transform duration-300 shadow-xs">
-          <Store className="w-5 h-5" />
+        <div className="flex items-center gap-2.5">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-semibold group-hover:scale-105 transition-transform duration-300 shadow-xs">
+            <Store className="w-5 h-5" />
+          </div>
+
+          {branch.code && (
+            <span className="font-mono text-xs font-bold px-2.5 py-1 rounded-lg bg-base-100/90 border border-primary/20 text-primary shadow-2xs uppercase tracking-wide">
+              {branch.code}
+            </span>
+          )}
         </div>
 
         <ComerziaBadge

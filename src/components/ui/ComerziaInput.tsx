@@ -76,8 +76,8 @@ export const ComerziaInput = forwardRef<HTMLInputElement, Props>(({
 
       {/* Reorganización de Helper y Error para que no roben espacio si no existen */}
       {helperText && !error && (
-        <label className="label py-1 pb-0">
-            <span className="label-text-alt text-base-content/60">{helperText}</span>
+        <label className="label py-1 pb-0 w-full">
+            <span className="label-text-alt text-base-content/60 whitespace-normal break-words w-full">{helperText}</span>
         </label>
       )}
 

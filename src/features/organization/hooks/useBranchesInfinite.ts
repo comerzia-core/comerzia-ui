@@ -89,6 +89,7 @@ export const useBranchesInfinite = ({ pageSize = 20 }: UseBranchesInfiniteOption
       const matchesSearch =
         searchQuery.trim() === '' ||
         branch.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (branch.code && branch.code.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (branch.address && branch.address.toLowerCase().includes(searchQuery.toLowerCase()));
 
       const matchesStatus =
