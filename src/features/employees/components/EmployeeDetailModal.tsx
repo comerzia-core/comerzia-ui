@@ -117,7 +117,7 @@ export const EmployeeDetailModal = ({ isOpen, onClose, employeeId, onEdit, onDel
                 <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${detail.employmentEndDate === null ? 'bg-success/20 text-success' : 'bg-error/20 text-error'}`}>
                   {detail.employmentEndDate === null ? 'Activo' : 'Inactivo'}
                 </span>
-                <span className="text-sm font-mono bg-base-200 px-2 rounded-md">ID: {detail.documentNumber}</span>
+                <span className="text-sm font-mono bg-base-200 px-2 rounded-md">CI: {detail.documentNumber}</span>
               </div>
             </div>
           </div>
