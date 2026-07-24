@@ -12,22 +12,22 @@ export const PasswordChecklist = ({ passwordValue, showErrors }: Props) => {
     const validations = useMemo(() => [
         { 
             id: 'length', 
-            label: "Between 8 and 64 characters", 
+            label: "Entre 8 y 64 caracteres", 
             isValid: passwordValue.length >= 8 && passwordValue.length <= 64 
         },
         { 
             id: 'uppercase', 
-            label: "At least one uppercase letter", 
+            label: "Al menos una letra mayúscula", 
             isValid: /[A-Z]/.test(passwordValue) 
         },
         { 
             id: 'lowercase', 
-            label: "At least one lowercase letter", 
+            label: "Al menos una letra minúscula", 
             isValid: /[a-z]/.test(passwordValue) 
         },
         { 
             id: 'number', 
-            label: "At least one number", 
+            label: "Al menos un número", 
             isValid: /\d/.test(passwordValue) 
         }
     ], [passwordValue]);

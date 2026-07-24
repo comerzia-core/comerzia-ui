@@ -61,19 +61,28 @@ export const LoginPage = () => {
             if (isAxiosError<AuthErrorResponse>(error) && error.response) {
                 const { status, data } = error.response;
                 
-                if (status === 403 && data.code === AUTH_ERROR_CODES.REQUIRES_PASSWORD_CHANGE) {
+                // HTTP 428: Precondition Required (Se requiere cambio de contraseña temporal antes de ingresar)
+                const isPasswordChangeRequired = 
+                    status === 428 || 
+                    (status === 403 && data?.code === AUTH_ERROR_CODES.REQUIRES_PASSWORD_CHANGE) ||
+                    data?.code === 'requires_password_change' ||
+                    (data?.message && data.message.toLowerCase().includes('temporary password'));
+
+                if (isPasswordChangeRequired) {
                     setCurrentStep('CHANGE_PASSWORD');
+                    setErrorMessage(""); // Limpiamos el mensaje de error para cambiar limpiamente de vista
                 } else if (status === 401 || status === 400) {
                     // PISAMOS el mensaje del backend para forzar nuestro texto en español
                     setErrorMessage("Usuario o contraseña incorrectos.");
                     setShakeKey(prev => prev + 1);
                 } else {
                     // Para otros errores (ej. 500) usamos el del backend o uno genérico
-                    setErrorMessage(data.message || "Error al intentar iniciar sesión.");
+                    setErrorMessage(data?.message || "Error al intentar iniciar sesión.");
                     setShakeKey(prev => prev + 1);
                 }
             } else {
                 setErrorMessage("Error de red. Por favor, intente nuevamente.");
+                setShakeKey(prev => prev + 1);
             }
         } finally {
             setIsLoading(false);
@@ -104,16 +113,27 @@ export const LoginPage = () => {
         try {
             const { data } = await api.post('/auth/change-temporary-password', {
                 username,
-                currentPassword, // Lo traemos del Paso 1
+                currentPassword, // Se envía la contraseña actual ingresada en el Paso 1
                 newPassword
             });
 
-            // Si es exitoso, nos devuelve el token y entramos directamente
+            // Si es exitoso (200 OK), el backend devuelve el JWT token y entra directamente
             await loginStore(data.token);
             navigate('/dashboard', { replace: true });
 
         } catch (error) {
-            setErrorMessage("Error al cambiar la contraseña. Por favor, intente nuevamente.");
+            if (isAxiosError<AuthErrorResponse>(error) && error.response) {
+                const { status, data } = error.response;
+                if (status === 400) {
+                    setErrorMessage(data?.message || "Credenciales incorrectas o la cuenta no requiere cambio de contraseña.");
+                } else if (status === 404) {
+                    setErrorMessage(data?.message || "Usuario no encontrado.");
+                } else {
+                    setErrorMessage(data?.message || "Error al cambiar la contraseña. Por favor, intente nuevamente.");
+                }
+            } else {
+                setErrorMessage("Error de red. Por favor, intente nuevamente.");
+            }
             setShakeKey(prev => prev + 1);
         } finally {
             setIsLoading(false);
@@ -231,7 +251,12 @@ export const LoginPage = () => {
                             <div className="flex gap-2 mt-6">
                                 <button 
                                     type="button" 
-                                    onClick={() => setCurrentStep('LOGIN')}
+                                    onClick={() => {
+                                        setCurrentStep('LOGIN');
+                                        setErrorMessage("");
+                                        setNewPassword("");
+                                        setShowErrorsInChecklist(false);
+                                    }}
                                     className="btn btn-ghost flex-1"
                                     disabled={isLoading}
                                 >

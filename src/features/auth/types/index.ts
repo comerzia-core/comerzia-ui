@@ -48,6 +48,13 @@ export interface UserProfile {
     companySettings: CompanySettings | null; 
 }
 
+// Request para cambio de contraseña temporal
+export interface ChangeTemporaryPasswordRequest {
+    username: string;
+    currentPassword: string;
+    newPassword: string;
+}
+
 export interface AuthErrorResponse {
     code: string;
     message: string;
