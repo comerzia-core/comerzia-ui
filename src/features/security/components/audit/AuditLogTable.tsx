@@ -89,13 +89,13 @@ export const AuditLogTable = ({
   // Configuración de Paginación de Spring Boot (página actual base 0)
   const paginationConfig = data
     ? {
-        currentPage: page,
-        pageSize: pageSize,
-        totalElements: data.totalElements,
-        totalPages: data.totalPages,
-        onPageChange: onPageChange,
-        onPageSizeChange: onPageSizeChange
-      }
+      currentPage: page,
+      pageSize: pageSize,
+      totalElements: data.totalElements,
+      totalPages: data.totalPages,
+      onPageChange: onPageChange,
+      onPageSizeChange: onPageSizeChange
+    }
     : undefined;
 
   return (

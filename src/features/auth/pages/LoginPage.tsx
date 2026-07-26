@@ -71,9 +71,20 @@ export const LoginPage = () => {
                 if (isPasswordChangeRequired) {
                     setCurrentStep('CHANGE_PASSWORD');
                     setErrorMessage(""); // Limpiamos el mensaje de error para cambiar limpiamente de vista
-                } else if (status === 401 || status === 400) {
-                    // PISAMOS el mensaje del backend para forzar nuestro texto en español
-                    setErrorMessage("Usuario o contraseña incorrectos.");
+                } else if (status === 401) {
+                    // HTTP 401: Usuario deshabilitado por administración vs Credenciales incorrectas
+                    if (data?.code === AUTH_ERROR_CODES.USER_DISABLED || data?.message?.toLowerCase().includes('disabled')) {
+                        setErrorMessage("Cuenta deshabilitada. Contacte con la administración.");
+                    } else {
+                        setErrorMessage("Usuario o contraseña incorrectos.");
+                    }
+                    setShakeKey(prev => prev + 1);
+                } else if (status === 403) {
+                    // HTTP 403: Acceso denegado por roles o permisos
+                    setErrorMessage("Acceso denegado. No tiene permisos suficientes para ingresar.");
+                    setShakeKey(prev => prev + 1);
+                } else if (status === 400) {
+                    setErrorMessage(data?.message || "Usuario o contraseña incorrectos.");
                     setShakeKey(prev => prev + 1);
                 } else {
                     // Para otros errores (ej. 500) usamos el del backend o uno genérico
@@ -126,8 +137,16 @@ export const LoginPage = () => {
                 const { status, data } = error.response;
                 if (status === 400) {
                     setErrorMessage(data?.message || "Credenciales incorrectas o la cuenta no requiere cambio de contraseña.");
+                } else if (status === 401) {
+                    if (data?.code === AUTH_ERROR_CODES.USER_DISABLED || data?.message?.toLowerCase().includes('disabled')) {
+                        setErrorMessage("Cuenta deshabilitada. Contacte con la administración.");
+                    } else {
+                        setErrorMessage("Credenciales incorrectas.");
+                    }
+                } else if (status === 403) {
+                    setErrorMessage("Acceso denegado. No tiene permisos suficientes.");
                 } else if (status === 404) {
-                    setErrorMessage(data?.message || "Usuario no encontrado.");
+                    setErrorMessage("Usuario no encontrado.");
                 } else {
                     setErrorMessage(data?.message || "Error al cambiar la contraseña. Por favor, intente nuevamente.");
                 }

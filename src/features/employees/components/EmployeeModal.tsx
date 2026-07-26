@@ -39,7 +39,7 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
   const [shakeKey, setShakeKey] = useState(0);
 
   // Pasos del Stepper
-  const STEPS = ["Personales", "Contrato", "Accesos"];
+  const STEPS = isEditing ? ["Personales", "Contrato"] : ["Personales", "Contrato", "Accesos"];
   const [currentStep, setCurrentStep] = useState(1);
 
   // Formularios
@@ -193,7 +193,7 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
   };
 
   const handleSubmit = async () => {
-    if (!validateStep(3)) {
+    if (!validateStep(currentStep)) {
       setShakeKey(prev => prev + 1);
       return;
     }
@@ -215,7 +215,6 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
           employmentEndDate: contract.employmentEndDate || null,
           baseSalary: contract.baseSalary ? Number(contract.baseSalary) : undefined,
           paymentFrequency: Number(contract.paymentFrequency),
-          roleIds: roleIds,
           userEnabled
         });
         onSaved();
@@ -455,23 +454,31 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
                 error={!contract.paymentFrequency && shakeKey > 0 ? 'Requerido' : ''}
               />
             </div>
+
+            {isEditing && (
+              <div className="flex items-center justify-between p-3.5 bg-base-200/50 rounded-xl border border-base-200 mt-3">
+                <div className="space-y-0.5">
+                  <span className="text-sm font-semibold text-base-content block">
+                    Estado de Acceso del Usuario
+                  </span>
+                  <span className="text-xs text-base-content/60">
+                    {userEnabled ? 'Usuario Activo (Habilitado para ingresar al sistema)' : 'Usuario Inactivo (Deshabilitado)'}
+                  </span>
+                </div>
+                <ComerziaSwitch 
+                  checked={userEnabled}
+                  onChange={() => setUserEnabled(!userEnabled)}
+                />
+              </div>
+            )}
           </div>
         )}
 
-        {/* --- PASO 3: ACCESOS --- */}
-        {currentStep === 3 && (
+        {/* --- PASO 3: ACCESOS (Solo en Creación) --- */}
+        {!isEditing && currentStep === 3 && (
           <div className="bg-base-200/50 p-5 rounded-xl space-y-4 animate-fade-in">
             <div className="flex justify-between items-center border-b pb-2">
               <h3 className="font-bold text-lg">Accesos al Sistema</h3>
-              {isEditing && (
-                <div className="flex items-center gap-2 text-sm font-semibold text-base-content/80">
-                  <span>{userEnabled ? "Usuario Activo" : "Usuario Inactivo"}</span>
-                  <ComerziaSwitch 
-                    checked={userEnabled}
-                    onChange={() => setUserEnabled(!userEnabled)}
-                  />
-                </div>
-              )}
             </div>
             
             <div className="form-control w-full">

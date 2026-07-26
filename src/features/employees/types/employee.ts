@@ -42,7 +42,7 @@ export interface UpdateEmployeeRequest {
   employmentEndDate?: string | null;
   baseSalary?: number;
   paymentFrequency: number;
-  roleIds: string[];
+  roleIds?: string[];
   userEnabled: boolean;
 }
 
