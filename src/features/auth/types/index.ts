@@ -63,8 +63,11 @@ export interface AuthErrorResponse {
 }
 
 export const AUTH_ERROR_CODES = {
+    PASSWORD_CHANGE_REQUIRED: 'password_change_required',
     REQUIRES_PASSWORD_CHANGE: 'requires_password_change',
-    AUTHENTICATION_FAILED: 'authentication_failed',
+    ACCOUNT_DISABLED: 'account_disabled',
     USER_DISABLED: 'user_disabled',
+    ACCOUNT_LOCKED: 'account_locked',
+    AUTHENTICATION_FAILED: 'authentication_failed',
     ACCESS_DENIED: 'access_denied'
 } as const;

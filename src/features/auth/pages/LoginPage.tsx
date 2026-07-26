@@ -60,34 +60,48 @@ export const LoginPage = () => {
         } catch (error) {
             if (isAxiosError<AuthErrorResponse>(error) && error.response) {
                 const { status, data } = error.response;
+                const errCode = (data?.code || '').toLowerCase();
+                const errMsg = (data?.message || '').toLowerCase();
                 
-                // HTTP 428: Precondition Required (Se requiere cambio de contraseña temporal antes de ingresar)
+                // HTTP 428: Precondition Required (password_change_required)
                 const isPasswordChangeRequired = 
                     status === 428 || 
-                    (status === 403 && data?.code === AUTH_ERROR_CODES.REQUIRES_PASSWORD_CHANGE) ||
-                    data?.code === 'requires_password_change' ||
-                    (data?.message && data.message.toLowerCase().includes('temporary password'));
+                    errCode === AUTH_ERROR_CODES.PASSWORD_CHANGE_REQUIRED ||
+                    errCode === AUTH_ERROR_CODES.REQUIRES_PASSWORD_CHANGE ||
+                    errMsg.includes('temporary password');
 
                 if (isPasswordChangeRequired) {
                     setCurrentStep('CHANGE_PASSWORD');
                     setErrorMessage(""); // Limpiamos el mensaje de error para cambiar limpiamente de vista
                 } else if (status === 401) {
-                    // HTTP 401: Usuario deshabilitado por administración vs Credenciales incorrectas
-                    if (data?.code === AUTH_ERROR_CODES.USER_DISABLED || data?.message?.toLowerCase().includes('disabled')) {
-                        setErrorMessage("Cuenta deshabilitada. Contacte con la administración.");
-                    } else {
-                        setErrorMessage("Usuario o contraseña incorrectos.");
-                    }
+                    // HTTP 401: Unauthorized - Credenciales incorrectas
+                    setErrorMessage("Usuario o contraseña incorrectos.");
                     setShakeKey(prev => prev + 1);
                 } else if (status === 403) {
-                    // HTTP 403: Acceso denegado por roles o permisos
-                    setErrorMessage("Acceso denegado. No tiene permisos suficientes para ingresar.");
+                    // HTTP 403: Forbidden - Cuenta deshabilitada (account_disabled) vs Cuenta bloqueada (account_locked)
+                    if (
+                        errCode === AUTH_ERROR_CODES.ACCOUNT_DISABLED || 
+                        errCode === AUTH_ERROR_CODES.USER_DISABLED || 
+                        errMsg.includes('disabled') || 
+                        errMsg.includes('deshabilitad')
+                    ) {
+                        setErrorMessage("Cuenta deshabilitada. Contacte con la administración.");
+                    } else if (
+                        errCode === AUTH_ERROR_CODES.ACCOUNT_LOCKED || 
+                        errMsg.includes('locked') || 
+                        errMsg.includes('bloquead') || 
+                        errMsg.includes('attempts')
+                    ) {
+                        setErrorMessage("Cuenta bloqueada. Contacte con la administración.");
+                    } else {
+                        setErrorMessage("Acceso denegado. No tiene permisos suficientes para ingresar.");
+                    }
                     setShakeKey(prev => prev + 1);
                 } else if (status === 400) {
                     setErrorMessage(data?.message || "Usuario o contraseña incorrectos.");
                     setShakeKey(prev => prev + 1);
                 } else {
-                    // Para otros errores (ej. 500) usamos el del backend o uno genérico
+                    // Para otros errores (ej. 500) usamos el mensaje del backend o uno genérico
                     setErrorMessage(data?.message || "Error al intentar iniciar sesión.");
                     setShakeKey(prev => prev + 1);
                 }
