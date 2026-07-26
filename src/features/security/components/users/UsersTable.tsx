@@ -82,9 +82,6 @@ export const UsersTable = ({
       sortable: true,
       render: row => (
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
-            <User className="w-4 h-4" />
-          </div>
           <div className="space-y-0.5">
             <span className="font-bold text-sm text-base-content block line-clamp-1">
               {row.fullName || 'Usuario del Sistema'}

@@ -31,7 +31,7 @@ export const useTenantUsers = ({ initialPageSize = 10 }: UseTenantUsersOptions =
         setIsLoading(false);
       }
     },
-    [showToast]
+    []
   );
 
   useEffect(() => {

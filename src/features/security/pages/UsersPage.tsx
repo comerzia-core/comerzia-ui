@@ -84,10 +84,8 @@ export const UsersPage = () => {
         refetch();
       } else if (pendingAction === 'RESET_PASSWORD') {
         const creds = await userService.resetUserPassword(selectedUser.id);
-        showToast(`Contraseña restablecida para el usuario @${selectedUser.username}`, 'success');
         setResetCredentials(creds);
         setIsPasswordModalOpen(true);
-        refetch();
       }
 
       setPendingAction(null);
@@ -254,7 +252,10 @@ export const UsersPage = () => {
       {/* MODAL DE CREDENCIALES TEMPORALES TRAS RESETEAR CONTRASEÑA */}
       <UserTemporaryPasswordModal
         isOpen={isPasswordModalOpen}
-        onClose={() => setIsPasswordModalOpen(false)}
+        onClose={() => {
+          setIsPasswordModalOpen(false);
+          refetch();
+        }}
         credentials={resetCredentials}
       />
     </div>

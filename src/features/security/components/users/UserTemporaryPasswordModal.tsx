@@ -1,9 +1,9 @@
 // src/features/security/components/users/UserTemporaryPasswordModal.tsx
 import { useState } from 'react';
-import { Key, Copy, Check, ShieldAlert } from 'lucide-react';
+import { Key, Copy, CheckCircle, ShieldAlert, Eye, EyeOff } from 'lucide-react';
 import { ComerziaModal } from '../../../../components/ui/ComerziaModal';
-import { BtnCancel } from '../../../../components/ui/CrudButtons';
-import { useToast } from '../../../../context/ToastContext';
+import { ComerziaButton } from '../../../../components/ui/ComerziaButton';
+import { ComerziaInput } from '../../../../components/ui/ComerziaInput';
 import type { ResetPasswordResponse } from '../../types/user';
 
 interface Props {
@@ -13,23 +13,20 @@ interface Props {
 }
 
 export const UserTemporaryPasswordModal = ({ isOpen, onClose, credentials }: Props) => {
-  const { addToast: showToast } = useToast();
   const [copied, setCopied] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   if (!credentials) return null;
 
-  const handleCopyPassword = () => {
-    navigator.clipboard.writeText(credentials.temporaryPassword);
-    setCopied(true);
-    showToast('Contraseña temporal copiada al portapapeles', 'success');
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(credentials.temporaryPassword || '');
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Fallo al copiar la contraseña al portapapeles', err);
+    }
   };
-
-  const modalActions = (
-    <div className="flex justify-end gap-2 w-full">
-      <BtnCancel onClick={onClose} label="Cerrar" />
-    </div>
-  );
 
   return (
     <ComerziaModal
@@ -41,46 +38,63 @@ export const UserTemporaryPasswordModal = ({ isOpen, onClose, credentials }: Pro
           Contraseña Temporal Generada
         </div>
       }
-      actions={modalActions}
       size="md"
     >
-      <div className="space-y-5 pt-2">
-        <div className="alert bg-warning/10 border border-warning/30 text-base-content rounded-xl p-4 flex items-start gap-3 shadow-xs">
-          <ShieldAlert className="w-5 h-5 text-warning shrink-0 mt-0.5" />
-          <div className="text-xs space-y-1">
-            <p className="font-bold text-sm text-warning-content">¡Atención Administrador!</p>
-            <p className="text-base-content/80 leading-relaxed">
-              La contraseña actual ha sido restablecida. Proporcione la siguiente contraseña temporal al usuario. El sistema le solicitará cambiarla obligatoriamente en su próximo inicio de sesión.
-            </p>
-          </div>
-        </div>
+      <div className="flex flex-col gap-4 text-center items-center py-2">
+        <p className="text-sm text-base-content/70 bg-warning/10 p-3 rounded-xl border border-warning/20 text-left w-full">
+          <ShieldAlert size={18} className="inline mr-2 text-warning -mt-0.5" />
+          <strong>¡Atención Administrador!</strong> La contraseña del usuario ha sido restablecida. Esta contraseña temporal se muestra por <strong>única vez</strong>. El sistema obligará al usuario a cambiarla en su próximo inicio de sesión.
+        </p>
 
-        <div className="space-y-3 bg-base-200/60 p-4 rounded-2xl border border-base-200">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-base-content/60">Usuario:</span>
-            <span className="font-mono text-sm font-bold text-base-content">
-              @{credentials.username}
-            </span>
-          </div>
+        <div className="w-full text-left bg-base-200/60 p-4 rounded-xl space-y-3 border border-base-200">
+          <ComerziaInput
+            label="Usuario"
+            value={credentials.username}
+            readOnly
+            disabled
+          />
 
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-base-content/60">Contraseña Temporal:</span>
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-base font-black tracking-wider text-primary bg-base-100 px-3 py-1.5 rounded-xl border border-primary/20 shadow-xs">
-                {credentials.temporaryPassword}
-              </span>
-              <button
+          <div className="form-control w-full">
+            <label className="label">
+              <span className="label-text font-semibold">Contraseña Temporal</span>
+            </label>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={credentials.temporaryPassword}
+                  readOnly
+                  disabled
+                  className="input input-bordered w-full bg-base-100 font-mono tracking-widest text-base pr-10 text-base-content"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-base-content/50 hover:text-primary transition-colors cursor-pointer"
+                  title={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+              <ComerziaButton
                 type="button"
-                onClick={handleCopyPassword}
-                className="btn btn-sm btn-primary gap-1 rounded-xl shadow-xs"
-                title="Copiar contraseña"
-              >
-                {copied ? <Check className="w-4 h-4 text-white" /> : <Copy className="w-4 h-4" />}
-                <span>{copied ? 'Copiado' : 'Copiar'}</span>
-              </button>
+                variant={copied ? 'success' : 'neutral'}
+                onClick={handleCopy}
+                icon={copied ? <CheckCircle size={18} /> : <Copy size={18} />}
+                label={copied ? 'Copiado' : 'Copiar'}
+                className="min-w-[110px]"
+              />
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="mt-6 flex justify-end">
+        <ComerziaButton
+          variant="primary"
+          label="Entendido, cerrar"
+          onClick={onClose}
+        />
       </div>
     </ComerziaModal>
   );
