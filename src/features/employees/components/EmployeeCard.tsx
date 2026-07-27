@@ -5,13 +5,21 @@ interface Props {
   employee: EmployeeSummaryResponse;
   index: number;
   onClick: (employee: EmployeeSummaryResponse) => void;
+  onContextMenu?: (e: React.MouseEvent, employee: EmployeeSummaryResponse) => void;
 }
 
-export const EmployeeCard = ({ employee, index, onClick }: Props) => {
+export const EmployeeCard = ({ employee, index, onClick, onContextMenu }: Props) => {
   return (
     <div 
-      className="bg-base-100 rounded-2xl p-5 border border-base-200 shadow-sm hover:shadow-md hover:border-primary/30 transition-all cursor-pointer relative group flex flex-col justify-between h-full"
+      className="bg-base-100 rounded-2xl p-5 border border-base-200 shadow-sm hover:shadow-md hover:border-primary/30 transition-all cursor-pointer relative group flex flex-col justify-between h-full select-none"
       onClick={() => onClick(employee)}
+      onContextMenu={(e) => {
+        if (onContextMenu) {
+          e.preventDefault();
+          e.stopPropagation();
+          onContextMenu(e, employee);
+        }
+      }}
     >
       {/* Indicador numérico */}
       <span className="absolute top-4 right-4 text-xs font-bold text-base-content/20 group-hover:text-primary/40 transition-colors">

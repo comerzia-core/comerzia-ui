@@ -1,19 +1,17 @@
 import { useState, useEffect } from 'react';
 import { ComerziaModal } from '../../../components/ui/ComerziaModal';
-import { ComerziaButton } from '../../../components/ui/ComerziaButton';
-import { Edit2, Trash2, UserCircle, MapPin, Briefcase, Mail, Phone, Calendar } from 'lucide-react';
+import { BtnCancel } from '../../../components/ui/CrudButtons';
+import { UserCircle, MapPin, Briefcase, Mail, Phone, Calendar } from 'lucide-react';
 import { employeeService } from '../services/employeeService';
-import type { EmployeeDetailResponse, EmployeeSummaryResponse } from '../types/employee';
+import type { EmployeeDetailResponse } from '../types/employee';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   employeeId: string | null;
-  onEdit: (employee: EmployeeSummaryResponse) => void;
-  onDelete: (employee: EmployeeSummaryResponse) => void;
 }
 
-export const EmployeeDetailModal = ({ isOpen, onClose, employeeId, onEdit, onDelete }: Props) => {
+export const EmployeeDetailModal = ({ isOpen, onClose, employeeId }: Props) => {
   const [detail, setDetail] = useState<EmployeeDetailResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -39,39 +37,6 @@ export const EmployeeDetailModal = ({ isOpen, onClose, employeeId, onEdit, onDel
 
   if (!isOpen) return null;
 
-  const handleEditClick = () => {
-    if (detail) {
-      // Create a summary-like object to pass to the edit flow
-      const summary: EmployeeSummaryResponse = {
-        id: detail.id,
-        fullName: `${detail.firstName} ${detail.paternalSurname || ''} ${detail.maternalSurname || ''}`.trim(),
-        documentNumber: detail.documentNumber,
-        branchName: detail.branchName || '',
-        roleNames: [], // Not strictly needed for edit modal initiation
-        userEnabled: detail.userEnabled,
-        requiresPasswordChange: detail.requiresPasswordChange
-      };
-      onClose(); // Close this modal
-      onEdit(summary); // Open edit modal
-    }
-  };
-
-  const handleDeleteClick = () => {
-    if (detail) {
-      const summary: EmployeeSummaryResponse = {
-        id: detail.id,
-        fullName: `${detail.firstName} ${detail.paternalSurname || ''} ${detail.maternalSurname || ''}`.trim(),
-        documentNumber: detail.documentNumber,
-        branchName: detail.branchName || '',
-        roleNames: [], 
-        userEnabled: detail.userEnabled,
-        requiresPasswordChange: detail.requiresPasswordChange
-      };
-      onClose();
-      onDelete(summary);
-    }
-  };
-
   return (
     <ComerziaModal 
       isOpen={isOpen} 
@@ -80,20 +45,7 @@ export const EmployeeDetailModal = ({ isOpen, onClose, employeeId, onEdit, onDel
       size="lg"
       actions={
         <div className="flex gap-2 w-full justify-end">
-          <ComerziaButton 
-            variant="error" 
-            label="Eliminar" 
-            icon={<Trash2 size={16} />} 
-            onClick={handleDeleteClick} 
-            disabled={isLoading || !detail}
-          />
-          <ComerziaButton 
-            variant="edit" 
-            label="Editar" 
-            icon={<Edit2 size={16} />} 
-            onClick={handleEditClick} 
-            disabled={isLoading || !detail}
-          />
+          <BtnCancel onClick={onClose} label="Cerrar" />
         </div>
       }
     >

@@ -18,14 +18,9 @@ export interface ContractDetails {
   baseSalary?: number;
 }
 
-export interface AccessDetails {
-  roleIds: string[];
-}
-
 export interface CreateEmployeeRequest {
   person: PersonDetails;
   contract: ContractDetails;
-  access: AccessDetails;
 }
 
 export interface UpdateEmployeeRequest {
@@ -42,8 +37,6 @@ export interface UpdateEmployeeRequest {
   employmentEndDate?: string | null;
   baseSalary?: number;
   paymentFrequency: number;
-  roleIds?: string[];
-  userEnabled: boolean;
 }
 
 export interface EmployeeSummaryResponse {
