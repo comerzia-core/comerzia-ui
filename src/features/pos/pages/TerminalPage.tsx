@@ -59,7 +59,7 @@ export const TerminalPage = () => {
         <p className="text-base-content/60 text-center max-w-sm mb-4">
           Para poder utilizar la terminal de ventas, necesitas aperturar tu caja o que un administrador te asigne un turno.
         </p>
-        <Link to="/pos/shifts" className="btn btn-primary gap-2 shadow-lg shadow-primary/30">
+        <Link to="/pos/shifts" className="btn btn-primary gap-2 shadow-lg shadow-primary/30 text-white">
           <Clock size={18} /> Ir a Turnos y Arqueos
         </Link>
       </div>
