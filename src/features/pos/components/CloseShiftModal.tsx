@@ -48,11 +48,21 @@ export const CloseShiftModal = ({ isOpen, onClose, onSuccess, shiftId }: Props) 
         details,
         observation: observation || undefined
       });
-      toastSuccess("Turno cerrado exitosamente.");
+      toastSuccess("Turno cerrado.");
       onSuccess();
       onClose();
     } catch (err: any) {
-      toastError(err.response?.data?.message || "Error al cerrar el turno.");
+      const status = err.response?.status;
+      const apiMsg = err.response?.data?.message || err.response?.data?.error || "";
+      if (status === 400 || apiMsg.toLowerCase().includes("observation")) {
+        toastError("Se requiere observación al existir descuadre en caja.");
+      } else if (status === 409) {
+        toastError("El turno no está abierto o ya fue cerrado.");
+      } else if (apiMsg) {
+        toastError(apiMsg);
+      } else {
+        toastError("No se pudo cerrar el turno.");
+      }
       setShakeKey(prev => prev + 1);
     } finally {
       setIsLoading(false);

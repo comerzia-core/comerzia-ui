@@ -75,19 +75,27 @@ export const RegisterModal = ({ isOpen, onClose, onSuccess, registerToEdit }: Pr
           name: form.name,
           status: form.status
         });
-        toastSuccess("Caja actualizada exitosamente.");
+        toastSuccess("Caja actualizada.");
       } else {
         await posService.createCashRegister({
           branchId: form.branchId,
           name: form.name,
           status: form.status
         });
-        toastSuccess("Caja registrada exitosamente.");
+        toastSuccess("Caja creada.");
       }
       onSuccess();
       onClose();
     } catch (err: any) {
-      toastError(err.response?.data?.message || "Error al guardar la caja.");
+      const status = err.response?.status;
+      const apiMsg = err.response?.data?.message || err.response?.data?.error;
+      if (status === 409) {
+        toastError("Ya existe una caja con ese nombre en la sucursal.");
+      } else if (apiMsg) {
+        toastError(apiMsg);
+      } else {
+        toastError("No se pudo guardar la caja.");
+      }
       setShakeKey(prev => prev + 1);
     } finally {
       setIsLoading(false);

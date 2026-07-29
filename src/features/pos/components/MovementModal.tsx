@@ -95,7 +95,7 @@ export const MovementModal = ({ isOpen, onClose, onSuccess, shiftId, movementToE
           amount: Number(form.amount),
           observation: form.observation || undefined
         });
-        toastSuccess("Movimiento actualizado exitosamente.");
+        toastSuccess("Movimiento actualizado.");
       } else {
         await posService.createMovement({
           shiftId: finalShiftId,
@@ -104,12 +104,20 @@ export const MovementModal = ({ isOpen, onClose, onSuccess, shiftId, movementToE
           amount: Number(form.amount),
           observation: form.observation || undefined
         });
-        toastSuccess("Movimiento registrado exitosamente.");
+        toastSuccess("Movimiento registrado.");
       }
       onSuccess();
       onClose();
     } catch (err: any) {
-      toastError(err.response?.data?.message || "Error al guardar el movimiento.");
+      const status = err.response?.status;
+      const apiMsg = err.response?.data?.message || err.response?.data?.error || "";
+      if (status === 409) {
+        toastError("El turno asociado ya se encuentra cerrado.");
+      } else if (apiMsg) {
+        toastError(apiMsg);
+      } else {
+        toastError("No se pudo guardar el movimiento.");
+      }
       setShakeKey(prev => prev + 1);
     } finally {
       setIsLoading(false);

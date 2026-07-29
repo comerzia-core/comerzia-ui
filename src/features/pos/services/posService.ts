@@ -19,25 +19,41 @@ import type {
 
 export const posService = {
   // --- Cajeros ---
-  getCashiers: async (): Promise<EmployeePosResponse[]> => {
-    const response = await api.get<EmployeePosResponse[]>('/tenant/employees/cashiers');
+  getCashiers: async (branchId?: string): Promise<EmployeePosResponse[]> => {
+    const headers: Record<string, string> = {};
+    if (branchId) {
+      headers['X-Branch-Context'] = branchId;
+    }
+    const response = await api.get<EmployeePosResponse[]>('/tenant/employees/cashiers', { headers });
     return response.data;
   },
 
   // --- Cajas Registradoras ---
-  getAllCashRegisters: async (page: number, size: number, sort: string[] = []): Promise<PageCashRegisterResponse> => {
+  getAllCashRegisters: async (
+    page: number = 0,
+    size: number = 100,
+    sort: string[] = [],
+    status?: boolean,
+    availableOnly?: boolean,
+    branchId?: string
+  ): Promise<PageCashRegisterResponse> => {
     const params = new URLSearchParams();
     params.append('page', page.toString());
     params.append('size', size.toString());
     if (sort && sort.length > 0) {
       sort.forEach(s => params.append('sort', s));
     }
-    const response = await api.get<PageCashRegisterResponse>('/tenant/cash-registers', { params });
-    return response.data;
-  },
-
-  getAvailableCashRegisters: async (): Promise<CashRegisterResponse[]> => {
-    const response = await api.get<CashRegisterResponse[]>('/tenant/cash-registers/available');
+    if (status !== undefined) {
+      params.append('status', status.toString());
+    }
+    if (availableOnly !== undefined) {
+      params.append('availableOnly', availableOnly.toString());
+    }
+    const headers: Record<string, string> = {};
+    if (branchId) {
+      headers['X-Branch-Context'] = branchId;
+    }
+    const response = await api.get<PageCashRegisterResponse>('/tenant/cash-registers', { params, headers });
     return response.data;
   },
 
@@ -83,8 +99,12 @@ export const posService = {
     return response.data;
   },
 
-  openShift: async (data: OpenShiftRequest): Promise<ShiftResponse> => {
-    const response = await api.post<ShiftResponse>('/tenant/shifts/open', data);
+  openShift: async (data: OpenShiftRequest, branchId?: string): Promise<ShiftResponse> => {
+    const headers: Record<string, string> = {};
+    if (branchId) {
+      headers['X-Branch-Context'] = branchId;
+    }
+    const response = await api.post<ShiftResponse>('/tenant/shifts/open', data, { headers });
     return response.data;
   },
 

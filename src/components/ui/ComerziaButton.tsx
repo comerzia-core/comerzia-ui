@@ -69,6 +69,7 @@ export const ComerziaButton = ({
             : "px-4 min-w-[100px] sm:min-w-[120px] gap-2" 
         }
         shadow-sm hover:shadow-md transition-all
+        ${(props.disabled || isLoading) ? "opacity-40 grayscale cursor-not-allowed pointer-events-none shadow-none" : ""}
         ${className}
       `} 
       disabled={isLoading || props.disabled}
