@@ -28,8 +28,8 @@ export const ProductTable = ({ brandId, selectedProducts, setSelectedProducts, r
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [selectedProductName, setSelectedProductName] = useState<string>('');
 
-  const { hasRole } = useAuthStore();
-  const isOwner = hasRole('OWNER');
+  const { hasPermission } = useAuthStore();
+  const canManage = hasPermission('COM_CATALOG_MANAGE');
   const { error: toastError, success: toastSuccess } = useToast();
 
   const [productToEdit, setProductToEdit] = useState<ProductResponse | null>(null);
@@ -39,12 +39,12 @@ export const ProductTable = ({ brandId, selectedProducts, setSelectedProducts, r
 
   useEffect(() => {
     loadData();
-  }, [brandId, page, size, refreshKey]);
+  }, [brandId, page, size, refreshKey, canManage]);
 
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const activeOnly = isOwner ? false : undefined;
+      const activeOnly = canManage ? false : undefined;
       const res = await commercialService.getProductsByBrand(brandId, page, size, activeOnly);
       setData(res.content);
       setTotalElements(res.totalElements);
@@ -116,7 +116,7 @@ export const ProductTable = ({ brandId, selectedProducts, setSelectedProducts, r
     },
     { 
       header: 'Tipo de Variante', 
-      render: (row) => row.variantType === 1 ? 'Simple' : row.variantType === 2 ? 'Color' : 'Color/Talla'
+      accessorKey: 'variantName'
     },
     { 
       header: 'Estado', 
@@ -153,7 +153,7 @@ export const ProductTable = ({ brandId, selectedProducts, setSelectedProducts, r
         }}
         onRowContextMenu={(e, row) => {
           e.preventDefault();
-          if (isOwner) {
+          if (canManage) {
             setContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, row });
           }
         }}
@@ -165,7 +165,7 @@ export const ProductTable = ({ brandId, selectedProducts, setSelectedProducts, r
         y={contextMenu.y}
         onClose={() => setContextMenu({ ...contextMenu, isOpen: false })}
       >
-        {isOwner && (
+        {canManage && (
           <>
             <ContextMenuItem 
               icon={Edit}

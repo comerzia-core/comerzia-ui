@@ -11,8 +11,8 @@ import { useAuthStore } from '../../../stores/useAuthStore';
 
 export const CatalogPage = () => {
   const { error: toastError, success: toastSuccess } = useToast();
-  const { hasRole } = useAuthStore();
-  const isOwner = hasRole('OWNER');
+  const { hasPermission } = useAuthStore();
+  const canManage = hasPermission('COM_CATALOG_MANAGE');
   
   const [categories, setCategories] = useState<CategoryResponse[]>([]);
   const [segments, setSegments] = useState<SegmentResponse[]>([]);
@@ -33,12 +33,12 @@ export const CatalogPage = () => {
 
   useEffect(() => {
     loadCategories();
-  }, [isOwner]);
+  }, [canManage]);
 
   const loadCategories = async () => {
     setIsLoadingCategories(true);
     try {
-      const activeOnly = isOwner ? false : undefined;
+      const activeOnly = canManage ? false : undefined;
       const res = await commercialService.getCategories(activeOnly);
       setCategories(res);
     } catch (e) {
@@ -56,12 +56,12 @@ export const CatalogPage = () => {
       setSelectedBrandId('');
       setBrands([]);
     }
-  }, [selectedCategoryId, isOwner]);
+  }, [selectedCategoryId, canManage]);
 
   const loadSegments = async (categoryId: string) => {
     setIsLoadingSegments(true);
     try {
-      const activeOnly = isOwner ? false : undefined;
+      const activeOnly = canManage ? false : undefined;
       const res = await commercialService.getSegmentsByCategory(categoryId, activeOnly);
       setSegments(res);
     } catch (e) {
@@ -77,12 +77,12 @@ export const CatalogPage = () => {
       setSelectedBrandId('');
       setBrands([]);
     }
-  }, [selectedSegmentId, isOwner]);
+  }, [selectedSegmentId, canManage]);
 
   const loadBrands = async (segmentId: string) => {
     setIsLoadingBrands(true);
     try {
-      const activeOnly = isOwner ? false : undefined;
+      const activeOnly = canManage ? false : undefined;
       const res = await commercialService.getBrandsBySegment(segmentId, activeOnly);
       setBrands(res);
     } catch (e) {
@@ -113,7 +113,7 @@ export const CatalogPage = () => {
           <ComerziaCreatableSelect
             label="1. Categoría"
             entityName="Categoría"
-            canManage={isOwner}
+            canManage={canManage}
             options={categories.map(c => ({ value: c.id, label: c.name, status: c.status }))}
             value={selectedCategoryId}
             onChange={(val) => {
@@ -159,7 +159,7 @@ export const CatalogPage = () => {
           <ComerziaCreatableSelect
             label="2. Rubro"
             entityName="Rubro"
-            canManage={isOwner}
+            canManage={canManage}
             options={segments.map(s => ({ value: s.id, label: s.name, status: s.status }))}
             value={selectedSegmentId}
             onChange={(val) => {
@@ -206,7 +206,7 @@ export const CatalogPage = () => {
           <ComerziaCreatableSelect
             label="3. Marca"
             entityName="Marca"
-            canManage={isOwner}
+            canManage={canManage}
             options={brands.map(b => ({ value: b.id, label: b.name, status: b.status }))}
             value={selectedBrandId}
             onChange={(val) => setSelectedBrandId(val as string)}

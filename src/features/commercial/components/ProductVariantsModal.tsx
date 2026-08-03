@@ -26,8 +26,8 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
   const [size, setSize] = useState(20);
   const [totalElements, setTotalElements] = useState(0);
 
-  const { hasRole } = useAuthStore();
-  const isOwner = hasRole('OWNER');
+  const { hasPermission } = useAuthStore();
+  const canManage = hasPermission('COM_CATALOG_MANAGE');
   const { error: toastError, success: toastSuccess } = useToast();
 
   const [variantToEdit, setVariantToEdit] = useState<ProductVariantResponse | null>(null);
@@ -41,12 +41,12 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
     if (isOpen && productId) {
       loadData();
     }
-  }, [isOpen, productId, page, size]);
+  }, [isOpen, productId, page, size, canManage]);
 
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const activeOnly = isOwner ? false : undefined;
+      const activeOnly = canManage ? false : undefined;
       const res = await commercialService.getVariantsByProduct(productId, page, size, activeOnly);
       setData(res.content);
       setTotalElements(res.totalElements);
@@ -120,7 +120,7 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
     >
       <div className="mb-4 flex justify-between items-center">
         <h3 className="font-semibold text-base-content/70">Listado de Variantes</h3>
-        {isOwner && (
+        {canManage && (
           <BtnCreate onClick={() => setIsCreatingVariant(true)} label="Añadir Variante" />
         )}
       </div>
@@ -165,7 +165,7 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
             setContextMenu({ ...contextMenu, isOpen: false });
           }} 
         />
-        {isOwner && (
+        {canManage && (
           <>
             <ContextMenuItem 
               icon={History}

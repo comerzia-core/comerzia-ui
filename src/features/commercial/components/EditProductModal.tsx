@@ -9,6 +9,9 @@ import { commercialService } from '../services/commercialService';
 import type { ProductResponse } from '../types/commercial';
 import { useToast } from '../../../context/ToastContext';
 
+import { useLoadDictionaries } from '../../../hooks/useLoadDictionaries';
+import { DICTIONARIES } from '../../../config/dictionaries';
+
 interface Props {
   isOpen: boolean;
   onClose: () => void;
@@ -22,6 +25,9 @@ export const EditProductModal = ({ isOpen, onClose, onSuccess, product }: Props)
   const [variantType, setVariantType] = useState('1');
   const [status, setStatus] = useState(true);
   
+  const { options, isLoading: isLoadingDict } = useLoadDictionaries([DICTIONARIES.VARIANT_TYPE]);
+  const variantTypeOptions = options[DICTIONARIES.VARIANT_TYPE] || [];
+
   const [shakeKey, setShakeKey] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { error: toastError, success: toastSuccess } = useToast();
@@ -81,11 +87,8 @@ export const EditProductModal = ({ isOpen, onClose, onSuccess, product }: Props)
         />
         <ComerziaSelect
           label="Tipo de Variante"
-          options={[
-            { value: '1', label: 'Simple (Sin variaciones)' },
-            { value: '2', label: 'Color' },
-            { value: '3', label: 'Talla/Color' }
-          ]}
+          options={variantTypeOptions}
+          isLoading={isLoadingDict}
           value={variantType}
           onChange={(e) => setVariantType(e.target.value)}
           error={!variantType && shakeKey > 0 ? "Requerido" : ""}

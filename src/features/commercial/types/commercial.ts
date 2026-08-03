@@ -23,6 +23,7 @@ export interface ProductResponse {
   name: string;
   description?: string;
   variantType: number;
+  variantName: string;
   status: boolean;
   brand: BrandResponse;
 }

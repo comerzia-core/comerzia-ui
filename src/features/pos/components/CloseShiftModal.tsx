@@ -1,6 +1,7 @@
 // src/features/pos/components/CloseShiftModal.tsx
 import { useState, useEffect } from 'react';
 import { ComerziaModal } from '../../../components/ui/ComerziaModal';
+import { ComerziaInput } from '../../../components/ui/ComerziaInput';
 import { ComerziaTextarea } from '../../../components/ui/ComerziaTextarea';
 import { BtnCancel, BtnSave } from '../../../components/ui/CrudButtons';
 import { posService } from '../services/posService';
@@ -141,22 +142,20 @@ export const CloseShiftModal = ({ isOpen, onClose, onSuccess, shiftId }: Props) 
                     </div>
                   </div>
 
-                  {/* LADO DERECHO: Campo de Monto (Por defecto 0) */}
-                  <div className="w-40 sm:w-48 shrink-0">
-                    <div className="relative flex items-center">
-                      <span className="absolute left-3.5 text-sm font-bold text-base-content/50 pointer-events-none select-none">
-                        {currency}
-                      </span>
-                      <input
-                        type="number"
-                        min="0"
-                        step="any"
-                        className="input input-bordered w-full pl-8 pr-3 font-bold text-right text-base focus:border-primary focus:outline-none rounded-xl"
-                        value={counts[pt.value] ?? '0'}
-                        onChange={e => setCounts({ ...counts, [pt.value]: e.target.value })}
-                        onClick={e => (e.target as HTMLInputElement).select()}
-                      />
-                    </div>
+                  {/* LADO DERECHO: Campo de Monto (Por defecto 0, usando componente del UI Kit) */}
+                  <div className="w-40 sm:w-48 shrink-0 relative flex items-center">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-base-content/50 pointer-events-none select-none z-10">
+                      {currency}
+                    </span>
+                    <ComerziaInput
+                      type="number"
+                      min="0"
+                      step="any"
+                      className="pl-8 pr-3 font-extrabold text-right text-base rounded-xl"
+                      value={counts[pt.value] ?? '0'}
+                      onChange={e => setCounts({ ...counts, [pt.value]: e.target.value })}
+                      onClick={e => (e.target as HTMLInputElement).select()}
+                    />
                   </div>
                 </div>
               );
