@@ -365,7 +365,10 @@ export const StockMovementsPage = () => {
                     label="Tipo de Ajuste"
                     options={adjustmentTypeOptions}
                     value={adjustmentType}
-                    onChange={(e) => setAdjustmentType(e.target.value ? Number(e.target.value) : '')}
+                    onChange={(e) => {
+                      setAdjustmentType(e.target.value ? Number(e.target.value) : '');
+                      setAdjustmentQty(0);
+                    }}
                     isRequired
                   />
                   <ComerziaInput
@@ -373,8 +376,10 @@ export const StockMovementsPage = () => {
                     type="number"
                     value={adjustmentQty}
                     onChange={(e) => {
-                      let val: number | '' = e.target.value ? Number(e.target.value) : '';
-                      if (typeof val === 'number' && adjustmentTarget && val > adjustmentTarget.availableQuantity) {
+                      let val: number | '' = e.target.value !== '' ? Number(e.target.value) : '';
+                      const code = Number(adjustmentType);
+                      const isSubtract = code === 301 || code === 303;
+                      if (typeof val === 'number' && isSubtract && adjustmentTarget && val > adjustmentTarget.availableQuantity) {
                         val = adjustmentTarget.availableQuantity;
                       }
                       setAdjustmentQty(val);
@@ -385,7 +390,16 @@ export const StockMovementsPage = () => {
                     <div className="text-sm text-base-content/70 bg-base-200 p-3 rounded-lg flex justify-between">
                       <span>Nueva cant. disp. estimada:</span>
                       <span className="font-bold text-primary">
-                        {adjustmentTarget.availableQuantity - Number(adjustmentQty)}
+                        {(() => {
+                          const code = Number(adjustmentType);
+                          const qty = Number(adjustmentQty);
+                          if (code === 301 || code === 303) {
+                            return adjustmentTarget.availableQuantity - qty;
+                          } else if (code === 302 || code === 304) {
+                            return adjustmentTarget.availableQuantity + qty;
+                          }
+                          return adjustmentTarget.availableQuantity;
+                        })()}
                       </span>
                     </div>
                   )}
