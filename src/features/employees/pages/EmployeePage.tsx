@@ -11,10 +11,13 @@ import { useToast } from '../../../context/ToastContext';
 import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
 import { ComerziaContextMenu, ContextMenuItem } from '../../../components/ui/ComerziaContextMenu';
 import { EmployeeCredentialsModal } from '../components/EmployeeCredentialsModal';
+import { useAuthStore } from '../../../stores/useAuthStore';
 
 type EmployeeActionType = 'DELETE' | null;
 
 export const EmployeePage = () => {
+  const { hasRole } = useAuthStore();
+  const isOwner = hasRole('OWNER');
   const [data, setData] = useState<EmployeeSummaryResponse[]>([]);
   const [totalElements, setTotalElements] = useState(0);
 
@@ -213,18 +216,20 @@ export const EmployeePage = () => {
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
-          <select
-            className="select select-bordered w-full sm:w-48"
-            value={selectedBranch}
-            onChange={e => setSelectedBranch(e.target.value)}
-          >
-            <option value="">Todas las sucursales</option>
-            {uniqueBranches.map(branch => (
-              <option key={branch} value={branch}>
-                {branch}
-              </option>
-            ))}
-          </select>
+          {isOwner && (
+            <select
+              className="select select-bordered w-full sm:w-48"
+              value={selectedBranch}
+              onChange={e => setSelectedBranch(e.target.value)}
+            >
+              <option value="">Todas las sucursales</option>
+              {uniqueBranches.map(branch => (
+                <option key={branch} value={branch}>
+                  {branch}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
         <div className="text-base-content/60 font-semibold px-2">
