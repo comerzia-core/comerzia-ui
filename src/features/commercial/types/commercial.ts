@@ -150,12 +150,9 @@ export interface StockEntryResponse {
   totalCost: number;
   entryDate: string;
   note?: string;
-  status: boolean;
-  variantId: string;
-  branchId?: string;
+  statusType?: { code: number; label: string } | number;
   branchName?: string;
-  currencyCode?: string;
-  statusType: number;
+  hasAdjustments?: boolean;
 }
 
 export interface CreateStockEntryRequest {
@@ -183,27 +180,26 @@ export interface StockAdjustmentResponse {
   quantity: number;
   unitCost: number;
   totalCost: number;
-  adjustmentType: number;
-  observation: string;
-  currencyCode?: string;
+  adjustmentType: { code: number; label: string } | number;
+  observation?: string;
   date: string;
-  stockId: string;
-  inventoryId?: string;
-  employeeId: string;
+  employeeName?: string;
+  inventoryId?: string | null;
+  branchName?: string;
 }
 
 export interface InventoryResponse {
   id: string;
-  assignedEmployeeId: string;
-  assignedAt: string;
+  assignedEmployeeId?: string;
+  assignedAt?: string;
   uploadedAt?: string;
   imageUrl?: string;
   staffNotes?: string;
   approvedEmployeeId?: string;
   adminNotes?: string;
-  statusType: number;
-  segmentId: string;
-  segmentName: string;
+  statusType?: { code: number; label: string } | number;
+  segmentId?: string;
+  segmentName?: string;
 }
 
 export interface CreateInventoryRequest {

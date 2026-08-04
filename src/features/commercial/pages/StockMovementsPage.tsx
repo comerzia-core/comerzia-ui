@@ -15,13 +15,14 @@ import { CreateFullProductModal } from '../components/CreateFullProductModal';
 import { ComerziaSelect } from '../../../components/ui/ComerziaSelect';
 import { ComerziaContextMenu, ContextMenuItem } from '../../../components/ui/ComerziaContextMenu';
 import { ComerziaRadioGroup } from '../../../components/ui/ComerziaRadioGroup';
-import { Settings2, X, Barcode, DollarSign, Coins, Banknote } from 'lucide-react';
+import { Settings2, X, Barcode, DollarSign, Coins, Banknote, SlidersHorizontal, ClipboardList } from 'lucide-react';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { branchService } from '../../organization/services/branchService';
 import type { BranchResponse } from '../../organization/types/branch';
 import { DICTIONARIES } from '../../../config/dictionaries';
 import { useLoadDictionaries } from '../../../hooks/useLoadDictionaries';
 import { ValuateStockModal } from '../components/ValuateStockModal';
+import { InventoryReportModal } from '../components/InventoryReportModal';
 
 const CurrencyCell = ({ amount, currencyCode = 'USD' }: { amount: number, currencyCode?: string }) => {
   const safeAmount = Number(amount) || 0;
@@ -76,11 +77,14 @@ export const StockMovementsPage = () => {
 
   const { hasPermission, hasRole, userProfile } = useAuthStore();
   const hasCostPermission = hasPermission('COM_STOCK_COST_MANAGE');
+  const hasAdjustmentReadPermission = hasPermission('COM_STOCK_ADJUSTMENT_READ');
   const isOwner = hasRole('OWNER');
   const currencyCode = userProfile?.companySettings?.currencyCode || 'USD';
 
   // Tabs and Kardex State
   const [activeTab, setActiveTab] = useState<'entries' | 'adjustments'>('entries');
+  const [filterStockId, setFilterStockId] = useState<string | null>(null);
+  const [selectedInventoryId, setSelectedInventoryId] = useState<string | null>(null);
   const [kardexData, setKardexData] = useState<any[]>([]);
   const [isLoadingKardex, setIsLoadingKardex] = useState(false);
   const [page, setPage] = useState(0);
@@ -89,6 +93,7 @@ export const StockMovementsPage = () => {
   const [totalPages, setTotalPages] = useState(0);
 
   // Adjustment Form State
+  const [isEntryCardOpen, setIsEntryCardOpen] = useState(true);
   const [adjustmentTarget, setAdjustmentTarget] = useState<StockEntryResponse | null>(null);
   const [adjustmentQty, setAdjustmentQty] = useState<number | ''>('');
   const [adjustmentType, setAdjustmentType] = useState<number | ''>('');
@@ -132,7 +137,7 @@ export const StockMovementsPage = () => {
     if (scannedVariant) {
       loadKardex();
     }
-  }, [scannedVariant, activeTab, page, size]);
+  }, [scannedVariant, activeTab, page, size, filterStockId]);
 
   const loadKardex = async () => {
     if (!scannedVariant) return;
@@ -140,14 +145,21 @@ export const StockMovementsPage = () => {
     try {
       if (activeTab === 'entries') {
         const res = await commercialService.getStockEntries(scannedVariant.variantId, page, size);
-        setKardexData(res.content);
-        setTotalElements(res.totalElements);
-        setTotalPages(res.totalPages);
+        setKardexData(res.content || []);
+        setTotalElements(res.totalElements || 0);
+        setTotalPages(res.totalPages || 0);
       } else {
-        const res = await commercialService.getStockAdjustments(scannedVariant.variantId, page, size);
-        setKardexData(res.content);
-        setTotalElements(res.totalElements);
-        setTotalPages(res.totalPages);
+        if (filterStockId) {
+          const res = await commercialService.getAdjustmentsByStockId(filterStockId, page, size);
+          setKardexData(res.content || []);
+          setTotalElements(res.totalElements || 0);
+          setTotalPages(res.totalPages || 0);
+        } else {
+          const res = await commercialService.getStockAdjustments(scannedVariant.variantId, page, size);
+          setKardexData(res.content || []);
+          setTotalElements(res.totalElements || 0);
+          setTotalPages(res.totalPages || 0);
+        }
       }
     } catch (e) {
       console.error(e);
@@ -163,6 +175,7 @@ export const StockMovementsPage = () => {
     setQuantityIn('');
     setCostInputValue('');
     setNote('');
+    setFilterStockId(null);
     try {
       const res = await commercialService.scanBarcode(codeToScan.trim());
       setProductData(res);
@@ -207,18 +220,21 @@ export const StockMovementsPage = () => {
     }
     setIsSubmitting(true);
     try {
-      await commercialService.createStockEntry({
-        variantId: scannedVariant.variantId,
-        quantityIn: Number(quantityIn),
-        unitCost: hasCostPermission ? finalUnitCost : 0,
-        totalCost: hasCostPermission ? finalTotalCost : 0,
-        note: note || undefined
-      }, hasCostPermission ? (selectedBranchId || undefined) : undefined);
+      await commercialService.createStockEntry(
+        {
+          variantId: scannedVariant.variantId,
+          quantityIn: Number(quantityIn),
+          unitCost: hasCostPermission ? finalUnitCost : 0,
+          totalCost: hasCostPermission ? finalTotalCost : 0,
+          note: note || undefined
+        },
+        hasCostPermission ? (selectedBranchId || undefined) : undefined
+      );
       toastSuccess("Entrada registrada exitosamente.");
       setQuantityIn('');
       setCostInputValue('');
       setNote('');
-      loadKardex(); // Reload kardex
+      loadKardex();
     } catch (e: any) {
       const errorCode = e.response?.data?.errorCode;
       if (errorCode === 'invalid_cost_calculation') {
@@ -251,12 +267,8 @@ export const StockMovementsPage = () => {
       loadKardex();
     } catch (e: any) {
       const errorCode = e.response?.data?.errorCode;
-      if (errorCode === 'insufficient_stock') {
-        toastError("Stock insuficiente. No puedes retirar una cantidad mayor a la disponible.");
-      } else if (errorCode === 'invalid_adjustment_type') {
-        toastError("El tipo de ajuste seleccionado no es válido.");
-      } else if (errorCode === 'negative_quantity') {
-        toastError("La cantidad a ajustar debe ser mayor a cero.");
+      if (errorCode === 'invalid_adjustment_quantity') {
+        toastError('La cantidad de ajuste no es válida.');
       } else {
         toastError(e.response?.data?.message || "Error al registrar el ajuste.");
       }
@@ -266,30 +278,72 @@ export const StockMovementsPage = () => {
   };
 
   const entryColumns: Column<StockEntryResponse>[] = [
-    { header: 'Fecha', render: (row: StockEntryResponse) => new Date(row.entryDate).toLocaleString() },
-    hasCostPermission && { header: 'Sucursal', accessorKey: 'branchName' },
-    { header: 'Cant. Inicial', accessorKey: 'quantityIn' },
-    { header: 'Disponible', accessorKey: 'availableQuantity' },
-    hasCostPermission && { header: 'Costo Unit.', render: (row: StockEntryResponse) => <CurrencyCell amount={row.unitCost} currencyCode={currencyCode} /> },
-    hasCostPermission && { header: 'Costo Total', render: (row: StockEntryResponse) => <CurrencyCell amount={row.totalCost} currencyCode={currencyCode} /> },
+    { header: 'Fecha', render: (row: StockEntryResponse) => <span className="whitespace-nowrap">{new Date(row.entryDate).toLocaleString()}</span> },
+    hasCostPermission && { header: 'Sucursal', render: (row: StockEntryResponse) => <span className="whitespace-nowrap">{row.branchName || '-'}</span> },
+    { header: 'Cant. Inicial', render: (row: StockEntryResponse) => <span className="whitespace-nowrap">{row.quantityIn}</span> },
+    { header: 'Disponible', render: (row: StockEntryResponse) => <span className="whitespace-nowrap">{row.availableQuantity}</span> },
+    hasCostPermission && { header: 'Costo Unit.', render: (row: StockEntryResponse) => <span className="whitespace-nowrap"><CurrencyCell amount={row.unitCost} currencyCode={currencyCode} /></span> },
+    hasCostPermission && { header: 'Costo Total', render: (row: StockEntryResponse) => <span className="whitespace-nowrap"><CurrencyCell amount={row.totalCost} currencyCode={currencyCode} /></span> },
     { header: 'Nota', accessorKey: 'note' },
-    { header: 'Estado', render: (row: StockEntryResponse) => {
-      const statusLabel = stockStatusOptions.find(opt => Number(opt.value) === row.statusType)?.label || 'Desconocido';
-      return (
-        <span className={`badge badge-sm ${row.statusType === 331 ? 'badge-warning' : row.statusType === 332 ? 'badge-success' : 'badge-ghost'}`}>
-          {statusLabel}
+    hasAdjustmentReadPermission && {
+      header: 'Ajustes',
+      render: (row: StockEntryResponse) => row.hasAdjustments ? (
+        <span className="badge badge-xs badge-info font-semibold whitespace-nowrap gap-1 py-2 px-2.5" title="Tiene ajustes manuales de stock">
+          Con Ajustes
         </span>
-      );
-    }}
+      ) : (
+        <span className="text-base-content/30 text-xs italic whitespace-nowrap">-</span>
+      )
+    },
+    {
+      header: 'Estado',
+      render: (row: StockEntryResponse) => {
+        const statusObj = typeof row.statusType === 'object' ? row.statusType : null;
+        const statusNum = typeof row.statusType === 'number' ? row.statusType : statusObj?.code;
+        const statusLabel = statusObj?.label || stockStatusOptions.find(opt => Number(opt.value) === statusNum)?.label || 'Desconocido';
+        return (
+          <span className={`badge badge-sm whitespace-nowrap ${statusNum === 331 ? 'badge-warning' : statusNum === 332 ? 'badge-success' : 'badge-ghost'}`}>
+            {statusLabel}
+          </span>
+        );
+      }
+    }
   ].filter(Boolean) as Column<StockEntryResponse>[];
 
   const adjustmentColumns: Column<StockAdjustmentResponse>[] = [
-    { header: 'Fecha', render: (row: StockAdjustmentResponse) => new Date(row.date).toLocaleString() },
-    { header: 'Tipo', render: (row: StockAdjustmentResponse) => adjustmentTypeOptions.find(opt => Number(opt.value) === row.adjustmentType)?.label || row.adjustmentType },
-    { header: 'Cantidad', accessorKey: 'quantity' },
-    hasCostPermission && { header: 'Costo Unit.', render: (row: StockAdjustmentResponse) => <CurrencyCell amount={row.unitCost} currencyCode={currencyCode} /> },
-    hasCostPermission && { header: 'Costo Total', render: (row: StockAdjustmentResponse) => <CurrencyCell amount={row.totalCost} currencyCode={currencyCode} /> },
+    { header: 'Fecha', render: (row: StockAdjustmentResponse) => <span className="whitespace-nowrap">{new Date(row.date).toLocaleString()}</span> },
+    {
+      header: 'Tipo',
+      render: (row: StockAdjustmentResponse) => {
+        const typeObj = typeof row.adjustmentType === 'object' ? row.adjustmentType : null;
+        const typeNum = typeof row.adjustmentType === 'number' ? row.adjustmentType : typeObj?.code;
+        const label = typeObj?.label || adjustmentTypeOptions.find(opt => Number(opt.value) === typeNum)?.label || String(row.adjustmentType);
+        return <span className="whitespace-nowrap">{label}</span>;
+      }
+    },
+    { header: 'Cantidad', render: (row: StockAdjustmentResponse) => <span className="whitespace-nowrap">{row.quantity}</span> },
+    hasCostPermission && { header: 'Costo Unit.', render: (row: StockAdjustmentResponse) => <span className="whitespace-nowrap"><CurrencyCell amount={row.unitCost} currencyCode={currencyCode} /></span> },
+    hasCostPermission && { header: 'Costo Total', render: (row: StockAdjustmentResponse) => <span className="whitespace-nowrap"><CurrencyCell amount={row.totalCost} currencyCode={currencyCode} /></span> },
     { header: 'Observación', accessorKey: 'observation' },
+    {
+      header: 'Inventario',
+      render: (row: StockAdjustmentResponse) => row.inventoryId ? (
+        <button
+          type="button"
+          className="btn btn-ghost btn-xs text-primary gap-1 cursor-pointer hover:bg-primary/10 whitespace-nowrap"
+          title="Ver reporte de inventario"
+          onClick={(e) => {
+            e.stopPropagation();
+            setSelectedInventoryId(row.inventoryId!);
+          }}
+        >
+          <ClipboardList size={15} />
+          <span className="text-xs font-semibold">Reporte</span>
+        </button>
+      ) : (
+        <span className="text-base-content/30 text-xs italic whitespace-nowrap">-</span>
+      )
+    }
   ].filter(Boolean) as Column<StockAdjustmentResponse>[];
 
   const pagination: TablePaginationConfig = {
@@ -311,10 +365,18 @@ export const StockMovementsPage = () => {
           <h1 className="text-3xl font-bold text-base-content tracking-tight">Kardex y Movimientos</h1>
           <p className="text-base-content/60 mt-1">Registro de entradas y ajustes manuales</p>
         </div>
-        <BtnCreate 
-          label="Crear Producto desde Cero" 
-          onClick={() => setIsCreateModalOpen(true)} 
-        />
+        <div className="flex items-center gap-2">
+          {!isEntryCardOpen && !adjustmentTarget && (
+            <BtnCreate 
+              label="Registrar Entrada Stock" 
+              onClick={() => setIsEntryCardOpen(true)} 
+            />
+          )}
+          <BtnCreate 
+            label="Crear Producto desde Cero" 
+            onClick={() => setIsCreateModalOpen(true)} 
+          />
+        </div>
       </div>
 
       <div className="bg-base-100 p-6 rounded-2xl shadow-sm border border-base-200">
@@ -344,168 +406,173 @@ export const StockMovementsPage = () => {
       {scannedVariant && productData && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-slide-up">
           {/* Formulario Lateral */}
-          <div className="lg:col-span-1 bg-base-100 p-6 rounded-2xl shadow-sm border border-base-200 relative">
-            {adjustmentTarget ? (
-              <>
-                <div className="flex justify-between items-start mb-2">
-                  <h2 className="text-xl font-bold text-primary">Ajuste Manual Stock</h2>
-                  <button onClick={() => setAdjustmentTarget(null)} className="btn btn-ghost btn-xs btn-circle"><X size={16}/></button>
-                </div>
-                <div className="text-sm text-base-content/60 mb-6 space-y-1">
-                  <p>Producto: <strong>{productData.productName}</strong></p>
-                  <p>Variante: <strong>{scannedVariant.variantName}</strong></p>
-                  <p>Fecha Stock: <strong>{new Date(adjustmentTarget.entryDate).toLocaleString()}</strong></p>
-                  {isOwner && <p>Sucursal: <strong>{adjustmentTarget.branchName || 'Principal'}</strong></p>}
-                  <p>Cant. Inicial: <strong>{adjustmentTarget.quantityIn}</strong></p>
-                  <p>Cant. Disponible: <strong>{adjustmentTarget.availableQuantity}</strong></p>
-                </div>
+          {(isEntryCardOpen || adjustmentTarget) && (
+            <div className="lg:col-span-1 bg-base-100 p-6 rounded-2xl shadow-sm border border-base-200 relative">
+              {adjustmentTarget ? (
+                <>
+                  <div className="flex justify-between items-start mb-2">
+                    <h2 className="text-xl font-bold text-primary">Ajuste Manual Stock</h2>
+                    <button onClick={() => setAdjustmentTarget(null)} className="btn btn-ghost btn-xs btn-circle"><X size={16}/></button>
+                  </div>
+                  <div className="text-sm text-base-content/60 mb-6 space-y-1">
+                    <p>Producto: <strong>{productData.productName}</strong></p>
+                    <p>Variante: <strong>{scannedVariant.variantName}</strong></p>
+                    <p>Fecha Stock: <strong>{new Date(adjustmentTarget.entryDate).toLocaleString()}</strong></p>
+                    {isOwner && <p>Sucursal: <strong>{adjustmentTarget.branchName || 'Principal'}</strong></p>}
+                    <p>Cant. Inicial: <strong>{adjustmentTarget.quantityIn}</strong></p>
+                    <p>Cant. Disponible: <strong>{adjustmentTarget.availableQuantity}</strong></p>
+                  </div>
 
-                <div className="space-y-4">
-                  <ComerziaSelect
-                    label="Tipo de Ajuste"
-                    options={adjustmentTypeOptions}
-                    value={adjustmentType}
-                    onChange={(e) => {
-                      setAdjustmentType(e.target.value ? Number(e.target.value) : '');
-                      setAdjustmentQty(0);
-                    }}
-                    isRequired
-                  />
-                  <ComerziaInput
-                    label="Cantidad a Ajustar"
-                    type="number"
-                    value={adjustmentQty}
-                    onChange={(e) => {
-                      let val: number | '' = e.target.value !== '' ? Number(e.target.value) : '';
-                      const code = Number(adjustmentType);
-                      const isSubtract = code === 301 || code === 303;
-                      if (typeof val === 'number' && isSubtract && adjustmentTarget && val > adjustmentTarget.availableQuantity) {
-                        val = adjustmentTarget.availableQuantity;
-                      }
-                      setAdjustmentQty(val);
-                    }}
-                    isRequired
-                  />
-                  {adjustmentQty !== '' && (
-                    <div className="text-sm text-base-content/70 bg-base-200 p-3 rounded-lg flex justify-between">
-                      <span>Nueva cant. disp. estimada:</span>
-                      <span className="font-bold text-primary">
-                        {(() => {
-                          const code = Number(adjustmentType);
-                          const qty = Number(adjustmentQty);
-                          if (code === 301 || code === 303) {
-                            return adjustmentTarget.availableQuantity - qty;
-                          } else if (code === 302 || code === 304) {
-                            return adjustmentTarget.availableQuantity + qty;
-                          }
-                          return adjustmentTarget.availableQuantity;
-                        })()}
-                      </span>
-                    </div>
-                  )}
-                  <ComerziaTextarea
-                    label="Observación"
-                    value={adjustmentObs}
-                    onChange={(e) => setAdjustmentObs(e.target.value)}
-                    isRequired
-                  />
-                  <BtnSave 
-                    className="w-full mt-4" 
-                    label="Guardar Ajuste" 
-                    onClick={handleSubmitAdjustment} 
-                    isLoading={isSubmittingAdjustment} 
-                  />
-                </div>
-              </>
-            ) : (
-              <>
-                <h2 className="text-xl font-bold mb-2 text-primary">Registrar Entrada</h2>
-                <p className="text-sm text-base-content/60 mb-6">
-                  Producto: <strong>{productData.productName}</strong><br />
-                  Variante: <strong>{scannedVariant.variantName}</strong>
-                </p>
-
-                <div className="space-y-4">
-                  <ComerziaInput
-                    label="Cantidad a Ingresar"
-                    type="number"
-                    value={quantityIn}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (val === '') {
-                        setQuantityIn('');
-                      } else if (/^\d+$/.test(val)) {
-                        setQuantityIn(Number(val));
-                      }
-                    }}
-                    isRequired
-                  />
-                  {hasCostPermission && (
-                    <>
-                      <ComerziaRadioGroup
-                        label="Ingresar por:"
-                        name="costInputType"
-                        value={costInputType}
-                        onChange={(val) => { setCostInputType(val); setCostInputValue(''); }}
-                        options={[
-                          { value: 'unit', label: 'Costo Unitario', icon: <Coins size={20} /> },
-                          { value: 'total', label: 'Costo Total', icon: <Banknote size={20} /> }
-                        ]}
-                      />
-
-                      <ComerziaInput
-                        label={costInputType === 'unit' ? 'Costo Unitario' : 'Costo Total'}
-                        type="number"
-                        value={costInputValue}
-                        onChange={(e) => setCostInputValue(e.target.value ? Number(e.target.value) : '')}
-                        isRequired
-                      />
-                      
-                      {costInputValue !== '' && (
-                        <div className="text-sm text-base-content/70 bg-primary/10 p-3 rounded-lg flex justify-between items-center border border-primary/20">
-                          <span>{costInputType === 'unit' ? 'Costo Total Calculado:' : 'Costo Unitario Calculado:'}</span>
-                          <span className="font-bold text-primary text-lg">
-                            {costInputType === 'unit' 
-                              ? (typeof quantityIn === 'number' ? quantityIn * Number(costInputValue) : 0).toFixed(2)
-                              : (typeof quantityIn === 'number' && quantityIn > 0 ? Number(costInputValue) / quantityIn : 0).toFixed(2)
-                            }
-                          </span>
-                        </div>
-                      )}
-                    </>
-                  )}
-                  <ComerziaTextarea
-                    label="Nota (Opcional)"
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                  />
-                  {hasCostPermission && (
+                  <div className="space-y-4">
                     <ComerziaSelect
-                      label="Sucursal/Tienda (Opcional)"
-                      options={branches.map(b => ({ value: b.id, label: b.name }))}
-                      value={selectedBranchId}
-                      onChange={(e) => setSelectedBranchId(e.target.value)}
+                      label="Tipo de Ajuste"
+                      options={adjustmentTypeOptions}
+                      value={adjustmentType}
+                      onChange={(e) => {
+                        setAdjustmentType(e.target.value ? Number(e.target.value) : '');
+                        setAdjustmentQty(0);
+                      }}
+                      isRequired
                     />
-                  )}
-                  <BtnSave 
-                    className="w-full mt-4" 
-                    label="Guardar Entrada" 
-                    onClick={handleSubmitEntry} 
-                    isLoading={isSubmitting} 
-                  />
-                </div>
-              </>
-            )}
-          </div>
+                    <ComerziaInput
+                      label="Cantidad a Ajustar"
+                      type="number"
+                      value={adjustmentQty}
+                      onChange={(e) => {
+                        let val: number | '' = e.target.value !== '' ? Number(e.target.value) : '';
+                        const code = Number(adjustmentType);
+                        const isSubtract = code === 301 || code === 303;
+                        if (typeof val === 'number' && isSubtract && adjustmentTarget && val > adjustmentTarget.availableQuantity) {
+                          val = adjustmentTarget.availableQuantity;
+                        }
+                        setAdjustmentQty(val);
+                      }}
+                      isRequired
+                    />
+                    {adjustmentQty !== '' && (
+                      <div className="text-sm text-base-content/70 bg-base-200 p-3 rounded-lg flex justify-between">
+                        <span>Nueva cant. disp. estimada:</span>
+                        <span className="font-bold text-primary">
+                          {(() => {
+                            const code = Number(adjustmentType);
+                            const qty = Number(adjustmentQty);
+                            if (code === 301 || code === 303) {
+                              return adjustmentTarget.availableQuantity - qty;
+                            } else if (code === 302 || code === 304) {
+                              return adjustmentTarget.availableQuantity + qty;
+                            }
+                            return adjustmentTarget.availableQuantity;
+                          })()}
+                        </span>
+                      </div>
+                    )}
+                    <ComerziaTextarea
+                      label="Observación"
+                      value={adjustmentObs}
+                      onChange={(e) => setAdjustmentObs(e.target.value)}
+                      isRequired
+                    />
+                    <BtnSave 
+                      className="w-full mt-4" 
+                      label="Guardar Ajuste" 
+                      onClick={handleSubmitAdjustment} 
+                      isLoading={isSubmittingAdjustment} 
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex justify-between items-start mb-2">
+                    <h2 className="text-xl font-bold text-primary">Registrar Entrada</h2>
+                    <button onClick={() => setIsEntryCardOpen(false)} className="btn btn-ghost btn-xs btn-circle"><X size={16}/></button>
+                  </div>
+                  <p className="text-sm text-base-content/60 mb-6">
+                    Producto: <strong>{productData.productName}</strong><br />
+                    Variante: <strong>{scannedVariant.variantName}</strong>
+                  </p>
+
+                  <div className="space-y-4">
+                    <ComerziaInput
+                      label="Cantidad a Ingresar"
+                      type="number"
+                      value={quantityIn}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === '') {
+                          setQuantityIn('');
+                        } else if (/^\d+$/.test(val)) {
+                          setQuantityIn(Number(val));
+                        }
+                      }}
+                      isRequired
+                    />
+                    {hasCostPermission && (
+                      <>
+                        <ComerziaRadioGroup
+                          label="Ingresar por:"
+                          name="costInputType"
+                          value={costInputType}
+                          onChange={(val) => { setCostInputType(val); setCostInputValue(''); }}
+                          options={[
+                            { value: 'unit', label: 'Costo Unitario', icon: <Coins size={20} /> },
+                            { value: 'total', label: 'Costo Total', icon: <Banknote size={20} /> }
+                          ]}
+                        />
+
+                        <ComerziaInput
+                          label={costInputType === 'unit' ? 'Costo Unitario' : 'Costo Total'}
+                          type="number"
+                          value={costInputValue}
+                          onChange={(e) => setCostInputValue(e.target.value ? Number(e.target.value) : '')}
+                          isRequired
+                        />
+                        
+                        {costInputValue !== '' && (
+                          <div className="text-sm text-base-content/70 bg-primary/10 p-3 rounded-lg flex justify-between items-center border border-primary/20">
+                            <span>{costInputType === 'unit' ? 'Costo Total Calculado:' : 'Costo Unitario Calculado:'}</span>
+                            <span className="font-bold text-primary text-lg">
+                              {costInputType === 'unit' 
+                                ? (typeof quantityIn === 'number' ? quantityIn * Number(costInputValue) : 0).toFixed(2)
+                                : (typeof quantityIn === 'number' && quantityIn > 0 ? Number(costInputValue) / quantityIn : 0).toFixed(2)
+                              }
+                            </span>
+                          </div>
+                        )}
+                      </>
+                    )}
+                    <ComerziaTextarea
+                      label="Nota (Opcional)"
+                      value={note}
+                      onChange={(e) => setNote(e.target.value)}
+                    />
+                    {hasCostPermission && (
+                      <ComerziaSelect
+                        label="Sucursal/Tienda (Opcional)"
+                        options={branches.map(b => ({ value: b.id, label: b.name }))}
+                        value={selectedBranchId}
+                        onChange={(e) => setSelectedBranchId(e.target.value)}
+                      />
+                    )}
+                    <BtnSave 
+                      className="w-full mt-4" 
+                      label="Guardar Entrada" 
+                      onClick={handleSubmitEntry} 
+                      isLoading={isSubmitting} 
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+          )}
 
           {/* Kardex Tabs */}
-          <div className="lg:col-span-2 bg-base-100 p-6 rounded-2xl shadow-sm border border-base-200">
+          <div className={`${(isEntryCardOpen || adjustmentTarget) ? 'lg:col-span-2' : 'lg:col-span-3'} bg-base-100 p-6 rounded-2xl shadow-sm border border-base-200`}>
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold">Historial Kardex</h2>
               <div className="tabs tabs-boxed">
                 <a 
                   className={`tab ${activeTab === 'entries' ? 'tab-active' : ''}`}
-                  onClick={() => { setActiveTab('entries'); setPage(0); }}
+                  onClick={() => { setActiveTab('entries'); setFilterStockId(null); setPage(0); }}
                 >
                   Entradas
                 </a>
@@ -519,6 +586,24 @@ export const StockMovementsPage = () => {
                 )}
               </div>
             </div>
+
+            {activeTab === 'adjustments' && filterStockId && (
+              <div className="mb-4 p-3 bg-info/15 border border-info/30 rounded-xl flex items-center justify-between text-xs animate-fade-in">
+                <span className="font-semibold text-info">
+                  Mostrando ajustes del lote de stock seleccionado
+                </span>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-xs text-info hover:bg-info/20 cursor-pointer font-bold"
+                  onClick={() => {
+                    setFilterStockId(null);
+                    setPage(0);
+                  }}
+                >
+                  Ver todos los ajustes de la variante
+                </button>
+              </div>
+            )}
 
             <ComerziaTable
               data={kardexData}
@@ -543,20 +628,44 @@ export const StockMovementsPage = () => {
         y={contextMenu.y}
         onClose={() => setContextMenu(prev => ({ ...prev, isOpen: false }))}
       >
-        <ContextMenuItem
-          icon={Settings2}
-          label="Crear Ajuste Manual"
-          disabled={contextMenu.row?.availableQuantity === 0}
-          onClick={() => {
-            if (contextMenu.row?.availableQuantity === 0) return;
-            setAdjustmentTarget(contextMenu.row as StockEntryResponse);
-            setAdjustmentQty('');
-            setAdjustmentType('');
-            setAdjustmentObs('');
-            setContextMenu(prev => ({ ...prev, isOpen: false }));
-          }}
-        />
-        {hasCostPermission && contextMenu.row?.statusType === 331 && (
+        {(() => {
+          const statusObj = typeof contextMenu.row?.statusType === 'object' ? contextMenu.row?.statusType : null;
+          const statusNum = typeof contextMenu.row?.statusType === 'number' ? contextMenu.row?.statusType : statusObj?.code;
+          const isActiveStock = statusNum === 332;
+          const isDisabled = !isActiveStock || contextMenu.row?.availableQuantity === 0;
+
+          return (
+            <ContextMenuItem
+              icon={Settings2}
+              label="Crear Ajuste Manual"
+              disabled={isDisabled}
+              onClick={() => {
+                if (isDisabled) return;
+                setAdjustmentTarget(contextMenu.row as StockEntryResponse);
+                setAdjustmentQty('');
+                setAdjustmentType('');
+                setAdjustmentObs('');
+                setContextMenu(prev => ({ ...prev, isOpen: false }));
+              }}
+            />
+          );
+        })()}
+        {contextMenu.row?.hasAdjustments && (
+          <ContextMenuItem
+            icon={SlidersHorizontal}
+            label="Ver Ajustes"
+            onClick={() => {
+              const stockId = contextMenu.row?.id;
+              setContextMenu(prev => ({ ...prev, isOpen: false }));
+              if (stockId) {
+                setFilterStockId(stockId);
+                setActiveTab('adjustments');
+                setPage(0);
+              }
+            }}
+          />
+        )}
+        {hasCostPermission && (typeof contextMenu.row?.statusType === 'number' ? contextMenu.row?.statusType === 331 : contextMenu.row?.statusType?.code === 331) && (
           <ContextMenuItem
             icon={DollarSign}
             label="Valorizar Stock"
@@ -573,6 +682,12 @@ export const StockMovementsPage = () => {
         onClose={() => setIsValuateModalOpen(false)}
         onSuccess={() => loadKardex()}
         stockEntry={contextMenu.row}
+      />
+
+      <InventoryReportModal
+        isOpen={!!selectedInventoryId}
+        onClose={() => setSelectedInventoryId(null)}
+        inventoryId={selectedInventoryId}
       />
 
       <CreateFullProductModal

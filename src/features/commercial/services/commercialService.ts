@@ -27,7 +27,8 @@ import type {
   CreateManualAdjustmentRequest,
   ValuateStockRequest,
   VariantWithPricesResponse,
-  SalePriceResponse
+  SalePriceResponse,
+  InventoryResponse
 } from '../types/commercial';
 
 export const commercialService = {
@@ -172,9 +173,11 @@ export const commercialService = {
   },
 
   createStockEntry: async (data: CreateStockEntryRequest, branchId?: string): Promise<void> => {
-    const params = new URLSearchParams();
-    if (branchId) params.append('branchId', branchId);
-    await api.post(`/tenant/stock/entries${params.toString() ? `?${params.toString()}` : ''}`, data);
+    const headers: Record<string, string> = {};
+    if (branchId) {
+      headers['X-Branch-Context'] = branchId;
+    }
+    await api.post('/tenant/stock/entries', data, { headers });
   },
 
   valuateStockEntry: async (stockId: string, data: ValuateStockRequest): Promise<void> => {
@@ -186,6 +189,12 @@ export const commercialService = {
     const params = new URLSearchParams({ page: String(page), size: String(size) });
     if (variantId) params.append('variantId', variantId);
     const response = await api.get(`/tenant/stock-adjustments?${params.toString()}`);
+    return response.data;
+  },
+
+  getAdjustmentsByStockId: async (stockId: string, page = 0, size = 20): Promise<PageStockAdjustmentResponse> => {
+    const params = new URLSearchParams({ page: String(page), size: String(size) });
+    const response = await api.get(`/tenant/stock-adjustments/stock/${stockId}?${params.toString()}`);
     return response.data;
   },
 
@@ -237,6 +246,11 @@ export const commercialService = {
   getInventories: async (page = 0, size = 20): Promise<PageInventoryResponse> => {
     const params = new URLSearchParams({ page: String(page), size: String(size) });
     const response = await api.get(`/tenant/inventories?${params.toString()}`);
+    return response.data;
+  },
+
+  getInventoryById: async (id: string): Promise<InventoryResponse> => {
+    const response = await api.get(`/tenant/inventories/${id}`);
     return response.data;
   },
 
