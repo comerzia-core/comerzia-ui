@@ -15,7 +15,8 @@ interface Props {
 }
 
 export const VariantPricesModal = ({ isOpen, onClose, variantId, variantName }: Props) => {
-  const { userProfile } = useAuthStore();
+  const { userProfile, hasPermission } = useAuthStore();
+  const canManagePrices = hasPermission('COM_PRICES_MANAGE');
   const currencyCode = userProfile?.companySettings?.currencyCode || 'USD';
   const [activePrices, setActivePrices] = useState<SalePriceResponse[]>([]);
   const [priceTypes, setPriceTypes] = useState<PriceTypeResponse[]>([]);
@@ -136,7 +137,7 @@ export const VariantPricesModal = ({ isOpen, onClose, variantId, variantName }: 
       <div className="space-y-4">
         <div className="flex justify-between items-center mb-2">
           <h3 className="font-medium text-base-content/80">Listado de Precios</h3>
-          {!isEditing && (
+          {!isEditing && canManagePrices && (
             <BtnUpdatePrices onClick={() => setIsEditing(true)} />
           )}
         </div>

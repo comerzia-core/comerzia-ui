@@ -28,6 +28,8 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
 
   const { hasPermission } = useAuthStore();
   const canManage = hasPermission('COM_CATALOG_MANAGE');
+  const canReadPrices = hasPermission('COM_PRICES_READ');
+  const canManagePrices = hasPermission('COM_PRICES_MANAGE');
   const { error: toastError, success: toastSuccess } = useToast();
 
   const [variantToEdit, setVariantToEdit] = useState<ProductVariantResponse | null>(null);
@@ -165,24 +167,28 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
             setContextMenu({ ...contextMenu, isOpen: false });
           }} 
         />
+        {canManagePrices && (
+          <ContextMenuItem 
+            icon={History}
+            label="Histórico de Precios"
+            isExternalLink
+            onClick={() => {
+              if (contextMenu.row?.barCode) {
+                window.open(`/commercial/prices?barcode=${encodeURIComponent(contextMenu.row.barCode)}`, '_blank');
+              }
+              setContextMenu({ ...contextMenu, isOpen: false });
+            }} 
+          />
+        )}
+        {canReadPrices && (
+          <ContextMenuItem 
+            icon={DollarSign}
+            label="Ver Precios"
+            onClick={() => { setVariantToPrices(contextMenu.row); setContextMenu({ ...contextMenu, isOpen: false }); }} 
+          />
+        )}
         {canManage && (
           <>
-            <ContextMenuItem 
-              icon={History}
-              label="Histórico de Precios"
-              isExternalLink
-              onClick={() => {
-                if (contextMenu.row?.barCode) {
-                  window.open(`/commercial/prices?barcode=${encodeURIComponent(contextMenu.row.barCode)}`, '_blank');
-                }
-                setContextMenu({ ...contextMenu, isOpen: false });
-              }} 
-            />
-            <ContextMenuItem 
-              icon={DollarSign}
-              label="Ver/Actualizar Precios"
-              onClick={() => { setVariantToPrices(contextMenu.row); setContextMenu({ ...contextMenu, isOpen: false }); }} 
-            />
             <ContextMenuItem 
               icon={Edit}
               label="Editar Variante"
