@@ -12,7 +12,8 @@ import type {
   PageCustomerProfileResponse,
   CustomerProfileResponse,
   CreateCustomerRequest,
-  UpdateCustomerRequest
+  UpdateCustomerRequest,
+  ProcessPaymentRequest
 } from '../types/sales';
 
 export const salesService = {
@@ -46,10 +47,8 @@ export const salesService = {
     return response.data;
   },
 
-  getMyShiftSales: async (page = 0, size = 5): Promise<PageSaleResponse> => {
-    const response = await api.get<PageSaleResponse>('/tenant/sales/my-shift', {
-      params: { page, size }
-    });
+  getMyShiftSales: async (): Promise<SaleResponse[]> => {
+    const response = await api.get<SaleResponse[]>('/tenant/sales');
     return response.data;
   },
 
@@ -60,6 +59,11 @@ export const salesService = {
 
   cancelPendingSale: async (saleId: string): Promise<SaleResponse> => {
     const response = await api.post<SaleResponse>(`/tenant/sales/${saleId}/cancel`);
+    return response.data;
+  },
+
+  processPayment: async (saleId: string, data: ProcessPaymentRequest): Promise<SaleResponse> => {
+    const response = await api.post<SaleResponse>(`/tenant/sales/${saleId}/pay`, data);
     return response.data;
   },
 
@@ -83,6 +87,11 @@ export const salesService = {
 
   createCustomer: async (data: CreateCustomerRequest): Promise<CustomerProfileResponse> => {
     const response = await api.post<CustomerProfileResponse>('/tenant/customers', data);
+    return response.data;
+  },
+
+  createCustomerFromSale: async (saleId: string, data: CreateCustomerRequest): Promise<CustomerProfileResponse> => {
+    const response = await api.post<CustomerProfileResponse>(`/tenant/customers/sale/${saleId}`, data);
     return response.data;
   },
 

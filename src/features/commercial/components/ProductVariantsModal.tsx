@@ -30,6 +30,7 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
   const canManage = hasPermission('COM_CATALOG_MANAGE');
   const canReadPrices = hasPermission('COM_PRICES_READ');
   const canManagePrices = hasPermission('COM_PRICES_MANAGE');
+  const canManageStock = hasPermission('COM_STOCK_MANAGE');
   const { error: toastError, success: toastSuccess } = useToast();
 
   const [variantToEdit, setVariantToEdit] = useState<ProductVariantResponse | null>(null);
@@ -156,17 +157,19 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
             setContextMenu({ ...contextMenu, isOpen: false });
           }} 
         />
-        <ContextMenuItem 
-          icon={ArrowRightLeft}
-          label="Movimientos de Stock"
-          isExternalLink
-          onClick={() => {
-            if (contextMenu.row?.barCode) {
-              window.open(`/commercial/stock-movements?barcode=${encodeURIComponent(contextMenu.row.barCode)}`, '_blank');
-            }
-            setContextMenu({ ...contextMenu, isOpen: false });
-          }} 
-        />
+        {canManageStock && (
+          <ContextMenuItem 
+            icon={ArrowRightLeft}
+            label="Movimientos de Stock"
+            isExternalLink
+            onClick={() => {
+              if (contextMenu.row?.barCode) {
+                window.open(`/commercial/stock-movements?barcode=${encodeURIComponent(contextMenu.row.barCode)}`, '_blank');
+              }
+              setContextMenu({ ...contextMenu, isOpen: false });
+            }} 
+          />
+        )}
         {canManagePrices && (
           <ContextMenuItem 
             icon={History}

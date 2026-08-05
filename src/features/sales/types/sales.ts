@@ -18,13 +18,20 @@ export interface UpdateSaleRequest {
 
 export interface SaleDetailResponse {
   id: string;
-  unitSalePrice: number;
-  unitDiscountAmount: number;
-  unitFinalPrice: number;
-  unitQuantity: number;
-  finalQuantity: number;
-  priceTypeId: string;
   productVariantId: string;
+  measureUnitName?: string;
+  equivalenceFactor?: number;
+  receiptQuantity?: number;
+  receiptUnitPrice?: number;
+  lineTotalSuggested?: number;
+  lineTotalDiscount?: number;
+  lineTotalFinal?: number;
+  unitSalePrice?: number;
+  unitDiscountAmount?: number;
+  unitFinalPrice?: number;
+  unitQuantity?: number;
+  finalQuantity?: number;
+  priceTypeId?: string;
   productName?: string;
   variantName?: string;
 }
@@ -40,14 +47,13 @@ export interface SalePaymentResponse {
 
 export interface SaleResponse {
   id: string;
+  saleNumber: string;
   subtotalAmount: number;
   discountedAmount: number;
   totalAmount: number;
   date: string;
-  saleStatus: number; // 601 (PENDING), 602 (COMPLETED), 603 (CANCELLED), etc.
-  customerId: string | null;
-  customerName?: string;
-  employeeId: string;
+  saleStatus: { code: number; label: string } | number; // 601 (PENDING), 602 (COMPLETED), 603 (CANCELLED), etc.
+  employeeUsername: string;
   details: SaleDetailResponse[];
   payments: SalePaymentResponse[];
 }
@@ -104,8 +110,18 @@ export interface CustomerProfileResponse {
   documentExtension?: number; // 201..209
 }
 
+export interface PaymentRequest {
+  paymentType: number;
+  amount: number;
+}
+
+export interface ProcessPaymentRequest {
+  shiftId: string;
+  payments: PaymentRequest[];
+}
+
 export interface CreateCustomerRequest {
-  saleId?: string | null;
+  saleId?: string | number | null;
   customerType: number;
   firstName: string;
   paternalSurname?: string;
