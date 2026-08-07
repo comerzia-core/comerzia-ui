@@ -45,7 +45,7 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [brandId, setBrandId] = useState('');
-  const [variantType, setVariantType] = useState('1');
+  const [variantType, setVariantType] = useState('');
   const [variants, setVariants] = useState<CreateFullVariantRequest[]>([
     { name: '', sku: '', barCode: '', prices: [] }
   ]);
@@ -68,7 +68,7 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
       setCategoryId(initialCategoryId || '');
       setSegmentId(initialSegmentId || '');
       setBrandId(initialBrandId || '');
-      setVariantType('1');
+      setVariantType('');
       setVariants([{ name: '', sku: '', barCode: '', prices: [] }]);
       loadInitialData();
     }

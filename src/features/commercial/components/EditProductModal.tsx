@@ -22,7 +22,7 @@ interface Props {
 export const EditProductModal = ({ isOpen, onClose, onSuccess, product }: Props) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [variantType, setVariantType] = useState('1');
+  const [variantType, setVariantType] = useState('');
   const [status, setStatus] = useState(true);
   
   const { options, isLoading: isLoadingDict } = useLoadDictionaries([DICTIONARIES.VARIANT_TYPE]);
