@@ -50,21 +50,25 @@ export const TerminalPage = () => {
 
   const { userProfile, hasPermission, hasRole } = useAuthStore();
   const roles = userProfile?.roles || [];
-  const isCashier = hasPermission('SAL_SALES_READ') || roles.includes('CASHIER') || hasRole('OWNER') || hasRole('ADMIN');
+  
+  const isCashierRole = hasRole('CASHIER') || roles.includes('CASHIER');
+  const isManagerOrOwner = hasRole('BRANCH_MANAGER') || roles.includes('BRANCH_MANAGER') || hasRole('OWNER') || roles.includes('OWNER') || hasRole('ADMIN') || roles.includes('ADMIN');
+  const canAccessTerminal = isCashierRole || isManagerOrOwner || hasPermission('SAL_SALES_READ');
+  
   const currencyCode = userProfile?.companySettings?.currencyCode || 'USD';
 
   const { options } = useLoadDictionaries([DICTIONARIES.SALE_STATUS]);
   const saleStatusOptions = options[DICTIONARIES.SALE_STATUS] || [];
 
   useEffect(() => {
-    if (!isCashier) {
-      setError("Vista exclusiva para el rol CAJERO con permiso SAL_SALES_READ.");
+    if (!canAccessTerminal) {
+      setError("Vista exclusiva para roles CAJERO, BRANCH_MANAGER u OWNER.");
       setIsLoading(false);
       return;
     }
     loadSummary();
     loadSales();
-  }, [isCashier]);
+  }, [canAccessTerminal]);
 
   const loadSummary = async () => {
     try {
@@ -72,16 +76,22 @@ export const TerminalPage = () => {
       setSummary(data);
       setError(null);
     } catch (err: any) {
-      if (
-        err.response?.data?.code === 'business_rule_violation' ||
-        err.response?.status === 404 ||
-        err.response?.status === 400 ||
-        err.response?.data?.message?.includes("OPEN shift") ||
-        err.response?.data?.message?.includes("active shift")
-      ) {
-        setError("Aún no tienes un turno asignado. Ve a Turnos y Arqueos para abrir tu caja.");
+      if (isCashierRole) {
+        if (
+          err.response?.data?.code === 'business_rule_violation' ||
+          err.response?.status === 404 ||
+          err.response?.status === 400 ||
+          err.response?.data?.message?.includes("OPEN shift") ||
+          err.response?.data?.message?.includes("active shift")
+        ) {
+          setError("Aún no tienes un turno asignado. Ve a Turnos y Arqueos para abrir tu caja.");
+        } else {
+          setError("Ocurrió un error al cargar la terminal.");
+        }
       } else {
-        setError("Ocurrió un error al cargar la terminal.");
+        // Para MANAGER u OWNER sin rol CASHIER, no mostramos pantalla de bloqueo si no tienen turno activo
+        setSummary(null);
+        setError(null);
       }
     } finally {
       setIsLoading(false);
@@ -355,13 +365,24 @@ export const TerminalPage = () => {
                 {/* Card Action Buttons */}
                 <div className="space-y-2 pt-1">
                   {isPending ? (
-                    <button
-                      type="button"
-                      onClick={() => setSelectedSaleToPay(sale)}
-                      className="btn btn-primary btn-sm w-full gap-2 text-white font-bold shadow-md shadow-primary/20 hover:scale-[1.01] transition-transform cursor-pointer"
-                    >
-                      <DollarSign size={16} /> Cobrar Venta
-                    </button>
+                    isCashierRole ? (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedSaleToPay(sale)}
+                        className="btn btn-primary btn-sm w-full gap-2 text-white font-bold shadow-md shadow-primary/20 hover:scale-[1.01] transition-transform cursor-pointer"
+                      >
+                        <DollarSign size={16} /> Cobrar Venta
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled
+                        title="Cobro deshabilitado: Solo usuarios con el rol Cajero pueden cobrar ventas"
+                        className="btn btn-primary btn-sm w-full gap-2 text-white font-bold opacity-50 cursor-not-allowed"
+                      >
+                        <DollarSign size={16} /> Cobrar Venta
+                      </button>
+                    )
                   ) : isCompleted ? (
                     <button
                       type="button"

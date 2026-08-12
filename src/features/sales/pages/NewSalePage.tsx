@@ -10,7 +10,181 @@ import { ComerziaModal } from '../../../components/ui/ComerziaModal';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
 import { ComerziaSelect } from '../../../components/ui/ComerziaSelect';
 import { BtnCancel, BtnSave } from '../../../components/ui/CrudButtons';
-import { ShoppingCart, Trash2, ArrowRight, AlertCircle, Scan, Store, Barcode, Hash } from 'lucide-react';
+import type { CartItem } from '../store/useCartStore';
+import { AlertCircle, ArrowRight, Barcode, Hash, ShoppingCart, Store, Trash2 } from 'lucide-react';
+
+interface QuantityControlProps {
+  item: CartItem;
+  updateQuantity: (id: string, qty: number) => { success: boolean; message?: string };
+  toastWarning: (msg: string) => void;
+}
+
+const QuantityControl = ({ item, updateQuantity, toastWarning }: QuantityControlProps) => {
+  const factor = item.equivalenceFactor || 1;
+  const [val, setVal] = useState<string>(item.quantity.toString());
+
+  useEffect(() => {
+    setVal(item.quantity === 0 ? '' : item.quantity.toString());
+  }, [item.quantity]);
+
+  const handleCommit = () => {
+    let qty = parseInt(val);
+    if (isNaN(qty)) {
+      setVal(item.quantity === 0 ? '' : item.quantity.toString());
+      return;
+    }
+
+    const res = updateQuantity(item.productVariantId, qty);
+    const updatedItem = useCartStore.getState().items.find(i => i.productVariantId === item.productVariantId);
+    if (updatedItem) {
+      setVal(updatedItem.quantity.toString());
+    }
+    if (!res.success && res.message) {
+      toastWarning(res.message);
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-center gap-1">
+      <button 
+        type="button"
+        className="btn btn-circle btn-xs btn-ghost text-base-content/70 active:scale-95 transition-transform"
+        onClick={() => {
+          const res = updateQuantity(item.productVariantId, item.quantity - factor);
+          const updatedItem = useCartStore.getState().items.find(i => i.productVariantId === item.productVariantId);
+          if (updatedItem) setVal(updatedItem.quantity.toString());
+          if (!res.success && res.message) toastWarning(res.message);
+        }}
+      >-</button>
+      <input
+        type="number"
+        min={factor}
+        step={factor}
+        max={item.stock}
+        className="input input-bordered input-sm w-16 font-mono text-center px-1 rounded-lg [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        value={val}
+        onWheel={(e) => (e.target as HTMLInputElement).blur()}
+        onChange={(e) => setVal(e.target.value)}
+        onBlur={handleCommit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            (e.target as HTMLInputElement).blur();
+          }
+        }}
+      />
+      <button 
+        type="button"
+        className="btn btn-circle btn-xs btn-ghost text-base-content/70 active:scale-95 transition-transform"
+        onClick={() => {
+          const res = updateQuantity(item.productVariantId, item.quantity + factor);
+          const updatedItem = useCartStore.getState().items.find(i => i.productVariantId === item.productVariantId);
+          if (updatedItem) setVal(updatedItem.quantity.toString());
+          if (!res.success && res.message) toastWarning(res.message);
+        }}
+      >+</button>
+    </div>
+  );
+};
+
+interface UnitDiscountControlProps {
+  item: CartItem;
+  maxDiscount: number;
+  hasDiscountLimit: boolean;
+  updateDiscount: (id: string, disc: number) => { success: boolean; message?: string };
+  toastWarning: (msg: string) => void;
+}
+
+const UnitDiscountControl = ({ item, maxDiscount, hasDiscountLimit, updateDiscount, toastWarning }: UnitDiscountControlProps) => {
+  const [val, setVal] = useState<string>(item.discountAmount === 0 ? '' : item.discountAmount.toString());
+
+  useEffect(() => {
+    setVal(item.discountAmount === 0 ? '' : item.discountAmount.toString());
+  }, [item.discountAmount]);
+
+  const handleCommit = () => {
+    const disc = parseFloat(val) || 0;
+    const res = updateDiscount(item.productVariantId, disc);
+    const updatedItem = useCartStore.getState().items.find(i => i.productVariantId === item.productVariantId);
+    if (updatedItem) {
+      setVal(updatedItem.discountAmount === 0 ? '' : updatedItem.discountAmount.toString());
+    }
+    if (!res.success && res.message) {
+      toastWarning(res.message);
+    }
+  };
+
+  return (
+    <input
+      type="number"
+      min="0"
+      max={maxDiscount}
+      step="0.01"
+      className="input input-bordered input-sm w-full max-w-[80px] font-mono text-right text-info ml-auto block focus:ring-info/30"
+      value={val}
+      disabled={!hasDiscountLimit || item.quantity === 0}
+      onWheel={(e) => (e.target as HTMLElement).blur()}
+      placeholder="0.00"
+      onChange={(e) => setVal(e.target.value)}
+      onBlur={handleCommit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          (e.target as HTMLInputElement).blur();
+        }
+      }}
+    />
+  );
+};
+
+interface TotalDiscountControlProps {
+  item: CartItem;
+  maxTotalDiscount: number;
+  totalDiscount: number;
+  hasDiscountLimit: boolean;
+  updateTotalDiscount: (id: string, totDisc: number) => { success: boolean; message?: string };
+  toastWarning: (msg: string) => void;
+}
+
+const TotalDiscountControl = ({ item, maxTotalDiscount, totalDiscount, hasDiscountLimit, updateTotalDiscount, toastWarning }: TotalDiscountControlProps) => {
+  const [val, setVal] = useState<string>(totalDiscount === 0 ? '' : Number(totalDiscount.toFixed(2)).toString());
+
+  useEffect(() => {
+    setVal(totalDiscount === 0 ? '' : Number(totalDiscount.toFixed(2)).toString());
+  }, [totalDiscount]);
+
+  const handleCommit = () => {
+    const totDisc = parseFloat(val) || 0;
+    const res = updateTotalDiscount(item.productVariantId, totDisc);
+    const updatedItem = useCartStore.getState().items.find(i => i.productVariantId === item.productVariantId);
+    if (updatedItem) {
+      const updatedTotal = updatedItem.discountAmount * updatedItem.quantity;
+      setVal(updatedTotal === 0 ? '' : Number(updatedTotal.toFixed(2)).toString());
+    }
+    if (!res.success && res.message) {
+      toastWarning(res.message);
+    }
+  };
+
+  return (
+    <input
+      type="number"
+      min="0"
+      max={maxTotalDiscount}
+      step="0.01"
+      className="input input-bordered input-sm w-full max-w-[80px] font-mono text-right text-info font-bold ml-auto block focus:ring-info/30"
+      value={val}
+      disabled={!hasDiscountLimit || item.quantity === 0}
+      onWheel={(e) => (e.target as HTMLInputElement).blur()}
+      placeholder="0.00"
+      onChange={(e) => setVal(e.target.value)}
+      onBlur={handleCommit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          (e.target as HTMLInputElement).blur();
+        }
+      }}
+    />
+  );
+};
 
 export const NewSalePage = () => {
   const { userProfile } = useAuthStore();
@@ -98,7 +272,8 @@ export const NewSalePage = () => {
       activePrices: validPrices
     };
 
-    const res = addItem(catalogItem, 1, 0);
+    const initialQty = defaultPrice.equivalenceFactor || 1;
+    const res = addItem(catalogItem, initialQty, 0);
     if (res.success) {
       toastSuccess(`${product.nameVariant} agregado al pedido.`);
     } else {
@@ -265,7 +440,7 @@ export const NewSalePage = () => {
         <div className="p-4 border-b border-base-200 shrink-0 bg-base-50/50">
           <h2 className="text-lg font-bold flex items-center gap-2">
             <ShoppingCart className="h-5 w-5 text-secondary" />
-            Líneas del Pedido
+            Listado del Pedido
           </h2>
         </div>
 
@@ -300,13 +475,13 @@ export const NewSalePage = () => {
               </thead>
               <tbody>
                 {items.map((item, idx) => {
+                  const factor = item.equivalenceFactor || 1;
                   const maxDiscount = item.salePrice - item.discountPrice;
                   const hasDiscountLimit = item.discountPrice < item.salePrice;
                   const totalDiscount = item.discountAmount * item.quantity;
                   const maxTotalDiscount = maxDiscount * item.quantity;
                   const subtotal = item.salePrice * item.quantity;
                   const finalTotal = subtotal - totalDiscount;
-
                   return (
                     <tr key={`${item.productVariantId}-${item.priceTypeId}`} className="hover border-b border-base-200/50">
                       <td className="font-mono text-xs text-base-content/50">{idx + 1}</td>
@@ -325,84 +500,50 @@ export const NewSalePage = () => {
                             if (!res.success && res.message) toastWarning(res.message);
                           }}
                         >
-                          {item.activePrices.map(p => (
-                            <option key={p.priceTypeId} value={p.priceTypeId}>
-                              {p.priceTypeName}
-                            </option>
-                          ))}
+                          {item.activePrices.map(p => {
+                            const isDisabled = (p.equivalenceFactor || 1) > item.stock;
+                            return (
+                              <option 
+                                key={p.priceTypeId} 
+                                value={p.priceTypeId}
+                                disabled={isDisabled}
+                              >
+                                {p.priceTypeName} {isDisabled ? '(Sin stock)' : ''}
+                              </option>
+                            );
+                          })}
                         </select>
                       </td>
                       <td>
-                        <div className="flex items-center justify-center gap-1">
-                          <button 
-                            className="btn btn-circle btn-xs btn-ghost text-base-content/70 active:scale-95 transition-transform"
-                            onClick={() => {
-                              if (item.quantity > 0) updateQuantity(item.productVariantId, item.quantity - 1);
-                            }}
-                          >-</button>
-                          <input
-                            type="number"
-                            min="0"
-                            max={item.stock}
-                            className="input input-bordered input-sm w-14 font-mono text-center px-1 rounded-lg [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                            value={item.quantity === 0 ? '' : item.quantity}
-                            onWheel={(e) => (e.target as HTMLInputElement).blur()} // prevent scroll
-                            onChange={(e) => {
-                              let qty = parseInt(e.target.value);
-                              if (isNaN(qty)) qty = 0;
-                              const res = updateQuantity(item.productVariantId, qty);
-                              if (!res.success && res.message) toastWarning(res.message);
-                            }}
-                          />
-                          <button 
-                            className="btn btn-circle btn-xs btn-ghost text-base-content/70 active:scale-95 transition-transform"
-                            onClick={() => {
-                              const res = updateQuantity(item.productVariantId, item.quantity + 1);
-                              if (!res.success && res.message) toastWarning(res.message);
-                            }}
-                          >+</button>
-                        </div>
+                        <QuantityControl
+                          item={item}
+                          updateQuantity={updateQuantity}
+                          toastWarning={toastWarning}
+                        />
                       </td>
                       <td className="font-mono text-sm text-right border-l border-base-300/50 text-base-content/60">
                         {item.salePrice.toFixed(2)}
                       </td>
                       <td className="border-r border-base-300/50">
-                        <input
-                          type="number"
-                          min="0"
-                          max={maxDiscount}
-                          step="0.01"
-                          className="input input-bordered input-sm w-full max-w-[80px] font-mono text-right text-info ml-auto block focus:ring-info/30"
-                          value={item.discountAmount === 0 ? '' : item.discountAmount}
-                          disabled={!hasDiscountLimit || item.quantity === 0}
-                          onWheel={(e) => (e.target as HTMLElement).blur()}
-                          placeholder="0.00"
-                          onChange={(e) => {
-                            const disc = parseFloat(e.target.value) || 0;
-                            const res = updateDiscount(item.productVariantId, disc);
-                            if (!res.success && res.message) toastWarning(res.message);
-                          }}
+                        <UnitDiscountControl
+                          item={item}
+                          maxDiscount={maxDiscount}
+                          hasDiscountLimit={hasDiscountLimit}
+                          updateDiscount={updateDiscount}
+                          toastWarning={toastWarning}
                         />
                       </td>
                       <td className="font-mono text-sm text-right text-base-content/60">
                         {subtotal.toFixed(2)}
                       </td>
                       <td className="border-r border-base-300/50">
-                        <input
-                          type="number"
-                          min="0"
-                          max={maxTotalDiscount}
-                          step="0.01"
-                          className="input input-bordered input-sm w-full max-w-[80px] font-mono text-right text-info font-bold ml-auto block focus:ring-info/30"
-                          value={totalDiscount === 0 ? '' : Number(totalDiscount.toFixed(2))}
-                          disabled={!hasDiscountLimit || item.quantity === 0}
-                          onWheel={(e) => (e.target as HTMLInputElement).blur()}
-                          placeholder="0.00"
-                          onChange={(e) => {
-                            const totDisc = parseFloat(e.target.value) || 0;
-                            const res = updateTotalDiscount(item.productVariantId, totDisc);
-                            if (!res.success && res.message) toastWarning(res.message);
-                          }}
+                        <TotalDiscountControl
+                          item={item}
+                          maxTotalDiscount={maxTotalDiscount}
+                          totalDiscount={totalDiscount}
+                          hasDiscountLimit={hasDiscountLimit}
+                          updateTotalDiscount={updateTotalDiscount}
+                          toastWarning={toastWarning}
                         />
                       </td>
                       <td className="font-mono text-sm text-right bg-primary/5 text-base-content/80 font-medium">

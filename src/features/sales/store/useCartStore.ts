@@ -34,12 +34,13 @@ export const useCartStore = create<CartState>((set, get) => ({
   customerName: null,
   branchId: null,
 
-  addItem: (item, quantity = 1, discountAmount = 0) => {
+  addItem: (item, quantity, discountAmount = 0) => {
     const { items } = get();
     const existing = items.find((i) => i.productVariantId === item.productVariantId);
+    const initialQty = quantity !== undefined ? quantity : (item.equivalenceFactor || 1);
 
     if (existing) {
-      const newQty = existing.quantity + quantity;
+      const newQty = existing.quantity + initialQty;
       if (newQty > item.stock) {
         return { 
           success: false, 
@@ -53,14 +54,14 @@ export const useCartStore = create<CartState>((set, get) => ({
       });
       return { success: true };
     } else {
-      if (quantity > item.stock) {
+      if (initialQty > item.stock) {
         return { 
           success: false, 
           message: `Stock insuficiente. Disponible: ${item.stock}` 
         };
       }
       set({
-        items: [...items, { ...item, quantity, discountAmount }]
+        items: [...items, { ...item, quantity: initialQty, discountAmount }]
       });
       return { success: true };
     }
@@ -77,20 +78,52 @@ export const useCartStore = create<CartState>((set, get) => ({
     const item = items.find((i) => i.productVariantId === productVariantId);
     if (!item) return { success: false, message: 'Producto no encontrado' };
 
+    const factor = item.equivalenceFactor || 1;
+
+    // 1. Validar límite de stock
     if (quantity > item.stock) {
+      let maxMultiple = Math.floor(item.stock / factor) * factor;
+      if (maxMultiple < factor) maxMultiple = item.stock;
+
       set({
         items: items.map((i) =>
-          i.productVariantId === productVariantId ? { ...i, quantity: item.stock } : i
+          i.productVariantId === productVariantId ? { ...i, quantity: maxMultiple } : i
         )
       });
       return { 
         success: false, 
-        message: `La cantidad solicitada supera el stock disponible. Ajustado al máximo: ${item.stock}` 
+        message: `La cantidad solicitada supera el stock disponible. Ajustado al máximo permitido: ${maxMultiple}` 
       };
     }
 
-    if (quantity < 1) {
-      return { success: false, message: 'La cantidad mínima es 1' };
+    // 2. Validar cantidad mínima
+    if (quantity < factor) {
+      set({
+        items: items.map((i) =>
+          i.productVariantId === productVariantId ? { ...i, quantity: factor } : i
+        )
+      });
+      return { 
+        success: false, 
+        message: `La cantidad mínima para ${item.priceTypeName || 'esta unidad'} es ${factor}.` 
+      };
+    }
+
+    // 3. Validar que sea múltiplo exacto del factor
+    if (quantity % factor !== 0) {
+      let adjustedQty = Math.round(quantity / factor) * factor;
+      if (adjustedQty < factor) adjustedQty = factor;
+      if (adjustedQty > item.stock) adjustedQty = Math.floor(item.stock / factor) * factor;
+
+      set({
+        items: items.map((i) =>
+          i.productVariantId === productVariantId ? { ...i, quantity: adjustedQty } : i
+        )
+      });
+      return {
+        success: false,
+        message: `La cantidad para ${item.priceTypeName || 'esta unidad'} debe ser múltiplo de ${factor} (ej: ${factor}, ${factor * 2}, ${factor * 3}). Se ajustó a ${adjustedQty}.`
+      };
     }
 
     set({
@@ -116,12 +149,10 @@ export const useCartStore = create<CartState>((set, get) => ({
       return { success: false, message: 'Este producto no admite descuentos manuales.' };
     }
 
-    // El descuento unitario no puede hacer que el precio final sea menor al discountPrice
-    // Precio Final = salePrice - discountAmount
-    // Queremos: salePrice - discountAmount >= discountPrice
-    // Es decir: discountAmount <= salePrice - discountPrice
-    const maxDiscount = item.salePrice - item.discountPrice;
-    if (discountAmount > maxDiscount) {
+    const cleanDiscount = Number(Number(discountAmount).toFixed(2));
+    const maxDiscount = Number((item.salePrice - item.discountPrice).toFixed(2));
+
+    if (cleanDiscount > maxDiscount) {
       set({
         items: items.map((i) =>
           i.productVariantId === productVariantId ? { ...i, discountAmount: maxDiscount } : i
@@ -133,13 +164,13 @@ export const useCartStore = create<CartState>((set, get) => ({
       };
     }
 
-    if (discountAmount < 0) {
+    if (cleanDiscount < 0) {
       return { success: false, message: 'El descuento no puede ser negativo.' };
     }
 
     set({
       items: items.map((i) =>
-        i.productVariantId === productVariantId ? { ...i, discountAmount } : i
+        i.productVariantId === productVariantId ? { ...i, discountAmount: cleanDiscount } : i
       )
     });
     return { success: true };
@@ -154,7 +185,8 @@ export const useCartStore = create<CartState>((set, get) => ({
       return { success: false, message: 'La cantidad debe ser mayor a 0 para aplicar descuento total' };
     }
 
-    const unitDiscount = totalDiscountAmount / item.quantity;
+    const cleanTotalDiscount = Number(Number(totalDiscountAmount).toFixed(2));
+    const unitDiscount = Number((cleanTotalDiscount / item.quantity).toFixed(2));
     return updateDiscount(productVariantId, unitDiscount);
   },
 
@@ -166,6 +198,15 @@ export const useCartStore = create<CartState>((set, get) => ({
     const newPrice = item.activePrices.find(p => p.priceTypeId === priceTypeId);
     if (!newPrice) return { success: false, message: 'Tipo de precio no válido' };
 
+    const newFactor = newPrice.equivalenceFactor || 1;
+
+    if (newFactor > item.stock) {
+      return {
+        success: false,
+        message: `No se puede seleccionar ${newPrice.priceTypeName} porque su factor (${newFactor}) excede el stock disponible (${item.stock}).`
+      };
+    }
+
     set({
       items: items.map((i) =>
         i.productVariantId === productVariantId
@@ -175,8 +216,8 @@ export const useCartStore = create<CartState>((set, get) => ({
               priceTypeName: newPrice.priceTypeName,
               salePrice: newPrice.salePrice,
               discountPrice: newPrice.discountPrice,
-              equivalenceFactor: newPrice.equivalenceFactor,
-              quantity: 1,
+              equivalenceFactor: newFactor,
+              quantity: newFactor,
               discountAmount: 0
             }
           : i
