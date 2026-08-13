@@ -34,17 +34,19 @@ export const useCartStore = create<CartState>((set, get) => ({
   customerName: null,
   branchId: null,
 
-  addItem: (item, quantity, discountAmount = 0) => {
+  addItem: (item, quantity = 1, discountAmount = 0) => {
     const { items } = get();
     const existing = items.find((i) => i.productVariantId === item.productVariantId);
-    const initialQty = quantity !== undefined ? quantity : (item.equivalenceFactor || 1);
+    const initialQty = quantity ?? 1;
+    const factor = item.equivalenceFactor || 1;
+    const maxPackages = Math.floor(item.stock / factor);
 
     if (existing) {
       const newQty = existing.quantity + initialQty;
-      if (newQty > item.stock) {
+      if (newQty * factor > item.stock) {
         return { 
           success: false, 
-          message: `Stock insuficiente. Disponible: ${item.stock}` 
+          message: `Stock insuficiente. Disponible: ${item.stock} unidades. Para ${item.priceTypeName || 'esta unidad'} (factor ${factor}), el máximo es ${maxPackages} (${maxPackages * factor} unidades).` 
         };
       }
       set({
@@ -54,10 +56,14 @@ export const useCartStore = create<CartState>((set, get) => ({
       });
       return { success: true };
     } else {
-      if (initialQty > item.stock) {
+      if (initialQty * factor > item.stock) {
+        const adjustedQty = maxPackages > 0 ? maxPackages : 1;
+        set({
+          items: [...items, { ...item, quantity: adjustedQty, discountAmount }]
+        });
         return { 
           success: false, 
-          message: `Stock insuficiente. Disponible: ${item.stock}` 
+          message: `Stock insuficiente. Disponible: ${item.stock} unidades. Para ${item.priceTypeName || 'esta unidad'} (factor ${factor}), el máximo es ${maxPackages} (${maxPackages * factor} unidades).` 
         };
       }
       set({
@@ -79,50 +85,29 @@ export const useCartStore = create<CartState>((set, get) => ({
     if (!item) return { success: false, message: 'Producto no encontrado' };
 
     const factor = item.equivalenceFactor || 1;
+    const maxPackages = Math.floor(item.stock / factor);
 
-    // 1. Validar límite de stock
-    if (quantity > item.stock) {
-      let maxMultiple = Math.floor(item.stock / factor) * factor;
-      if (maxMultiple < factor) maxMultiple = item.stock;
-
+    // 1. Validar cantidad mínima
+    if (quantity < 1) {
       set({
         items: items.map((i) =>
-          i.productVariantId === productVariantId ? { ...i, quantity: maxMultiple } : i
+          i.productVariantId === productVariantId ? { ...i, quantity: 1 } : i
         )
       });
-      return { 
-        success: false, 
-        message: `La cantidad solicitada supera el stock disponible. Ajustado al máximo permitido: ${maxMultiple}` 
-      };
+      return { success: false, message: 'La cantidad mínima es 1.' };
     }
 
-    // 2. Validar cantidad mínima
-    if (quantity < factor) {
-      set({
-        items: items.map((i) =>
-          i.productVariantId === productVariantId ? { ...i, quantity: factor } : i
-        )
-      });
-      return { 
-        success: false, 
-        message: `La cantidad mínima para ${item.priceTypeName || 'esta unidad'} es ${factor}.` 
-      };
-    }
-
-    // 3. Validar que sea múltiplo exacto del factor
-    if (quantity % factor !== 0) {
-      let adjustedQty = Math.round(quantity / factor) * factor;
-      if (adjustedQty < factor) adjustedQty = factor;
-      if (adjustedQty > item.stock) adjustedQty = Math.floor(item.stock / factor) * factor;
-
+    // 2. Validar límite de stock total en unidades físicas (cantidad * factor)
+    if (quantity * factor > item.stock) {
+      const adjustedQty = maxPackages > 0 ? maxPackages : 1;
       set({
         items: items.map((i) =>
           i.productVariantId === productVariantId ? { ...i, quantity: adjustedQty } : i
         )
       });
-      return {
-        success: false,
-        message: `La cantidad para ${item.priceTypeName || 'esta unidad'} debe ser múltiplo de ${factor} (ej: ${factor}, ${factor * 2}, ${factor * 3}). Se ajustó a ${adjustedQty}.`
+      return { 
+        success: false, 
+        message: `Stock insuficiente. Disponible: ${item.stock} unidades. El máximo para ${item.priceTypeName || 'esta unidad'} (factor ${factor}) es ${adjustedQty} (${adjustedQty * factor} unidades).` 
       };
     }
 
@@ -181,12 +166,13 @@ export const useCartStore = create<CartState>((set, get) => ({
     const item = items.find((i) => i.productVariantId === productVariantId);
     if (!item) return { success: false, message: 'Producto no encontrado' };
 
-    if (item.quantity === 0) {
+    const totalUnits = item.quantity * (item.equivalenceFactor || 1);
+    if (totalUnits === 0) {
       return { success: false, message: 'La cantidad debe ser mayor a 0 para aplicar descuento total' };
     }
 
     const cleanTotalDiscount = Number(Number(totalDiscountAmount).toFixed(2));
-    const unitDiscount = Number((cleanTotalDiscount / item.quantity).toFixed(2));
+    const unitDiscount = Number((cleanTotalDiscount / totalUnits).toFixed(2));
     return updateDiscount(productVariantId, unitDiscount);
   },
 
@@ -203,7 +189,7 @@ export const useCartStore = create<CartState>((set, get) => ({
     if (newFactor > item.stock) {
       return {
         success: false,
-        message: `No se puede seleccionar ${newPrice.priceTypeName} porque su factor (${newFactor}) excede el stock disponible (${item.stock}).`
+        message: `No se puede seleccionar ${newPrice.priceTypeName} porque su factor (${newFactor}) excede el stock disponible (${item.stock} unidades).`
       };
     }
 
@@ -217,7 +203,7 @@ export const useCartStore = create<CartState>((set, get) => ({
               salePrice: newPrice.salePrice,
               discountPrice: newPrice.discountPrice,
               equivalenceFactor: newFactor,
-              quantity: newFactor,
+              quantity: 1,
               discountAmount: 0
             }
           : i
@@ -239,11 +225,11 @@ export const useCartStore = create<CartState>((set, get) => ({
   },
 
   getSubtotal: () => {
-    return get().items.reduce((acc, i) => acc + i.salePrice * i.quantity, 0);
+    return get().items.reduce((acc, i) => acc + i.salePrice * i.quantity * (i.equivalenceFactor || 1), 0);
   },
 
   getDiscountedAmount: () => {
-    return get().items.reduce((acc, i) => acc + i.discountAmount * i.quantity, 0);
+    return get().items.reduce((acc, i) => acc + i.discountAmount * i.quantity * (i.equivalenceFactor || 1), 0);
   },
 
   getTotal: () => {

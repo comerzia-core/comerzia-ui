@@ -5,6 +5,8 @@ import { UserCircle, MapPin, Briefcase, Mail, Phone, Calendar } from 'lucide-rea
 import { employeeService } from '../services/employeeService';
 import type { EmployeeDetailResponse } from '../types/employee';
 
+import { useAuthStore } from '../../../stores/useAuthStore';
+
 interface Props {
   isOpen: boolean;
   onClose: () => void;
@@ -14,6 +16,8 @@ interface Props {
 export const EmployeeDetailModal = ({ isOpen, onClose, employeeId }: Props) => {
   const [detail, setDetail] = useState<EmployeeDetailResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const { userProfile } = useAuthStore();
+  const currencyCode = userProfile?.companySettings?.currencyCode || 'USD';
 
   useEffect(() => {
     if (isOpen && employeeId) {
@@ -128,7 +132,7 @@ export const EmployeeDetailModal = ({ isOpen, onClose, employeeId }: Props) => {
                 )}
                 <div className="flex gap-2">
                   <span className="font-semibold w-28">Salario Base:</span>
-                  <span>{detail.baseSalary ? `$${detail.baseSalary} (${detail.paymentFrequency?.label})` : <span className="text-base-content/30 italic">No especificado</span>}</span>
+                  <span>{detail.baseSalary ? `${currencyCode} ${detail.baseSalary} (${detail.paymentFrequency?.label})` : <span className="text-base-content/30 italic">No especificado</span>}</span>
                 </div>
                 <div className="flex gap-2 mt-2 pt-2 border-t border-base-300">
                   <span className="font-semibold w-28">Roles:</span>

@@ -3,15 +3,14 @@ import { useAuthStore } from '../../../stores/useAuthStore';
 import { salesService } from '../services/salesService';
 import { branchService } from '../../organization/services/branchService';
 import { useCartStore } from '../store/useCartStore';
-import type { SalesProductResponse, ActivePriceResponse, SalesCatalogItem } from '../types/sales';
+import type { SalesCatalogItem, SalesProductResponse } from '../types/sales';
 import { useToast } from '../../../context/ToastContext';
 import { ComerziaProductSearch } from '../components/ComerziaProductSearch';
 import { ComerziaModal } from '../../../components/ui/ComerziaModal';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
-import { ComerziaSelect } from '../../../components/ui/ComerziaSelect';
-import { BtnCancel, BtnSave } from '../../../components/ui/CrudButtons';
+import { BtnCancel } from '../../../components/ui/CrudButtons';
 import type { CartItem } from '../store/useCartStore';
-import { AlertCircle, ArrowRight, Barcode, Hash, ShoppingCart, Store, Trash2 } from 'lucide-react';
+import { AlertCircle, ArrowRight, Barcode, Hash, Scan, ShoppingCart, Store, Trash2 } from 'lucide-react';
 
 interface QuantityControlProps {
   item: CartItem;
@@ -21,6 +20,7 @@ interface QuantityControlProps {
 
 const QuantityControl = ({ item, updateQuantity, toastWarning }: QuantityControlProps) => {
   const factor = item.equivalenceFactor || 1;
+  const maxPackages = Math.floor(item.stock / factor);
   const [val, setVal] = useState<string>(item.quantity.toString());
 
   useEffect(() => {
@@ -44,44 +44,53 @@ const QuantityControl = ({ item, updateQuantity, toastWarning }: QuantityControl
     }
   };
 
+  const totalUnits = item.quantity * factor;
+
   return (
-    <div className="flex items-center justify-center gap-1">
-      <button 
-        type="button"
-        className="btn btn-circle btn-xs btn-ghost text-base-content/70 active:scale-95 transition-transform"
-        onClick={() => {
-          const res = updateQuantity(item.productVariantId, item.quantity - factor);
-          const updatedItem = useCartStore.getState().items.find(i => i.productVariantId === item.productVariantId);
-          if (updatedItem) setVal(updatedItem.quantity.toString());
-          if (!res.success && res.message) toastWarning(res.message);
-        }}
-      >-</button>
-      <input
-        type="number"
-        min={factor}
-        step={factor}
-        max={item.stock}
-        className="input input-bordered input-sm w-16 font-mono text-center px-1 rounded-lg [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-        value={val}
-        onWheel={(e) => (e.target as HTMLInputElement).blur()}
-        onChange={(e) => setVal(e.target.value)}
-        onBlur={handleCommit}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            (e.target as HTMLInputElement).blur();
-          }
-        }}
-      />
-      <button 
-        type="button"
-        className="btn btn-circle btn-xs btn-ghost text-base-content/70 active:scale-95 transition-transform"
-        onClick={() => {
-          const res = updateQuantity(item.productVariantId, item.quantity + factor);
-          const updatedItem = useCartStore.getState().items.find(i => i.productVariantId === item.productVariantId);
-          if (updatedItem) setVal(updatedItem.quantity.toString());
-          if (!res.success && res.message) toastWarning(res.message);
-        }}
-      >+</button>
+    <div className="flex flex-col items-center justify-center">
+      <div className="flex items-center justify-center gap-1">
+        <button 
+          type="button"
+          className="btn btn-circle btn-xs btn-ghost text-base-content/70 active:scale-95 transition-transform"
+          onClick={() => {
+            const res = updateQuantity(item.productVariantId, item.quantity - 1);
+            const updatedItem = useCartStore.getState().items.find(i => i.productVariantId === item.productVariantId);
+            if (updatedItem) setVal(updatedItem.quantity.toString());
+            if (!res.success && res.message) toastWarning(res.message);
+          }}
+        >-</button>
+        <input
+          type="number"
+          min={1}
+          step={1}
+          max={maxPackages > 0 ? maxPackages : 1}
+          className="input input-bordered input-sm w-16 font-mono text-center px-1 rounded-lg [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          value={val}
+          onWheel={(e) => (e.target as HTMLInputElement).blur()}
+          onChange={(e) => setVal(e.target.value)}
+          onBlur={handleCommit}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              (e.target as HTMLInputElement).blur();
+            }
+          }}
+        />
+        <button 
+          type="button"
+          className="btn btn-circle btn-xs btn-ghost text-base-content/70 active:scale-95 transition-transform"
+          onClick={() => {
+            const res = updateQuantity(item.productVariantId, item.quantity + 1);
+            const updatedItem = useCartStore.getState().items.find(i => i.productVariantId === item.productVariantId);
+            if (updatedItem) setVal(updatedItem.quantity.toString());
+            if (!res.success && res.message) toastWarning(res.message);
+          }}
+        >+</button>
+      </div>
+      {factor > 1 && (
+        <span className="text-[10px] text-base-content/50 font-mono mt-0.5 font-medium">
+          ({totalUnits} {totalUnits === 1 ? 'unid.' : 'unids.'})
+        </span>
+      )}
     </div>
   );
 };
@@ -156,7 +165,7 @@ const TotalDiscountControl = ({ item, maxTotalDiscount, totalDiscount, hasDiscou
     const res = updateTotalDiscount(item.productVariantId, totDisc);
     const updatedItem = useCartStore.getState().items.find(i => i.productVariantId === item.productVariantId);
     if (updatedItem) {
-      const updatedTotal = updatedItem.discountAmount * updatedItem.quantity;
+      const updatedTotal = updatedItem.discountAmount * updatedItem.quantity * (updatedItem.equivalenceFactor || 1);
       setVal(updatedTotal === 0 ? '' : Number(updatedTotal.toFixed(2)).toString());
     }
     if (!res.success && res.message) {
@@ -189,7 +198,6 @@ const TotalDiscountControl = ({ item, maxTotalDiscount, totalDiscount, hasDiscou
 export const NewSalePage = () => {
   const { userProfile } = useAuthStore();
   const roles = userProfile?.roles || [];
-  const isSeller = roles.includes('SELLER');
   const isOwner = roles.includes('OWNER');
   
   const { success: toastSuccess, error: toastError, warning: toastWarning } = useToast();
@@ -199,13 +207,10 @@ export const NewSalePage = () => {
   const [isLoadingInit, setIsLoadingInit] = useState(true);
   const [initError, setInitError] = useState<string | null>(null);
 
-  // Modales de Búsqueda Manual
   const [isSkuModalOpen, setIsSkuModalOpen] = useState(false);
   const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false);
   const [manualSearchTerm, setManualSearchTerm] = useState('');
   const [isManualSearching, setIsManualSearching] = useState(false);
-
-  // Modal Añadir a Carrito
 
   const { 
     items, addItem, removeItem, updateQuantity, updateDiscount, updateTotalDiscount, updatePriceType, 
@@ -223,80 +228,91 @@ export const NewSalePage = () => {
     setIsLoadingInit(true);
     setInitError(null);
     try {
-      if (!isSeller) {
-        setInitError("No tienes el rol de SELLER para realizar ventas.");
-        setIsLoadingInit(false);
-        return;
-      }
-
       if (isOwner) {
-        const branchRes = await branchService.getBranches(0, 100, true);
-        setBranches(branchRes.content);
-        if (branchRes.content.length === 0) {
-          setInitError("No hay sucursales activas en la empresa.");
+        const branchPage = await branchService.getBranches(0, 100, true);
+        const branchList = branchPage.content || [];
+        setBranches(branchList);
+        if (branchList.length > 0) {
+          const firstBranchId = branchList[0].id;
+          setSelectedBranchId(firstBranchId);
+          setCartBranchId(firstBranchId);
+        } else {
+          setInitError('No se encontraron sucursales activas.');
         }
+      } else {
+        // Usuarios no-OWNER (ej: SELLER): El backend asigna la sucursal del turno activo.
+        setSelectedBranchId('');
+        setCartBranchId(null);
       }
-      // Si solo es SELLER, no llamamos al posService, el backend validará el turno al enviar el carrito.
-    } catch (e: any) {
-      setInitError("Error de inicialización de sucursales.");
+    } catch (err: any) {
+      if (isOwner) {
+        setInitError('Error al inicializar las sucursales activas.');
+      }
     } finally {
       setIsLoadingInit(false);
     }
   };
 
-  const handleSelectBranch = (branchId: string) => {
+  const handleBranchChange = (branchId: string) => {
     setSelectedBranchId(branchId);
     setCartBranchId(branchId);
+    clearCart();
+    toastWarning('Se cambió la sucursal. El pedido se ha limpiado.');
   };
 
   const handleProductSelect = (product: SalesProductResponse) => {
     const validPrices = product.activePrices?.filter(p => p.salePrice != null) || [];
     if (validPrices.length === 0) {
-      toastError("Este producto no tiene precios activos configurados.");
+      toastError('Este producto no tiene precios activos configurados.');
       return;
     }
     const defaultPrice = validPrices.reduce((prev, curr) => curr.equivalenceFactor < prev.equivalenceFactor ? curr : prev);
-    
+
     const catalogItem: SalesCatalogItem = {
       productVariantId: product.variantId,
       productName: product.name,
       variantName: product.nameVariant,
       sku: product.sku,
-      barCode: '', 
+      barCode: '',
       stock: product.availableStock,
-      salePrice: defaultPrice.salePrice,
-      discountPrice: defaultPrice.discountPrice,
       priceTypeId: defaultPrice.priceTypeId,
       priceTypeName: defaultPrice.priceTypeName,
-      equivalenceFactor: defaultPrice.equivalenceFactor,
+      salePrice: defaultPrice.salePrice,
+      discountPrice: defaultPrice.discountPrice,
+      equivalenceFactor: defaultPrice.equivalenceFactor || 1,
       activePrices: validPrices
     };
 
-    const initialQty = defaultPrice.equivalenceFactor || 1;
-    const res = addItem(catalogItem, initialQty, 0);
-    if (res.success) {
-      toastSuccess(`${product.nameVariant} agregado al pedido.`);
+    const res = addItem(catalogItem, 1, 0);
+    if (!res.success && res.message) {
+      toastWarning(res.message);
     } else {
-      toastError(res.message || "Error al agregar.");
+      toastSuccess(`Agregado: ${product.nameVariant}`);
     }
   };
 
   const handleManualSearch = async (type: 'sku' | 'barcode') => {
     if (!manualSearchTerm.trim()) return;
+
     setIsManualSearching(true);
     try {
-      let product;
+      let productResponse: SalesProductResponse;
       if (type === 'sku') {
-        product = await salesService.getProductDetailsBySku(manualSearchTerm.trim());
+        productResponse = await salesService.getProductDetailsBySku(manualSearchTerm.trim());
       } else {
-        product = await salesService.getProductDetailsByBarcode(manualSearchTerm.trim());
+        productResponse = await salesService.getProductDetailsByBarcode(manualSearchTerm.trim());
       }
-      setIsSkuModalOpen(false);
-      setIsBarcodeModalOpen(false);
-      setManualSearchTerm('');
-      handleProductSelect(product);
+
+      if (productResponse) {
+        handleProductSelect(productResponse);
+        setManualSearchTerm('');
+        if (type === 'sku') setIsSkuModalOpen(false);
+        else setIsBarcodeModalOpen(false);
+      } else {
+        toastError(`No se encontró ningún producto con ese ${type.toUpperCase()}`);
+      }
     } catch (err: any) {
-      toastError(`No se encontró ningún producto con ese ${type.toUpperCase()}.`);
+      toastError(`No se encontró ningún producto con ese ${type.toUpperCase()}`);
     } finally {
       setIsManualSearching(false);
     }
@@ -304,32 +320,34 @@ export const NewSalePage = () => {
 
   const handleSendToRegister = async () => {
     if (items.length === 0) {
-      toastWarning("El carrito está vacío.");
+      toastError('El carrito está vacío');
       return;
     }
 
     try {
-      const payload = {
-        expectedTotalAmount: getTotal(),
-        details: items.map(i => ({
-          productVariantId: i.productVariantId,
-          priceTypeId: i.priceTypeId,
-          receiptQuantity: i.quantity,
-          lineDiscountAmount: i.discountAmount
-        }))
-      };
-
-      await salesService.createSale(payload, isOwner ? selectedBranchId : null);
-      toastSuccess("Pedido enviado a caja exitosamente. Estado: PENDIENTE.");
+      await salesService.createSale(
+        {
+          expectedTotalAmount: getTotal(),
+          details: items.map(i => ({
+            productVariantId: i.productVariantId,
+            priceTypeId: i.priceTypeId,
+            receiptQuantity: i.quantity,
+            lineDiscountAmount: i.discountAmount
+          }))
+        },
+        isOwner && selectedBranchId ? selectedBranchId : null
+      );
+      toastSuccess('¡Venta registrada con éxito y enviada a Caja!');
       clearCart();
     } catch (err: any) {
-      toastError(err.response?.data?.message || "Error al procesar la venta.");
+      const msg = err?.response?.data?.message || 'Error al enviar la venta a Caja';
+      toastError(msg);
     }
   };
 
   if (isLoadingInit) {
     return (
-      <div className="flex justify-center items-center h-[calc(100vh-100px)]">
+      <div className="flex justify-center items-center h-64">
         <span className="loading loading-spinner loading-lg text-primary"></span>
       </div>
     );
@@ -337,261 +355,252 @@ export const NewSalePage = () => {
 
   if (initError) {
     return (
-      <div className="flex flex-col items-center justify-center h-[calc(100vh-100px)] gap-4 animate-fade-in">
-        <div className="w-24 h-24 rounded-full bg-warning/20 flex items-center justify-center text-warning mb-2 shadow-lg">
-          <AlertCircle size={48} />
-        </div>
-        <h2 className="text-3xl font-bold text-base-content text-center max-w-md">
-          {isOwner ? "Atención" : "Turno Requerido"}
-        </h2>
-        <p className="text-base-content/60 text-center max-w-sm">
-          {initError}
-        </p>
-      </div>
-    );
-  }
-
-  // PRE-VISTA DE SELECCIÓN DE SUCURSAL (Solo OWNER)
-  if (isOwner && !selectedBranchId) {
-    return (
-      <div className="min-h-[calc(100vh-100px)] flex flex-col items-center justify-center p-8 bg-base-100/50">
-        <div className="text-center mb-10 space-y-2">
-          <Store className="w-16 h-16 text-primary mx-auto mb-4" />
-          <h1 className="text-4xl font-bold tracking-tight">Selecciona una Tienda</h1>
-          <p className="text-base-content/60 text-lg">¿Para qué sucursal armarás el pedido administrativo?</p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl w-full">
-          {branches.map(b => (
-            <button
-              key={b.id}
-              onClick={() => handleSelectBranch(b.id)}
-              className="flex flex-col items-center justify-center p-8 bg-base-100 rounded-3xl shadow-sm border border-base-200 hover:border-primary hover:shadow-xl hover:shadow-primary/20 transition-all group"
-            >
-              <div className="w-20 h-20 rounded-2xl bg-base-200 group-hover:bg-primary/10 flex items-center justify-center mb-4 transition-colors">
-                <Store className="w-10 h-10 text-base-content group-hover:text-primary transition-colors" />
-              </div>
-              <h3 className="text-xl font-bold text-base-content">{b.name}</h3>
-              {b.code && <p className="text-xs font-mono text-base-content/40 mt-1">Ref: {b.code}</p>}
-            </button>
-          ))}
-        </div>
+      <div className="alert alert-error max-w-lg mx-auto mt-8">
+        <AlertCircle size={24} />
+        <span>{initError}</span>
       </div>
     );
   }
 
   return (
-    <div className="w-full px-4 py-4 space-y-6">
-      {/* HEADER ROW */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-base-100 p-4 rounded-2xl border border-base-200 shadow-sm">
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-base-100 p-6 rounded-2xl border border-base-200 shadow-sm">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Nueva Venta</h1>
+          <h1 className="text-2xl font-bold text-base-content flex items-center gap-2">
+            <ShoppingCart className="text-primary" size={28} /> Nueva Venta (Registro)
+          </h1>
           <p className="text-sm text-base-content/60 mt-1">
-            Arma el pedido y envíalo a caja para su cobro.
+            Busca y selecciona productos para armar el pedido antes de enviar a caja.
           </p>
         </div>
 
-        <div className="flex items-center gap-4 bg-base-50 p-2 px-4 rounded-xl border border-base-200">
-          <Store className="text-primary" size={20} />
-          <div className="flex flex-col">
-            <span className="text-xs text-base-content/50 uppercase font-semibold">Sucursal Activa</span>
-            <span className="text-sm font-bold text-primary">
-              {branches.find(b => b.id === selectedBranchId)?.name || 'Asignada por Turno en Caja'}
-            </span>
-          </div>
-          {isOwner && (
-            <button 
-              className="btn btn-ghost btn-xs text-primary"
-              onClick={() => setSelectedBranchId('')}
-            >
-              Cambiar
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div className="bg-base-100 p-4 rounded-2xl border border-base-200 shadow-sm flex flex-col md:flex-row items-center gap-4">
-        <div className="flex-1 w-full relative z-50">
-          <label className="text-xs font-semibold text-base-content/60 mb-1 block">Buscar Producto por Nombre/SKU</label>
-          <ComerziaProductSearch 
-            onProductSelect={handleProductSelect} 
-            onError={toastError} 
-          />
-        </div>
-        
-        <div className="flex items-center gap-2 mt-5 md:mt-0 pt-2 shrink-0">
-          <button 
-            className="btn btn-outline btn-sm gap-2"
-            onClick={() => { setManualSearchTerm(''); setIsSkuModalOpen(true); }}
-          >
-            <Hash size={16} /> SKU
-          </button>
-          <button 
-            className="btn btn-outline btn-sm gap-2"
-            onClick={() => { setManualSearchTerm(''); setIsBarcodeModalOpen(true); }}
-          >
-            <Barcode size={16} /> Barcode
-          </button>
-        </div>
-      </div>
-
-      {/* CARRITO Y TOTALES */}
-      <div className="bg-base-100 rounded-2xl border border-base-200 shadow-sm flex flex-col overflow-hidden">
-        <div className="p-4 border-b border-base-200 shrink-0 bg-base-50/50">
-          <h2 className="text-lg font-bold flex items-center gap-2">
-            <ShoppingCart className="h-5 w-5 text-secondary" />
-            Listado del Pedido
-          </h2>
-        </div>
-
-        <div className="overflow-y-auto p-4 min-h-[400px]">
-          {items.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-base-content/40 border-2 border-dashed border-base-200 rounded-xl p-12">
-              <ShoppingCart className="h-16 w-16 mb-4 opacity-20" />
-              <p className="font-medium text-lg">El carrito está vacío</p>
-              <p className="text-sm mt-1">Busca un producto para empezar.</p>
+        {/* Selector de Sucursal */}
+        {isOwner && branches.length > 0 && (
+          <div className="flex items-center gap-3 bg-base-200/50 p-2.5 rounded-xl border border-base-300">
+            <Store size={20} className="text-primary" />
+            <div className="flex flex-col">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-base-content/60">Sucursal de Origen</span>
+              <select
+                className="select select-ghost select-sm font-bold text-base-content focus:bg-transparent -ml-2 -mt-1"
+                value={selectedBranchId}
+                onChange={(e) => handleBranchChange(e.target.value)}
+              >
+                {branches.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
             </div>
-          ) : (
-            <table className="table table-sm w-full">
-              <thead>
-                <tr className="bg-base-200/50">
-                  <th rowSpan={2} className="align-bottom">#</th>
-                  <th rowSpan={2} className="align-bottom">Producto</th>
-                  <th rowSpan={2} className="align-bottom">Unidad</th>
-                  <th rowSpan={2} className="align-bottom text-center">Cantidad</th>
-                  <th colSpan={2} className="text-center border-x border-base-300/50">Por Unidad</th>
-                  <th colSpan={2} className="text-center border-r border-base-300/50">Por Total</th>
-                  <th colSpan={2} className="text-center bg-primary/5">Importe Final</th>
-                  <th rowSpan={2}></th>
-                </tr>
-                <tr className="bg-base-200/50 text-[10px] uppercase tracking-wider">
-                  <th className="text-right border-l border-base-300/50">Precio</th>
-                  <th className="text-right border-r border-base-300/50 text-info">Desc.</th>
-                  <th className="text-right">Precio</th>
-                  <th className="text-right border-r border-base-300/50 text-info">Desc.</th>
-                  <th className="text-right bg-primary/5">Unitario</th>
-                  <th className="text-right bg-primary/5">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item, idx) => {
-                  const factor = item.equivalenceFactor || 1;
-                  const maxDiscount = item.salePrice - item.discountPrice;
-                  const hasDiscountLimit = item.discountPrice < item.salePrice;
-                  const totalDiscount = item.discountAmount * item.quantity;
-                  const maxTotalDiscount = maxDiscount * item.quantity;
-                  const subtotal = item.salePrice * item.quantity;
-                  const finalTotal = subtotal - totalDiscount;
-                  return (
-                    <tr key={`${item.productVariantId}-${item.priceTypeId}`} className="hover border-b border-base-200/50">
-                      <td className="font-mono text-xs text-base-content/50">{idx + 1}</td>
-                      <td>
-                        <div className="flex flex-col gap-1 min-w-[150px]">
-                          <span className="font-semibold text-sm leading-tight">{item.variantName}</span>
-                          <span className="text-[11px] text-base-content/50 font-mono">SKU: {item.sku}</span>
-                        </div>
-                      </td>
-                      <td>
-                        <select
-                          className="select select-bordered select-xs w-full max-w-[120px]"
-                          value={item.priceTypeId}
-                          onChange={(e) => {
-                            const res = updatePriceType(item.productVariantId, e.target.value);
-                            if (!res.success && res.message) toastWarning(res.message);
-                          }}
-                        >
-                          {item.activePrices.map(p => {
-                            const isDisabled = (p.equivalenceFactor || 1) > item.stock;
-                            return (
-                              <option 
-                                key={p.priceTypeId} 
-                                value={p.priceTypeId}
-                                disabled={isDisabled}
-                              >
-                                {p.priceTypeName} {isDisabled ? '(Sin stock)' : ''}
-                              </option>
-                            );
-                          })}
-                        </select>
-                      </td>
-                      <td>
-                        <QuantityControl
-                          item={item}
-                          updateQuantity={updateQuantity}
-                          toastWarning={toastWarning}
-                        />
-                      </td>
-                      <td className="font-mono text-sm text-right border-l border-base-300/50 text-base-content/60">
-                        {item.salePrice.toFixed(2)}
-                      </td>
-                      <td className="border-r border-base-300/50">
-                        <UnitDiscountControl
-                          item={item}
-                          maxDiscount={maxDiscount}
-                          hasDiscountLimit={hasDiscountLimit}
-                          updateDiscount={updateDiscount}
-                          toastWarning={toastWarning}
-                        />
-                      </td>
-                      <td className="font-mono text-sm text-right text-base-content/60">
-                        {subtotal.toFixed(2)}
-                      </td>
-                      <td className="border-r border-base-300/50">
-                        <TotalDiscountControl
-                          item={item}
-                          maxTotalDiscount={maxTotalDiscount}
-                          totalDiscount={totalDiscount}
-                          hasDiscountLimit={hasDiscountLimit}
-                          updateTotalDiscount={updateTotalDiscount}
-                          toastWarning={toastWarning}
-                        />
-                      </td>
-                      <td className="font-mono text-sm text-right bg-primary/5 text-base-content/80 font-medium">
-                        {(item.salePrice - item.discountAmount).toFixed(2)}
-                      </td>
-                      <td className="font-bold text-sm font-mono text-right bg-primary/5 text-primary">
-                        {currency} {finalTotal.toFixed(2)}
-                      </td>
-                      <td className="text-right">
-                        <button
-                          className="btn btn-ghost btn-xs text-error hover:bg-error/10 rounded-md"
-                          onClick={() => removeItem(item.productVariantId)}
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
+          </div>
+        )}
+      </div>
+
+      {/* Grid Principal */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        {/* TOTALES FIJOS AL FONDO */}
-        <div className="p-4 border-t border-base-200 bg-base-50/80 shrink-0">
-          <div className="flex flex-col sm:flex-row items-end sm:items-center justify-between gap-4">
-            <div className="flex gap-6 font-mono text-sm">
-              <div className="flex flex-col">
-                <span className="text-base-content/60 text-xs">Subtotal</span>
-                <span className="font-semibold">{currency} {getSubtotal().toFixed(2)}</span>
+        {/* Columna Izquierda: Búsqueda y Carrito */}
+        <div className="lg:col-span-8 space-y-6">
+          
+          {/* Tarjeta de Búsqueda */}
+          <div className="bg-base-100 p-5 rounded-2xl border border-base-200 shadow-sm space-y-4">
+            <div className="flex items-center justify-between border-b border-base-200 pb-3">
+              <h2 className="font-bold text-base-content flex items-center gap-2 text-sm uppercase tracking-wide">
+                <Scan size={18} className="text-primary" /> Selección de Productos
+              </h2>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => { setManualSearchTerm(''); setIsSkuModalOpen(true); }}
+                  className="btn btn-ghost btn-xs gap-1.5 text-base-content/70 hover:bg-base-200"
+                >
+                  <Hash size={14} /> Buscar por SKU
+                </button>
+                <button
+                  onClick={() => { setManualSearchTerm(''); setIsBarcodeModalOpen(true); }}
+                  className="btn btn-ghost btn-xs gap-1.5 text-base-content/70 hover:bg-base-200"
+                >
+                  <Barcode size={14} /> Buscar por Código Barras
+                </button>
               </div>
-              <div className="flex flex-col">
-                <span className="text-error text-xs">Desc. Manual</span>
-                <span className="font-semibold">- {currency} {getDiscountedAmount().toFixed(2)}</span>
+            </div>
+
+            {/* Componente Autocomplete */}
+            <ComerziaProductSearch
+              onProductSelect={handleProductSelect}
+              onError={toastError}
+            />
+          </div>
+
+          {/* Tabla de Productos Seleccionados */}
+          <div className="bg-base-100 rounded-2xl border border-base-200 shadow-sm overflow-hidden">
+            <div className="p-4 border-b border-base-200 flex items-center justify-between">
+              <span className="font-bold text-sm uppercase tracking-wide text-base-content flex items-center gap-2">
+                <ShoppingCart size={16} className="text-primary" /> Productos en Pedido ({items.length})
+              </span>
+              {items.length > 0 && (
+                <button
+                  onClick={clearCart}
+                  className="btn btn-ghost btn-xs text-error hover:bg-error/10 gap-1"
+                >
+                  <Trash2 size={14} /> Vaciar Carrito
+                </button>
+              )}
+            </div>
+
+            {items.length === 0 ? (
+              <div className="flex flex-col items-center justify-center p-12 text-center text-base-content/40 space-y-3">
+                <ShoppingCart size={48} className="stroke-1 text-base-content/20" />
+                <p className="text-sm font-medium">El carrito está vacío</p>
+                <p className="text-xs text-base-content/40 max-w-xs">
+                  Utiliza el buscador superior para agregar productos al pedido actual.
+                </p>
               </div>
-              <div className="flex flex-col ml-4">
-                <span className="text-base-content/80 text-xs uppercase font-bold tracking-wider">Total</span>
-                <span className="text-2xl font-black text-primary leading-none">
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="table table-sm w-full">
+                  <thead>
+                    <tr className="bg-base-200/50 border-b border-base-200 text-xs font-semibold uppercase">
+                      <th className="w-8">#</th>
+                      <th>Producto</th>
+                      <th>Tipo Unidad</th>
+                      <th className="text-center w-36">Cantidad</th>
+                      <th className="text-right">Precio Unit.</th>
+                      <th className="text-right border-r border-base-300/50 text-info">Desc. Unit.</th>
+                      <th className="text-right bg-primary/5">Subtotal</th>
+                      <th className="text-right border-r border-base-300/50 text-info font-bold">Desc. Total</th>
+                      <th className="text-right bg-primary/5">P. Final Unit.</th>
+                      <th className="text-right bg-primary/5 font-bold text-primary">Importe Final</th>
+                      <th className="w-10"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items.map((item, idx) => {
+                      const factor = item.equivalenceFactor || 1;
+                      const totalUnits = item.quantity * factor;
+                      const maxDiscount = item.salePrice - item.discountPrice;
+                      const hasDiscountLimit = item.discountPrice < item.salePrice;
+                      const totalDiscount = item.discountAmount * totalUnits;
+                      const maxTotalDiscount = maxDiscount * totalUnits;
+                      const subtotal = item.salePrice * totalUnits;
+                      const finalTotal = subtotal - totalDiscount;
+
+                      return (
+                        <tr key={`${item.productVariantId}-${item.priceTypeId}`} className="hover border-b border-base-200/50">
+                          <td className="font-mono text-xs text-base-content/50">{idx + 1}</td>
+                          <td>
+                            <div className="flex flex-col gap-1 min-w-[150px]">
+                              <span className="font-semibold text-sm leading-tight">{item.productName} | {item.variantName}</span>
+                              <span className="text-[11px] text-base-content/50 font-mono">SKU: {item.sku}</span>
+                            </div>
+                          </td>
+                          <td>
+                            <select
+                              className="select select-bordered select-xs w-full max-w-[120px]"
+                              value={item.priceTypeId}
+                              onChange={(e) => {
+                                const res = updatePriceType(item.productVariantId, e.target.value);
+                                if (!res.success && res.message) toastWarning(res.message);
+                              }}
+                            >
+                              {item.activePrices.map(p => {
+                                const isDisabled = (p.equivalenceFactor || 1) > item.stock;
+                                return (
+                                  <option 
+                                    key={p.priceTypeId} 
+                                    value={p.priceTypeId}
+                                    disabled={isDisabled}
+                                  >
+                                    {p.priceTypeName} {isDisabled ? '(Sin stock)' : ''}
+                                  </option>
+                                );
+                              })}
+                            </select>
+                          </td>
+                          <td>
+                            <QuantityControl
+                              item={item}
+                              updateQuantity={updateQuantity}
+                              toastWarning={toastWarning}
+                            />
+                          </td>
+                          <td className="font-mono text-sm text-right border-l border-base-300/50 text-base-content/60">
+                            {item.salePrice.toFixed(2)}
+                          </td>
+                          <td className="border-r border-base-300/50">
+                            <UnitDiscountControl
+                              item={item}
+                              maxDiscount={maxDiscount}
+                              hasDiscountLimit={hasDiscountLimit}
+                              updateDiscount={updateDiscount}
+                              toastWarning={toastWarning}
+                            />
+                          </td>
+                          <td className="font-mono text-sm text-right text-base-content/60">
+                            {subtotal.toFixed(2)}
+                          </td>
+                          <td className="border-r border-base-300/50">
+                            <TotalDiscountControl
+                              item={item}
+                              maxTotalDiscount={maxTotalDiscount}
+                              totalDiscount={totalDiscount}
+                              hasDiscountLimit={hasDiscountLimit}
+                              updateTotalDiscount={updateTotalDiscount}
+                              toastWarning={toastWarning}
+                            />
+                          </td>
+                          <td className="font-mono text-sm text-right bg-primary/5 text-base-content/80 font-medium">
+                            {(item.salePrice - item.discountAmount).toFixed(2)}
+                          </td>
+                          <td className="font-bold text-sm font-mono text-right bg-primary/5 text-primary">
+                            {currency} {finalTotal.toFixed(2)}
+                          </td>
+                          <td className="text-right">
+                            <button
+                              className="btn btn-ghost btn-xs text-error hover:bg-error/10 rounded-md"
+                              onClick={() => removeItem(item.productVariantId)}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Columna Derecha: Resumen Venta */}
+        <div className="lg:col-span-4 space-y-6">
+          <div className="bg-base-100 p-6 rounded-2xl border border-base-200 shadow-sm space-y-6 sticky top-6">
+            <h2 className="font-bold text-base-content border-b border-base-200 pb-3 text-sm uppercase tracking-wide">
+              Resumen del Pedido
+            </h2>
+
+            <div className="space-y-3 text-sm">
+              <div className="flex justify-between text-base-content/70">
+                <span>Subtotal</span>
+                <span className="font-mono">{currency} {getSubtotal().toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-info">
+                <span>Descuento Aplicado</span>
+                <span className="font-mono">-{currency} {getDiscountedAmount().toFixed(2)}</span>
+              </div>
+              <div className="border-t border-base-200 pt-3 flex justify-between items-baseline">
+                <span className="font-bold text-base text-base-content">Total Venta</span>
+                <span className="font-bold text-2xl font-mono text-primary">
                   {currency} {getTotal().toFixed(2)}
                 </span>
               </div>
             </div>
 
-            <button 
-              className="btn btn-primary btn-lg shadow-lg shadow-primary/30 min-w-[200px]"
-              disabled={items.length === 0}
+            <button
               onClick={handleSendToRegister}
+              disabled={items.length === 0}
+              className="btn btn-primary w-full shadow-lg shadow-primary/20 gap-2 text-base font-bold"
             >
               Enviar a Caja
               <ArrowRight size={20} />
@@ -627,17 +636,13 @@ export const NewSalePage = () => {
         </div>
       </ComerziaModal>
 
-      {/* MODAL BARCODE */}
+      {/* MODAL CÓDIGO BARRAS */}
       <ComerziaModal
         isOpen={isBarcodeModalOpen}
         onClose={() => setIsBarcodeModalOpen(false)}
-        title="Escáner Código de Barras"
+        title="Buscar por Código de Barras"
       >
         <div className="space-y-4 pt-4">
-          <div className="flex flex-col items-center justify-center p-6 bg-base-50 rounded-xl border-2 border-dashed border-base-200 mb-4">
-            <Barcode size={48} className="text-base-content/30 mb-2" />
-            <p className="text-sm text-base-content/60 text-center">Simulando escáner... Ingresa el código y presiona Enter.</p>
-          </div>
           <ComerziaInput
             label="Código de Barras"
             value={manualSearchTerm}
@@ -652,7 +657,7 @@ export const NewSalePage = () => {
               onClick={() => handleManualSearch('barcode')}
               disabled={!manualSearchTerm.trim() || isManualSearching}
             >
-              {isManualSearching ? <span className="loading loading-spinner loading-sm" /> : "Procesar"}
+              {isManualSearching ? <span className="loading loading-spinner loading-sm" /> : "Buscar"}
             </button>
           </div>
         </div>
