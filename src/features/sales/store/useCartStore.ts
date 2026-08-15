@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { SalesCatalogItem } from '../types/sales';
+import { useAuthStore } from '../../../stores/useAuthStore';
 
 export interface CartItem extends SalesCatalogItem {
   quantity: number;
@@ -46,7 +47,8 @@ export const useCartStore = create<CartState>((set, get) => ({
       if (newQty * factor > item.stock) {
         return { 
           success: false, 
-          message: `Stock insuficiente. Disponible: ${item.stock} unidades. Para ${item.priceTypeName || 'esta unidad'} (factor ${factor}), el máximo es ${maxPackages} (${maxPackages * factor} unidades).` 
+          message: `Stock insuficiente. Disponible: ${item.stock} unidades.` 
+          // message: `Stock insuficiente. Disponible: ${item.stock} unidades. Para ${item.priceTypeName || 'esta unidad'} (factor ${factor}), el máximo es ${maxPackages} (${maxPackages * factor} unidades).` 
         };
       }
       set({
@@ -63,7 +65,8 @@ export const useCartStore = create<CartState>((set, get) => ({
         });
         return { 
           success: false, 
-          message: `Stock insuficiente. Disponible: ${item.stock} unidades. Para ${item.priceTypeName || 'esta unidad'} (factor ${factor}), el máximo es ${maxPackages} (${maxPackages * factor} unidades).` 
+          message: `Stock insuficiente. Disponible: ${item.stock} unidades.` 
+          // message: `Stock insuficiente. Disponible: ${item.stock} unidades. Para ${item.priceTypeName || 'esta unidad'} (factor ${factor}), el máximo es ${maxPackages} (${maxPackages * factor} unidades).` 
         };
       }
       set({
@@ -107,7 +110,8 @@ export const useCartStore = create<CartState>((set, get) => ({
       });
       return { 
         success: false, 
-        message: `Stock insuficiente. Disponible: ${item.stock} unidades. El máximo para ${item.priceTypeName || 'esta unidad'} (factor ${factor}) es ${adjustedQty} (${adjustedQty * factor} unidades).` 
+        message: `Stock insuficiente. Disponible: ${item.stock} unidades.` 
+        // message: `Stock insuficiente. Disponible: ${item.stock} unidades. El máximo para ${item.priceTypeName || 'esta unidad'} (factor ${factor}) es ${adjustedQty} (${adjustedQty * factor} unidades).` 
       };
     }
 
@@ -136,6 +140,7 @@ export const useCartStore = create<CartState>((set, get) => ({
 
     const cleanDiscount = Number(Number(discountAmount).toFixed(2));
     const maxDiscount = Number((item.salePrice - item.discountPrice).toFixed(2));
+    const currency = useAuthStore.getState().userProfile?.companySettings?.currencyCode || 'USD';
 
     if (cleanDiscount > maxDiscount) {
       set({
@@ -145,7 +150,7 @@ export const useCartStore = create<CartState>((set, get) => ({
       });
       return { 
         success: false, 
-        message: `El descuento supera el límite autorizado. Ajustado al máximo permitido: $${maxDiscount.toFixed(2)}` 
+        message: `El descuento supera el límite autorizado. Máximo permitido: ${currency} ${maxDiscount.toFixed(2)}` 
       };
     }
 

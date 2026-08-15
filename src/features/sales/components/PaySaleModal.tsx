@@ -13,7 +13,7 @@ interface Props {
   onClose: () => void;
   sale: SaleResponse | null;
   shiftId: string;
-  onPaymentSuccess: (saleId: string) => void;
+  onPaymentSuccess: (saleId: string, saleNumber?: string) => void;
 }
 
 export const PaySaleModal = ({ isOpen, onClose, sale, shiftId, onPaymentSuccess }: Props) => {
@@ -38,6 +38,13 @@ export const PaySaleModal = ({ isOpen, onClose, sale, shiftId, onPaymentSuccess 
   const totalAmount = sale.totalAmount;
   const numPaid = typeof amountPaid === 'number' ? amountPaid : 0;
   const changeAmount = paymentType === 701 && numPaid > totalAmount ? numPaid - totalAmount : 0;
+
+  const handleSelectPaymentType = (type: number) => {
+    setPaymentType(type);
+    if (type !== 701 && sale) {
+      setAmountPaid(sale.totalAmount);
+    }
+  };
 
   const handlePay = async () => {
     if (!amountPaid || numPaid <= 0) {
@@ -71,8 +78,9 @@ export const PaySaleModal = ({ isOpen, onClose, sale, shiftId, onPaymentSuccess 
 
       toastSuccess("Cobro procesado exitosamente.");
       const paidSaleId = sale.id;
+      const paidSaleNumber = sale.saleNumber;
       onClose();
-      onPaymentSuccess(paidSaleId);
+      onPaymentSuccess(paidSaleId, paidSaleNumber);
     } catch (e: any) {
       console.error(e);
       const msg = e.response?.data?.message || "Error al procesar el pago.";
@@ -94,7 +102,7 @@ export const PaySaleModal = ({ isOpen, onClose, sale, shiftId, onPaymentSuccess 
     <ComerziaModal
       isOpen={isOpen}
       onClose={onClose}
-      title={`Procesar Cobro - Venta #${sale.saleNumber || sale.id.substring(0, 8)}`}
+      title={`Procesar Cobro ${sale.saleNumber ? `- Venta #${sale.saleNumber}` : ''}`}
       size="lg"
     >
       <div className="space-y-6 pt-2">
@@ -129,7 +137,7 @@ export const PaySaleModal = ({ isOpen, onClose, sale, shiftId, onPaymentSuccess 
                 <button
                   key={opt.type}
                   type="button"
-                  onClick={() => setPaymentType(opt.type)}
+                  onClick={() => handleSelectPaymentType(opt.type)}
                   className={`p-4 rounded-xl border-2 flex flex-col items-center justify-center gap-2 transition-all cursor-pointer ${
                     isSelected 
                       ? `${opt.color} ring-2 ring-primary border-primary shadow-md scale-[1.02]` 
@@ -154,6 +162,7 @@ export const PaySaleModal = ({ isOpen, onClose, sale, shiftId, onPaymentSuccess 
             error={shakeKey > 0 && (!amountPaid || numPaid < totalAmount) ? "Monto insuficiente o inválido" : ""}
             shakeKey={shakeKey}
             isRequired
+            disabled={paymentType !== 701}
           />
 
           {paymentType === 701 && changeAmount > 0 && (

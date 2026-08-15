@@ -64,7 +64,7 @@ export const SaleDetailsModal = ({ isOpen, onClose, sale }: Props) => {
     <ComerziaModal
       isOpen={isOpen}
       onClose={onClose}
-      title={`Detalle de Venta #${sale.saleNumber || sale.id.substring(0, 8)}`}
+      title={`Detalle de Venta ${sale.saleNumber ? `#${sale.saleNumber}` : ''}`}
       size="xl"
     >
       <div className="space-y-6 pt-2">

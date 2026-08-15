@@ -85,6 +85,11 @@ export const salesService = {
     return response.data;
   },
 
+  getCustomerByPhone: async (phoneNumber: string): Promise<CustomerProfileResponse> => {
+    const response = await api.get<CustomerProfileResponse>(`/tenant/customers/phone/${encodeURIComponent(phoneNumber)}`);
+    return response.data;
+  },
+
   createCustomer: async (data: CreateCustomerRequest): Promise<CustomerProfileResponse> => {
     const response = await api.post<CustomerProfileResponse>('/tenant/customers', data);
     return response.data;
@@ -102,6 +107,16 @@ export const salesService = {
 
   deleteCustomer: async (customerId: string): Promise<void> => {
     await api.delete(`/tenant/customers/${customerId}`);
+  },
+
+  assignCustomerToSale: async (saleId: string, customerId: string): Promise<SaleResponse> => {
+    const response = await api.patch<SaleResponse>(`/tenant/sales/${saleId}/customer/${customerId}`);
+    return response.data;
+  },
+
+  removeCustomerFromSale: async (saleId: string): Promise<SaleResponse> => {
+    const response = await api.delete<SaleResponse>(`/tenant/sales/${saleId}/customer`);
+    return response.data;
   },
 
   getCustomerSalesHistory: async (customerId: string, page = 0, size = 10): Promise<PageSaleResponse> => {

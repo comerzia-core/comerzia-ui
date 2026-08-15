@@ -42,7 +42,8 @@ export interface SalePaymentResponse {
   changeAmount: number;
   date: string;
   paymentType: number; // 701, 702, 703, 704
-  employeeId: string;
+  employeeUsername?: string;
+  employeeId?: string;
 }
 
 export interface SaleResponse {
@@ -54,6 +55,7 @@ export interface SaleResponse {
   date: string;
   saleStatus: { code: number; label: string } | number; // 601 (PENDING), 602 (COMPLETED), 603 (CANCELLED), etc.
   employeeUsername: string;
+  customer?: CustomerProfileResponse | null;
   details: SaleDetailResponse[];
   payments: SalePaymentResponse[];
 }

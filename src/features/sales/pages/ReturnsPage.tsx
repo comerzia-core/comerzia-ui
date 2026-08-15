@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { salesService } from '../services/salesService';
-import type { SaleResponse, ReturnResponse } from '../types/sales';
+import type { SaleResponse, SaleDetailResponse, ReturnResponse } from '../types/sales';
 import { useToast } from '../../../context/ToastContext';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
 import { ComerziaModal } from '../../../components/ui/ComerziaModal';
-import { ComerziaBadge } from '../../../components/ui/ComerziaBadge';
-import { BtnCancel, BtnSave } from '../../../components/ui/CrudButtons';
+import { ComerziaButton } from '../../../components/ui/ComerziaButton';
+import { BtnCancel, BtnSave, BtnModalYes } from '../../../components/ui/CrudButtons';
 import { RefreshCw, Search, ShieldAlert, AlertTriangle, FileText, CheckCircle } from 'lucide-react';
 
 export const ReturnsPage = () => {
@@ -39,19 +39,25 @@ export const ReturnsPage = () => {
 
     try {
       // Como el backend no provee un GET unitario directo, buscamos la venta en las del turno del cajero
-      const res = await salesService.getMyShiftSales(0, 100);
-      const matched = res.content.find(s => s.id === saleIdInput.trim());
+      const res = await salesService.getMyShiftSales();
+      const term = saleIdInput.trim().toLowerCase();
+      const matched = res.find(s => s.id.toLowerCase() === term || (s.saleNumber && s.saleNumber.toLowerCase() === term));
       
       if (matched) {
-        if (matched.saleStatus === 603) {
+        const statusCode = typeof matched.saleStatus === 'object' ? (matched.saleStatus as any).code : matched.saleStatus;
+        if (statusCode === 601) {
+          toastWarning("Esta venta está PENDIENTE de cobro. Edítala o cancélala en el Historial.");
+        } else if (statusCode === 603) {
           toastWarning("Esta venta está CANCELADA. No se pueden procesar devoluciones.");
-        } else if (matched.saleStatus === 601) {
-          toastWarning("Esta venta está PENDIENTE de cobro. Edítala o anúlala en el Historial.");
+        } else if (statusCode === 604) {
+          toastWarning("Esta venta está ANULADA. No se pueden procesar devoluciones.");
+        } else if (statusCode === 606) {
+          toastWarning("Esta venta ya ha sido devuelta en su totalidad (DEV. TOTAL).");
         } else {
           setActiveSale(matched);
           // Inicializar cantidades de devolución en 0
           const qtys: Record<string, number> = {};
-          matched.details.forEach(d => {
+          (matched.details || []).forEach((d: SaleDetailResponse) => {
             qtys[d.id] = 0;
           });
           setReturnQtys(qtys);
@@ -142,14 +148,18 @@ export const ReturnsPage = () => {
         <form onSubmit={handleSearchSale} className="flex gap-2 max-w-lg">
           <input
             type="text"
-            placeholder="Introduce el código completo del ticket (UUID)..."
+            placeholder="Introduce el número de ticket o venta..."
             className="input input-bordered w-full bg-base-50 focus:outline-none focus:ring-2 focus:ring-primary/20"
             value={saleIdInput}
             onChange={(e) => setSaleIdInput(e.target.value)}
           />
-          <button type="submit" className="btn btn-primary" disabled={isLoadingSale}>
-            {isLoadingSale ? <span className="loading loading-spinner loading-xs"></span> : "Buscar"}
-          </button>
+          <ComerziaButton
+            type="submit"
+            variant="primary"
+            label="Buscar"
+            disabled={isLoadingSale}
+            isLoading={isLoadingSale}
+          />
         </form>
       </div>
 
@@ -160,7 +170,7 @@ export const ReturnsPage = () => {
           <div className="lg:col-span-2 bg-base-100 p-6 rounded-2xl border border-base-200 shadow-sm space-y-4">
             <h3 className="text-lg font-bold flex items-center gap-2">
               <FileText className="h-5 w-5 text-secondary" />
-              Detalle del Ticket
+              Detalle del Ticket {activeSale.saleNumber ? `(N° #${activeSale.saleNumber})` : ''}
             </h3>
 
             <div className="overflow-x-auto">
@@ -174,18 +184,19 @@ export const ReturnsPage = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {activeSale.details.map((d) => {
-                    const availableToReturn = d.finalQuantity; // La cantidad disponible actualmente
+                  {activeSale.details.map((d: SaleDetailResponse) => {
+                    const availableToReturn = d.receiptQuantity ?? d.finalQuantity ?? d.unitQuantity ?? 0;
+                    const finalPrice = d.unitFinalPrice ?? (d.receiptUnitPrice ?? d.unitSalePrice ?? 0);
                     
                     return (
                       <tr key={d.id} className="hover">
                         <td>
                           <div>
-                            <span className="font-semibold block text-sm">{d.productName || `Variante #${d.productVariantId}`}</span>
-                            <span className="text-xs text-base-content/50">Precio Final: {currency} {d.unitFinalPrice.toFixed(2)}</span>
+                            <span className="font-semibold block text-sm">{d.productName || d.variantName || 'Producto'}</span>
+                            <span className="text-xs text-base-content/50">Precio Final: {currency} {finalPrice.toFixed(2)}</span>
                           </div>
                         </td>
-                        <td>{d.unitQuantity}</td>
+                        <td>{d.receiptQuantity ?? d.unitQuantity ?? 0}</td>
                         <td>
                           <span className={`badge badge-sm font-semibold ${availableToReturn > 0 ? 'badge-success' : 'badge-neutral'}`}>
                             {availableToReturn} u
@@ -235,13 +246,13 @@ export const ReturnsPage = () => {
               </div>
             </div>
 
-            <button
-              className="btn btn-error text-white w-full gap-2"
+            <ComerziaButton
+              variant="delete"
+              label="Confirmar Devolución"
+              fullWidth
               disabled={!hasItemsToReturn || !reason.trim()}
               onClick={() => setShowConfirmModal(true)}
-            >
-              Confirmar Devolución
-            </button>
+            />
           </div>
         </div>
       )}
@@ -262,13 +273,12 @@ export const ReturnsPage = () => {
           </p>
           <div className="flex justify-end gap-2 mt-6">
             <BtnCancel onClick={() => setShowConfirmModal(false)} disabled={isSubmitting} />
-            <button
-              className="btn btn-error text-white"
+            <BtnModalYes
+              label="Sí, Procesar Devolución"
               onClick={handleSubmitReturn}
+              isLoading={isSubmitting}
               disabled={isSubmitting}
-            >
-              {isSubmitting ? "Procesando..." : "Sí, Procesar Devolución"}
-            </button>
+            />
           </div>
         </div>
       </ComerziaModal>

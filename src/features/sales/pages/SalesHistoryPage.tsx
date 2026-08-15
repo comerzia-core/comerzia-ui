@@ -1,26 +1,54 @@
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { salesService } from '../services/salesService';
-import type { SaleResponse, SaleDetailResponse, SalesCatalogItem } from '../types/sales';
+import type { SaleResponse, SalesCatalogItem, SaleDetailResponse, CustomerProfileResponse } from '../types/sales';
 import { useToast } from '../../../context/ToastContext';
 import { ComerziaTable, type Column, type TablePaginationConfig } from '../../../components/ui/ComerziaTable';
 import { ComerziaBadge } from '../../../components/ui/ComerziaBadge';
 import { ComerziaModal } from '../../../components/ui/ComerziaModal';
+import { ComerziaButton } from '../../../components/ui/ComerziaButton';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
-import { BtnCancel, BtnSave, BtnEdit, BtnDeleteIcon } from '../../../components/ui/CrudButtons';
-import { Clock, History, Edit, AlertTriangle, Trash2, Search, Plus } from 'lucide-react';
+import { ComerziaContextMenu, ContextMenuItem } from '../../../components/ui/ComerziaContextMenu';
+import { BtnCancel, BtnSave, BtnDeleteIcon, BtnModalYes } from '../../../components/ui/CrudButtons';
+import { SaleDetailsModal } from '../components/SaleDetailsModal';
+import { RegisterSaleCustomerModal } from '../components/RegisterSaleCustomerModal';
+import { History, AlertTriangle, Plus, Eye, Edit, Trash2, RotateCcw, RotateCcw as RefundIcon, Info, UserCheck, UserPlus, User } from 'lucide-react';
 
 export const SalesHistoryPage = () => {
-  const { userProfile } = useAuthStore();
+  const { userProfile, hasPermission, hasRole } = useAuthStore();
   const { success: toastSuccess, error: toastError, warning: toastWarning } = useToast();
 
   const [sales, setSales] = useState<SaleResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Paginación
+  // Permisos requeridos
+  const canCancel = hasPermission('SAL_SALES_CANCEL') || hasRole('OWNER') || hasRole('ADMIN');
+  const canReturn = hasPermission('SAL_RETURNS_MANAGE') || hasRole('OWNER') || hasRole('ADMIN');
+  const canManageSales = hasPermission('SAL_SALES_MANAGE') || hasRole('OWNER') || hasRole('ADMIN');
+
+  // Paginación en cliente para List<SaleResponse>
   const [page, setPage] = useState(0);
-  const [size, setSize] = useState(5);
-  const [totalElements, setTotalElements] = useState(0);
+  const [size, setSize] = useState(10);
+
+  // Estado del Menú Contextual
+  const [contextMenu, setContextMenu] = useState<{
+    isOpen: boolean;
+    x: number;
+    y: number;
+    sale: SaleResponse | null;
+  }>({
+    isOpen: false,
+    x: 0,
+    y: 0,
+    sale: null
+  });
+
+  // Modal de Detalle de Venta
+  const [selectedSaleDetails, setSelectedSaleDetails] = useState<SaleResponse | null>(null);
+
+  // Modal de Detalles del Cliente y Asignación de Cliente
+  const [selectedCustomerDetails, setSelectedCustomerDetails] = useState<CustomerProfileResponse | null>(null);
+  const [assigningCustomerSale, setAssigningCustomerSale] = useState<SaleResponse | null>(null);
 
   // Estados de Edición de Venta
   const [editingSale, setEditingSale] = useState<SaleResponse | null>(null);
@@ -33,18 +61,24 @@ export const SalesHistoryPage = () => {
   const [cancelingSaleId, setCancelingSaleId] = useState<string | null>(null);
   const [isCanceling, setIsCanceling] = useState(false);
 
+  // Estados de Devolución
+  const [returningSale, setReturningSale] = useState<SaleResponse | null>(null);
+  const [returnReason, setReturnReason] = useState('');
+  const [returnQtys, setReturnQtys] = useState<Record<string, number>>({});
+  const [isSubmittingReturn, setIsSubmittingReturn] = useState(false);
+  const [returnShakeKey, setReturnShakeKey] = useState(0);
+
   const currency = userProfile?.companySettings?.currencyCode || 'USD';
 
   useEffect(() => {
     loadSales();
-  }, [page, size]);
+  }, []);
 
   const loadSales = async () => {
     setIsLoading(true);
     try {
-      const res = await salesService.getMyShiftSales(page, size);
-      setSales(res.content);
-      setTotalElements(res.totalElements);
+      const res = await salesService.getMyShiftSales();
+      setSales(res);
     } catch (e) {
       toastError("Error al cargar el historial de ventas del turno.");
     } finally {
@@ -52,7 +86,25 @@ export const SalesHistoryPage = () => {
     }
   };
 
-  // Cancelar venta
+  const getStatusCode = (status: number | { code: number; label: string } | undefined): number => {
+    if (typeof status === 'number') return status;
+    if (status && typeof status === 'object' && 'code' in status) return status.code;
+    return 0;
+  };
+
+  // Abrir Menú Contextual
+  const handleContextMenu = (e: React.MouseEvent, sale: SaleResponse) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({
+      isOpen: true,
+      x: e.clientX,
+      y: e.clientY,
+      sale
+    });
+  };
+
+  // Cancelar venta pendiente (601)
   const handleCancelSale = async () => {
     if (!cancelingSaleId) return;
     setIsCanceling(true);
@@ -68,20 +120,18 @@ export const SalesHistoryPage = () => {
     }
   };
 
-  // Iniciar edición de venta
+  // Iniciar edición de venta pendiente (601)
   const startEditSale = (sale: SaleResponse) => {
     setEditingSale(sale);
-    // Mapear detalles existentes a formato editable local
-    setEditDetails(sale.details.map(d => ({
+    setEditDetails((sale.details || []).map(d => ({
       productVariantId: d.productVariantId,
       priceTypeId: d.priceTypeId,
-      variantName: d.variantName || `Variante #${d.productVariantId}`,
-      quantity: d.unitQuantity,
-      salePrice: d.unitSalePrice,
-      discountAmount: d.unitDiscountAmount,
-      // Suponemos que el stock disponible puede recuperarse o lo dejamos en un número alto por defecto para edición
-      stock: d.unitQuantity + 50, 
-      discountPrice: 0 // Se asume libre de edición a menos que carguemos los topes del catálogo
+      variantName: d.variantName || d.productName || 'Producto',
+      quantity: d.receiptQuantity ?? d.unitQuantity ?? 1,
+      salePrice: d.receiptUnitPrice ?? d.unitSalePrice ?? 0,
+      discountAmount: d.lineTotalDiscount ?? d.unitDiscountAmount ?? 0,
+      stock: (d.receiptQuantity ?? d.unitQuantity ?? 1) + 50,
+      discountPrice: 0
     })));
     setEditCatalogSearch('');
     setEditSearchResults([]);
@@ -92,31 +142,65 @@ export const SalesHistoryPage = () => {
     if (!editCatalogSearch.trim()) return;
     setIsSearchingCatalog(true);
     try {
-      const res = await salesService.searchSalesCatalog(editCatalogSearch.trim());
-      setEditSearchResults(res);
-    } catch (err) {
-      toastError("Error al buscar en el catálogo.");
+      const term = editCatalogSearch.trim();
+      let productResponse;
+      try {
+        productResponse = await salesService.getProductDetailsBySku(term);
+      } catch {
+        try {
+          productResponse = await salesService.getProductDetailsByBarcode(term);
+        } catch {
+          productResponse = null;
+        }
+      }
+
+      if (productResponse && productResponse.activePrices && productResponse.activePrices.length > 0) {
+        const defaultPrice = productResponse.activePrices[0];
+        const item: SalesCatalogItem = {
+          productVariantId: productResponse.variantId,
+          productName: productResponse.name,
+          variantName: productResponse.nameVariant || productResponse.name,
+          sku: productResponse.sku,
+          barCode: term,
+          stock: productResponse.availableStock || 0,
+          salePrice: defaultPrice.salePrice,
+          discountPrice: defaultPrice.discountPrice,
+          priceTypeId: defaultPrice.priceTypeId,
+          priceTypeName: defaultPrice.priceTypeName,
+          equivalenceFactor: defaultPrice.equivalenceFactor || 1,
+          activePrices: productResponse.activePrices
+        };
+        setEditSearchResults([item]);
+      } else {
+        setEditSearchResults([]);
+        toastWarning("No se encontró ningún producto con ese SKU o Código de barras.");
+      }
+    } catch {
+      toastError("Error al buscar en catálogo.");
     } finally {
       setIsSearchingCatalog(false);
     }
   };
 
-  const handleAddEditItem = (item: SalesCatalogItem) => {
-    const existing = editDetails.find(d => d.productVariantId === item.productVariantId);
-    if (existing) {
-      toastWarning("El producto ya se encuentra en la lista de la venta.");
+  // Agregar item buscado a los detalles de edición
+  const handleAddEditItem = (catItem: SalesCatalogItem) => {
+    const existingIndex = editDetails.findIndex(d => d.productVariantId === catItem.productVariantId);
+    if (existingIndex >= 0) {
+      toastWarning("El producto ya se encuentra en el pedido.");
       return;
     }
+
     setEditDetails([...editDetails, {
-      productVariantId: item.productVariantId,
-      priceTypeId: item.priceTypeId,
-      variantName: item.variantName,
+      productVariantId: catItem.productVariantId,
+      priceTypeId: catItem.priceTypeId,
+      variantName: catItem.variantName || catItem.productName,
       quantity: 1,
-      salePrice: item.salePrice,
+      salePrice: catItem.salePrice,
       discountAmount: 0,
-      stock: item.stock,
-      discountPrice: item.discountPrice
+      stock: catItem.stock,
+      discountPrice: catItem.discountPrice
     }]);
+
     setEditCatalogSearch('');
     setEditSearchResults([]);
   };
@@ -143,7 +227,7 @@ export const SalesHistoryPage = () => {
       if (d.productVariantId === productVariantId) {
         const maxDiscount = d.salePrice - d.discountPrice;
         if (discount > maxDiscount) {
-          toastWarning(`Límite de descuento excedido. Ajustado a ${maxDiscount.toFixed(2)}.`);
+          toastWarning(`Límite de descuento excedido. Ajustado a ${currency} ${maxDiscount.toFixed(2)}.`);
           return { ...d, discountAmount: maxDiscount };
         }
         return { ...d, discountAmount: Math.max(0, discount) };
@@ -164,13 +248,12 @@ export const SalesHistoryPage = () => {
     }
     try {
       const payload = {
-        customerId: editingSale.customerId,
         expectedTotalAmount: getEditTotal(),
         details: editDetails.map(d => ({
           productVariantId: d.productVariantId,
           priceTypeId: d.priceTypeId,
-          unitQuantity: d.quantity,
-          unitDiscountAmount: d.discountAmount
+          receiptQuantity: d.quantity,
+          lineDiscountAmount: d.discountAmount
         }))
       };
 
@@ -183,29 +266,114 @@ export const SalesHistoryPage = () => {
     }
   };
 
-  // Configuración de Badges de Estado
-  const renderStatusBadge = (status: number) => {
-    switch (status) {
+  // Abrir Modal de Devolución
+  const openReturnModal = (sale: SaleResponse) => {
+    setReturningSale(sale);
+    setReturnReason('');
+    const initialQtys: Record<string, number> = {};
+    (sale.details || []).forEach(d => {
+      initialQtys[d.id] = 0;
+    });
+    setReturnQtys(initialQtys);
+    setReturnShakeKey(0);
+  };
+
+  // Devolver todo
+  const handleSelectAllToReturn = () => {
+    if (!returningSale) return;
+    const allQtys: Record<string, number> = {};
+    (returningSale.details || []).forEach(d => {
+      allQtys[d.id] = d.receiptQuantity ?? d.unitQuantity ?? 1;
+    });
+    setReturnQtys(allQtys);
+  };
+
+  // Calcular total a reembolsar
+  const calculateRefundTotal = () => {
+    if (!returningSale) return 0;
+    return (returningSale.details || []).reduce((acc, d) => {
+      const qty = returnQtys[d.id] || 0;
+      const unitPrice = d.receiptUnitPrice ?? d.unitSalePrice ?? 0;
+      return acc + unitPrice * qty;
+    }, 0);
+  };
+
+  // Procesar Devolución (602 o 605)
+  const handleSubmitReturn = async () => {
+    if (!returningSale) return;
+    if (!returnReason.trim()) {
+      setReturnShakeKey(prev => prev + 1);
+      toastError("Debes especificar el motivo de la devolución.");
+      return;
+    }
+
+    const returnDetails = Object.entries(returnQtys)
+      .filter(([_, qty]) => qty > 0)
+      .map(([detailId, qty]) => ({
+        saleDetailId: detailId,
+        quantityToReturn: qty
+      }));
+
+    if (returnDetails.length === 0) {
+      toastWarning("Debes seleccionar al menos un producto y una cantidad mayor a 0 para devolver.");
+      return;
+    }
+
+    setIsSubmittingReturn(true);
+    try {
+      await salesService.processReturn(returningSale.id, {
+        reason: returnReason.trim(),
+        returnDetails
+      });
+      toastSuccess("Devolución procesada y registrada exitosamente. Inventario y caja actualizados.");
+      setReturningSale(null);
+      loadSales();
+    } catch (err: any) {
+      toastError(err.response?.data?.message || "Ocurrió un error al procesar la devolución.");
+    } finally {
+      setIsSubmittingReturn(false);
+    }
+  };
+
+  // Configuración de Badges de Estado (6 Estados Oficiales)
+  const renderStatusBadge = (status: number | { code: number; label: string } | undefined) => {
+    const code = getStatusCode(status);
+    switch (code) {
       case 601:
-        return <ComerziaBadge variant="warning" label="PENDIENTE COBRO" />;
+        return <ComerziaBadge variant="warning" label="PENDIENTE" />;
       case 602:
         return <ComerziaBadge variant="success" label="COMPLETADA" />;
       case 603:
-        return <ComerziaBadge variant="error" label="CANCELADA" />;
+        return <ComerziaBadge variant="neutral" label="CANCELADA" />;
+      case 604:
+        return <ComerziaBadge variant="error" label="ANULADA" />;
+      case 605:
+        return <ComerziaBadge variant="info" label="DEV. PARCIAL" />;
+      case 606:
+        return <ComerziaBadge variant="secondary" label="DEV. TOTAL" />;
       default:
         return <ComerziaBadge variant="neutral" label="DESCONOCIDO" />;
     }
   };
 
-  // Definición de Columnas de la Tabla
+  // Definición de Columnas de la Tabla (Sin Columna de Acciones)
   const columns: Column<SaleResponse>[] = [
     {
-      header: 'Código de Venta',
-      render: (row) => <span className="font-mono text-sm font-semibold">{row.id}</span>
+      header: 'N° Venta',
+      render: (row) => (
+        <div className="flex items-center gap-1.5">
+          <span className="font-mono text-sm font-semibold">{row.saleNumber ? `#${row.saleNumber}` : '-'}</span>
+          {row.customer && (
+            <div className="tooltip tooltip-right" data-tip={`Cliente: ${row.customer.fullName || row.customer.firstName}`}>
+              <UserCheck size={16} className="text-primary shrink-0 cursor-pointer" />
+            </div>
+          )}
+        </div>
+      )
     },
     {
-      header: 'Fecha de Creación',
-      render: (row) => new Date(row.date).toLocaleString()
+      header: 'Hora',
+      render: (row) => new Date(row.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })
     },
     {
       header: 'Subtotal',
@@ -222,44 +390,16 @@ export const SalesHistoryPage = () => {
     {
       header: 'Estado',
       render: (row) => renderStatusBadge(row.saleStatus)
-    },
-    {
-      header: 'Acciones',
-      render: (row) => {
-        const isPending = row.saleStatus === 601;
-        return (
-          <div className="flex gap-2 justify-end">
-            {isPending ? (
-              <>
-                <button
-                  className="btn btn-outline btn-xs btn-primary gap-1"
-                  onClick={() => startEditSale(row)}
-                  title="Editar Pedido"
-                >
-                  <Edit size={14} /> Editar
-                </button>
-                <button
-                  className="btn btn-outline btn-xs btn-error gap-1"
-                  onClick={() => setCancelingSaleId(row.id)}
-                  title="Anular Pedido"
-                >
-                  <Trash2 size={14} /> Anular
-                </button>
-              </>
-            ) : (
-              <span className="text-xs text-base-content/40">Sin acciones</span>
-            )}
-          </div>
-        );
-      }
     }
   ];
+
+  const paginatedSales = sales.slice(page * size, (page + 1) * size);
 
   const pagination: TablePaginationConfig = {
     currentPage: page,
     pageSize: size,
-    totalElements,
-    totalPages: Math.ceil(totalElements / size),
+    totalElements: sales.length,
+    totalPages: Math.ceil(sales.length / size) || 1,
     onPageChange: setPage,
     onPageSizeChange: setSize
   };
@@ -271,48 +411,318 @@ export const SalesHistoryPage = () => {
         <p className="text-base-content/60 mt-1">Historial del cajero activo en el turno de trabajo</p>
       </div>
 
-      <div className="bg-base-100 p-6 rounded-2xl border border-base-200 shadow-sm">
-        <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-          <History className="h-5 w-5 text-primary" />
-          Ventas Generadas
-        </h2>
+      <div className="bg-base-100 p-6 rounded-2xl border border-base-200 shadow-sm space-y-3">
+        <div className="flex justify-between items-center">
+          <h2 className="text-lg font-bold flex items-center gap-2">
+            <History className="h-5 w-5 text-primary" />
+            Ventas Generadas
+          </h2>
+          <span className="text-xs text-base-content/50 italic">
+            * Haz clic derecho sobre una venta para ver el menú de opciones (Detalles, Cliente, Cancelar o Devolución).
+          </span>
+        </div>
 
         <ComerziaTable
-          data={sales}
+          data={paginatedSales}
           columns={columns}
           isLoading={isLoading}
           pagination={pagination}
+          onRowClick={(row) => setSelectedSaleDetails(row)}
+          onRowContextMenu={(e, row) => handleContextMenu(e, row)}
         />
       </div>
 
-      {/* MODAL CONFIRMAR ANULACIÓN */}
+      {/* MENÚ CONTEXTUAL */}
+      <ComerziaContextMenu
+        isOpen={contextMenu.isOpen}
+        x={contextMenu.x}
+        y={contextMenu.y}
+        onClose={() => setContextMenu({ ...contextMenu, isOpen: false })}
+      >
+        {contextMenu.sale && (
+          <>
+            <ContextMenuItem
+              icon={Eye}
+              label="Ver Detalles"
+              onClick={() => {
+                setSelectedSaleDetails(contextMenu.sale);
+              }}
+            />
+
+            {/* Opciones de Cliente */}
+            {contextMenu.sale.customer ? (
+              <ContextMenuItem
+                icon={UserCheck}
+                label="Ver Detalles del Cliente"
+                onClick={() => {
+                  if (contextMenu.sale?.customer) {
+                    setSelectedCustomerDetails(contextMenu.sale.customer);
+                  }
+                }}
+              />
+            ) : (
+              canManageSales && (
+                <ContextMenuItem
+                  icon={UserPlus}
+                  label="Asignar Cliente"
+                  onClick={() => {
+                    if (contextMenu.sale) {
+                      setAssigningCustomerSale(contextMenu.sale);
+                    }
+                  }}
+                />
+              )
+            )}
+
+            {/* Si la venta está PENDING (601) */}
+            {getStatusCode(contextMenu.sale.saleStatus) === 601 && (
+              <>
+                <ContextMenuItem
+                  icon={Edit}
+                  label="Modificar Pedido"
+                  onClick={() => {
+                    if (contextMenu.sale) startEditSale(contextMenu.sale);
+                  }}
+                />
+                {canCancel && (
+                  <ContextMenuItem
+                    icon={Trash2}
+                    label="Cancelar Venta"
+                    variant="error"
+                    onClick={() => {
+                      if (contextMenu.sale) setCancelingSaleId(contextMenu.sale.id);
+                    }}
+                  />
+                )}
+              </>
+            )}
+
+            {/* Si la venta está COMPLETED (602) o PARTIALLY_REFUNDED (605) */}
+            {(getStatusCode(contextMenu.sale.saleStatus) === 602 || getStatusCode(contextMenu.sale.saleStatus) === 605) && canReturn && (
+              <ContextMenuItem
+                icon={RotateCcw}
+                label="Procesar Devolución"
+                onClick={() => {
+                  if (contextMenu.sale) openReturnModal(contextMenu.sale);
+                }}
+              />
+            )}
+          </>
+        )}
+      </ComerziaContextMenu>
+
+      {/* MODAL DETALLES DE VENTA */}
+      <SaleDetailsModal
+        isOpen={!!selectedSaleDetails}
+        onClose={() => setSelectedSaleDetails(null)}
+        sale={selectedSaleDetails}
+      />
+
+      {/* MODAL DETALLES DEL CLIENTE ASIGNADO */}
+      <ComerziaModal
+        isOpen={!!selectedCustomerDetails}
+        onClose={() => setSelectedCustomerDetails(null)}
+        title="Perfil del Cliente"
+        size="md"
+      >
+        {selectedCustomerDetails && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 p-3.5 bg-primary/10 rounded-xl border border-primary/20">
+              <UserCheck className="h-8 w-8 text-primary shrink-0" />
+              <div>
+                <h3 className="font-bold text-base text-base-content">
+                  {selectedCustomerDetails.fullName || selectedCustomerDetails.firstName}
+                </h3>
+                <span className="text-xs text-base-content/60">
+                  {selectedCustomerDetails.customerType === 612 ? 'Persona Jurídica (Empresa)' : 'Persona Natural'}
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 bg-base-50 p-4 rounded-xl border border-base-200 text-xs">
+              <div>
+                <span className="text-base-content/50 block font-medium">Documento de Identidad</span>
+                <span className="font-mono text-sm font-semibold text-base-content">{selectedCustomerDetails.documentNumber || '-'}</span>
+              </div>
+              <div>
+                <span className="text-base-content/50 block font-medium">Teléfono / Celular</span>
+                <span className="font-mono text-sm font-semibold text-base-content">{selectedCustomerDetails.phoneNumber || '-'}</span>
+              </div>
+              <div className="col-span-2">
+                <span className="text-base-content/50 block font-medium">Correo Electrónico</span>
+                <span className="text-sm text-base-content">{selectedCustomerDetails.email || '-'}</span>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <ComerziaButton
+                variant="ghost"
+                label="Cerrar"
+                onClick={() => setSelectedCustomerDetails(null)}
+              />
+            </div>
+          </div>
+        )}
+      </ComerziaModal>
+
+      {/* MODAL ASIGNAR CLIENTE A VENTA */}
+      {assigningCustomerSale && (
+        <RegisterSaleCustomerModal
+          isOpen={!!assigningCustomerSale}
+          onClose={() => setAssigningCustomerSale(null)}
+          saleId={assigningCustomerSale.id}
+          saleNumber={assigningCustomerSale.saleNumber}
+          onSuccess={() => {
+            loadSales();
+            setAssigningCustomerSale(null);
+          }}
+        />
+      )}
+
+      {/* MODAL CONFIRMAR CANCELACIÓN (601 PENDING) */}
       <ComerziaModal
         isOpen={!!cancelingSaleId}
         onClose={() => setCancelingSaleId(null)}
-        title="Confirmar Anulación de Pedido"
+        title="Confirmar Cancelación de Venta"
       >
         <div className="space-y-4">
           <div className="flex items-center gap-3 text-warning">
             <AlertTriangle size={32} />
-            <p className="font-semibold text-lg">¿Estás seguro de anular esta venta?</p>
+            <p className="font-semibold text-lg">¿Estás seguro de cancelar esta venta?</p>
           </div>
           <p className="text-sm text-base-content/60">
-            Esta acción liberará el inventario retenido temporalmente por este pedido de forma inmediata. No se puede revertir.
+            Esta acción abortará la venta pendiente y liberará de inmediato el stock retenido en el inventario.
           </p>
           <div className="flex justify-end gap-2 mt-6">
             <BtnCancel onClick={() => setCancelingSaleId(null)} disabled={isCanceling} />
-            <button 
-              className="btn btn-error text-white" 
+            <BtnModalYes
+              label="Sí, Cancelar Venta"
               onClick={handleCancelSale}
+              isLoading={isCanceling}
               disabled={isCanceling}
-            >
-              {isCanceling ? "Cancelando..." : "Sí, Anular"}
-            </button>
+            />
           </div>
         </div>
       </ComerziaModal>
 
-      {/* MODAL EDITAR VENTA PENDIENTE */}
+      {/* MODAL PROCESAR DEVOLUCIÓN (602 COMPLETED / 605 PARTIALLY_REFUNDED) */}
+      <ComerziaModal
+        isOpen={!!returningSale}
+        onClose={() => setReturningSale(null)}
+        title={`Procesar Devolución ${returningSale?.saleNumber ? `- Venta #${returningSale.saleNumber}` : ''}`}
+        size="xl"
+      >
+        {returningSale && (
+          <div className="space-y-5">
+            <div className="bg-info/10 border border-info/20 p-4 rounded-xl flex items-center justify-between gap-4 text-xs text-base-content">
+              <div className="flex items-center gap-3">
+                <Info size={20} className="text-info shrink-0" />
+                <div>
+                  <p className="font-bold text-base-content">Devolución de Productos a Inventario</p>
+                  <p className="text-base-content/70 mt-0.5">
+                    Indica la cantidad a devolver por cada producto o presiona "Devolver Todo" para reintegrar la venta completa.
+                  </p>
+                </div>
+              </div>
+              <ComerziaButton
+                variant="primary"
+                label="Devolver Todo"
+                className="btn-xs shrink-0"
+                onClick={handleSelectAllToReturn}
+              />
+            </div>
+
+            {/* TABLA DE PRODUCTOS DE LA VENTA */}
+            <div className="overflow-x-auto border border-base-200 rounded-xl">
+              <table className="table table-compact w-full text-xs">
+                <thead>
+                  <tr className="bg-base-200/50">
+                    <th>Producto / Variante</th>
+                    <th className="text-center">Comprado</th>
+                    <th className="text-right">Precio Unit.</th>
+                    <th className="text-center w-36">Cant. a Devolver</th>
+                    <th className="text-right">Reembolso</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(returningSale.details || []).map((d: SaleDetailResponse) => {
+                    const maxQty = d.receiptQuantity ?? 1;
+                    const currentReturnQty = returnQtys[d.id] || 0;
+                    const unitPrice = d.receiptUnitPrice ?? 0;
+                    const lineRefund = unitPrice * currentReturnQty;
+
+                    return (
+                      <tr key={d.id} className="hover:bg-base-50">
+                        <td>
+                          <div>
+                            <span className="font-bold block text-sm">{d.productName || d.variantName || 'Producto'}</span>
+                            {d.measureUnitName && (
+                              <span className="text-[11px] text-base-content/50">Unidad: {d.measureUnitName}</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="text-center font-semibold">{maxQty}</td>
+                        <td className="text-right">{currency} {unitPrice.toFixed(2)}</td>
+                        <td className="text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <input
+                              type="number"
+                              min="0"
+                              max={maxQty}
+                              className="input input-bordered input-xs w-20 text-center font-bold"
+                              value={currentReturnQty}
+                              onChange={(e) => {
+                                const val = Math.max(0, Math.min(maxQty, parseInt(e.target.value) || 0));
+                                setReturnQtys({ ...returnQtys, [d.id]: val });
+                              }}
+                            />
+                            <span className="text-base-content/40 text-[10px]">/ {maxQty}</span>
+                          </div>
+                        </td>
+                        <td className="text-right font-mono font-bold text-error">
+                          {lineRefund > 0 ? `- ${currency} ${lineRefund.toFixed(2)}` : '0.00'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* TOTAL REEMBOLSO */}
+            <div className="flex justify-between items-center bg-base-50 p-4 rounded-xl font-mono text-sm border border-base-200">
+              <span className="font-semibold text-base-content/70">Total a Reembolsar al Cliente:</span>
+              <span className="text-xl font-bold text-error">
+                - {currency} {calculateRefundTotal().toFixed(2)}
+              </span>
+            </div>
+
+            {/* MOTIVO DE DEVOLUCIÓN */}
+            <div>
+              <ComerziaInput
+                label="Motivo de la Devolución"
+                placeholder="Ej. Producto defectuoso, error en pedido del cliente..."
+                value={returnReason}
+                onChange={(e) => setReturnReason(e.target.value)}
+                isRequired
+                shakeKey={returnShakeKey}
+                error={!returnReason.trim() && returnShakeKey > 0 ? "El motivo es obligatorio" : ""}
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-base-200">
+              <BtnCancel onClick={() => setReturningSale(null)} disabled={isSubmittingReturn} />
+              <BtnSave
+                label="Confirmar Devolución"
+                onClick={handleSubmitReturn}
+                isLoading={isSubmittingReturn}
+              />
+            </div>
+          </div>
+        )}
+      </ComerziaModal>
+
+      {/* MODAL EDITAR VENTA PENDIENTE (601 PENDING) */}
       <ComerziaModal
         isOpen={!!editingSale}
         onClose={() => setEditingSale(null)}
@@ -333,13 +743,14 @@ export const SalesHistoryPage = () => {
                 value={editCatalogSearch}
                 onChange={(e) => setEditCatalogSearch(e.target.value)}
               />
-              <button 
-                className="btn btn-primary btn-sm"
+              <ComerziaButton
+                variant="primary"
+                label="Buscar"
+                className="btn-sm"
                 onClick={handleCatalogSearch}
+                isLoading={isSearchingCatalog}
                 disabled={isSearchingCatalog}
-              >
-                Buscar
-              </button>
+              />
             </div>
 
             {/* Resultados rápidos de edición */}
@@ -350,12 +761,12 @@ export const SalesHistoryPage = () => {
                 {editSearchResults.map(item => (
                   <div key={item.productVariantId} className="flex justify-between items-center text-xs p-1.5 hover:bg-base-100 rounded">
                     <span>{item.variantName} (Stock: {item.stock})</span>
-                    <button 
-                      className="btn btn-primary btn-xs"
+                    <ComerziaButton
+                      variant="create"
+                      label="Agregar"
+                      className="btn-xs"
                       onClick={() => handleAddEditItem(item)}
-                    >
-                      Agregar
-                    </button>
+                    />
                   </div>
                 ))}
               </div>
@@ -408,12 +819,9 @@ export const SalesHistoryPage = () => {
                       {currency} {((item.salePrice - item.discountAmount) * item.quantity).toFixed(2)}
                     </td>
                     <td>
-                      <button
-                        className="btn btn-ghost btn-xs text-error hover:bg-error/10 rounded-full"
+                      <BtnDeleteIcon
                         onClick={() => handleRemoveEditItem(item.productVariantId)}
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      />
                     </td>
                   </tr>
                 ))}

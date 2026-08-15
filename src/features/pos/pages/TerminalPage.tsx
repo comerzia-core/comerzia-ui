@@ -27,6 +27,7 @@ import { useAuthStore } from '../../../stores/useAuthStore';
 import { PaySaleModal } from '../../sales/components/PaySaleModal';
 import { RegisterSaleCustomerModal } from '../../sales/components/RegisterSaleCustomerModal';
 import { SaleDetailsModal } from '../../sales/components/SaleDetailsModal';
+import { ComerziaButton } from '../../../components/ui/ComerziaButton';
 import { useLoadDictionaries } from '../../../hooks/useLoadDictionaries';
 import { DICTIONARIES } from '../../../config/dictionaries';
 
@@ -46,7 +47,7 @@ export const TerminalPage = () => {
   // Modals State
   const [selectedSaleToPay, setSelectedSaleToPay] = useState<SaleResponse | null>(null);
   const [selectedSaleDetail, setSelectedSaleDetail] = useState<SaleResponse | null>(null);
-  const [registerCustomerSaleId, setRegisterCustomerSaleId] = useState<string | null>(null);
+  const [registerCustomerSale, setRegisterCustomerSale] = useState<SaleResponse | null>(null);
 
   const { userProfile, hasPermission, hasRole } = useAuthStore();
   const roles = userProfile?.roles || [];
@@ -61,21 +62,29 @@ export const TerminalPage = () => {
   const saleStatusOptions = options[DICTIONARIES.SALE_STATUS] || [];
 
   useEffect(() => {
-    if (!canAccessTerminal) {
-      setError("Vista exclusiva para roles CAJERO, BRANCH_MANAGER u OWNER.");
-      setIsLoading(false);
-      return;
+    if (canAccessTerminal) {
+      loadSummary();
+      loadSales();
     }
-    loadSummary();
-    loadSales();
-  }, [canAccessTerminal]);
+  }, []);
 
   const loadSummary = async () => {
+    setIsLoading(true);
+    setError(null);
     try {
-      const data = await posService.getMyActiveShiftSummary();
-      setSummary(data);
-      setError(null);
+      if (isManagerOrOwner) {
+        const summaries = await posService.getAllActiveShiftSummaries();
+        if (summaries && summaries.length > 0) {
+          setSummary(summaries[0]);
+        } else {
+          setSummary(null);
+        }
+      } else {
+        const data = await posService.getMyActiveShiftSummary();
+        setSummary(data);
+      }
     } catch (err: any) {
+      console.error("Error al cargar resumen del turno:", err);
       if (isCashierRole) {
         if (
           err.response?.data?.code === 'business_rule_violation' ||
@@ -89,7 +98,6 @@ export const TerminalPage = () => {
           setError("Ocurrió un error al cargar la terminal.");
         }
       } else {
-        // Para MANAGER u OWNER sin rol CASHIER, no mostramos pantalla de bloqueo si no tienen turno activo
         setSummary(null);
         setError(null);
       }
@@ -111,10 +119,10 @@ export const TerminalPage = () => {
     }
   };
 
-  const handlePaymentSuccess = (paidSaleId: string) => {
+  const handlePaymentSuccess = (_paidSaleId: string, _paidSaleNumber?: string) => {
     loadSummary();
     loadSales();
-    setRegisterCustomerSaleId(paidSaleId);
+    setRegisterCustomerSale(selectedSaleToPay);
   };
 
   // Filter Sales Logic
@@ -137,46 +145,57 @@ export const TerminalPage = () => {
     return true;
   });
 
-  const getStatusInfo = (status: any) => {
+  const getStatusInfo = (status: { code: number; label: string } | number) => {
     const code = typeof status === 'object' ? status.code : Number(status);
-    const label = typeof status === 'object' ? status.label : stockStatusLabel(code);
-
-    if (code === 601) {
-      return { code, label: label || 'Pendiente', badge: 'badge-warning text-warning-content', icon: Clock };
+    switch (code) {
+      case 601:
+        return { label: 'PENDIENTE', badge: 'badge-warning', icon: Clock };
+      case 602:
+        return { label: 'PAGADA', badge: 'badge-success', icon: CheckCircle2 };
+      case 603:
+        return { label: 'ANULADA', badge: 'badge-error', icon: XCircle };
+      case 604:
+        return { label: 'DEVOLUCIÓN', badge: 'badge-neutral', icon: AlertCircle };
+      default:
+        return { label: 'DESCONOCIDO', badge: 'badge-ghost', icon: AlertCircle };
     }
-    if (code === 602) {
-      return { code, label: label || 'Completada', badge: 'badge-success text-success-content', icon: CheckCircle2 };
-    }
-    if (code === 603) {
-      return { code, label: label || 'Cancelada', badge: 'badge-error text-error-content', icon: XCircle };
-    }
-    return { code, label: label || 'Estado ' + code, badge: 'badge-ghost', icon: AlertCircle };
   };
 
-  const stockStatusLabel = (code: number) => {
-    const found = saleStatusOptions.find(opt => Number(opt.value) === code);
-    return found ? found.label : (code === 601 ? 'Pendiente' : code === 602 ? 'Completada' : 'Cancelada');
-  };
+  if (!canAccessTerminal) {
+    return (
+      <div className="bg-base-100 rounded-2xl p-12 text-center shadow-sm border border-base-200 max-w-xl mx-auto mt-10">
+        <div className="w-16 h-16 rounded-full bg-error/10 text-error flex items-center justify-center mx-auto mb-4">
+          <AlertCircle size={32} />
+        </div>
+        <h2 className="text-2xl font-bold text-base-content mb-2">Acceso No Autorizado</h2>
+        <p className="text-base-content/60 mb-6">
+          No cuentas con los permisos necesarios para operar la terminal de cobro.
+        </p>
+        <Link to="/" className="btn btn-primary">
+          Ir al Inicio
+        </Link>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-[calc(100vh-100px)]">
+      <div className="flex flex-col justify-center items-center h-64 gap-4">
         <span className="loading loading-spinner loading-lg text-primary"></span>
+        <p className="text-base-content/60 text-sm font-medium">Verificando turno activo...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-[calc(100vh-100px)] gap-4 animate-fade-in">
-        <div className="w-24 h-24 rounded-full bg-warning/20 flex items-center justify-center text-warning mb-2 shadow-lg shadow-warning/10">
-          <AlertCircle size={48} />
+      <div className="bg-base-100 rounded-2xl p-12 text-center shadow-sm border border-base-200 max-w-xl mx-auto mt-10 animate-fade-in">
+        <div className="w-16 h-16 rounded-full bg-warning/10 text-warning flex items-center justify-center mx-auto mb-4">
+          <Clock size={32} />
         </div>
-        <h2 className="text-3xl font-bold text-base-content text-center max-w-md leading-tight">
+        <h2 className="text-2xl font-bold text-base-content mb-2">Sin Turno Activo</h2>
+        <p className="text-base-content/60 mb-6 leading-relaxed">
           {error}
-        </h2>
-        <p className="text-base-content/60 text-center max-w-sm mb-4">
-          Para poder utilizar la terminal de ventas, necesitas aperturar tu caja o que un administrador te asigne un turno.
         </p>
         <Link to="/pos/shifts" className="btn btn-primary gap-2 shadow-lg shadow-primary/30 text-white font-bold">
           <Clock size={18} /> Ir a Turnos y Arqueos
@@ -193,13 +212,13 @@ export const TerminalPage = () => {
           <h1 className="text-3xl font-bold text-base-content tracking-tight">Terminal de Cobro</h1>
           <p className="text-base-content/60 mt-1">Ventas registradas y cobro del turno activo</p>
         </div>
-        <button
-          type="button"
+        <ComerziaButton
+          variant="ghost"
+          label="Actualizar"
+          icon={<RefreshCw size={16} />}
+          className="btn-sm border border-base-200 text-base-content/70 hover:text-primary"
           onClick={() => { loadSummary(); loadSales(); }}
-          className="btn btn-ghost btn-sm gap-2 text-base-content/70 hover:text-primary cursor-pointer border border-base-200"
-        >
-          <RefreshCw size={16} /> Actualizar
-        </button>
+        />
       </div>
 
       {/* Summary Cards */}
@@ -218,13 +237,13 @@ export const TerminalPage = () => {
 
         <div className="bg-base-100 rounded-2xl p-6 shadow-sm border border-base-200">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-info/10 text-info flex items-center justify-center">
+            <div className="w-12 h-12 rounded-xl bg-secondary/10 text-secondary flex items-center justify-center">
               <Clock size={24} />
             </div>
             <div>
               <p className="text-base-content/60 text-sm font-medium">Apertura</p>
               <h3 className="text-xl font-bold">
-                {summary?.openedAt ? new Date(summary.openedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '-'}
+                {summary?.openedAt ? new Date(summary.openedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
               </h3>
             </div>
           </div>
@@ -236,8 +255,10 @@ export const TerminalPage = () => {
               <TrendingUp size={24} />
             </div>
             <div>
-              <p className="text-base-content/60 text-sm font-medium">Ingresos Totales</p>
-              <h3 className="text-xl font-bold">{currencyCode} {(summary?.totalInflows || 0).toFixed(2)}</h3>
+              <p className="text-base-content/60 text-sm font-medium">Total Ingresos</p>
+              <h3 className="text-xl font-bold text-success">
+                {currencyCode} {(summary?.totalInflows || 0).toFixed(2)}
+              </h3>
             </div>
           </div>
         </div>
@@ -248,58 +269,94 @@ export const TerminalPage = () => {
               <TrendingDown size={24} />
             </div>
             <div>
-              <p className="text-base-content/60 text-sm font-medium">Egresos Totales</p>
-              <h3 className="text-xl font-bold">{currencyCode} {(summary?.totalOutflows || 0).toFixed(2)}</h3>
+              <p className="text-base-content/60 text-sm font-medium">Total Egresos</p>
+              <h3 className="text-xl font-bold text-error">
+                {currencyCode} {(summary?.totalOutflows || 0).toFixed(2)}
+              </h3>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="bg-base-100 p-4 rounded-2xl shadow-sm border border-base-200 flex flex-col md:flex-row gap-4 items-center justify-between">
-        <div className="relative w-full md:w-80">
-          <div className="absolute inset-y-0 left-3.5 flex items-center pointer-events-none text-base-content/40">
-            <Search size={18} />
-          </div>
+      {/* Sales Management Filter Bar */}
+      <div className="bg-base-100 p-4 rounded-2xl shadow-sm border border-base-200 flex flex-col md:flex-row gap-4 justify-between items-center">
+        {/* Search */}
+        <div className="relative w-full md:w-96">
+          <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base-content/40" />
           <input
             type="text"
-            placeholder="Buscar por N° Venta o Vendedor..."
-            className="input input-bordered input-md w-full pl-10 bg-base-50 focus:outline-none focus:ring-2 focus:ring-primary/20"
+            placeholder="Buscar por N° Venta, vendedor o producto..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            className="input input-bordered w-full pl-10 bg-base-50 focus:bg-base-100 focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm"
           />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-base-content/40 hover:text-base-content"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
+        {/* Status Filter Tabs */}
+        <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
+          <span className="text-xs font-semibold text-base-content/50 uppercase tracking-wider flex items-center gap-1 shrink-0 mr-1">
+            <Filter size={14} /> Filtro:
+          </span>
+          <button
+            type="button"
+            onClick={() => setStatusFilter('all')}
+            className={`btn btn-sm rounded-xl font-medium ${statusFilter === 'all' ? 'btn-primary text-white shadow-sm' : 'btn-ghost text-base-content/70'}`}
+          >
+            Todas ({sales.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setStatusFilter('pending')}
+            className={`btn btn-sm rounded-xl font-medium ${statusFilter === 'pending' ? 'btn-warning text-warning-content shadow-sm' : 'btn-ghost text-base-content/70'}`}
+          >
+            Pendientes ({sales.filter(s => (typeof s.saleStatus === 'object' ? s.saleStatus.code : Number(s.saleStatus)) === 601).length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setStatusFilter('completed')}
+            className={`btn btn-sm rounded-xl font-medium ${statusFilter === 'completed' ? 'btn-success text-white shadow-sm' : 'btn-ghost text-base-content/70'}`}
+          >
+            Pagadas ({sales.filter(s => (typeof s.saleStatus === 'object' ? s.saleStatus.code : Number(s.saleStatus)) === 602).length})
+          </button>
         </div>
       </div>
 
-      {/* Sales Cards Grid */}
+      {/* Sales List Grid */}
       {isLoadingSales ? (
-        <div className="flex justify-center py-16">
+        <div className="flex justify-center p-12 bg-base-100 rounded-2xl border border-base-200">
           <span className="loading loading-spinner loading-lg text-primary"></span>
         </div>
       ) : filteredSales.length === 0 ? (
-        <div className="bg-base-100 rounded-2xl p-12 text-center border border-base-200 space-y-3">
-          <div className="w-16 h-16 rounded-full bg-base-200 flex items-center justify-center mx-auto text-base-content/40">
-            <Receipt size={32} />
-          </div>
+        <div className="bg-base-100 rounded-2xl p-12 text-center shadow-sm border border-base-200">
+          <ShoppingBag size={48} className="mx-auto text-base-content/20 mb-3" />
           <h3 className="text-lg font-bold text-base-content">No se encontraron ventas</h3>
-          <p className="text-sm text-base-content/60 max-w-sm mx-auto">
+          <p className="text-base-content/60 text-sm mt-1">
             {searchQuery || statusFilter !== 'all' 
-              ? 'Prueba a cambiar el filtro o el término de búsqueda.' 
-              : 'Las ventas creadas por los vendedores durante el turno aparecerán aquí.'}
+              ? 'Intenta cambiando los términos de búsqueda o los filtros.' 
+              : 'Las ventas creadas en caja aparecerán aquí listas para ser cobradas.'}
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 animate-slide-up">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {filteredSales.map((sale) => {
             const statusInfo = getStatusInfo(sale.saleStatus);
             const StatusIcon = statusInfo.icon;
-            const isPending = statusInfo.code === 601;
-            const isCompleted = statusInfo.code === 602;
+            const statusCode = typeof sale.saleStatus === 'object' ? sale.saleStatus.code : Number(sale.saleStatus);
+            const isPending = statusCode === 601;
+            const isCompleted = statusCode === 602;
 
             return (
               <div
                 key={sale.id}
-                className="bg-base-100 rounded-2xl p-5 border border-base-200 shadow-sm hover:shadow-md hover:border-primary/30 transition-all flex flex-col justify-between gap-4 group"
+                className="bg-base-100 rounded-2xl p-5 shadow-sm border border-base-200 hover:border-primary/40 transition-all flex flex-col justify-between gap-4 group"
               >
                 {/* Card Top Header */}
                 <div className="flex justify-between items-start gap-2 border-b border-base-200/60 pb-3">
@@ -310,7 +367,7 @@ export const TerminalPage = () => {
                     <div>
                       <span className="text-[11px] font-semibold text-base-content/50 uppercase tracking-wider block">N° Venta</span>
                       <h4 className="font-mono font-extrabold text-base text-primary">
-                        #{sale.saleNumber || sale.id.substring(0, 8)}
+                        {sale.saleNumber ? `#${sale.saleNumber}` : '-'}
                       </h4>
                     </div>
                   </div>
@@ -365,41 +422,35 @@ export const TerminalPage = () => {
                 {/* Card Action Buttons */}
                 <div className="space-y-2 pt-1">
                   {isPending ? (
-                    isCashierRole ? (
-                      <button
-                        type="button"
-                        onClick={() => setSelectedSaleToPay(sale)}
-                        className="btn btn-primary btn-sm w-full gap-2 text-white font-bold shadow-md shadow-primary/20 hover:scale-[1.01] transition-transform cursor-pointer"
-                      >
-                        <DollarSign size={16} /> Cobrar Venta
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        disabled
-                        title="Cobro deshabilitado: Solo usuarios con el rol Cajero pueden cobrar ventas"
-                        className="btn btn-primary btn-sm w-full gap-2 text-white font-bold opacity-50 cursor-not-allowed"
-                      >
-                        <DollarSign size={16} /> Cobrar Venta
-                      </button>
-                    )
+                    <ComerziaButton
+                      variant="primary"
+                      label="Cobrar Venta"
+                      icon={<DollarSign size={16} />}
+                      fullWidth
+                      className="btn-sm text-white font-bold shadow-md shadow-primary/20 hover:scale-[1.01]"
+                      disabled={!isCashierRole}
+                      title={!isCashierRole ? "Cobro deshabilitado: Solo usuarios con el rol Cajero pueden cobrar ventas" : undefined}
+                      onClick={() => setSelectedSaleToPay(sale)}
+                    />
                   ) : isCompleted ? (
-                    <button
-                      type="button"
-                      onClick={() => setRegisterCustomerSaleId(sale.id)}
-                      className="btn btn-outline btn-info btn-sm w-full gap-1.5 font-semibold cursor-pointer"
-                    >
-                      <UserPlus size={15} /> + Registrar Datos Cliente
-                    </button>
+                    <ComerziaButton
+                      variant="ghost"
+                      label="+ Registrar Datos Cliente"
+                      icon={<UserPlus size={15} />}
+                      fullWidth
+                      className="btn-sm border border-info text-info hover:bg-info/10 font-semibold"
+                      onClick={() => setRegisterCustomerSale(sale)}
+                    />
                   ) : null}
 
-                  <button
-                    type="button"
+                  <ComerziaButton
+                    variant="ghost"
+                    label="Ver Detalle de Venta"
+                    icon={<Eye size={16} />}
+                    fullWidth
+                    className="btn-sm text-base-content/70 hover:bg-base-200"
                     onClick={() => setSelectedSaleDetail(sale)}
-                    className="btn btn-ghost btn-sm w-full gap-2 text-base-content/70 hover:bg-base-200 cursor-pointer"
-                  >
-                    <Eye size={16} /> Ver Detalle de Venta
-                  </button>
+                  />
                 </div>
               </div>
             );
@@ -418,9 +469,10 @@ export const TerminalPage = () => {
 
       {/* Modal: Register Customer (Optional) */}
       <RegisterSaleCustomerModal
-        isOpen={!!registerCustomerSaleId}
-        onClose={() => setRegisterCustomerSaleId(null)}
-        saleId={registerCustomerSaleId}
+        isOpen={!!registerCustomerSale}
+        onClose={() => setRegisterCustomerSale(null)}
+        saleId={registerCustomerSale?.id || null}
+        saleNumber={registerCustomerSale?.saleNumber}
         onSuccess={() => {
           loadSales();
         }}

@@ -8,9 +8,10 @@ import { useToast } from '../../../context/ToastContext';
 import { ComerziaProductSearch } from '../components/ComerziaProductSearch';
 import { ComerziaModal } from '../../../components/ui/ComerziaModal';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
-import { BtnCancel } from '../../../components/ui/CrudButtons';
+import { ComerziaButton } from '../../../components/ui/ComerziaButton';
+import { BtnCancel, BtnDeleteIcon } from '../../../components/ui/CrudButtons';
 import type { CartItem } from '../store/useCartStore';
-import { AlertCircle, ArrowRight, Barcode, Hash, Scan, ShoppingCart, Store, Trash2 } from 'lucide-react';
+import { AlertCircle, ArrowRight, Barcode, Hash, Scan, ShoppingCart, Store } from 'lucide-react';
 
 interface QuantityControlProps {
   item: CartItem;
@@ -410,18 +411,20 @@ export const NewSalePage = () => {
                 <Scan size={18} className="text-primary" /> Selección de Productos
               </h2>
               <div className="flex items-center gap-2">
-                <button
+                <ComerziaButton
+                  variant="ghost"
+                  label="Buscar por SKU"
+                  icon={<Hash size={14} />}
+                  className="btn-xs text-base-content/70 hover:bg-base-200"
                   onClick={() => { setManualSearchTerm(''); setIsSkuModalOpen(true); }}
-                  className="btn btn-ghost btn-xs gap-1.5 text-base-content/70 hover:bg-base-200"
-                >
-                  <Hash size={14} /> Buscar por SKU
-                </button>
-                <button
+                />
+                <ComerziaButton
+                  variant="ghost"
+                  label="Buscar por Código Barras"
+                  icon={<Barcode size={14} />}
+                  className="btn-xs text-base-content/70 hover:bg-base-200"
                   onClick={() => { setManualSearchTerm(''); setIsBarcodeModalOpen(true); }}
-                  className="btn btn-ghost btn-xs gap-1.5 text-base-content/70 hover:bg-base-200"
-                >
-                  <Barcode size={14} /> Buscar por Código Barras
-                </button>
+                />
               </div>
             </div>
 
@@ -439,12 +442,12 @@ export const NewSalePage = () => {
                 <ShoppingCart size={16} className="text-primary" /> Productos en Pedido ({items.length})
               </span>
               {items.length > 0 && (
-                <button
+                <ComerziaButton
+                  variant="delete"
+                  label="Vaciar Carrito"
+                  className="btn-xs"
                   onClick={clearCart}
-                  className="btn btn-ghost btn-xs text-error hover:bg-error/10 gap-1"
-                >
-                  <Trash2 size={14} /> Vaciar Carrito
-                </button>
+                />
               )}
             </div>
 
@@ -556,12 +559,9 @@ export const NewSalePage = () => {
                             {currency} {finalTotal.toFixed(2)}
                           </td>
                           <td className="text-right">
-                            <button
-                              className="btn btn-ghost btn-xs text-error hover:bg-error/10 rounded-md"
+                            <BtnDeleteIcon
                               onClick={() => removeItem(item.productVariantId)}
-                            >
-                              <Trash2 size={16} />
-                            </button>
+                            />
                           </td>
                         </tr>
                       );
@@ -585,7 +585,7 @@ export const NewSalePage = () => {
                 <span>Subtotal</span>
                 <span className="font-mono">{currency} {getSubtotal().toFixed(2)}</span>
               </div>
-              <div className="flex justify-between text-info">
+              <div className="flex justify-between text-error">
                 <span>Descuento Aplicado</span>
                 <span className="font-mono">-{currency} {getDiscountedAmount().toFixed(2)}</span>
               </div>
@@ -597,14 +597,15 @@ export const NewSalePage = () => {
               </div>
             </div>
 
-            <button
-              onClick={handleSendToRegister}
+            <ComerziaButton
+              variant="primary"
+              label="Enviar a Caja"
+              icon={<ArrowRight size={20} />}
+              className="shadow-lg shadow-primary/20 text-base font-bold"
+              fullWidth
               disabled={items.length === 0}
-              className="btn btn-primary w-full shadow-lg shadow-primary/20 gap-2 text-base font-bold"
-            >
-              Enviar a Caja
-              <ArrowRight size={20} />
-            </button>
+              onClick={handleSendToRegister}
+            />
           </div>
         </div>
       </div>
@@ -625,13 +626,13 @@ export const NewSalePage = () => {
           />
           <div className="flex justify-end gap-2 mt-6">
             <BtnCancel onClick={() => setIsSkuModalOpen(false)} />
-            <button 
-              className="btn btn-primary" 
+            <ComerziaButton
+              variant="primary"
+              label="Buscar"
               onClick={() => handleManualSearch('sku')}
               disabled={!manualSearchTerm.trim() || isManualSearching}
-            >
-              {isManualSearching ? <span className="loading loading-spinner loading-sm" /> : "Buscar"}
-            </button>
+              isLoading={isManualSearching}
+            />
           </div>
         </div>
       </ComerziaModal>
@@ -652,13 +653,13 @@ export const NewSalePage = () => {
           />
           <div className="flex justify-end gap-2 mt-6">
             <BtnCancel onClick={() => setIsBarcodeModalOpen(false)} />
-            <button 
-              className="btn btn-primary" 
+            <ComerziaButton
+              variant="primary"
+              label="Buscar"
               onClick={() => handleManualSearch('barcode')}
               disabled={!manualSearchTerm.trim() || isManualSearching}
-            >
-              {isManualSearching ? <span className="loading loading-spinner loading-sm" /> : "Buscar"}
-            </button>
+              isLoading={isManualSearching}
+            />
           </div>
         </div>
       </ComerziaModal>
