@@ -52,6 +52,11 @@ export const salesService = {
     return response.data;
   },
 
+  getPendingSales: async (): Promise<SaleResponse[]> => {
+    const response = await api.get<SaleResponse[]>('/tenant/sales/pending');
+    return response.data;
+  },
+
   updatePendingSale: async (saleId: string, data: UpdateSaleRequest): Promise<SaleResponse> => {
     const response = await api.put<SaleResponse>(`/tenant/sales/${saleId}`, data);
     return response.data;

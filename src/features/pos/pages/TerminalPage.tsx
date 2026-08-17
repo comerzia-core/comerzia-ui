@@ -10,110 +10,109 @@ import {
   TrendingUp, 
   TrendingDown, 
   DollarSign, 
-  UserPlus, 
   Eye, 
   RefreshCw,
   Receipt,
   User,
   Calendar,
   ShoppingBag,
-  CheckCircle2,
-  XCircle,
+  Trash2,
+  AlertTriangle,
   Search,
-  Filter
+  UserCheck
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../../../stores/useAuthStore';
+import { useToast } from '../../../context/ToastContext';
 import { PaySaleModal } from '../../sales/components/PaySaleModal';
 import { RegisterSaleCustomerModal } from '../../sales/components/RegisterSaleCustomerModal';
 import { SaleDetailsModal } from '../../sales/components/SaleDetailsModal';
+import { ComerziaModal } from '../../../components/ui/ComerziaModal';
 import { ComerziaButton } from '../../../components/ui/ComerziaButton';
-import { useLoadDictionaries } from '../../../hooks/useLoadDictionaries';
-import { DICTIONARIES } from '../../../config/dictionaries';
+import { BtnCancel, BtnModalYes } from '../../../components/ui/CrudButtons';
 
 export const TerminalPage = () => {
   const [summary, setSummary] = useState<ShiftSummaryResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Sales List State
-  const [sales, setSales] = useState<SaleResponse[]>([]);
+  // Sales List State (Pending sales from /tenant/sales/pending)
+  const [pendingSales, setPendingSales] = useState<SaleResponse[]>([]);
   const [isLoadingSales, setIsLoadingSales] = useState(false);
 
   // Filter & Search State
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'completed'>('all');
 
   // Modals State
   const [selectedSaleToPay, setSelectedSaleToPay] = useState<SaleResponse | null>(null);
   const [selectedSaleDetail, setSelectedSaleDetail] = useState<SaleResponse | null>(null);
   const [registerCustomerSale, setRegisterCustomerSale] = useState<SaleResponse | null>(null);
 
+  // Modal Cancelar Venta
+  const [cancelingSale, setCancelingSale] = useState<SaleResponse | null>(null);
+  const [isCanceling, setIsCanceling] = useState(false);
+
   const { userProfile, hasPermission, hasRole } = useAuthStore();
+  const { success: toastSuccess, error: toastError } = useToast();
   const roles = userProfile?.roles || [];
   
   const isCashierRole = hasRole('CASHIER') || roles.includes('CASHIER');
   const isManagerOrOwner = hasRole('BRANCH_MANAGER') || roles.includes('BRANCH_MANAGER') || hasRole('OWNER') || roles.includes('OWNER') || hasRole('ADMIN') || roles.includes('ADMIN');
-  const canAccessTerminal = isCashierRole || isManagerOrOwner || hasPermission('SAL_SALES_READ');
+  const canAccessTerminal = isCashierRole || isManagerOrOwner || hasPermission('SAL_SALES_READ') || hasPermission('SAL_PROCESS_PAYMENT');
   
-  const currencyCode = userProfile?.companySettings?.currencyCode || 'USD';
+  // Permisos para acciones de cobro y cancelación
+  const canProcessPayment = hasPermission('SAL_PROCESS_PAYMENT') || isCashierRole || hasRole('OWNER') || hasRole('ADMIN');
+  const canCancelSale = hasPermission('SAL_SALES_CANCEL') || hasRole('OWNER') || hasRole('ADMIN');
 
-  const { options } = useLoadDictionaries([DICTIONARIES.SALE_STATUS]);
-  const saleStatusOptions = options[DICTIONARIES.SALE_STATUS] || [];
+  const currencyCode = userProfile?.companySettings?.currencyCode || 'USD';
 
   useEffect(() => {
     if (canAccessTerminal) {
       loadSummary();
-      loadSales();
+      loadPendingSales();
     }
   }, []);
 
   const loadSummary = async () => {
+    // Si no es cajero, no consultamos turno activo ni mostramos arqueo
+    if (!isCashierRole) {
+      setSummary(null);
+      setError(null);
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     try {
-      if (isManagerOrOwner) {
-        const summaries = await posService.getAllActiveShiftSummaries();
-        if (summaries && summaries.length > 0) {
-          setSummary(summaries[0]);
-        } else {
-          setSummary(null);
-        }
-      } else {
-        const data = await posService.getMyActiveShiftSummary();
-        setSummary(data);
-      }
+      const data = await posService.getMyActiveShiftSummary();
+      setSummary(data);
     } catch (err: any) {
       console.error("Error al cargar resumen del turno:", err);
-      if (isCashierRole) {
-        if (
-          err.response?.data?.code === 'business_rule_violation' ||
-          err.response?.status === 404 ||
-          err.response?.status === 400 ||
-          err.response?.data?.message?.includes("OPEN shift") ||
-          err.response?.data?.message?.includes("active shift")
-        ) {
-          setError("Aún no tienes un turno asignado. Ve a Turnos y Arqueos para abrir tu caja.");
-        } else {
-          setError("Ocurrió un error al cargar la terminal.");
-        }
+      if (
+        err.response?.data?.code === 'business_rule_violation' ||
+        err.response?.status === 404 ||
+        err.response?.status === 400 ||
+        err.response?.data?.message?.includes("OPEN shift") ||
+        err.response?.data?.message?.includes("active shift")
+      ) {
+        setError("Aún no tienes un turno asignado. Ve a Turnos y Arqueos para abrir tu caja.");
       } else {
-        setSummary(null);
-        setError(null);
+        setError("Ocurrió un error al cargar la terminal.");
       }
     } finally {
       setIsLoading(false);
     }
   };
 
-  const loadSales = async () => {
+  const loadPendingSales = async () => {
     setIsLoadingSales(true);
     try {
-      const data = await salesService.getMyShiftSales();
-      setSales(data || []);
+      const data = await salesService.getPendingSales();
+      setPendingSales(data || []);
     } catch (err) {
-      console.error("Error al cargar ventas del turno:", err);
-      setSales([]);
+      console.error("Error al cargar ventas pendientes:", err);
+      setPendingSales([]);
     } finally {
       setIsLoadingSales(false);
     }
@@ -121,45 +120,37 @@ export const TerminalPage = () => {
 
   const handlePaymentSuccess = (_paidSaleId: string, _paidSaleNumber?: string) => {
     loadSummary();
-    loadSales();
+    loadPendingSales();
     setRegisterCustomerSale(selectedSaleToPay);
   };
 
-  // Filter Sales Logic
-  const filteredSales = sales.filter((sale) => {
-    const code = typeof sale.saleStatus === 'object' ? sale.saleStatus.code : Number(sale.saleStatus);
-    
-    // Status Filter
-    if (statusFilter === 'pending' && code !== 601) return false;
-    if (statusFilter === 'completed' && code !== 602) return false;
-
-    // Search Query Filter
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      const matchNum = sale.saleNumber?.toLowerCase().includes(query) || sale.id.toLowerCase().includes(query);
-      const matchUser = sale.employeeUsername?.toLowerCase().includes(query);
-      const matchItem = sale.details?.some(d => d.productName?.toLowerCase().includes(query) || d.variantName?.toLowerCase().includes(query));
-      return matchNum || matchUser || matchItem;
-    }
-
-    return true;
-  });
-
-  const getStatusInfo = (status: { code: number; label: string } | number) => {
-    const code = typeof status === 'object' ? status.code : Number(status);
-    switch (code) {
-      case 601:
-        return { label: 'PENDIENTE', badge: 'badge-warning', icon: Clock };
-      case 602:
-        return { label: 'PAGADA', badge: 'badge-success', icon: CheckCircle2 };
-      case 603:
-        return { label: 'ANULADA', badge: 'badge-error', icon: XCircle };
-      case 604:
-        return { label: 'DEVOLUCIÓN', badge: 'badge-neutral', icon: AlertCircle };
-      default:
-        return { label: 'DESCONOCIDO', badge: 'badge-ghost', icon: AlertCircle };
+  // Cancelar venta pendiente
+  const handleConfirmCancelSale = async () => {
+    if (!cancelingSale) return;
+    setIsCanceling(true);
+    try {
+      await salesService.cancelPendingSale(cancelingSale.id);
+      toastSuccess(`Venta ${cancelingSale.saleNumber ? `#${cancelingSale.saleNumber}` : ''} cancelada correctamente.`);
+      setCancelingSale(null);
+      loadPendingSales();
+    } catch (err: any) {
+      const msg = err.response?.data?.message || "Error al cancelar la venta pendiente.";
+      toastError(msg);
+    } finally {
+      setIsCanceling(false);
     }
   };
+
+  // Filtrado de Ventas Pendientes
+  const filteredSales = pendingSales.filter((sale) => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    const matchNum = sale.saleNumber?.toLowerCase().includes(query) || sale.id.toLowerCase().includes(query);
+    const matchUser = sale.employeeUsername?.toLowerCase().includes(query);
+    const matchCustomer = sale.customer?.fullName?.toLowerCase().includes(query) || sale.customer?.firstName?.toLowerCase().includes(query) || sale.customer?.documentNumber?.toLowerCase().includes(query);
+    const matchItem = sale.details?.some(d => d.productName?.toLowerCase().includes(query) || d.variantName?.toLowerCase().includes(query));
+    return matchNum || matchUser || matchCustomer || matchItem;
+  });
 
   if (!canAccessTerminal) {
     return (
@@ -205,78 +196,80 @@ export const TerminalPage = () => {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-base-content tracking-tight">Terminal de Cobro</h1>
-          <p className="text-base-content/60 mt-1">Ventas registradas y cobro del turno activo</p>
+          <p className="text-base-content/60 mt-1">Gestión de cobros para ventas pendientes del turno</p>
         </div>
         <ComerziaButton
           variant="ghost"
           label="Actualizar"
           icon={<RefreshCw size={16} />}
           className="btn-sm border border-base-200 text-base-content/70 hover:text-primary"
-          onClick={() => { loadSummary(); loadSales(); }}
+          onClick={() => { loadSummary(); loadPendingSales(); }}
         />
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-base-100 rounded-2xl p-6 shadow-sm border border-base-200">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-              <ShoppingCart size={24} />
-            </div>
-            <div>
-              <p className="text-base-content/60 text-sm font-medium">Caja Activa</p>
-              <h3 className="text-xl font-bold">{summary?.cashName || 'Sin Caja'}</h3>
+      {/* Summary Cards: Solo para cajeros con turno activo */}
+      {isCashierRole && summary && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="bg-base-100 rounded-2xl p-6 shadow-sm border border-base-200">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                <ShoppingCart size={24} />
+              </div>
+              <div>
+                <p className="text-base-content/60 text-sm font-medium">Caja Activa</p>
+                <h3 className="text-xl font-bold">{summary.cashName || 'Sin Caja'}</h3>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="bg-base-100 rounded-2xl p-6 shadow-sm border border-base-200">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-secondary/10 text-secondary flex items-center justify-center">
-              <Clock size={24} />
-            </div>
-            <div>
-              <p className="text-base-content/60 text-sm font-medium">Apertura</p>
-              <h3 className="text-xl font-bold">
-                {summary?.openedAt ? new Date(summary.openedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
-              </h3>
+          <div className="bg-base-100 rounded-2xl p-6 shadow-sm border border-base-200">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-secondary/10 text-secondary flex items-center justify-center">
+                <Clock size={24} />
+              </div>
+              <div>
+                <p className="text-base-content/60 text-sm font-medium">Apertura</p>
+                <h3 className="text-xl font-bold">
+                  {summary.openedAt ? new Date(summary.openedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                </h3>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="bg-base-100 rounded-2xl p-6 shadow-sm border border-base-200">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-success/10 text-success flex items-center justify-center">
-              <TrendingUp size={24} />
-            </div>
-            <div>
-              <p className="text-base-content/60 text-sm font-medium">Total Ingresos</p>
-              <h3 className="text-xl font-bold text-success">
-                {currencyCode} {(summary?.totalInflows || 0).toFixed(2)}
-              </h3>
+          <div className="bg-base-100 rounded-2xl p-6 shadow-sm border border-base-200">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-success/10 text-success flex items-center justify-center">
+                <TrendingUp size={24} />
+              </div>
+              <div>
+                <p className="text-base-content/60 text-sm font-medium">Total Ingresos</p>
+                <h3 className="text-xl font-bold text-success">
+                  {currencyCode} {(summary.totalInflows || 0).toFixed(2)}
+                </h3>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="bg-base-100 rounded-2xl p-6 shadow-sm border border-base-200">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-error/10 text-error flex items-center justify-center">
-              <TrendingDown size={24} />
-            </div>
-            <div>
-              <p className="text-base-content/60 text-sm font-medium">Total Egresos</p>
-              <h3 className="text-xl font-bold text-error">
-                {currencyCode} {(summary?.totalOutflows || 0).toFixed(2)}
-              </h3>
+          <div className="bg-base-100 rounded-2xl p-6 shadow-sm border border-base-200">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-error/10 text-error flex items-center justify-center">
+                <TrendingDown size={24} />
+              </div>
+              <div>
+                <p className="text-base-content/60 text-sm font-medium">Total Egresos</p>
+                <h3 className="text-xl font-bold text-error">
+                  {currencyCode} {(summary.totalOutflows || 0).toFixed(2)}
+                </h3>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Sales Management Filter Bar */}
       <div className="bg-base-100 p-4 rounded-2xl shadow-sm border border-base-200 flex flex-col md:flex-row gap-4 justify-between items-center">
@@ -285,7 +278,7 @@ export const TerminalPage = () => {
           <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base-content/40" />
           <input
             type="text"
-            placeholder="Buscar por N° Venta, vendedor o producto..."
+            placeholder="Buscar por N° Venta, vendedor, cliente o producto..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="input input-bordered w-full pl-10 bg-base-50 focus:bg-base-100 focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm"
@@ -293,39 +286,19 @@ export const TerminalPage = () => {
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-base-content/40 hover:text-base-content"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-base-content/40 hover:text-base-content cursor-pointer"
             >
               ✕
             </button>
           )}
         </div>
 
-        {/* Status Filter Tabs */}
-        <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
-          <span className="text-xs font-semibold text-base-content/50 uppercase tracking-wider flex items-center gap-1 shrink-0 mr-1">
-            <Filter size={14} /> Filtro:
+        {/* Count Badge */}
+        <div className="flex items-center gap-2">
+          <span className="badge badge-warning font-semibold text-xs py-3 px-3 gap-1.5">
+            <Clock size={14} />
+            Pendientes de Cobro ({pendingSales.length})
           </span>
-          <button
-            type="button"
-            onClick={() => setStatusFilter('all')}
-            className={`btn btn-sm rounded-xl font-medium ${statusFilter === 'all' ? 'btn-primary text-white shadow-sm' : 'btn-ghost text-base-content/70'}`}
-          >
-            Todas ({sales.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setStatusFilter('pending')}
-            className={`btn btn-sm rounded-xl font-medium ${statusFilter === 'pending' ? 'btn-warning text-warning-content shadow-sm' : 'btn-ghost text-base-content/70'}`}
-          >
-            Pendientes ({sales.filter(s => (typeof s.saleStatus === 'object' ? s.saleStatus.code : Number(s.saleStatus)) === 601).length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setStatusFilter('completed')}
-            className={`btn btn-sm rounded-xl font-medium ${statusFilter === 'completed' ? 'btn-success text-white shadow-sm' : 'btn-ghost text-base-content/70'}`}
-          >
-            Pagadas ({sales.filter(s => (typeof s.saleStatus === 'object' ? s.saleStatus.code : Number(s.saleStatus)) === 602).length})
-          </button>
         </div>
       </div>
 
@@ -337,22 +310,16 @@ export const TerminalPage = () => {
       ) : filteredSales.length === 0 ? (
         <div className="bg-base-100 rounded-2xl p-12 text-center shadow-sm border border-base-200">
           <ShoppingBag size={48} className="mx-auto text-base-content/20 mb-3" />
-          <h3 className="text-lg font-bold text-base-content">No se encontraron ventas</h3>
+          <h3 className="text-lg font-bold text-base-content">No hay ventas pendientes de cobro</h3>
           <p className="text-base-content/60 text-sm mt-1">
-            {searchQuery || statusFilter !== 'all' 
-              ? 'Intenta cambiando los términos de búsqueda o los filtros.' 
+            {searchQuery 
+              ? 'No se encontraron resultados para los términos de búsqueda.' 
               : 'Las ventas creadas en caja aparecerán aquí listas para ser cobradas.'}
           </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {filteredSales.map((sale) => {
-            const statusInfo = getStatusInfo(sale.saleStatus);
-            const StatusIcon = statusInfo.icon;
-            const statusCode = typeof sale.saleStatus === 'object' ? sale.saleStatus.code : Number(sale.saleStatus);
-            const isPending = statusCode === 601;
-            const isCompleted = statusCode === 602;
-
             return (
               <div
                 key={sale.id}
@@ -366,15 +333,22 @@ export const TerminalPage = () => {
                     </div>
                     <div>
                       <span className="text-[11px] font-semibold text-base-content/50 uppercase tracking-wider block">N° Venta</span>
-                      <h4 className="font-mono font-extrabold text-base text-primary">
-                        {sale.saleNumber ? `#${sale.saleNumber}` : '-'}
-                      </h4>
+                      <div className="flex items-center gap-1.5">
+                        <h4 className="font-mono font-extrabold text-base text-primary">
+                          {sale.saleNumber ? `#${sale.saleNumber}` : '-'}
+                        </h4>
+                        {sale.customer && (
+                          <div className="tooltip tooltip-right" data-tip={`Cliente: ${sale.customer.fullName || sale.customer.firstName}`}>
+                            <UserCheck size={16} className="text-primary shrink-0 cursor-pointer" />
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
 
-                  <span className={`badge badge-sm ${statusInfo.badge} gap-1 py-2 px-2.5 font-semibold shrink-0`}>
-                    <StatusIcon size={13} />
-                    {statusInfo.label}
+                  <span className="badge badge-sm badge-warning gap-1 py-2 px-2.5 font-semibold shrink-0">
+                    <Clock size={13} />
+                    PENDIENTE
                   </span>
                 </div>
 
@@ -386,6 +360,17 @@ export const TerminalPage = () => {
                     </span>
                     <strong className="text-base-content font-bold">{sale.employeeUsername || 'No asignado'}</strong>
                   </div>
+
+                  {sale.customer && (
+                    <div className="flex justify-between items-center text-base-content/70">
+                      <span className="flex items-center gap-1.5 font-medium">
+                        <UserCheck size={14} className="text-success" /> Cliente:
+                      </span>
+                      <strong className="text-base-content truncate max-w-[170px]" title={sale.customer.fullName || sale.customer.firstName}>
+                        {sale.customer.fullName || sale.customer.firstName}
+                      </strong>
+                    </div>
+                  )}
 
                   <div className="flex justify-between items-center text-base-content/70">
                     <span className="flex items-center gap-1.5">
@@ -404,7 +389,7 @@ export const TerminalPage = () => {
                   </div>
 
                   {sale.discountedAmount > 0 && (
-                    <div className="flex justify-between items-center text-success">
+                    <div className="flex justify-between items-center text-error">
                       <span>Descuento aplicado:</span>
                       <span className="font-bold">-{currencyCode} {sale.discountedAmount.toFixed(2)}</span>
                     </div>
@@ -414,43 +399,48 @@ export const TerminalPage = () => {
                 {/* Card Total Price Banner */}
                 <div className="bg-base-200/50 p-3 rounded-xl flex justify-between items-center border border-base-200">
                   <span className="text-xs font-semibold text-base-content/60 uppercase">Monto Total</span>
-                  <span className="text-xl font-extrabold text-primary">
+                  <span className="text-xl font-extrabold text-primary font-mono">
                     {currencyCode} {(sale.totalAmount || 0).toFixed(2)}
                   </span>
                 </div>
 
                 {/* Card Action Buttons */}
                 <div className="space-y-2 pt-1">
-                  {isPending ? (
-                    <ComerziaButton
-                      variant="primary"
-                      label="Cobrar Venta"
-                      icon={<DollarSign size={16} />}
-                      fullWidth
-                      className="btn-sm text-white font-bold shadow-md shadow-primary/20 hover:scale-[1.01]"
-                      disabled={!isCashierRole}
-                      title={!isCashierRole ? "Cobro deshabilitado: Solo usuarios con el rol Cajero pueden cobrar ventas" : undefined}
-                      onClick={() => setSelectedSaleToPay(sale)}
-                    />
-                  ) : isCompleted ? (
+                  {/* Botón Cobrar Venta */}
+                  <ComerziaButton
+                    variant="primary"
+                    label="Cobrar Venta"
+                    icon={<DollarSign size={16} />}
+                    fullWidth
+                    className="btn-sm text-white font-bold shadow-md shadow-primary/20 hover:scale-[1.01]"
+                    disabled={!canProcessPayment}
+                    title={!canProcessPayment ? "Cobro deshabilitado: Se requiere permiso de cobro de ventas (SAL_PROCESS_PAYMENT)" : undefined}
+                    onClick={() => setSelectedSaleToPay(sale)}
+                  />
+
+                  <div className="grid grid-cols-2 gap-2">
+                    {/* Botón Ver Detalle */}
                     <ComerziaButton
                       variant="ghost"
-                      label="+ Registrar Datos Cliente"
-                      icon={<UserPlus size={15} />}
+                      label="Ver Detalle"
+                      icon={<Eye size={15} />}
                       fullWidth
-                      className="btn-sm border border-info text-info hover:bg-info/10 font-semibold"
-                      onClick={() => setRegisterCustomerSale(sale)}
+                      className="btn-sm border border-base-200 text-base-content/70 hover:bg-base-200 hover:text-base-content"
+                      onClick={() => setSelectedSaleDetail(sale)}
                     />
-                  ) : null}
 
-                  <ComerziaButton
-                    variant="ghost"
-                    label="Ver Detalle de Venta"
-                    icon={<Eye size={16} />}
-                    fullWidth
-                    className="btn-sm text-base-content/70 hover:bg-base-200"
-                    onClick={() => setSelectedSaleDetail(sale)}
-                  />
+                    {/* Botón Cancelar Venta */}
+                    {canCancelSale && (
+                      <ComerziaButton
+                        variant="cancel"
+                        label="Cancelar"
+                        icon={<Trash2 size={15} />}
+                        fullWidth
+                        className="btn-sm text-white font-semibold"
+                        onClick={() => setCancelingSale(sale)}
+                      />
+                    )}
+                  </div>
                 </div>
               </div>
             );
@@ -458,7 +448,7 @@ export const TerminalPage = () => {
         </div>
       )}
 
-      {/* Modal: Process Payment */}
+      {/* Modal: Procesar Cobro */}
       <PaySaleModal
         isOpen={!!selectedSaleToPay}
         onClose={() => setSelectedSaleToPay(null)}
@@ -467,23 +457,49 @@ export const TerminalPage = () => {
         onPaymentSuccess={handlePaymentSuccess}
       />
 
-      {/* Modal: Register Customer (Optional) */}
+      {/* Modal: Registrar / Vincular Cliente (Opcional tras pago) */}
       <RegisterSaleCustomerModal
         isOpen={!!registerCustomerSale}
         onClose={() => setRegisterCustomerSale(null)}
         saleId={registerCustomerSale?.id || null}
         saleNumber={registerCustomerSale?.saleNumber}
         onSuccess={() => {
-          loadSales();
+          loadPendingSales();
         }}
       />
 
-      {/* Modal: Sale Details */}
+      {/* Modal: Ver Detalle de Items de la Venta */}
       <SaleDetailsModal
         isOpen={!!selectedSaleDetail}
         onClose={() => setSelectedSaleDetail(null)}
         sale={selectedSaleDetail}
       />
+
+      {/* Modal: Confirmar Cancelación de Venta */}
+      <ComerziaModal
+        isOpen={!!cancelingSale}
+        onClose={() => setCancelingSale(null)}
+        title="Confirmar Cancelación de Venta"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 text-warning">
+            <AlertTriangle size={32} />
+            <p className="font-semibold text-lg">¿Estás seguro de cancelar esta venta?</p>
+          </div>
+          <p className="text-sm text-base-content/60">
+            Esta acción abortará la venta pendiente {cancelingSale?.saleNumber ? `#${cancelingSale.saleNumber}` : ''} y devolverá inmediatamente los productos reservados a su stock físico original.
+          </p>
+          <div className="flex justify-end gap-2 mt-6">
+            <BtnCancel onClick={() => setCancelingSale(null)} disabled={isCanceling} />
+            <BtnModalYes
+              label="Sí, Cancelar Venta"
+              onClick={handleConfirmCancelSale}
+              isLoading={isCanceling}
+              disabled={isCanceling}
+            />
+          </div>
+        </div>
+      </ComerziaModal>
     </div>
   );
 };

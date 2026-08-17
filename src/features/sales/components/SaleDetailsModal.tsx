@@ -41,7 +41,7 @@ export const SaleDetailsModal = ({ isOpen, onClose, sale }: Props) => {
       render: (row) => {
         const discount = row.lineTotalDiscount ?? row.unitDiscountAmount ?? 0;
         return discount > 0 ? (
-          <span className="text-success font-medium">-{currencyCode} {discount.toFixed(2)}</span>
+          <span className="text-error font-medium">-{currencyCode} {discount.toFixed(2)}</span>
         ) : (
           <span className="text-base-content/40">-</span>
         );

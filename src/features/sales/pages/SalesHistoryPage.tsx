@@ -475,26 +475,15 @@ export const SalesHistoryPage = () => {
             )}
 
             {/* Si la venta está PENDING (601) */}
-            {getStatusCode(contextMenu.sale.saleStatus) === 601 && (
-              <>
-                <ContextMenuItem
-                  icon={Edit}
-                  label="Modificar Pedido"
-                  onClick={() => {
-                    if (contextMenu.sale) startEditSale(contextMenu.sale);
-                  }}
-                />
-                {canCancel && (
-                  <ContextMenuItem
-                    icon={Trash2}
-                    label="Cancelar Venta"
-                    variant="error"
-                    onClick={() => {
-                      if (contextMenu.sale) setCancelingSaleId(contextMenu.sale.id);
-                    }}
-                  />
-                )}
-              </>
+            {getStatusCode(contextMenu.sale.saleStatus) === 601 && canCancel && (
+              <ContextMenuItem
+                icon={Trash2}
+                label="Cancelar Venta"
+                variant="error"
+                onClick={() => {
+                  if (contextMenu.sale) setCancelingSaleId(contextMenu.sale.id);
+                }}
+              />
             )}
 
             {/* Si la venta está COMPLETED (602) o PARTIALLY_REFUNDED (605) */}
