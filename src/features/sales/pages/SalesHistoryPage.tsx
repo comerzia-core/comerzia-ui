@@ -61,13 +61,6 @@ export const SalesHistoryPage = () => {
   const [cancelingSaleId, setCancelingSaleId] = useState<string | null>(null);
   const [isCanceling, setIsCanceling] = useState(false);
 
-  // Estados de Devolución
-  const [returningSale, setReturningSale] = useState<SaleResponse | null>(null);
-  const [returnReason, setReturnReason] = useState('');
-  const [returnQtys, setReturnQtys] = useState<Record<string, number>>({});
-  const [isSubmittingReturn, setIsSubmittingReturn] = useState(false);
-  const [returnShakeKey, setReturnShakeKey] = useState(0);
-
   const currency = userProfile?.companySettings?.currencyCode || 'USD';
 
   useEffect(() => {
@@ -266,75 +259,6 @@ export const SalesHistoryPage = () => {
     }
   };
 
-  // Abrir Modal de Devolución
-  const openReturnModal = (sale: SaleResponse) => {
-    setReturningSale(sale);
-    setReturnReason('');
-    const initialQtys: Record<string, number> = {};
-    (sale.details || []).forEach(d => {
-      initialQtys[d.id] = 0;
-    });
-    setReturnQtys(initialQtys);
-    setReturnShakeKey(0);
-  };
-
-  // Devolver todo
-  const handleSelectAllToReturn = () => {
-    if (!returningSale) return;
-    const allQtys: Record<string, number> = {};
-    (returningSale.details || []).forEach(d => {
-      allQtys[d.id] = d.receiptQuantity ?? d.unitQuantity ?? 1;
-    });
-    setReturnQtys(allQtys);
-  };
-
-  // Calcular total a reembolsar
-  const calculateRefundTotal = () => {
-    if (!returningSale) return 0;
-    return (returningSale.details || []).reduce((acc, d) => {
-      const qty = returnQtys[d.id] || 0;
-      const unitPrice = d.receiptUnitPrice ?? d.unitSalePrice ?? 0;
-      return acc + unitPrice * qty;
-    }, 0);
-  };
-
-  // Procesar Devolución (602 o 605)
-  const handleSubmitReturn = async () => {
-    if (!returningSale) return;
-    if (!returnReason.trim()) {
-      setReturnShakeKey(prev => prev + 1);
-      toastError("Debes especificar el motivo de la devolución.");
-      return;
-    }
-
-    const returnDetails = Object.entries(returnQtys)
-      .filter(([_, qty]) => qty > 0)
-      .map(([detailId, qty]) => ({
-        saleDetailId: detailId,
-        quantityToReturn: qty
-      }));
-
-    if (returnDetails.length === 0) {
-      toastWarning("Debes seleccionar al menos un producto y una cantidad mayor a 0 para devolver.");
-      return;
-    }
-
-    setIsSubmittingReturn(true);
-    try {
-      await salesService.processReturn(returningSale.id, {
-        reason: returnReason.trim(),
-        returnDetails
-      });
-      toastSuccess("Devolución procesada y registrada exitosamente. Inventario y caja actualizados.");
-      setReturningSale(null);
-      loadSales();
-    } catch (err: any) {
-      toastError(err.response?.data?.message || "Ocurrió un error al procesar la devolución.");
-    } finally {
-      setIsSubmittingReturn(false);
-    }
-  };
-
   // Configuración de Badges de Estado (6 Estados Oficiales)
   const renderStatusBadge = (status: number | { code: number; label: string } | undefined) => {
     const code = getStatusCode(status);
@@ -461,7 +385,7 @@ export const SalesHistoryPage = () => {
                 }}
               />
             ) : (
-              canManageSales && (
+              canManageSales && getStatusCode(contextMenu.sale.saleStatus) === 602 && (
                 <ContextMenuItem
                   icon={UserPlus}
                   label="Asignar Cliente"
@@ -491,8 +415,11 @@ export const SalesHistoryPage = () => {
               <ContextMenuItem
                 icon={RotateCcw}
                 label="Procesar Devolución"
+                isExternalLink
                 onClick={() => {
-                  if (contextMenu.sale) openReturnModal(contextMenu.sale);
+                  if (contextMenu.sale?.saleNumber) {
+                    window.open(`/sales/returns/${encodeURIComponent(contextMenu.sale.saleNumber)}`, '_blank');
+                  }
                 }}
               />
             )}
@@ -592,123 +519,6 @@ export const SalesHistoryPage = () => {
             />
           </div>
         </div>
-      </ComerziaModal>
-
-      {/* MODAL PROCESAR DEVOLUCIÓN (602 COMPLETED / 605 PARTIALLY_REFUNDED) */}
-      <ComerziaModal
-        isOpen={!!returningSale}
-        onClose={() => setReturningSale(null)}
-        title={`Procesar Devolución ${returningSale?.saleNumber ? `- Venta #${returningSale.saleNumber}` : ''}`}
-        size="xl"
-      >
-        {returningSale && (
-          <div className="space-y-5">
-            <div className="bg-info/10 border border-info/20 p-4 rounded-xl flex items-center justify-between gap-4 text-xs text-base-content">
-              <div className="flex items-center gap-3">
-                <Info size={20} className="text-info shrink-0" />
-                <div>
-                  <p className="font-bold text-base-content">Devolución de Productos a Inventario</p>
-                  <p className="text-base-content/70 mt-0.5">
-                    Indica la cantidad a devolver por cada producto o presiona "Devolver Todo" para reintegrar la venta completa.
-                  </p>
-                </div>
-              </div>
-              <ComerziaButton
-                variant="primary"
-                label="Devolver Todo"
-                className="btn-xs shrink-0"
-                onClick={handleSelectAllToReturn}
-              />
-            </div>
-
-            {/* TABLA DE PRODUCTOS DE LA VENTA */}
-            <div className="overflow-x-auto border border-base-200 rounded-xl">
-              <table className="table table-compact w-full text-xs">
-                <thead>
-                  <tr className="bg-base-200/50">
-                    <th>Producto / Variante</th>
-                    <th className="text-center">Comprado</th>
-                    <th className="text-right">Precio Unit.</th>
-                    <th className="text-center w-36">Cant. a Devolver</th>
-                    <th className="text-right">Reembolso</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(returningSale.details || []).map((d: SaleDetailResponse) => {
-                    const maxQty = d.receiptQuantity ?? 1;
-                    const currentReturnQty = returnQtys[d.id] || 0;
-                    const unitPrice = d.receiptUnitPrice ?? 0;
-                    const lineRefund = unitPrice * currentReturnQty;
-
-                    return (
-                      <tr key={d.id} className="hover:bg-base-50">
-                        <td>
-                          <div>
-                            <span className="font-bold block text-sm">{d.productName || d.variantName || 'Producto'}</span>
-                            {d.measureUnitName && (
-                              <span className="text-[11px] text-base-content/50">Unidad: {d.measureUnitName}</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="text-center font-semibold">{maxQty}</td>
-                        <td className="text-right">{currency} {unitPrice.toFixed(2)}</td>
-                        <td className="text-center">
-                          <div className="flex items-center justify-center gap-1">
-                            <input
-                              type="number"
-                              min="0"
-                              max={maxQty}
-                              className="input input-bordered input-xs w-20 text-center font-bold"
-                              value={currentReturnQty}
-                              onChange={(e) => {
-                                const val = Math.max(0, Math.min(maxQty, parseInt(e.target.value) || 0));
-                                setReturnQtys({ ...returnQtys, [d.id]: val });
-                              }}
-                            />
-                            <span className="text-base-content/40 text-[10px]">/ {maxQty}</span>
-                          </div>
-                        </td>
-                        <td className="text-right font-mono font-bold text-error">
-                          {lineRefund > 0 ? `- ${currency} ${lineRefund.toFixed(2)}` : '0.00'}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* TOTAL REEMBOLSO */}
-            <div className="flex justify-between items-center bg-base-50 p-4 rounded-xl font-mono text-sm border border-base-200">
-              <span className="font-semibold text-base-content/70">Total a Reembolsar al Cliente:</span>
-              <span className="text-xl font-bold text-error">
-                - {currency} {calculateRefundTotal().toFixed(2)}
-              </span>
-            </div>
-
-            {/* MOTIVO DE DEVOLUCIÓN */}
-            <div>
-              <ComerziaInput
-                label="Motivo de la Devolución"
-                placeholder="Ej. Producto defectuoso, error en pedido del cliente..."
-                value={returnReason}
-                onChange={(e) => setReturnReason(e.target.value)}
-                isRequired
-                shakeKey={returnShakeKey}
-                error={!returnReason.trim() && returnShakeKey > 0 ? "El motivo es obligatorio" : ""}
-              />
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2 border-t border-base-200">
-              <BtnCancel onClick={() => setReturningSale(null)} disabled={isSubmittingReturn} />
-              <BtnSave
-                label="Confirmar Devolución"
-                onClick={handleSubmitReturn}
-                isLoading={isSubmittingReturn}
-              />
-            </div>
-          </div>
-        )}
       </ComerziaModal>
 
       {/* MODAL EDITAR VENTA PENDIENTE (601 PENDING) */}

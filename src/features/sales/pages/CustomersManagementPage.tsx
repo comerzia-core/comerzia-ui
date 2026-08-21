@@ -19,6 +19,7 @@ export const CustomersManagementPage = () => {
 
   // Permisos
   const canManageCustomers = hasPermission('SAL_CUSTOMERS_MANAGE') || hasRole('OWNER') || hasRole('ADMIN');
+  const canReadSaleHistory = hasPermission('SAL_HISTORY_SALE_READ') || hasRole('OWNER') || hasRole('ADMIN');
   const isOwner = hasRole('OWNER');
 
   const [customers, setCustomers] = useState<CustomerProfileResponse[]>([]);
@@ -112,7 +113,6 @@ export const CustomersManagementPage = () => {
       if (customer && customer.id) {
         setCustomers([customer]);
         setTotalElements(1);
-        setSelectedCustomer(customer);
         setIsFilteredByPhone(true);
         toastSuccess(`Cliente encontrado: ${customer.fullName || customer.firstName}`);
       } else {
@@ -138,6 +138,7 @@ export const CustomersManagementPage = () => {
 
   // Cargar Historial de Compras del Cliente
   const loadSalesHistory = async (customerId: string, pageNum = 0) => {
+    if (!canReadSaleHistory) return;
     setIsLoadingHistory(true);
     try {
       const res = await salesService.getCustomerSalesHistory(customerId, pageNum, 5);
@@ -151,13 +152,13 @@ export const CustomersManagementPage = () => {
   };
 
   useEffect(() => {
-    if (selectedCustomer) {
+    if (selectedCustomer && canReadSaleHistory) {
       loadSalesHistory(selectedCustomer.id, historyPage);
     } else {
       setSalesHistory([]);
       setHistoryTotal(0);
     }
-  }, [selectedCustomer, historyPage]);
+  }, [selectedCustomer, historyPage, canReadSaleHistory]);
 
   // Limpiar inputs a solo números y aplicar longitud máxima
   const handleNumericInput = (val: string, maxLen = 8) => {
@@ -370,7 +371,6 @@ export const CustomersManagementPage = () => {
               columns={columns}
               isLoading={isLoading}
               pagination={isFilteredByPhone ? undefined : customerPagination}
-              onRowClick={(row) => setSelectedCustomer(row)}
               onRowContextMenu={(e, row) => handleContextMenu(e, row)}
               rowClassName={(row) => row.id === selectedCustomer?.id ? 'bg-primary/5 font-semibold' : ''}
             />
@@ -399,18 +399,20 @@ export const CustomersManagementPage = () => {
 
                 <div className="divider my-0"></div>
 
-                {/* KPI Rápido LTV */}
-                <div className="bg-success/10 p-4 rounded-xl flex items-center gap-4">
-                  <div className="bg-success text-white p-3 rounded-xl">
-                    <DollarSign size={24} />
+                {/* KPI Rápido LTV (Solo si tiene permiso para leer historial de ventas) */}
+                {canReadSaleHistory && (
+                  <div className="bg-success/10 p-4 rounded-xl flex items-center gap-4">
+                    <div className="bg-success text-white p-3 rounded-xl">
+                      <DollarSign size={24} />
+                    </div>
+                    <div>
+                      <p className="text-xs text-success/70 font-semibold tracking-wide">LIFE TIME VALUE (LTV)</p>
+                      <p className="text-2xl font-bold text-success font-mono">
+                        {currency} {customerLTV.toFixed(2)}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs text-success/70 font-semibold tracking-wide">LIFE TIME VALUE (LTV)</p>
-                    <p className="text-2xl font-bold text-success font-mono">
-                      {currency} {customerLTV.toFixed(2)}
-                    </p>
-                  </div>
-                </div>
+                )}
 
                 {/* Datos CRM */}
                 <div className="space-y-2 text-sm">
@@ -419,57 +421,60 @@ export const CustomersManagementPage = () => {
                   {selectedCustomer.email && <p><strong>Correo Electrónico:</strong> {selectedCustomer.email}</p>}
                 </div>
 
-                <div className="divider my-0"></div>
+                {/* Historial de Compras (Solo si tiene permiso SAL_HISTORY_SALE_READ) */}
+                {canReadSaleHistory && (
+                  <>
+                    <div className="divider my-0"></div>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <h4 className="font-bold text-sm text-base-content flex items-center gap-2">
+                          <History size={16} className="text-secondary" /> Historial de Ventas
+                        </h4>
+                        <span className="text-[11px] text-base-content/50 italic">
+                          (Clic en venta para ver detalle)
+                        </span>
+                      </div>
 
-                {/* Historial de Compras Seleccionables */}
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <h4 className="font-bold text-sm text-base-content flex items-center gap-2">
-                      <History size={16} className="text-secondary" /> Historial de Ventas
-                    </h4>
-                    <span className="text-[11px] text-base-content/50 italic">
-                      (Clic en venta para ver detalle)
-                    </span>
-                  </div>
-
-                  {isLoadingHistory ? (
-                    <div className="flex justify-center p-4">
-                      <span className="loading loading-spinner loading-md text-primary"></span>
-                    </div>
-                  ) : salesHistory.length > 0 ? (
-                    <div className="space-y-2 max-h-[250px] overflow-y-auto pr-1">
-                      {salesHistory.map(sale => (
-                        <div
-                          key={sale.id}
-                          onClick={() => setSelectedSaleDetails(sale)}
-                          className="flex justify-between items-center text-xs p-3 bg-base-50 hover:bg-base-200/80 cursor-pointer rounded-xl border border-base-200 transition-all shadow-xs group"
-                        >
-                          <div>
-                            <span className="font-bold block text-base-content/80 group-hover:text-primary transition-colors">
-                              {sale.saleNumber ? `N° #${sale.saleNumber}` : 'Venta'}
-                            </span>
-                            <span className="text-base-content/50 text-[11px]">{new Date(sale.date).toLocaleDateString()}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-right">
-                            <div>
-                              <span className="font-bold text-success block font-mono">{currency} {sale.totalAmount.toFixed(2)}</span>
-                              <span>
-                                {sale.saleStatus === 602 ? (
-                                  <span className="badge badge-success badge-xs font-semibold">COMPLETADA</span>
-                                ) : (
-                                  <span className="badge badge-warning badge-xs font-semibold">DEVOLUCIÓN</span>
-                                )}
-                              </span>
-                            </div>
-                            <ChevronRight size={14} className="text-base-content/30 group-hover:text-primary transition-transform group-hover:translate-x-0.5" />
-                          </div>
+                      {isLoadingHistory ? (
+                        <div className="flex justify-center p-4">
+                          <span className="loading loading-spinner loading-md text-primary"></span>
                         </div>
-                      ))}
+                      ) : salesHistory.length > 0 ? (
+                        <div className="space-y-2 max-h-[250px] overflow-y-auto pr-1">
+                          {salesHistory.map(sale => (
+                            <div
+                              key={sale.id}
+                              onClick={() => setSelectedSaleDetails(sale)}
+                              className="flex justify-between items-center text-xs p-3 bg-base-50 hover:bg-base-200/80 cursor-pointer rounded-xl border border-base-200 transition-all shadow-xs group"
+                            >
+                              <div>
+                                <span className="font-bold block text-base-content/80 group-hover:text-primary transition-colors">
+                                  {sale.saleNumber ? `N° #${sale.saleNumber}` : 'Venta'}
+                                </span>
+                                <span className="text-base-content/50 text-[11px]">{new Date(sale.date).toLocaleDateString()}</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-right">
+                                <div>
+                                  <span className="font-bold text-success block font-mono">{currency} {sale.totalAmount.toFixed(2)}</span>
+                                  <span>
+                                    {sale.saleStatus === 602 ? (
+                                      <span className="badge badge-success badge-xs font-semibold">COMPLETADA</span>
+                                    ) : (
+                                      <span className="badge badge-warning badge-xs font-semibold">DEVOLUCIÓN</span>
+                                    )}
+                                  </span>
+                                </div>
+                                <ChevronRight size={14} className="text-base-content/30 group-hover:text-primary transition-transform group-hover:translate-x-0.5" />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-base-content/50 text-center py-4">No registra compras completadas.</p>
+                      )}
                     </div>
-                  ) : (
-                    <p className="text-xs text-base-content/50 text-center py-4">No registra compras completadas.</p>
-                  )}
-                </div>
+                  </>
+                )}
               </div>
             </div>
           ) : (
@@ -478,7 +483,7 @@ export const CustomersManagementPage = () => {
                 <Users className="h-12 w-12 opacity-40" />
               </div>
               <p className="text-center text-sm max-w-[200px]">
-                Selecciona un cliente del listado para ver su ficha y compras acumuladas.
+                Haz clic derecho sobre un cliente para ver su ficha y datos.
               </p>
             </div>
           )}

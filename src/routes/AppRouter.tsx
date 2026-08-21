@@ -76,6 +76,7 @@ export const AppRouter = () => {
             <Route path="/sales/customers" element={<CustomersManagementPage />} />
             <Route element={<PermissionGuard code="SAL_RETURNS_MANAGE" />}>
               <Route path="/sales/returns" element={<ReturnsPage />} />
+              <Route path="/sales/returns/:saleNumber" element={<ReturnsPage />} />
             </Route>
 
 

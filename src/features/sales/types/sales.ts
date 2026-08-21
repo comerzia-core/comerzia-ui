@@ -23,6 +23,9 @@ export interface SaleDetailResponse {
   equivalenceFactor?: number;
   receiptQuantity?: number;
   receiptUnitPrice?: number;
+  physicalQuantity?: number;
+  returnedQuantity?: number;
+  physicalUnitFinalPrice?: number;
   lineTotalSuggested?: number;
   lineTotalDiscount?: number;
   lineTotalFinal?: number;

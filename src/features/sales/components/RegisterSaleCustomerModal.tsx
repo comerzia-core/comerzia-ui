@@ -159,10 +159,17 @@ export const RegisterSaleCustomerModal = ({ isOpen, onClose, saleId, saleNumber,
       return;
     }
 
-    if (!firstName.trim() || !phoneNumber.trim()) {
+    const hasSurname = paternalSurname.trim().length > 0 || maternalSurname.trim().length > 0;
+
+    if (!firstName.trim() || !hasSurname || !phoneNumber.trim()) {
       setShakeKey(prev => prev + 1);
-      if (!firstName.trim()) toastError("El nombre o razón social es obligatorio.");
-      else if (!phoneNumber.trim()) toastError("El teléfono / celular es obligatorio.");
+      if (!firstName.trim()) {
+        toastError("El nombre es obligatorio.");
+      } else if (!hasSurname) {
+        toastError("Debes ingresar al menos un apellido (paterno o materno).");
+      } else if (!phoneNumber.trim()) {
+        toastError("El teléfono / celular es obligatorio.");
+      }
       return;
     }
 
@@ -295,7 +302,7 @@ export const RegisterSaleCustomerModal = ({ isOpen, onClose, saleId, saleNumber,
               isRequired
             />
             <ComerziaInput
-              label={customerType === '612' ? "Razón Social / Nombre Empresa" : "Nombres"}
+              label="Nombres"
               value={firstName}
               uppercase
               onChange={(e) => setFirstName(e.target.value)}
@@ -306,24 +313,26 @@ export const RegisterSaleCustomerModal = ({ isOpen, onClose, saleId, saleNumber,
             />
           </div>
 
-          {customerType !== '612' && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <ComerziaInput
-                label="Apellido Paterno"
-                value={paternalSurname}
-                uppercase
-                disabled={!!foundCustomer}
-                onChange={(e) => setPaternalSurname(e.target.value)}
-              />
-              <ComerziaInput
-                label="Apellido Materno"
-                value={maternalSurname}
-                uppercase
-                disabled={!!foundCustomer}
-                onChange={(e) => setMaternalSurname(e.target.value)}
-              />
-            </div>
-          )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <ComerziaInput
+              label="Apellido Paterno"
+              value={paternalSurname}
+              uppercase
+              disabled={!!foundCustomer}
+              onChange={(e) => setPaternalSurname(e.target.value)}
+              shakeKey={shakeKey}
+              error={!paternalSurname.trim() && !maternalSurname.trim() && shakeKey > 0 ? "Al menos un apellido" : ""}
+            />
+            <ComerziaInput
+              label="Apellido Materno"
+              value={maternalSurname}
+              uppercase
+              disabled={!!foundCustomer}
+              onChange={(e) => setMaternalSurname(e.target.value)}
+              shakeKey={shakeKey}
+              error={!paternalSurname.trim() && !maternalSurname.trim() && shakeKey > 0 ? "Al menos un apellido" : ""}
+            />
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <ComerziaSelect

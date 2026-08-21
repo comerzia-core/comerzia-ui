@@ -398,211 +398,211 @@ export const NewSalePage = () => {
         )}
       </div>
 
-      {/* Grid Principal */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      {/* Búsqueda de Productos y Tabla de Carrito (Ancho Completo) */}
+      <div className="space-y-6">
         
-        {/* Columna Izquierda: Búsqueda y Carrito */}
-        <div className="lg:col-span-8 space-y-6">
-          
-          {/* Tarjeta de Búsqueda */}
-          <div className="bg-base-100 p-5 rounded-2xl border border-base-200 shadow-sm space-y-4">
-            <div className="flex items-center justify-between border-b border-base-200 pb-3">
-              <h2 className="font-bold text-base-content flex items-center gap-2 text-sm uppercase tracking-wide">
-                <Scan size={18} className="text-primary" /> Selección de Productos
-              </h2>
-              <div className="flex items-center gap-2">
-                <ComerziaButton
-                  variant="ghost"
-                  label="Buscar por SKU"
-                  icon={<Hash size={14} />}
-                  className="btn-xs text-base-content/70 hover:bg-base-200"
-                  onClick={() => { setManualSearchTerm(''); setIsSkuModalOpen(true); }}
-                />
-                <ComerziaButton
-                  variant="ghost"
-                  label="Buscar por Código Barras"
-                  icon={<Barcode size={14} />}
-                  className="btn-xs text-base-content/70 hover:bg-base-200"
-                  onClick={() => { setManualSearchTerm(''); setIsBarcodeModalOpen(true); }}
-                />
-              </div>
+        {/* Tarjeta de Búsqueda */}
+        <div className="bg-base-100 p-5 rounded-2xl border border-base-200 shadow-sm space-y-4">
+          <div className="flex items-center justify-between border-b border-base-200 pb-3">
+            <h2 className="font-bold text-base-content flex items-center gap-2 text-sm uppercase tracking-wide">
+              <Scan size={18} className="text-primary" /> Selección de Productos
+            </h2>
+            <div className="flex items-center gap-2">
+              <ComerziaButton
+                variant="ghost"
+                label="Buscar por SKU"
+                icon={<Hash size={14} />}
+                className="btn-xs text-base-content/70 hover:bg-base-200"
+                onClick={() => { setManualSearchTerm(''); setIsSkuModalOpen(true); }}
+              />
+              <ComerziaButton
+                variant="ghost"
+                label="Buscar por Código Barras"
+                icon={<Barcode size={14} />}
+                className="btn-xs text-base-content/70 hover:bg-base-200"
+                onClick={() => { setManualSearchTerm(''); setIsBarcodeModalOpen(true); }}
+              />
             </div>
-
-            {/* Componente Autocomplete */}
-            <ComerziaProductSearch
-              onProductSelect={handleProductSelect}
-              onError={toastError}
-            />
           </div>
 
-          {/* Tabla de Productos Seleccionados */}
-          <div className="bg-base-100 rounded-2xl border border-base-200 shadow-sm overflow-hidden">
-            <div className="p-4 border-b border-base-200 flex items-center justify-between">
-              <span className="font-bold text-sm uppercase tracking-wide text-base-content flex items-center gap-2">
-                <ShoppingCart size={16} className="text-primary" /> Productos en Pedido ({items.length})
-              </span>
-              {items.length > 0 && (
-                <ComerziaButton
-                  variant="delete"
-                  label="Vaciar Carrito"
-                  className="btn-xs"
-                  onClick={clearCart}
-                />
-              )}
-            </div>
-
-            {items.length === 0 ? (
-              <div className="flex flex-col items-center justify-center p-12 text-center text-base-content/40 space-y-3">
-                <ShoppingCart size={48} className="stroke-1 text-base-content/20" />
-                <p className="text-sm font-medium">El carrito está vacío</p>
-                <p className="text-xs text-base-content/40 max-w-xs">
-                  Utiliza el buscador superior para agregar productos al pedido actual.
-                </p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="table table-sm w-full">
-                  <thead>
-                    <tr className="bg-base-200/50 border-b border-base-200 text-xs font-semibold uppercase">
-                      <th className="w-8">#</th>
-                      <th>Producto</th>
-                      <th>Tipo Unidad</th>
-                      <th className="text-center w-36">Cantidad</th>
-                      <th className="text-right">Precio Unit.</th>
-                      <th className="text-right border-r border-base-300/50 text-info">Desc. Unit.</th>
-                      <th className="text-right bg-primary/5">Subtotal</th>
-                      <th className="text-right border-r border-base-300/50 text-info font-bold">Desc. Total</th>
-                      <th className="text-right bg-primary/5">P. Final Unit.</th>
-                      <th className="text-right bg-primary/5 font-bold text-primary">Importe Final</th>
-                      <th className="w-10"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {items.map((item, idx) => {
-                      const factor = item.equivalenceFactor || 1;
-                      const totalUnits = item.quantity * factor;
-                      const maxDiscount = item.salePrice - item.discountPrice;
-                      const hasDiscountLimit = item.discountPrice < item.salePrice;
-                      const totalDiscount = item.discountAmount * totalUnits;
-                      const maxTotalDiscount = maxDiscount * totalUnits;
-                      const subtotal = item.salePrice * totalUnits;
-                      const finalTotal = subtotal - totalDiscount;
-
-                      return (
-                        <tr key={`${item.productVariantId}-${item.priceTypeId}`} className="hover border-b border-base-200/50">
-                          <td className="font-mono text-xs text-base-content/50">{idx + 1}</td>
-                          <td>
-                            <div className="flex flex-col gap-1 min-w-[150px]">
-                              <span className="font-semibold text-sm leading-tight">{item.productName} | {item.variantName}</span>
-                              <span className="text-[11px] text-base-content/50 font-mono">SKU: {item.sku}</span>
-                            </div>
-                          </td>
-                          <td>
-                            <select
-                              className="select select-bordered select-xs w-full max-w-[120px]"
-                              value={item.priceTypeId}
-                              onChange={(e) => {
-                                const res = updatePriceType(item.productVariantId, e.target.value);
-                                if (!res.success && res.message) toastWarning(res.message);
-                              }}
-                            >
-                              {item.activePrices.map(p => {
-                                const isDisabled = (p.equivalenceFactor || 1) > item.stock;
-                                return (
-                                  <option 
-                                    key={p.priceTypeId} 
-                                    value={p.priceTypeId}
-                                    disabled={isDisabled}
-                                  >
-                                    {p.priceTypeName} {isDisabled ? '(Sin stock)' : ''}
-                                  </option>
-                                );
-                              })}
-                            </select>
-                          </td>
-                          <td>
-                            <QuantityControl
-                              item={item}
-                              updateQuantity={updateQuantity}
-                              toastWarning={toastWarning}
-                            />
-                          </td>
-                          <td className="font-mono text-sm text-right border-l border-base-300/50 text-base-content/60">
-                            {item.salePrice.toFixed(2)}
-                          </td>
-                          <td className="border-r border-base-300/50">
-                            <UnitDiscountControl
-                              item={item}
-                              maxDiscount={maxDiscount}
-                              hasDiscountLimit={hasDiscountLimit}
-                              updateDiscount={updateDiscount}
-                              toastWarning={toastWarning}
-                            />
-                          </td>
-                          <td className="font-mono text-sm text-right text-base-content/60">
-                            {subtotal.toFixed(2)}
-                          </td>
-                          <td className="border-r border-base-300/50">
-                            <TotalDiscountControl
-                              item={item}
-                              maxTotalDiscount={maxTotalDiscount}
-                              totalDiscount={totalDiscount}
-                              hasDiscountLimit={hasDiscountLimit}
-                              updateTotalDiscount={updateTotalDiscount}
-                              toastWarning={toastWarning}
-                            />
-                          </td>
-                          <td className="font-mono text-sm text-right bg-primary/5 text-base-content/80 font-medium">
-                            {(item.salePrice - item.discountAmount).toFixed(2)}
-                          </td>
-                          <td className="font-bold text-sm font-mono text-right bg-primary/5 text-primary">
-                            {currency} {finalTotal.toFixed(2)}
-                          </td>
-                          <td className="text-right">
-                            <BtnDeleteIcon
-                              onClick={() => removeItem(item.productVariantId)}
-                            />
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+          {/* Componente Autocomplete */}
+          <ComerziaProductSearch
+            onProductSelect={handleProductSelect}
+            onError={toastError}
+          />
         </div>
 
-        {/* Columna Derecha: Resumen Venta */}
-        <div className="lg:col-span-4 space-y-6">
-          <div className="bg-base-100 p-6 rounded-2xl border border-base-200 shadow-sm space-y-6 sticky top-6">
-            <h2 className="font-bold text-base-content border-b border-base-200 pb-3 text-sm uppercase tracking-wide">
+        {/* Tabla de Productos Seleccionados */}
+        <div className="bg-base-100 rounded-2xl border border-base-200 shadow-sm overflow-hidden">
+          <div className="p-4 border-b border-base-200 flex items-center justify-between">
+            <span className="font-bold text-sm uppercase tracking-wide text-base-content flex items-center gap-2">
+              <ShoppingCart size={16} className="text-primary" /> Productos en Pedido ({items.length})
+            </span>
+            {items.length > 0 && (
+              <ComerziaButton
+                variant="delete"
+                label="Vaciar Carrito"
+                className="btn-xs"
+                onClick={clearCart}
+              />
+            )}
+          </div>
+
+          {items.length === 0 ? (
+            <div className="flex flex-col items-center justify-center p-12 text-center text-base-content/40 space-y-3">
+              <ShoppingCart size={48} className="stroke-1 text-base-content/20" />
+              <p className="text-sm font-medium">El carrito está vacío</p>
+              <p className="text-xs text-base-content/40 max-w-xs">
+                Utiliza el buscador superior para agregar productos al pedido actual.
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="table table-sm w-full">
+                <thead>
+                  <tr className="bg-base-200/50 border-b border-base-200 text-xs font-semibold uppercase">
+                    <th className="w-8">#</th>
+                    <th>Producto</th>
+                    <th>Tipo Unidad</th>
+                    <th className="text-center w-36">Cantidad</th>
+                    <th className="text-right">Precio Unit.</th>
+                    <th className="text-right border-r border-base-300/50 text-info">Desc. Unit.</th>
+                    <th className="text-right bg-primary/5">Subtotal</th>
+                    <th className="text-right border-r border-base-300/50 text-info font-bold">Desc. Total</th>
+                    <th className="text-right bg-primary/5">P. Final Unit.</th>
+                    <th className="text-right bg-primary/5 font-bold text-primary">Importe Final</th>
+                    <th className="w-10"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((item, idx) => {
+                    const factor = item.equivalenceFactor || 1;
+                    const totalUnits = item.quantity * factor;
+                    const maxDiscount = item.salePrice - item.discountPrice;
+                    const hasDiscountLimit = item.discountPrice < item.salePrice;
+                    const totalDiscount = item.discountAmount * totalUnits;
+                    const maxTotalDiscount = maxDiscount * totalUnits;
+                    const subtotal = item.salePrice * totalUnits;
+                    const finalTotal = subtotal - totalDiscount;
+
+                    return (
+                      <tr key={`${item.productVariantId}-${item.priceTypeId}`} className="hover border-b border-base-200/50">
+                        <td className="font-mono text-xs text-base-content/50">{idx + 1}</td>
+                        <td>
+                          <div className="flex flex-col gap-1 min-w-[150px]">
+                            <span className="font-semibold text-sm leading-tight">{item.productName} | {item.variantName}</span>
+                            <span className="text-[11px] text-base-content/50 font-mono">SKU: {item.sku}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <select
+                            className="select select-bordered select-xs w-full max-w-[120px]"
+                            value={item.priceTypeId}
+                            onChange={(e) => {
+                              const res = updatePriceType(item.productVariantId, e.target.value);
+                              if (!res.success && res.message) toastWarning(res.message);
+                            }}
+                          >
+                            {item.activePrices.map(p => {
+                              const isDisabled = (p.equivalenceFactor || 1) > item.stock;
+                              return (
+                                <option 
+                                  key={p.priceTypeId} 
+                                  value={p.priceTypeId}
+                                  disabled={isDisabled}
+                                >
+                                  {p.priceTypeName} {isDisabled ? '(Sin stock)' : ''}
+                                </option>
+                              );
+                            })}
+                          </select>
+                        </td>
+                        <td>
+                          <QuantityControl
+                            item={item}
+                            updateQuantity={updateQuantity}
+                            toastWarning={toastWarning}
+                          />
+                        </td>
+                        <td className="font-mono text-sm text-right border-l border-base-300/50 text-base-content/60">
+                          {item.salePrice.toFixed(2)}
+                        </td>
+                        <td className="border-r border-base-300/50">
+                          <UnitDiscountControl
+                            item={item}
+                            maxDiscount={maxDiscount}
+                            hasDiscountLimit={hasDiscountLimit}
+                            updateDiscount={updateDiscount}
+                            toastWarning={toastWarning}
+                          />
+                        </td>
+                        <td className="font-mono text-sm text-right text-base-content/60">
+                          {subtotal.toFixed(2)}
+                        </td>
+                        <td className="border-r border-base-300/50">
+                          <TotalDiscountControl
+                            item={item}
+                            maxTotalDiscount={maxTotalDiscount}
+                            totalDiscount={totalDiscount}
+                            hasDiscountLimit={hasDiscountLimit}
+                            updateTotalDiscount={updateTotalDiscount}
+                            toastWarning={toastWarning}
+                          />
+                        </td>
+                        <td className="font-mono text-sm text-right bg-primary/5 text-base-content/80 font-medium">
+                          {(item.salePrice - item.discountAmount).toFixed(2)}
+                        </td>
+                        <td className="font-bold text-sm font-mono text-right bg-primary/5 text-primary">
+                          {currency} {finalTotal.toFixed(2)}
+                        </td>
+                        <td className="text-right">
+                          <BtnDeleteIcon
+                            onClick={() => removeItem(item.productVariantId)}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Resumen del Pedido en la Parte Inferior */}
+        <div className="bg-base-100 p-6 rounded-2xl border border-base-200 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="w-full md:w-auto">
+            <h2 className="font-bold text-base-content text-sm uppercase tracking-wide">
               Resumen del Pedido
             </h2>
+            <p className="text-xs text-base-content/60 mt-0.5">
+              {items.length} {items.length === 1 ? 'producto seleccionado' : 'productos seleccionados'}
+            </p>
+          </div>
 
-            <div className="space-y-3 text-sm">
-              <div className="flex justify-between text-base-content/70">
-                <span>Subtotal</span>
-                <span className="font-mono">{currency} {getSubtotal().toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-error">
-                <span>Descuento Aplicado</span>
-                <span className="font-mono">-{currency} {getDiscountedAmount().toFixed(2)}</span>
-              </div>
-              <div className="border-t border-base-200 pt-3 flex justify-between items-baseline">
-                <span className="font-bold text-base text-base-content">Total Venta</span>
-                <span className="font-bold text-2xl font-mono text-primary">
-                  {currency} {getTotal().toFixed(2)}
-                </span>
-              </div>
+          <div className="flex flex-wrap items-center justify-end gap-6 sm:gap-10 w-full md:w-auto">
+            <div className="flex items-center gap-2 text-sm text-base-content/70">
+              <span className="font-medium">Subtotal:</span>
+              <span className="font-mono font-bold text-base-content">{currency} {getSubtotal().toFixed(2)}</span>
+            </div>
+
+            <div className="flex items-center gap-2 text-sm text-error">
+              <span className="font-medium">Descuento:</span>
+              <span className="font-mono font-bold">-{currency} {getDiscountedAmount().toFixed(2)}</span>
+            </div>
+
+            <div className="flex items-center gap-3 bg-base-200/50 px-4 py-2.5 rounded-xl border border-base-200">
+              <span className="font-bold text-base text-base-content">Total:</span>
+              <span className="font-bold text-2xl font-mono text-primary">
+                {currency} {getTotal().toFixed(2)}
+              </span>
             </div>
 
             <ComerziaButton
               variant="primary"
               label="Enviar a Caja"
               icon={<ArrowRight size={20} />}
-              className="shadow-lg shadow-primary/20 text-base font-bold"
-              fullWidth
+              className="shadow-lg shadow-primary/20 text-base font-bold px-8 w-full sm:w-auto"
               disabled={items.length === 0}
               onClick={handleSendToRegister}
             />

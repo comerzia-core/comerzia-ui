@@ -57,12 +57,12 @@ export const TerminalPage = () => {
   const roles = userProfile?.roles || [];
   
   const isCashierRole = hasRole('CASHIER') || roles.includes('CASHIER');
-  const isManagerOrOwner = hasRole('BRANCH_MANAGER') || roles.includes('BRANCH_MANAGER') || hasRole('OWNER') || roles.includes('OWNER') || hasRole('ADMIN') || roles.includes('ADMIN');
+  const isManagerOrOwner = hasRole('BRANCH_MANAGER') || roles.includes('BRANCH_MANAGER') || hasRole('OWNER') || roles.includes('OWNER');
   const canAccessTerminal = isCashierRole || isManagerOrOwner || hasPermission('SAL_SALES_READ') || hasPermission('SAL_PROCESS_PAYMENT');
   
   // Permisos para acciones de cobro y cancelación
-  const canProcessPayment = hasPermission('SAL_PROCESS_PAYMENT') || isCashierRole || hasRole('OWNER') || hasRole('ADMIN');
-  const canCancelSale = hasPermission('SAL_SALES_CANCEL') || hasRole('OWNER') || hasRole('ADMIN');
+  const canProcessPayment = hasPermission('SAL_PROCESS_PAYMENT');
+  const canCancelSale = hasPermission('SAL_SALES_CANCEL');
 
   const currencyCode = userProfile?.companySettings?.currencyCode || 'USD';
 
