@@ -6,7 +6,8 @@ import { useToast } from '../../../context/ToastContext';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { ComerziaBadge } from '../../../components/ui/ComerziaBadge';
 import { ComerziaSelectableCard } from '../../../components/ui/ComerziaSelectableCard';
-import { ImageOff, Store, Tag, Layers, Barcode } from 'lucide-react';
+import { ComerziaImageViewer } from '../../../components/ui/ComerziaImageViewer';
+import { ImageOff, Store, Tag, Layers, Barcode, ZoomIn } from 'lucide-react';
 
 export const StockQueryPage = () => {
   const [searchParams] = useSearchParams();
@@ -14,6 +15,11 @@ export const StockQueryPage = () => {
   const [productData, setProductData] = useState<ScannerProductResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [shakeKey, setShakeKey] = useState(0);
+  const [viewingImage, setViewingImage] = useState<{ isOpen: boolean; url: string; title: string }>({
+    isOpen: false,
+    url: '',
+    title: ''
+  });
   const inputRef = useRef<HTMLInputElement>(null);
   const { error: toastError } = useToast();
   const { userProfile } = useAuthStore();
@@ -96,9 +102,32 @@ export const StockQueryPage = () => {
         <div className="bg-base-100 rounded-3xl shadow-sm border border-base-200 overflow-hidden animate-slide-up">
           {/* Header Producto */}
           <div className="p-8 border-b border-base-200 flex items-start gap-6">
-            <div className="w-32 h-32 bg-base-200 rounded-2xl flex-shrink-0 overflow-hidden border border-base-300">
+            <div 
+              className={`w-32 h-32 bg-base-200 rounded-2xl flex-shrink-0 overflow-hidden border border-base-300 relative group ${
+                scannedVariant.imageUrl ? 'cursor-pointer' : ''
+              }`}
+              onClick={() => {
+                if (scannedVariant.imageUrl) {
+                  setViewingImage({
+                    isOpen: true,
+                    url: scannedVariant.imageUrl,
+                    title: `${productData.productName} - ${scannedVariant.variantName}`
+                  });
+                }
+              }}
+              title={scannedVariant.imageUrl ? "Clic para ampliar imagen" : undefined}
+            >
               {scannedVariant.imageUrl ? (
-                <img src={scannedVariant.imageUrl} alt={scannedVariant.variantName} className="w-full h-full object-cover" />
+                <>
+                  <img 
+                    src={scannedVariant.imageUrl} 
+                    alt={scannedVariant.variantName} 
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" 
+                  />
+                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                    <ZoomIn size={24} />
+                  </div>
+                </>
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center text-base-content/30 bg-base-200">
                   <ImageOff className="h-10 w-10 mb-2" />
@@ -227,6 +256,13 @@ export const StockQueryPage = () => {
           )}
         </div>
       )}
+
+      <ComerziaImageViewer
+        isOpen={viewingImage.isOpen}
+        onClose={() => setViewingImage({ ...viewingImage, isOpen: false })}
+        imageUrl={viewingImage.url}
+        title={viewingImage.title}
+      />
     </div>
   );
 };

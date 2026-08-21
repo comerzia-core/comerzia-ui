@@ -18,6 +18,9 @@ import { generateSku } from '../../../utils/skuGenerator';
 import { useLoadDictionaries } from '../../../hooks/useLoadDictionaries';
 import { DICTIONARIES } from '../../../config/dictionaries';
 import { useAuthStore } from '../../../stores/useAuthStore';
+import { ComerziaSingleImageUploader, type SingleImageValue } from '../../../components/ui/ComerziaSingleImageUploader';
+import { uploadFile } from '../../shared/services/storageService';
+import { STORAGE_FOLDERS } from '../../../config/storage';
 
 interface Props {
   isOpen: boolean;
@@ -49,6 +52,7 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
   const [variants, setVariants] = useState<CreateFullVariantRequest[]>([
     { name: '', sku: '', barCode: '', prices: [] }
   ]);
+  const [variantImages, setVariantImages] = useState<(SingleImageValue | null)[]>([null]);
 
   const { options, isLoading: isLoadingDict } = useLoadDictionaries([DICTIONARIES.VARIANT_TYPE]);
   const variantTypeOptions = options[DICTIONARIES.VARIANT_TYPE] || [];
@@ -70,6 +74,7 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
       setBrandId(initialBrandId || '');
       setVariantType('');
       setVariants([{ name: '', sku: '', barCode: '', prices: [] }]);
+      setVariantImages([null]);
       loadInitialData();
     }
   }, [isOpen]);
@@ -133,27 +138,54 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
   };
 
   const handleSubmit = async () => {
-    const processedVariants = variants.map(v => ({
-      ...v,
-      prices: v.prices.map(p => ({
-        ...p,
-        salePrice: Number(p.salePrice) || 0,
-        discountPrice: Number(p.discountPrice) || 0
-      })).filter(p => p.salePrice > 0)
-    }));
-
-    // Price validations
-    for (const v of processedVariants) {
-      for (const p of v.prices) {
-        if (p.discountPrice > p.salePrice) {
-          toastError(`El precio de descuento no puede ser mayor al de venta en: ${v.name}`);
-          return;
-        }
-      }
-    }
-
     setIsSubmitting(true);
     try {
+      // 1. Subir imágenes de las variantes que tengan archivo nuevo
+      const processedVariants = await Promise.all(variants.map(async (v, index) => {
+        let finalImageUrl: string | undefined = undefined;
+        const imgItem = variantImages[index];
+
+        if (imgItem) {
+          if (imgItem.file) {
+            try {
+              const cleanProductName = (name || 'prod').substring(0, 20);
+              const cleanVariantName = (v.name || `var-${index + 1}`).substring(0, 20);
+              finalImageUrl = await uploadFile(
+                imgItem.file,
+                STORAGE_FOLDERS.PRODUCTS,
+                `${cleanProductName}-${cleanVariantName}-${Date.now()}`
+              );
+            } catch (uploadErr) {
+              console.error("Error al subir imagen de variante:", uploadErr);
+              throw new Error(`No se pudo subir la imagen de la variante: ${v.name || index + 1}`);
+            }
+          } else if (imgItem.preview) {
+            finalImageUrl = imgItem.preview;
+          }
+        }
+
+        return {
+          ...v,
+          imageUrl: finalImageUrl || undefined,
+          prices: v.prices.map(p => ({
+            ...p,
+            salePrice: Number(p.salePrice) || 0,
+            discountPrice: Number(p.discountPrice) || 0
+          })).filter(p => p.salePrice > 0)
+        };
+      }));
+
+      // Price validations
+      for (const v of processedVariants) {
+        for (const p of v.prices) {
+          if (p.discountPrice > p.salePrice) {
+            toastError(`El precio de descuento no puede ser mayor al de venta en: ${v.name}`);
+            setIsSubmitting(false);
+            return;
+          }
+        }
+      }
+
       await commercialService.createFullProduct({
         name,
         description: description || undefined,
@@ -165,7 +197,7 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
       onSuccess();
       onClose();
     } catch (e: any) {
-      toastError(e.response?.data?.message || "Error al crear el producto.");
+      toastError(e.message || e.response?.data?.message || "Error al crear el producto.");
     } finally {
       setIsSubmitting(false);
     }
@@ -185,11 +217,13 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
 
   const addVariant = () => {
     setVariants([...variants, { name: '', sku: '', barCode: '', prices: [] }]);
+    setVariantImages([...variantImages, null]);
   };
 
   const removeVariant = (index: number) => {
     if (variants.length > 1) {
       setVariants(variants.filter((_, i) => i !== index));
+      setVariantImages(variantImages.filter((_, i) => i !== index));
     }
   };
 
@@ -256,16 +290,19 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
               }}
               disabled={!categoryId}
             />
-            <ComerziaSelect
-              label="Marca"
-              options={brands.map(b => ({ value: b.id, label: b.name }))}
-              value={brandId}
-              onChange={(e) => setBrandId(e.target.value)}
-              error={!brandId && shakeKey > 0 ? "Requerido" : ""}
-              shakeKey={shakeKey}
-              disabled={!segmentId}
-              isRequired
-            />
+
+            <div className="md:col-span-2">
+              <ComerziaSelect
+                label="Marca"
+                options={brands.map(b => ({ value: b.id, label: b.name }))}
+                value={brandId}
+                onChange={(e) => setBrandId(e.target.value)}
+                disabled={!segmentId}
+                error={!brandId && shakeKey > 0 ? "Requerido" : ""}
+                shakeKey={shakeKey}
+                isRequired
+              />
+            </div>
 
             <div className="md:col-span-2">
               <ComerziaTextarea
@@ -289,41 +326,64 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
                     ✕
                   </button>
                 )}
-                <h4 className="font-bold mb-4">Variante {index + 1}</h4>
+                <h4 className="font-bold mb-4 text-base-content">Variante {index + 1}</h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <ComerziaInput
-                    label="Nombre/Atributo (Ej: Azul - XL)"
-                    value={variant.name}
-                    uppercase
-                    onChange={(e) => {
-                      const val = e.target.value.toUpperCase();
-                      const prevAutoSku = generateSku(name, variant.name);
+                  <div className="md:col-span-2 space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="md:col-span-2">
+                        <ComerziaInput
+                          label="Nombre/Atributo (Ej: Azul - XL)"
+                          value={variant.name}
+                          uppercase
+                          onChange={(e) => {
+                            const val = e.target.value.toUpperCase();
+                            const prevAutoSku = generateSku(name, variant.name);
 
-                      const updated = [...variants];
-                      updated[index].name = val;
-                      if (!variant.sku || variant.sku === prevAutoSku) {
-                        updated[index].sku = generateSku(name, val);
-                      }
-                      setVariants(updated);
-                    }}
-                    error={!variant.name && shakeKey > 0 ? "Requerido" : ""}
-                    shakeKey={shakeKey}
-                  />
-                  <ComerziaInput
-                    label="SKU Interno"
-                    value={variant.sku}
-                    uppercase
-                    onChange={(e) => updateVariant(index, 'sku', e.target.value.toUpperCase())}
-                    error={!variant.sku && shakeKey > 0 ? "Requerido" : ""}
-                    shakeKey={shakeKey}
-                  />
-                  <ComerziaInput
-                    label="Código de Barras"
-                    value={variant.barCode}
-                    onChange={(e) => updateVariant(index, 'barCode', e.target.value)}
-                    error={!variant.barCode && shakeKey > 0 ? "Requerido" : ""}
-                    shakeKey={shakeKey}
-                  />
+                            const updated = [...variants];
+                            updated[index].name = val;
+                            if (!variant.sku || variant.sku === prevAutoSku) {
+                              updated[index].sku = generateSku(name, val);
+                            }
+                            setVariants(updated);
+                          }}
+                          error={!variant.name && shakeKey > 0 ? "Requerido" : ""}
+                          shakeKey={shakeKey}
+                          isRequired
+                        />
+                      </div>
+                      <ComerziaInput
+                        label="SKU Interno"
+                        value={variant.sku}
+                        uppercase
+                        onChange={(e) => updateVariant(index, 'sku', e.target.value.toUpperCase())}
+                        error={!variant.sku && shakeKey > 0 ? "Requerido" : ""}
+                        shakeKey={shakeKey}
+                        isRequired
+                      />
+                      <ComerziaInput
+                        label="Código de Barras"
+                        value={variant.barCode}
+                        onChange={(e) => updateVariant(index, 'barCode', e.target.value)}
+                        error={!variant.barCode && shakeKey > 0 ? "Requerido" : ""}
+                        shakeKey={shakeKey}
+                        isRequired
+                      />
+                    </div>
+                  </div>
+
+                  {/* Imagen de la variante */}
+                  <div className="md:col-span-1">
+                    <ComerziaSingleImageUploader
+                      label="Imagen Variante"
+                      value={variantImages[index]}
+                      onChange={(newImg) => {
+                        const updated = [...variantImages];
+                        updated[index] = newImg;
+                        setVariantImages(updated);
+                      }}
+                      compact
+                    />
+                  </div>
                 </div>
               </div>
             ))}

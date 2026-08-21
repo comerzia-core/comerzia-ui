@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Building2, CreditCard, Settings } from 'lucide-react';
 import { companyService } from '../services/companyService';
+import { uploadFile } from '../../shared/services/storageService';
+import { STORAGE_FOLDERS } from '../../../config/storage';
 import { useToast } from '../../../context/ToastContext';
 import { formatDateForUser } from '../../../utils/date';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
+import { ComerziaSingleImageUploader, type SingleImageValue } from '../../../components/ui/ComerziaSingleImageUploader';
 import { BtnSave } from '../../../components/ui/CrudButtons';
 import type { TenantCompanyProfileResponse, UpdateCompanySettingsRequest } from '../types/company';
 
@@ -14,6 +17,7 @@ export const CompanyProfilePage = () => {
   const [profileData, setProfileData] = useState<TenantCompanyProfileResponse | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [companyLogo, setCompanyLogo] = useState<SingleImageValue | null>(null);
   
   // Estado para validación visual
   const [shakeKey, setShakeKey] = useState<number>(0);
@@ -36,6 +40,8 @@ export const CompanyProfilePage = () => {
       const data = await companyService.getCompanyProfile();
       setProfileData(data);
       
+      setCompanyLogo(data.companyLogoUrl ? { preview: data.companyLogoUrl } : null);
+
       // Mapeamos los datos al formulario. 
       // IMPORTANTE: Mantenemos las URLs originales intactas para no sobrescribirlas al guardar.
       setFormData({
@@ -93,7 +99,31 @@ export const CompanyProfilePage = () => {
 
     try {
       setIsSaving(true);
-      await companyService.updateCompanySettings(formData);
+      let finalCompanyLogoUrl: string | null = null;
+
+      if (companyLogo) {
+        if (companyLogo.file) {
+          try {
+            finalCompanyLogoUrl = await uploadFile(
+              companyLogo.file,
+              STORAGE_FOLDERS.COMPANY,
+              `logo-${profileData?.slug || 'company'}-${Date.now()}`
+            );
+          } catch (uploadErr) {
+            console.error("Error al subir logo de empresa:", uploadErr);
+            showToast("No se pudo subir la imagen del logo", "error");
+            setIsSaving(false);
+            return;
+          }
+        } else if (companyLogo.preview) {
+          finalCompanyLogoUrl = companyLogo.preview;
+        }
+      }
+
+      await companyService.updateCompanySettings({
+        ...formData,
+        companyLogoUrl: finalCompanyLogoUrl
+      });
       showToast('Configuración actualizada exitosamente', 'success');
       
       // Recargamos el perfil para mantener la UI sincronizada con la Base de Datos
@@ -249,6 +279,20 @@ export const CompanyProfilePage = () => {
                   shakeKey={shakeKey}
                   error={errors.currencyCode}
                 />
+
+                <div className="divider md:col-span-2 my-2 text-xs font-bold text-base-content/40 uppercase tracking-widest">
+                  Identidad Visual
+                </div>
+
+                <div className="md:col-span-2">
+                  <ComerziaSingleImageUploader
+                    label="Logo de la Empresa"
+                    value={companyLogo}
+                    onChange={setCompanyLogo}
+                    helperText="Formato recomendado: PNG transparente o JPG (Máx. 5MB). Se usará en el encabezado, sidebar y documentos."
+                    compact
+                  />
+                </div>
 
                 <div className="divider md:col-span-2 my-2 text-xs font-bold text-base-content/40 uppercase tracking-widest">
                   Facturación e Impuestos

@@ -23,7 +23,7 @@ interface Props {
     shakeKey?: number;
 }
 
-export const TravesiaImageUploader = ({ images, onChange, error, shakeKey }: Props) => {
+export const ComerziaImageUploader = ({ images, onChange, error, shakeKey }: Props) => {
     const inputRef = useRef<HTMLInputElement>(null);
     const { error: toastError, success: toastSuccess } = useToast(); // ✅ Hook de notificaciones
 
@@ -65,9 +65,6 @@ export const TravesiaImageUploader = ({ images, onChange, error, shakeKey }: Pro
             if (potentialTotal > MAX_IMAGES_PER_PRODUCT) {
                 toastError(`Solo puedes tener un máximo de ${MAX_IMAGES_PER_PRODUCT} imágenes por producto.`);
                 
-                // Opción A: No agregar nada si se pasan
-                // return; 
-
                 // Opción B: Agregar solo las que quepan (Recomendado)
                 const slotsAvailable = MAX_IMAGES_PER_PRODUCT - currentTotal;
                 if (slotsAvailable > 0) {
@@ -84,7 +81,7 @@ export const TravesiaImageUploader = ({ images, onChange, error, shakeKey }: Pro
                 }
             }
 
-            // 4. Notificaciones de Archivos Saltados (Tu requerimiento específico)
+            // 4. Notificaciones de Archivos Saltados
             if (skippedCount > 0) {
                 toastError(`${skippedCount} imagen(es) ignorada(s) por exceder ${MAX_FILE_SIZE_MB}MB.`);
             }
@@ -135,7 +132,6 @@ export const TravesiaImageUploader = ({ images, onChange, error, shakeKey }: Pro
         <div className={`space-y-4 ${shakeKey ? 'animate-shake' : ''}`}>
             
             {/* ZONA DE CARGA */}
-            {/* Si ya llegamos al límite, deshabilitamos visualmente la zona de carga */}
             {images.length >= MAX_IMAGES_PER_PRODUCT ? (
                 <div className="border-2 border-dashed border-base-200 rounded-xl p-6 flex flex-col items-center justify-center text-center bg-base-200/50 cursor-not-allowed opacity-60">
                     <div className="bg-base-300 p-3 rounded-full mb-2">
@@ -232,3 +228,5 @@ export const TravesiaImageUploader = ({ images, onChange, error, shakeKey }: Pro
         </div>
     );
 };
+
+export const TravesiaImageUploader = ComerziaImageUploader;

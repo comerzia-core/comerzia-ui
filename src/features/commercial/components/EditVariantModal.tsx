@@ -3,8 +3,11 @@ import { ComerziaModal } from '../../../components/ui/ComerziaModal';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
 import { ComerziaTextarea } from '../../../components/ui/ComerziaTextarea';
 import { ComerziaSwitch } from '../../../components/ui/ComerziaSwitch';
+import { ComerziaSingleImageUploader, type SingleImageValue } from '../../../components/ui/ComerziaSingleImageUploader';
 import { BtnCancel, BtnSave } from '../../../components/ui/CrudButtons';
 import { commercialService } from '../services/commercialService';
+import { uploadFile } from '../../shared/services/storageService';
+import { STORAGE_FOLDERS } from '../../../config/storage';
 import type { ProductVariantResponse } from '../types/commercial';
 import { useToast } from '../../../context/ToastContext';
 import { generateSku } from '../../../utils/skuGenerator';
@@ -23,7 +26,7 @@ export const EditVariantModal = ({ isOpen, onClose, onSuccess, productId, produc
   const [description, setDescription] = useState('');
   const [sku, setSku] = useState('');
   const [barCode, setBarCode] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
+  const [selectedImage, setSelectedImage] = useState<SingleImageValue | null>(null);
   const [status, setStatus] = useState(true);
   
   const [shakeKey, setShakeKey] = useState(0);
@@ -37,14 +40,14 @@ export const EditVariantModal = ({ isOpen, onClose, onSuccess, productId, produc
         setDescription(variant.description || '');
         setSku(variant.sku);
         setBarCode(variant.barCode);
-        setImageUrl(variant.imageUrl || '');
+        setSelectedImage(variant.imageUrl ? { preview: variant.imageUrl } : null);
         setStatus(variant.status);
       } else {
         setName('');
         setDescription('');
         setSku('');
         setBarCode('');
-        setImageUrl('');
+        setSelectedImage(null);
         setStatus(true);
       }
     }
@@ -58,12 +61,33 @@ export const EditVariantModal = ({ isOpen, onClose, onSuccess, productId, produc
 
     setIsSubmitting(true);
     try {
+      let finalImageUrl: string | undefined = undefined;
+
+      if (selectedImage) {
+        if (selectedImage.file) {
+          try {
+            const cleanProd = (productName || 'prod').substring(0, 20);
+            const cleanVar = (name || 'var').substring(0, 20);
+            finalImageUrl = await uploadFile(
+              selectedImage.file,
+              STORAGE_FOLDERS.PRODUCTS,
+              `${cleanProd}-${cleanVar}-${Date.now()}`
+            );
+          } catch (uploadErr) {
+            console.error("Error al subir imagen:", uploadErr);
+            throw new Error("No se pudo subir la imagen de la variante.");
+          }
+        } else if (selectedImage.preview) {
+          finalImageUrl = selectedImage.preview;
+        }
+      }
+
       const payload = {
         name,
         description: description || undefined,
         sku,
         barCode,
-        imageUrl: imageUrl || undefined,
+        imageUrl: finalImageUrl || undefined,
         productId,
         status
       };
@@ -78,7 +102,7 @@ export const EditVariantModal = ({ isOpen, onClose, onSuccess, productId, produc
       onSuccess();
       onClose();
     } catch (e: any) {
-      toastError(e.response?.data?.message || "Error al procesar la variante.");
+      toastError(e.message || e.response?.data?.message || "Error al procesar la variante.");
     } finally {
       setIsSubmitting(false);
     }
@@ -129,10 +153,11 @@ export const EditVariantModal = ({ isOpen, onClose, onSuccess, productId, produc
           isRequired
           disabled={!!variant}
         />
-        <ComerziaInput
-          label="URL de Imagen (Opcional)"
-          value={imageUrl}
-          onChange={(e) => setImageUrl(e.target.value)}
+        <ComerziaSingleImageUploader
+          label="Imagen de la Variante (Opcional)"
+          value={selectedImage}
+          onChange={setSelectedImage}
+          compact
         />
         <ComerziaTextarea
           label="Descripción (Opcional)"

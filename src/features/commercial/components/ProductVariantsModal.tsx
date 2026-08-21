@@ -7,10 +7,11 @@ import { useAuthStore } from '../../../stores/useAuthStore';
 import { EditVariantModal } from './EditVariantModal';
 import { VariantPricesModal } from './VariantPricesModal';
 import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
+import { ComerziaImageViewer } from '../../../components/ui/ComerziaImageViewer';
 import { BtnCreate } from '../../../components/ui/CrudButtons';
 import { useToast } from '../../../context/ToastContext';
 import { ComerziaContextMenu, ContextMenuItem } from '../../../components/ui/ComerziaContextMenu';
-import { Edit, Trash2, DollarSign, Search, ArrowRightLeft, History } from 'lucide-react';
+import { Edit, Trash2, DollarSign, Search, ArrowRightLeft, History, Eye } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
@@ -38,6 +39,11 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
   const [variantToPrices, setVariantToPrices] = useState<ProductVariantResponse | null>(null);
   const [isCreatingVariant, setIsCreatingVariant] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [viewingImage, setViewingImage] = useState<{ isOpen: boolean; url: string; title: string }>({
+    isOpen: false,
+    url: '',
+    title: ''
+  });
   const [contextMenu, setContextMenu] = useState<{ isOpen: boolean; x: number; y: number; row: ProductVariantResponse | null }>({ isOpen: false, x: 0, y: 0, row: null });
 
   useEffect(() => {
@@ -80,11 +86,25 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
     {
       header: 'Imagen',
       render: (row) => (
-        <div className="w-10 h-10 rounded bg-base-200 overflow-hidden">
+        <div 
+          className={`w-10 h-10 rounded-lg bg-base-200 overflow-hidden border border-base-300 transition-transform ${
+            row.imageUrl ? 'cursor-pointer hover:scale-105 shadow-xs' : ''
+          }`}
+          onClick={() => {
+            if (row.imageUrl) {
+              setViewingImage({
+                isOpen: true,
+                url: row.imageUrl,
+                title: `${productName} - ${row.name}`
+              });
+            }
+          }}
+          title={row.imageUrl ? "Clic para ver imagen" : undefined}
+        >
           {row.imageUrl ? (
             <img src={row.imageUrl} alt={row.name} className="w-full h-full object-cover" />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-base-content/30 text-xs">Sin img</div>
+            <div className="w-full h-full flex items-center justify-center text-base-content/30 text-[10px]">Sin img</div>
           )}
         </div>
       )
@@ -102,8 +122,6 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
     }
   ];
 
-  // Se eliminó la columna de Acciones para usar menú contextual
-
   const pagination: TablePaginationConfig = {
     currentPage: page,
     pageSize: size,
@@ -117,27 +135,27 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
     <>
       <ComerziaModal
         isOpen={isOpen}
-      onClose={onClose}
-      title={`Variantes de ${productName}`}
-      size="xl"
-    >
-      <div className="mb-4 flex justify-between items-center">
-        <h3 className="font-semibold text-base-content/70">Listado de Variantes</h3>
-        {canManage && (
-          <BtnCreate onClick={() => setIsCreatingVariant(true)} label="Añadir Variante" />
-        )}
-      </div>
-      <ComerziaTable
-        data={data}
-        columns={columns}
-        isLoading={isLoading}
-        pagination={pagination}
-        showRowNumbers={true}
-        onRowContextMenu={(e, row) => {
-          e.preventDefault();
-          setContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, row });
-        }}
-      />
+        onClose={onClose}
+        title={`Variantes de ${productName}`}
+        size="xl"
+      >
+        <div className="mb-4 flex justify-between items-center">
+          <h3 className="font-semibold text-base-content/70">Listado de Variantes</h3>
+          {canManage && (
+            <BtnCreate onClick={() => setIsCreatingVariant(true)} label="Añadir Variante" />
+          )}
+        </div>
+        <ComerziaTable
+          data={data}
+          columns={columns}
+          isLoading={isLoading}
+          pagination={pagination}
+          showRowNumbers={true}
+          onRowContextMenu={(e, row) => {
+            e.preventDefault();
+            setContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, row });
+          }}
+        />
       </ComerziaModal>
 
       <ComerziaContextMenu
@@ -146,6 +164,22 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
         y={contextMenu.y}
         onClose={() => setContextMenu({ ...contextMenu, isOpen: false })}
       >
+        {contextMenu.row?.imageUrl && (
+          <ContextMenuItem 
+            icon={Eye}
+            label="Ver Imagen"
+            onClick={() => {
+              if (contextMenu.row?.imageUrl) {
+                setViewingImage({
+                  isOpen: true,
+                  url: contextMenu.row.imageUrl,
+                  title: `${productName} - ${contextMenu.row.name}`
+                });
+              }
+              setContextMenu({ ...contextMenu, isOpen: false });
+            }} 
+          />
+        )}
         <ContextMenuItem 
           icon={Search}
           label="Consultar Stock"
@@ -231,6 +265,12 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
         title="Eliminar Variante"
         message={`¿Estás seguro de que deseas eliminar la variante "${variantToDelete?.name}"? Esta acción no se puede deshacer.`}
         isLoading={isDeleting}
+      />
+      <ComerziaImageViewer
+        isOpen={viewingImage.isOpen}
+        onClose={() => setViewingImage({ ...viewingImage, isOpen: false })}
+        imageUrl={viewingImage.url}
+        title={viewingImage.title}
       />
     </>
   );
