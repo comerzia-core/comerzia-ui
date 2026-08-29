@@ -380,12 +380,20 @@ export const RegisterSaleCustomerModal = ({ isOpen, onClose, saleId, saleNumber,
         </div>
 
         {/* Action Buttons */}
-        <div className="flex justify-between items-center pt-3 border-t border-base-200">
-          <BtnCancel onClick={onClose} label="Omitir (No registrar)" disabled={isSubmitting} />
+        <div className="flex flex-row items-center gap-2 pt-3 border-t border-base-200 w-full sm:justify-end">
+          <BtnCancel
+            onClick={onClose}
+            label="Omitir (No registrar)"
+            disabled={isSubmitting}
+            responsive={true}
+            className="flex-1 sm:flex-none sm:w-auto min-w-0"
+          />
           <BtnSave
             onClick={handleSubmit}
             label={foundCustomer ? "Confirmar y Vincular Cliente" : "Registrar y Vincular Cliente"}
             isLoading={isSubmitting}
+            responsive={true}
+            className="flex-1 sm:flex-none sm:w-auto min-w-0"
           />
         </div>
       </div>

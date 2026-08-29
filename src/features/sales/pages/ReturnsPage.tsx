@@ -387,8 +387,8 @@ export const ReturnsPage = () => {
                 )}
               </div>
 
-              {/* Tabla de Productos de la Venta */}
-              <div className="overflow-x-auto border border-base-200 rounded-xl">
+              {/* VISTA DESKTOP: TABLA */}
+              <div className="hidden md:block overflow-x-auto border border-base-200 rounded-xl">
                 <table className="table table-compact w-full text-xs">
                   <thead>
                     <tr className="bg-base-200/60 text-base-content font-bold">
@@ -425,7 +425,7 @@ export const ReturnsPage = () => {
                       const lineFinalRefund = unitFinal * currentReturnQty;
 
                       return (
-                        <tr key={d.id} className="hover:bg-base-50 transition-colors">
+                        <tr key={`desktop-return-${d.id}`} className="hover:bg-base-50 transition-colors">
                           <td>
                             <div className="space-y-1">
                               <div>
@@ -528,6 +528,137 @@ export const ReturnsPage = () => {
                   </tbody>
                 </table>
               </div>
+
+              {/* VISTA MOBILE: CARDS */}
+              <div className="block md:hidden space-y-3">
+                {(activeSale.details || []).map((d: SaleDetailResponse) => {
+                  const factor = d.equivalenceFactor || 1;
+                  const purchasedQty = d.receiptQuantity ?? d.unitQuantity ?? 1;
+                  const totalPurchasedPhysical = purchasedQty * factor;
+                  const totalReturnedPhysical = d.returnedQuantity ?? 0;
+                  const alreadyReturnedReceipt = factor > 0 ? totalReturnedPhysical / factor : 0;
+                  const maxQty = getMaxReturnQty(d);
+                  const currentReturnQty = returnQtys[d.id] || 0;
+                  const currentReturnPhysical = currentReturnQty * factor;
+
+                  const lineSuggested = d.lineTotalSuggested ?? (d.receiptUnitPrice ? d.receiptUnitPrice * purchasedQty : 0);
+                  const lineDiscount = d.lineTotalDiscount ?? (d.unitDiscountAmount ? d.unitDiscountAmount * purchasedQty : 0);
+                  const lineFinal = d.lineTotalFinal ?? (lineSuggested - lineDiscount);
+
+                  const unitSuggested = purchasedQty > 0 ? lineSuggested / purchasedQty : (d.receiptUnitPrice ?? 0);
+                  const unitDiscount = purchasedQty > 0 ? lineDiscount / purchasedQty : 0;
+                  const unitFinal = purchasedQty > 0 ? lineFinal / purchasedQty : (unitSuggested - unitDiscount);
+
+                  const lineFinalRefund = unitFinal * currentReturnQty;
+
+                  return (
+                    <div key={`mobile-return-${d.id}`} className="bg-base-100 p-4 rounded-xl border border-base-200 shadow-sm space-y-3">
+                      {/* Cabecera de la Card */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <h4 className="font-bold text-sm text-base-content leading-tight">
+                            {d.productName || 'Producto'}
+                          </h4>
+                          {d.variantName && (
+                            <p className="text-xs text-base-content/70 font-medium mt-0.5">
+                              {d.variantName}
+                            </p>
+                          )}
+                          <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                            {d.measureUnitName && (
+                              <span className="badge badge-ghost badge-xs font-medium">
+                                {d.measureUnitName}
+                              </span>
+                            )}
+                            {factor > 1 && (
+                              <span className="badge badge-info badge-xs text-white font-bold">
+                                Factor x{factor}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <span className="text-[10px] text-base-content/50 uppercase font-semibold block">Reembolso</span>
+                          {lineFinalRefund > 0 ? (
+                            <span className="text-error font-extrabold text-sm font-mono">
+                              -{currency} {lineFinalRefund.toFixed(2)}
+                            </span>
+                          ) : (
+                            <span className="text-base-content/40 text-xs font-mono">0.00</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Datos de Compra y Precio */}
+                      <div className="grid grid-cols-2 gap-2 bg-base-200/40 p-2.5 rounded-lg text-xs">
+                        <div>
+                          <span className="text-base-content/50 block text-[10px]">Comprado</span>
+                          <span className="font-semibold text-base-content">
+                            {purchasedQty} {d.measureUnitName || ''} {factor > 1 && `(${totalPurchasedPhysical} u)`}
+                          </span>
+                          {totalReturnedPhysical > 0 && (
+                            <span className="badge badge-warning badge-xs block mt-1 font-semibold truncate">
+                              {alreadyReturnedReceipt} devueltos
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <span className="text-base-content/50 block text-[10px]">Precio Unit. Neto</span>
+                          <span className="font-bold font-mono text-primary text-xs">
+                            {currency} {unitFinal.toFixed(2)}
+                          </span>
+                          {unitDiscount > 0 && (
+                            <span className="text-[10px] text-error block">
+                              -{currency} {unitDiscount.toFixed(2)} desc.
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Control de Cantidad a Devolver */}
+                      <div className="flex items-center justify-between pt-1 border-t border-base-200/60">
+                        <span className="text-xs font-bold text-base-content">Cant. a Devolver:</span>
+                        {isReturnable && maxQty > 0 ? (
+                          <div className="flex flex-col items-end gap-0.5">
+                            <div className="flex items-center gap-1.5">
+                              <input
+                                type="number"
+                                min="0"
+                                max={maxQty}
+                                className="input input-bordered input-sm w-16 text-center font-bold font-mono rounded-lg"
+                                value={currentReturnQty}
+                                onWheel={(e) => (e.target as HTMLElement).blur()}
+                                onChange={(e) => {
+                                  const val = Math.max(0, Math.min(maxQty, parseInt(e.target.value) || 0));
+                                  setReturnQtys({ ...returnQtys, [d.id]: val });
+                                }}
+                              />
+                              <span className="text-base-content/50 text-xs font-semibold">/ {maxQty}</span>
+                              <button
+                                type="button"
+                                className="btn btn-outline btn-primary btn-xs font-bold"
+                                onClick={() => setReturnQtys({ ...returnQtys, [d.id]: maxQty })}
+                                title={`Devolver todo (${maxQty} ${d.measureUnitName || 'u.'})`}
+                              >
+                                Máx
+                              </button>
+                            </div>
+                            {factor > 1 && currentReturnQty > 0 && (
+                              <span className="text-[10px] text-primary font-bold">
+                                ({currentReturnPhysical} unidades)
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="badge badge-neutral badge-xs font-semibold">
+                            {maxQty === 0 ? '100% Devuelto' : 'No disponible'}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Columna Derecha: Resumen de Reembolso y Confirmación (4 de 12 columnas) */}
@@ -627,13 +758,14 @@ export const ReturnsPage = () => {
           <p className="text-sm text-base-content/70 leading-relaxed">
             Se reintegrarán <strong>{refundBreakdown.totalReceiptItems} presentaciones</strong> {refundBreakdown.totalPhysicalItems !== refundBreakdown.totalReceiptItems ? `(${refundBreakdown.totalPhysicalItems} unidades físicas)` : ''} al inventario y se realizará una salida de caja de <strong className="text-error">{currency} {refundBreakdown.totalRefund.toFixed(2)}</strong>.
           </p>
-          <div className="flex justify-end gap-2 mt-6">
-            <BtnCancel onClick={() => setShowConfirmModal(false)} disabled={isSubmitting} />
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 mt-6">
+            <BtnCancel onClick={() => setShowConfirmModal(false)} disabled={isSubmitting} className="w-full sm:w-auto" />
             <BtnModalYes
               label="Sí, Procesar Devolución"
               onClick={handleSubmitReturn}
               isLoading={isSubmitting}
               disabled={isSubmitting}
+              className="w-full sm:w-auto"
             />
           </div>
         </div>

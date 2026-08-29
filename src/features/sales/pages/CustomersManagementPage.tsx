@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { salesService } from '../services/salesService';
 import type { CustomerProfileResponse, SaleResponse } from '../types/sales';
@@ -164,6 +164,50 @@ export const CustomersManagementPage = () => {
   const handleNumericInput = (val: string, maxLen = 8) => {
     const cleaned = val.replace(/\D/g, '');
     return cleaned.slice(0, maxLen);
+  };
+
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const customerDetailsRef = useRef<HTMLDivElement | null>(null);
+
+  // Seleccionar cliente y desplazar suavemente a la ficha
+  const handleSelectCustomerAndScroll = (customer: CustomerProfileResponse) => {
+    setSelectedCustomer(customer);
+    setTimeout(() => {
+      customerDetailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 120);
+  };
+
+  // Touch handlers para Long Press en móvil
+  const handleTouchStart = (e: React.TouchEvent, customer: CustomerProfileResponse) => {
+    const touch = e.touches[0];
+    const clientX = touch.clientX;
+    const clientY = touch.clientY;
+
+    longPressTimerRef.current = setTimeout(() => {
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate(40);
+      }
+      setContextMenu({
+        isOpen: true,
+        x: clientX,
+        y: clientY,
+        customer
+      });
+    }, 500);
+  };
+
+  const handleTouchEnd = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const handleTouchMove = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
   };
 
   // Abrir Menú Contextual
@@ -356,29 +400,120 @@ export const CustomersManagementPage = () => {
         {/* MAESTRO: LISTADO DE CLIENTES */}
         <div className="lg:col-span-2 bg-base-100 p-6 rounded-2xl border border-base-200 shadow-sm flex flex-col justify-between">
           <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-lg font-bold flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+              <h2 className="text-base sm:text-lg font-bold flex items-center gap-2">
                 <Users className="h-5 w-5 text-primary" />
                 Lista de Clientes
               </h2>
-              <span className="text-xs text-base-content/50 italic">
+              <span className="text-xs text-base-content/50 italic hidden sm:inline">
                 * Haz clic derecho sobre un cliente para ver opciones.
+              </span>
+              <span className="text-xs text-base-content/50 italic sm:hidden">
+                * Mantén presionado un cliente para ver opciones (Ver Ficha, Modificar, etc.).
               </span>
             </div>
 
-            <ComerziaTable
-              data={customers}
-              columns={columns}
-              isLoading={isLoading}
-              pagination={isFilteredByPhone ? undefined : customerPagination}
-              onRowContextMenu={(e, row) => handleContextMenu(e, row)}
-              rowClassName={(row) => row.id === selectedCustomer?.id ? 'bg-primary/5 font-semibold' : ''}
-            />
+            {/* VISTA DESKTOP: TABLA */}
+            <div className="hidden md:block">
+              <ComerziaTable
+                data={customers}
+                columns={columns}
+                isLoading={isLoading}
+                pagination={isFilteredByPhone ? undefined : customerPagination}
+                onRowContextMenu={(e, row) => handleContextMenu(e, row)}
+                rowClassName={(row) => row.id === selectedCustomer?.id ? 'bg-primary/5 font-semibold' : ''}
+              />
+            </div>
+
+            {/* VISTA MOBILE: CARDS */}
+            <div className="block md:hidden space-y-3">
+              {isLoading ? (
+                <div className="flex flex-col items-center justify-center p-8 text-base-content/50 gap-2">
+                  <span className="loading loading-spinner loading-md text-primary"></span>
+                  <span className="text-xs">Cargando clientes...</span>
+                </div>
+              ) : customers.length === 0 ? (
+                <div className="p-8 text-center text-xs text-base-content/50 bg-base-200/30 rounded-xl">
+                  No se encontraron clientes registrados.
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  {customers.map((c) => (
+                    <div
+                      key={c.id}
+                      onTouchStart={(e) => handleTouchStart(e, c)}
+                      onTouchEnd={handleTouchEnd}
+                      onTouchMove={handleTouchMove}
+                      className={`p-3.5 rounded-xl border transition-all space-y-2 bg-base-100 cursor-pointer select-none ${
+                        c.id === selectedCustomer?.id ? 'border-primary bg-primary/5 shadow-sm' : 'border-base-200 shadow-sm'
+                      }`}
+                    >
+                      {/* Fila 1: Nombre, Tipo Cliente y Documento */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <h4 className="font-bold text-sm text-base-content leading-tight truncate">
+                            {c.fullName || `${c.firstName} ${c.paternalSurname || ''}`}
+                          </h4>
+                          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                            <span className={`badge badge-xs font-semibold ${c.customerType === 611 ? 'badge-primary/10 text-primary' : 'badge-secondary/10 text-secondary'}`}>
+                              {c.customerType === 611 ? 'Persona Natural' : 'Empresa'}
+                            </span>
+                            {c.documentNumber && (
+                              <span className="text-[10px] font-mono text-base-content/60">
+                                Doc: {c.documentNumber}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Fila 2: Contacto (Teléfono y Email) */}
+                      <div className="grid grid-cols-2 gap-2 bg-base-200/40 p-2 rounded-lg text-xs">
+                        <div className="flex items-center gap-1 text-base-content/70 truncate">
+                          <Phone size={12} className="shrink-0 text-primary" />
+                          <span className="font-mono text-[11px] truncate">{c.phoneNumber || '-'}</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-base-content/70 truncate text-right justify-end">
+                          <Mail size={12} className="shrink-0 text-primary" />
+                          <span className="text-[11px] truncate">{c.email || '-'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Paginación Mobile */}
+                  {!isFilteredByPhone && totalElements > size && (
+                    <div className="flex justify-between items-center pt-2 text-xs text-base-content/60 border-t border-base-200">
+                      <span>{totalElements} clientes</span>
+                      <div className="join">
+                        <button
+                          className="join-item btn btn-xs"
+                          disabled={page === 0}
+                          onClick={() => setPage(p => Math.max(0, p - 1))}
+                        >
+                          «
+                        </button>
+                        <span className="join-item btn btn-xs pointer-events-none">
+                          {page + 1} / {Math.ceil(totalElements / size)}
+                        </span>
+                        <button
+                          className="join-item btn btn-xs"
+                          disabled={(page + 1) * size >= totalElements}
+                          onClick={() => setPage(p => p + 1)}
+                        >
+                          »
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
         {/* DETALLE: FICHA DEL CLIENTE */}
-        <div className="bg-base-100 p-6 rounded-2xl border border-base-200 shadow-sm flex flex-col">
+        <div ref={customerDetailsRef} className="bg-base-100 p-6 rounded-2xl border border-base-200 shadow-sm flex flex-col">
           {selectedCustomer ? (
             <div className="space-y-6 flex-1 flex flex-col justify-between">
               <div className="space-y-6">
@@ -528,7 +663,7 @@ export const CustomersManagementPage = () => {
               icon={Eye}
               label="Ver Ficha / Detalle"
               onClick={() => {
-                if (contextMenu.customer) setSelectedCustomer(contextMenu.customer);
+                if (contextMenu.customer) handleSelectCustomerAndScroll(contextMenu.customer);
               }}
             />
 
@@ -580,7 +715,7 @@ export const CustomersManagementPage = () => {
             ]}
           />
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <ComerziaInput
               label="Nombre / Razón Social"
               type="text"
@@ -600,7 +735,7 @@ export const CustomersManagementPage = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <ComerziaSelect
               label="Tipo Documento"
               value={form.documentType}
@@ -623,7 +758,7 @@ export const CustomersManagementPage = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <ComerziaInput
               label="Teléfono / Celular"
               type="text"
@@ -641,9 +776,17 @@ export const CustomersManagementPage = () => {
             />
           </div>
 
-          <div className="flex justify-end gap-2 mt-6">
-            <BtnCancel onClick={() => setIsModalOpen(false)} />
-            <BtnSave onClick={handleSaveCustomer} />
+          <div className="flex flex-row items-center gap-2 mt-6 w-full sm:justify-end">
+            <BtnCancel
+              onClick={() => setIsModalOpen(false)}
+              responsive={true}
+              className="flex-1 sm:flex-none sm:w-auto min-w-0"
+            />
+            <BtnSave
+              onClick={handleSaveCustomer}
+              responsive={true}
+              className="flex-1 sm:flex-none sm:w-auto min-w-0"
+            />
           </div>
         </div>
       </ComerziaModal>
@@ -662,13 +805,18 @@ export const CustomersManagementPage = () => {
           <p className="text-sm text-base-content/60">
             Esta acción quitará al cliente de forma permanente del CRM. Solo se puede realizar si el cliente no registra ventas previas en la empresa para resguardar la contabilidad.
           </p>
-          <div className="flex justify-end gap-2 mt-6">
-            <BtnCancel onClick={() => setDeletingCustomerId(null)} disabled={isDeleting} />
+          <div className="flex flex-row items-center gap-2 mt-6 w-full sm:justify-end">
+            <BtnCancel
+              onClick={() => setDeletingCustomerId(null)}
+              disabled={isDeleting}
+              className="flex-1 sm:flex-none sm:w-auto min-w-0"
+            />
             <BtnModalYes
               label="Sí, Eliminar"
               onClick={handleDeleteCustomer}
               isLoading={isDeleting}
               disabled={isDeleting}
+              className="flex-1 sm:flex-none sm:w-auto min-w-0"
             />
           </div>
         </div>

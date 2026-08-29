@@ -74,32 +74,32 @@ export const ComerziaProductSearch = ({ onProductSelect, onError }: ComerziaProd
   };
 
   return (
-    <div className="relative flex-1" ref={wrapperRef}>
-      <Search className="absolute left-3 top-2.5 h-4 w-4 text-base-content/40" />
+    <div className="relative flex-1 w-full min-w-0" ref={wrapperRef}>
+      <Search className="absolute left-3 top-2.5 h-4 w-4 text-base-content/40 pointer-events-none" />
       <input
         type="text"
-        placeholder="Escribe el nombre o código para buscar..."
-        className="input input-bordered input-sm w-full pl-9 bg-base-50 focus:outline-none focus:ring-1 focus:ring-primary/50"
+        placeholder="Buscar por nombre o código..."
+        className="input input-bordered input-sm w-full pl-9 pr-8 bg-base-50 focus:bg-base-100 text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-primary/50"
         value={term}
         onChange={(e) => setTerm(e.target.value)}
         onFocus={() => { if (suggestions.length > 0) setIsOpen(true); }}
       />
       {isLoading && (
-        <div className="absolute right-3 top-2">
+        <div className="absolute right-2.5 top-2.5">
           <span className="loading loading-spinner loading-xs text-primary"></span>
         </div>
       )}
 
       {isOpen && suggestions.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-base-100 border border-base-200 rounded-2xl shadow-2xl z-50 max-h-80 overflow-y-auto overscroll-contain">
-          <ul className="p-2 space-y-1">
+        <div className="absolute top-full left-0 right-0 mt-1.5 bg-base-100 border border-base-200 rounded-2xl shadow-2xl z-50 max-h-[60vh] sm:max-h-80 overflow-y-auto overscroll-contain">
+          <ul className="p-1.5 sm:p-2 space-y-1">
             {suggestions.map((sug) => (
               <li key={sug.variantId} className="list-none">
                 <button 
                   onClick={() => handleSelect(sug)} 
-                  className="w-full text-left px-4 py-3 rounded-xl transition-all duration-200 hover:bg-primary/10 hover:text-primary hover:shadow-sm border border-transparent hover:border-primary/20 flex flex-col gap-1"
+                  className="w-full text-left px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl transition-all duration-200 hover:bg-primary/10 hover:text-primary hover:shadow-sm border border-transparent hover:border-primary/20 flex flex-col gap-0.5 min-h-[44px] justify-center"
                 >
-                  <span className="font-semibold text-sm block truncate w-full">{sug.label}</span>
+                  <span className="font-semibold text-xs sm:text-sm block break-words leading-snug w-full">{sug.label}</span>
                 </button>
               </li>
             ))}

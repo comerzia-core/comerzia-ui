@@ -91,13 +91,76 @@ export const SaleDetailsModal = ({ isOpen, onClose, sale }: Props) => {
 
         <div>
           <h4 className="font-bold text-sm text-base-content/80 mb-3 flex items-center gap-2">
-            <ShoppingBag size={18} className="text-primary" /> Productos en la Venta
+            <ShoppingBag size={18} className="text-primary" /> Productos en la Venta ({sale.details?.length || 0})
           </h4>
-          <ComerziaTable
-            data={sale.details || []}
-            columns={columns}
-            showRowNumbers={true}
-          />
+
+          {/* VISTA DESKTOP */}
+          <div className="hidden sm:block">
+            <ComerziaTable
+              data={sale.details || []}
+              columns={columns}
+              showRowNumbers={true}
+            />
+          </div>
+
+          {/* VISTA MOBILE: CARDS */}
+          <div className="block sm:hidden space-y-2.5 max-h-[50vh] overflow-y-auto pr-1">
+            {(!sale.details || sale.details.length === 0) ? (
+              <p className="text-xs text-base-content/50 text-center py-4 bg-base-200/30 rounded-xl">
+                No hay productos detallados en esta venta.
+              </p>
+            ) : (
+              sale.details.map((detail, idx) => {
+                const discount = detail.lineTotalDiscount ?? detail.unitDiscountAmount ?? 0;
+                const total = detail.lineTotalFinal ?? detail.unitFinalPrice ?? 0;
+                return (
+                  <div key={detail.id || idx} className="bg-base-100 p-3 rounded-xl border border-base-200 space-y-2 text-xs shadow-sm">
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="min-w-0 flex-1">
+                        <span className="font-bold text-sm text-base-content block leading-tight">
+                          {detail.productName || 'Producto'}
+                        </span>
+                        {detail.variantName && (
+                          <span className="text-xs text-base-content/60 font-medium block mt-0.5">
+                            {detail.variantName}
+                          </span>
+                        )}
+                        {detail.measureUnitName && (
+                          <span className="badge badge-ghost badge-xs mt-1">
+                            {detail.measureUnitName}
+                          </span>
+                        )}
+                      </div>
+                      <span className="font-mono font-bold text-primary text-sm shrink-0">
+                        {currencyCode} {total.toFixed(2)}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 bg-base-200/40 p-2 rounded-lg text-center">
+                      <div>
+                        <span className="text-base-content/50 block text-[10px]">Cantidad</span>
+                        <span className="font-semibold text-base-content">
+                          {detail.receiptQuantity ?? detail.unitQuantity ?? 1}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-base-content/50 block text-[10px]">Precio Unit.</span>
+                        <span className="font-mono text-base-content text-[11px]">
+                          {currencyCode} {(detail.receiptUnitPrice ?? detail.unitSalePrice ?? 0).toFixed(2)}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-base-content/50 block text-[10px]">Descuento</span>
+                        <span className={`font-mono text-[11px] ${discount > 0 ? 'text-error font-semibold' : 'text-base-content/40'}`}>
+                          {discount > 0 ? `-${currencyCode} ${discount.toFixed(2)}` : '0.00'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
         </div>
 
         <div className="flex justify-end pt-4 border-t border-base-200">

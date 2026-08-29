@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { salesService } from '../services/salesService';
 import type { SaleResponse, SalesCatalogItem, CustomerProfileResponse } from '../types/sales';
@@ -82,6 +82,66 @@ export const SalesHistoryPage = () => {
     if (typeof status === 'number') return status;
     if (status && typeof status === 'object' && 'code' in status) return status.code;
     return 0;
+  };
+
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isLongPressRef = useRef(false);
+
+  // Ver detalles completos de la venta
+  const handleViewDetails = async (sale: SaleResponse) => {
+    // Si la venta ya trae los items cargados, los abrimos directamente
+    if (sale.details && sale.details.length > 0) {
+      setSelectedSaleDetails(sale);
+      return;
+    }
+
+    // Si la venta no trae los detalles de los productos, consultamos la venta completa
+    if (sale.saleNumber) {
+      try {
+        const fullSale = await salesService.getSaleByNumber(sale.saleNumber);
+        setSelectedSaleDetails(fullSale);
+      } catch (err) {
+        console.error('Error recuperando detalle de venta:', err);
+        setSelectedSaleDetails(sale);
+      }
+    } else {
+      setSelectedSaleDetails(sale);
+    }
+  };
+
+  // Touch handlers para Long Press en móvil
+  const handleTouchStart = (e: React.TouchEvent, sale: SaleResponse) => {
+    isLongPressRef.current = false;
+    const touch = e.touches[0];
+    const clientX = touch.clientX;
+    const clientY = touch.clientY;
+
+    longPressTimerRef.current = setTimeout(() => {
+      isLongPressRef.current = true;
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate(40);
+      }
+      setContextMenu({
+        isOpen: true,
+        x: clientX,
+        y: clientY,
+        sale
+      });
+    }, 500);
+  };
+
+  const handleTouchEnd = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const handleTouchMove = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
   };
 
   // Abrir Menú Contextual
@@ -330,29 +390,125 @@ export const SalesHistoryPage = () => {
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Seguimiento de Ventas (Mi Turno)</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Seguimiento de Ventas</h1>
         <p className="text-base-content/60 mt-1">Historial del cajero activo en el turno de trabajo</p>
       </div>
 
-      <div className="bg-base-100 p-6 rounded-2xl border border-base-200 shadow-sm space-y-3">
-        <div className="flex justify-between items-center">
-          <h2 className="text-lg font-bold flex items-center gap-2">
+      <div className="bg-base-100 p-4 sm:p-6 rounded-2xl border border-base-200 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+          <h2 className="text-base sm:text-lg font-bold flex items-center gap-2">
             <History className="h-5 w-5 text-primary" />
             Ventas Generadas
           </h2>
-          <span className="text-xs text-base-content/50 italic">
+          <span className="text-xs text-base-content/50 italic hidden sm:inline">
             * Haz clic derecho sobre una venta para ver el menú de opciones (Detalles, Cliente, Cancelar o Devolución).
+          </span>
+          <span className="text-xs text-base-content/50 italic sm:hidden">
+            * Mantén presionada una tarjeta para ver el menú de opciones (Detalles, Cliente, Cancelar o Devolución).
           </span>
         </div>
 
-        <ComerziaTable
-          data={paginatedSales}
-          columns={columns}
-          isLoading={isLoading}
-          pagination={pagination}
-          onRowClick={(row) => setSelectedSaleDetails(row)}
-          onRowContextMenu={(e, row) => handleContextMenu(e, row)}
-        />
+        {/* VISTA DESKTOP: TABLA */}
+        <div className="hidden md:block">
+          <ComerziaTable
+            data={paginatedSales}
+            columns={columns}
+            isLoading={isLoading}
+            pagination={pagination}
+            onRowContextMenu={(e, row) => handleContextMenu(e, row)}
+          />
+        </div>
+
+        {/* VISTA MOBILE: CARDS */}
+        <div className="block md:hidden space-y-3">
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center p-8 text-base-content/50 gap-2">
+              <span className="loading loading-spinner loading-md text-primary"></span>
+              <span className="text-xs">Cargando ventas...</span>
+            </div>
+          ) : paginatedSales.length === 0 ? (
+            <div className="p-8 text-center text-xs text-base-content/50 bg-base-200/30 rounded-xl">
+              No hay ventas registradas en este turno.
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              {paginatedSales.map((sale) => (
+                <div
+                  key={sale.id}
+                  onTouchStart={(e) => handleTouchStart(e, sale)}
+                  onTouchEnd={handleTouchEnd}
+                  onTouchMove={handleTouchMove}
+                  className="bg-base-100 p-3.5 rounded-xl border border-base-200 shadow-sm active:scale-[0.99] transition-transform space-y-2.5 cursor-pointer hover:border-primary/40 select-none"
+                >
+                  {/* Fila 1: N° Venta, Ícono Cliente y Estado */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                      <span className="font-mono text-sm font-bold text-base-content shrink-0">
+                        {sale.saleNumber ? `#${sale.saleNumber}` : '-'}
+                      </span>
+                      {sale.customer && (
+                        <div className="tooltip tooltip-right" data-tip={`Cliente: ${sale.customer.fullName || sale.customer.firstName}`}>
+                          <UserCheck size={16} className="text-primary shrink-0 cursor-pointer" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {renderStatusBadge(sale.saleStatus)}
+                    </div>
+                  </div>
+
+                  {/* Fila 2: Hora, Subtotal y Total */}
+                  <div className="grid grid-cols-3 gap-2 bg-base-200/40 p-2.5 rounded-lg text-xs">
+                    <div>
+                      <span className="text-base-content/50 block text-[10px]">Hora</span>
+                      <span className="font-medium text-base-content/80 text-[11px]">
+                        {new Date(sale.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-base-content/50 block text-[10px]">Subtotal</span>
+                      <span className="font-mono text-base-content/70 text-[11px]">
+                        {currency} {sale.subtotalAmount.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-base-content/50 block text-[10px]">Total Cobro</span>
+                      <span className="font-mono font-bold text-success text-xs sm:text-sm">
+                        {currency} {sale.totalAmount.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {/* Paginación Mobile */}
+              {sales.length > size && (
+                <div className="flex justify-between items-center pt-2 text-xs text-base-content/60 border-t border-base-200">
+                  <span>{sales.length} ventas</span>
+                  <div className="join">
+                    <button
+                      className="join-item btn btn-xs"
+                      disabled={page === 0}
+                      onClick={() => setPage(p => Math.max(0, p - 1))}
+                    >
+                      «
+                    </button>
+                    <span className="join-item btn btn-xs pointer-events-none">
+                      {page + 1} / {Math.ceil(sales.length / size)}
+                    </span>
+                    <button
+                      className="join-item btn btn-xs"
+                      disabled={(page + 1) * size >= sales.length}
+                      onClick={() => setPage(p => p + 1)}
+                    >
+                      »
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* MENÚ CONTEXTUAL */}
@@ -368,7 +524,9 @@ export const SalesHistoryPage = () => {
               icon={Eye}
               label="Ver Detalles"
               onClick={() => {
-                setSelectedSaleDetails(contextMenu.sale);
+                if (contextMenu.sale) {
+                  handleViewDetails(contextMenu.sale);
+                }
               }}
             />
 
@@ -542,18 +700,18 @@ export const SalesHistoryPage = () => {
             <h4 className="font-bold text-sm text-base-content/80 flex items-center gap-2">
               <Plus size={16} className="text-primary" /> Agregar Producto al Pedido
             </h4>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <input
                 type="text"
                 placeholder="Buscar por SKU o Barcode..."
-                className="input input-bordered input-sm flex-1"
+                className="input input-bordered input-sm flex-1 text-xs sm:text-sm"
                 value={editCatalogSearch}
                 onChange={(e) => setEditCatalogSearch(e.target.value)}
               />
               <ComerziaButton
                 variant="primary"
                 label="Buscar"
-                className="btn-sm"
+                className="btn-sm w-full sm:w-auto"
                 onClick={handleCatalogSearch}
                 isLoading={isSearchingCatalog}
                 disabled={isSearchingCatalog}
@@ -564,14 +722,14 @@ export const SalesHistoryPage = () => {
             {isSearchingCatalog ? (
               <span className="loading loading-spinner loading-sm text-primary block mx-auto"></span>
             ) : editSearchResults.length > 0 ? (
-              <div className="border border-base-200 bg-white rounded-lg overflow-y-auto max-h-[150px] p-2 space-y-1">
+              <div className="border border-base-200 bg-base-100 rounded-lg overflow-y-auto max-h-[150px] p-2 space-y-1">
                 {editSearchResults.map(item => (
-                  <div key={item.productVariantId} className="flex justify-between items-center text-xs p-1.5 hover:bg-base-100 rounded">
-                    <span>{item.variantName} (Stock: {item.stock})</span>
+                  <div key={item.productVariantId} className="flex justify-between items-center text-xs p-1.5 hover:bg-base-200/50 rounded gap-2">
+                    <span className="truncate">{item.variantName} (Stock: {item.stock})</span>
                     <ComerziaButton
                       variant="create"
                       label="Agregar"
-                      className="btn-xs"
+                      className="btn-xs shrink-0"
                       onClick={() => handleAddEditItem(item)}
                     />
                   </div>
@@ -580,15 +738,15 @@ export const SalesHistoryPage = () => {
             ) : null}
           </div>
 
-          {/* LISTADO DE ITEMS ACTUALIZADOS */}
-          <div className="overflow-x-auto">
-            <table className="table table-compact w-full">
+          {/* VISTA DESKTOP: LISTADO DE ITEMS */}
+          <div className="hidden md:block overflow-x-auto border border-base-200 rounded-xl">
+            <table className="table table-compact w-full text-xs">
               <thead>
-                <tr>
+                <tr className="bg-base-200/60 font-bold">
                   <th>Producto</th>
-                  <th className="w-24">Cantidad</th>
+                  <th className="w-24 text-center">Cantidad</th>
                   <th>Precio Venta</th>
-                  <th className="w-28">Descuento</th>
+                  <th className="w-28 text-center">Descuento</th>
                   <th>Total Línea</th>
                   <th></th>
                 </tr>
@@ -601,28 +759,28 @@ export const SalesHistoryPage = () => {
                         <span className="font-bold block text-sm">{item.variantName}</span>
                       </div>
                     </td>
-                    <td>
+                    <td className="text-center">
                       <input
                         type="number"
                         min="1"
                         max={item.stock}
-                        className="input input-bordered input-xs w-16"
+                        className="input input-bordered input-xs w-16 text-center font-bold font-mono"
                         value={item.quantity}
                         onChange={(e) => handleUpdateEditItemQty(item.productVariantId, parseInt(e.target.value) || 1)}
                       />
                     </td>
-                    <td>{currency} {item.salePrice.toFixed(2)}</td>
-                    <td>
+                    <td className="font-mono">{currency} {item.salePrice.toFixed(2)}</td>
+                    <td className="text-center">
                       <input
                         type="number"
                         min="0"
                         step="0.01"
-                        className="input input-bordered input-xs w-24"
+                        className="input input-bordered input-xs w-24 text-center font-mono"
                         value={item.discountAmount}
                         onChange={(e) => handleUpdateEditItemDiscount(item.productVariantId, parseFloat(e.target.value) || 0)}
                       />
                     </td>
-                    <td className="font-mono font-semibold">
+                    <td className="font-mono font-semibold text-primary">
                       {currency} {((item.salePrice - item.discountAmount) * item.quantity).toFixed(2)}
                     </td>
                     <td>
@@ -636,21 +794,64 @@ export const SalesHistoryPage = () => {
             </table>
           </div>
 
+          {/* VISTA MOBILE: CARDS DE ITEMS EN EDICIÓN */}
+          <div className="block md:hidden space-y-2.5 max-h-[40vh] overflow-y-auto pr-1">
+            {editDetails.map((item) => (
+              <div key={item.productVariantId} className="bg-base-100 p-3 rounded-xl border border-base-200 space-y-2 text-xs shadow-sm">
+                <div className="flex justify-between items-start gap-2">
+                  <span className="font-bold text-sm text-base-content block leading-tight">{item.variantName}</span>
+                  <BtnDeleteIcon onClick={() => handleRemoveEditItem(item.productVariantId)} />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 bg-base-200/40 p-2 rounded-lg">
+                  <div>
+                    <span className="text-base-content/50 block text-[10px]">Cantidad (Stock: {item.stock})</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max={item.stock}
+                      className="input input-bordered input-xs w-20 text-center font-bold font-mono mt-0.5"
+                      value={item.quantity}
+                      onChange={(e) => handleUpdateEditItemQty(item.productVariantId, parseInt(e.target.value) || 1)}
+                    />
+                  </div>
+                  <div className="text-right">
+                    <span className="text-base-content/50 block text-[10px]">Descuento Unit.</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className="input input-bordered input-xs w-24 text-right font-mono mt-0.5"
+                      value={item.discountAmount}
+                      onChange={(e) => handleUpdateEditItemDiscount(item.productVariantId, parseFloat(e.target.value) || 0)}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-between items-center pt-1 border-t border-base-200/60 font-mono">
+                  <span className="text-base-content/60 text-[11px]">Precio: {currency} {item.salePrice.toFixed(2)}</span>
+                  <span className="font-bold text-primary text-sm">
+                    Total: {currency} {((item.salePrice - item.discountAmount) * item.quantity).toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+
           {/* TOTALES DE EDICIÓN */}
-          <div className="divider"></div>
-          <div className="flex justify-between items-center bg-base-50 p-4 rounded-xl font-mono text-sm">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 bg-base-50 p-4 rounded-xl font-mono text-xs sm:text-sm">
             <div>
               <p>Subtotal: {currency} {getEditSubtotal().toFixed(2)}</p>
               <p className="text-error">Descuentos: - {currency} {getEditDiscount().toFixed(2)}</p>
             </div>
-            <p className="text-xl font-bold text-success">
-              Total Actualizado: {currency} {getEditTotal().toFixed(2)}
+            <p className="text-lg sm:text-xl font-bold text-success">
+              Total: {currency} {getEditTotal().toFixed(2)}
             </p>
           </div>
 
-          <div className="flex justify-end gap-2">
-            <BtnCancel onClick={() => setEditingSale(null)} />
-            <BtnSave label="Actualizar Pedido" onClick={handleSaveEditSale} />
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2 border-t border-base-200">
+            <BtnCancel onClick={() => setEditingSale(null)} className="w-full sm:w-auto" />
+            <BtnSave label="Actualizar Pedido" onClick={handleSaveEditSale} className="w-full sm:w-auto" />
           </div>
         </div>
       </ComerziaModal>
