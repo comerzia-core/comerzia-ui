@@ -7,10 +7,9 @@ import { useToast } from '../../../context/ToastContext';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
 import { ComerziaModal } from '../../../components/ui/ComerziaModal';
 import { ComerziaButton } from '../../../components/ui/ComerziaButton';
-import { BtnCancel, BtnModalYes, BtnSave } from '../../../components/ui/CrudButtons';
+import { BtnCancel, BtnModalYes } from '../../../components/ui/CrudButtons';
 import { 
   Search, 
-  ShieldAlert, 
   AlertTriangle, 
   FileText, 
   Receipt, 
@@ -18,10 +17,6 @@ import {
   Calendar, 
   ShoppingBag, 
   UserCheck, 
-  CheckCircle2, 
-  Clock, 
-  XCircle, 
-  Info,
   RotateCcw,
   ArrowLeft
 } from 'lucide-react';

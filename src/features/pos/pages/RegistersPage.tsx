@@ -7,7 +7,7 @@ import type { BranchResponse } from '../../organization/types/branch';
 import { BtnCreate } from '../../../components/ui/CrudButtons';
 import { RegisterModal } from '../components/RegisterModal';
 import { useToast } from '../../../context/ToastContext';
-import { Monitor, MapPin, History, Pencil, MoreVertical, Building2 } from 'lucide-react';
+import { Monitor, MapPin, History, Pencil, Building2 } from 'lucide-react';
 import { ComerziaBadge } from '../../../components/ui/ComerziaBadge';
 import { ComerziaSelect } from '../../../components/ui/ComerziaSelect';
 import { ComerziaContextMenu, ContextMenuItem } from '../../../components/ui/ComerziaContextMenu';

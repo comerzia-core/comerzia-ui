@@ -8,6 +8,8 @@ import { CreateInventoryModal } from '../components/CreateInventoryModal';
 import { ExecuteInventoryModal } from '../components/ExecuteInventoryModal';
 import { ApproveInventoryModal } from '../components/ApproveInventoryModal';
 
+import { formatDateForUser } from '../../../utils/date';
+
 export const InventoriesPage = () => {
   const { userProfile } = useAuthStore();
   const roles = userProfile?.roles || [];
@@ -35,7 +37,7 @@ export const InventoriesPage = () => {
 
   useEffect(() => {
     loadData();
-  }, [viewMode, page, size]);
+  }, [page, size, viewMode]);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -57,48 +59,61 @@ export const InventoriesPage = () => {
     }
   };
 
-  const statusBadge = (status: number) => {
-    if (status === 1) return <span className="badge badge-warning">En Progreso</span>;
-    if (status === 2) return <span className="badge badge-info">En Revisión</span>;
-    return <span className="badge badge-success">Completado</span>;
+  const getStatusCode = (status?: { code: number; label: string } | number): number => {
+    if (status == null) return 0;
+    return typeof status === 'object' ? status.code : status;
+  };
+
+  const statusBadge = (status?: { code: number; label: string } | number) => {
+    const code = getStatusCode(status);
+    if (code === 1) return <span className="badge badge-warning">En Progreso</span>;
+    if (code === 2) return <span className="badge badge-info">En Revisión</span>;
+    if (code === 3) return <span className="badge badge-success">Completado</span>;
+    return <span className="badge badge-ghost">-</span>;
   };
 
   const adminColumns: Column<InventoryResponse>[] = [
     { header: 'ID', accessorKey: 'id' },
     { header: 'Segmento', accessorKey: 'segmentName' },
     { header: 'Ejecutor Asignado', render: (row) => row.assignedEmployeeId },
-    { header: 'Fecha Asignación', render: (row) => new Date(row.assignedAt).toLocaleString() },
+    { header: 'Fecha Asignación', render: (row) => formatDateForUser(row.assignedAt) },
     { header: 'Estado', render: (row) => statusBadge(row.statusType) },
     {
       header: 'Acciones',
-      render: (row) => (
-        <button 
-          className="btn btn-sm btn-outline"
-          onClick={() => setSelectedInventoryForApprove(row)}
-          disabled={row.statusType === 3}
-        >
-          {row.statusType === 2 ? 'Revisar' : 'Ver Detalles'}
-        </button>
-      )
+      render: (row) => {
+        const status = getStatusCode(row.statusType);
+        return (
+          <button 
+            className="btn btn-sm btn-outline"
+            onClick={() => setSelectedInventoryForApprove(row)}
+            disabled={status === 3}
+          >
+            {status === 2 ? 'Revisar' : 'Ver Detalles'}
+          </button>
+        );
+      }
     }
   ];
 
   const executorColumns: Column<InventoryResponse>[] = [
     { header: 'ID', accessorKey: 'id' },
     { header: 'Segmento', accessorKey: 'segmentName' },
-    { header: 'Fecha Asignación', render: (row) => new Date(row.assignedAt).toLocaleString() },
+    { header: 'Fecha Asignación', render: (row) => formatDateForUser(row.assignedAt) },
     { header: 'Estado', render: (row) => statusBadge(row.statusType) },
     {
       header: 'Acciones',
-      render: (row) => (
-        <button 
-          className="btn btn-sm btn-primary"
-          onClick={() => setSelectedInventoryForExecute(row)}
-          disabled={row.statusType !== 1}
-        >
-          {row.statusType === 1 ? 'Ejecutar Conteo' : 'Ver Enviado'}
-        </button>
-      )
+      render: (row) => {
+        const status = getStatusCode(row.statusType);
+        return (
+          <button 
+            className="btn btn-sm btn-primary"
+            onClick={() => setSelectedInventoryForExecute(row)}
+            disabled={status !== 1}
+          >
+            {status === 1 ? 'Ejecutar Conteo' : 'Ver Enviado'}
+          </button>
+        );
+      }
     }
   ];
 

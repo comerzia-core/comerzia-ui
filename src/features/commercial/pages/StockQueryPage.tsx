@@ -7,13 +7,15 @@ import { useAuthStore } from '../../../stores/useAuthStore';
 import { ComerziaBadge } from '../../../components/ui/ComerziaBadge';
 import { ComerziaSelectableCard } from '../../../components/ui/ComerziaSelectableCard';
 import { ComerziaImageViewer } from '../../../components/ui/ComerziaImageViewer';
-import { ImageOff, Store, Tag, Layers, Barcode, ZoomIn } from 'lucide-react';
+import { BarcodeScannerModal } from '../../../components/ui/BarcodeScannerModal';
+import { ImageOff, Store, Tag, Layers, Barcode, ZoomIn, ScanBarcode } from 'lucide-react';
 
 export const StockQueryPage = () => {
   const [searchParams] = useSearchParams();
   const [barcode, setBarcode] = useState('');
   const [productData, setProductData] = useState<ScannerProductResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [shakeKey, setShakeKey] = useState(0);
   const [viewingImage, setViewingImage] = useState<{ isOpen: boolean; url: string; title: string }>({
     isOpen: false,
@@ -76,25 +78,36 @@ export const StockQueryPage = () => {
       </div>
 
       <div className="flex justify-center mb-10">
-        <div className={`relative w-full max-w-2xl ${shakeKey > 0 ? 'animate-shake' : ''}`} key={shakeKey}>
-          <input
-            ref={inputRef}
-            type="text"
-            placeholder="Escanea o escribe el código y presiona Enter..."
-            className="input input-lg input-bordered w-full pl-12 shadow-lg text-xl bg-base-100 focus:outline-none focus:ring-4 focus:ring-primary/20 transition-shadow relative z-0"
-            value={barcode}
-            onChange={(e) => setBarcode(e.target.value)}
-            onKeyDown={handleScan}
-            disabled={isLoading}
-          />
-          <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none z-10">
-            <Barcode className="h-6 w-6 text-base-content/40" />
-          </div>
-          {isLoading && (
-            <div className="absolute inset-y-0 right-4 flex items-center z-10">
-              <span className="loading loading-spinner loading-md text-primary"></span>
+        <div className={`relative w-full max-w-2xl flex items-center gap-2 ${shakeKey > 0 ? 'animate-shake' : ''}`} key={shakeKey}>
+          <div className="relative flex-1">
+            <input
+              ref={inputRef}
+              type="text"
+              placeholder="Escanea o escribe el código y presiona Enter..."
+              className="input input-lg input-bordered w-full pl-12 pr-12 shadow-lg text-xl bg-base-100 focus:outline-none focus:ring-4 focus:ring-primary/20 transition-shadow relative z-0"
+              value={barcode}
+              onChange={(e) => setBarcode(e.target.value)}
+              onKeyDown={handleScan}
+              disabled={isLoading}
+            />
+            <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none z-10">
+              <Barcode className="h-6 w-6 text-base-content/40" />
             </div>
-          )}
+            {isLoading && (
+              <div className="absolute inset-y-0 right-4 flex items-center z-10">
+                <span className="loading loading-spinner loading-md text-primary"></span>
+              </div>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsScannerOpen(true)}
+            className="btn btn-lg btn-primary shadow-lg flex items-center gap-2"
+            title="Escanear con cámara"
+          >
+            <ScanBarcode size={24} />
+            <span className="hidden sm:inline">Cámara</span>
+          </button>
         </div>
       </div>
 
@@ -262,6 +275,16 @@ export const StockQueryPage = () => {
         onClose={() => setViewingImage({ ...viewingImage, isOpen: false })}
         imageUrl={viewingImage.url}
         title={viewingImage.title}
+      />
+
+      <BarcodeScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onScan={(scannedCode) => {
+          setBarcode(scannedCode);
+          executeScan(scannedCode);
+        }}
+        title="Escanear Código de Barras / QR"
       />
     </div>
   );

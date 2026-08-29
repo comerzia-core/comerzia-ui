@@ -1,6 +1,6 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Edit, Trash2, DollarSign, ExternalLink, type LucideIcon } from "lucide-react";
+import { ExternalLink, type LucideIcon } from "lucide-react";
 
 export interface ComerziaContextMenuProps {
   isOpen: boolean;

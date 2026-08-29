@@ -40,7 +40,6 @@ export const useCartStore = create<CartState>((set, get) => ({
     const existing = items.find((i) => i.productVariantId === item.productVariantId);
     const initialQty = quantity ?? 1;
     const factor = item.equivalenceFactor || 1;
-    const maxPackages = Math.floor(item.stock / factor);
 
     if (existing) {
       const newQty = existing.quantity + initialQty;

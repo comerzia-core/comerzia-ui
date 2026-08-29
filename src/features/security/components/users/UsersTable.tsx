@@ -1,7 +1,6 @@
 // src/features/security/components/users/UsersTable.tsx
 import React, { useState } from 'react';
 import {
-  User,
   UserCheck,
   UserX,
   Unlock,

@@ -472,6 +472,31 @@ export const CustomersManagementPage = () => {
                       ) : (
                         <p className="text-xs text-base-content/50 text-center py-4">No registra compras completadas.</p>
                       )}
+
+                      {historyTotal > 5 && (
+                        <div className="flex justify-between items-center pt-2 text-xs text-base-content/60 border-t border-base-200">
+                          <span>{historyTotal} compras</span>
+                          <div className="join">
+                            <button
+                              className="join-item btn btn-xs"
+                              disabled={historyPage === 0}
+                              onClick={() => setHistoryPage(p => Math.max(0, p - 1))}
+                            >
+                              «
+                            </button>
+                            <span className="join-item btn btn-xs pointer-events-none">
+                              {historyPage + 1}
+                            </span>
+                            <button
+                              className="join-item btn btn-xs"
+                              disabled={(historyPage + 1) * 5 >= historyTotal}
+                              onClick={() => setHistoryPage(p => p + 1)}
+                            >
+                              »
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </>
                 )}

@@ -4,6 +4,7 @@ import { ComerziaInput } from '../../../components/ui/ComerziaInput';
 import { ComerziaTextarea } from '../../../components/ui/ComerziaTextarea';
 import { ComerziaSwitch } from '../../../components/ui/ComerziaSwitch';
 import { ComerziaSingleImageUploader, type SingleImageValue } from '../../../components/ui/ComerziaSingleImageUploader';
+import { BarcodeScannerModal } from '../../../components/ui/BarcodeScannerModal';
 import { BtnCancel, BtnSave } from '../../../components/ui/CrudButtons';
 import { commercialService } from '../services/commercialService';
 import { uploadFile } from '../../shared/services/storageService';
@@ -11,6 +12,7 @@ import { STORAGE_FOLDERS } from '../../../config/storage';
 import type { ProductVariantResponse } from '../types/commercial';
 import { useToast } from '../../../context/ToastContext';
 import { generateSku } from '../../../utils/skuGenerator';
+import { ScanBarcode } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
@@ -28,6 +30,7 @@ export const EditVariantModal = ({ isOpen, onClose, onSuccess, productId, produc
   const [barCode, setBarCode] = useState('');
   const [selectedImage, setSelectedImage] = useState<SingleImageValue | null>(null);
   const [status, setStatus] = useState(true);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
   
   const [shakeKey, setShakeKey] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -144,15 +147,31 @@ export const EditVariantModal = ({ isOpen, onClose, onSuccess, productId, produc
           isRequired
           disabled={!!variant}
         />
-        <ComerziaInput
-          label="Código de Barras"
-          value={barCode}
-          onChange={(e) => setBarCode(e.target.value)}
-          error={!barCode && shakeKey > 0 ? "Requerido" : ""}
-          shakeKey={shakeKey}
-          isRequired
-          disabled={!!variant}
-        />
+        
+        <div className="flex items-end gap-1.5">
+          <div className="flex-1">
+            <ComerziaInput
+              label="Código de Barras"
+              value={barCode}
+              onChange={(e) => setBarCode(e.target.value)}
+              error={!barCode && shakeKey > 0 ? "Requerido" : ""}
+              shakeKey={shakeKey}
+              isRequired
+              disabled={!!variant}
+            />
+          </div>
+          {!variant && (
+            <button
+              type="button"
+              onClick={() => setIsScannerOpen(true)}
+              className="btn btn-outline btn-primary btn-sm mb-0.5 h-[38px] px-2.5"
+              title="Escanear con cámara"
+            >
+              <ScanBarcode size={18} />
+            </button>
+          )}
+        </div>
+
         <ComerziaSingleImageUploader
           label="Imagen de la Variante (Opcional)"
           value={selectedImage}
@@ -180,6 +199,13 @@ export const EditVariantModal = ({ isOpen, onClose, onSuccess, productId, produc
           <BtnSave onClick={handleSubmit} isLoading={isSubmitting} />
         </div>
       </div>
+
+      <BarcodeScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onScan={(detectedCode) => setBarCode(detectedCode)}
+        title={`Escanear Código de Barras para ${name || 'Variante'}`}
+      />
     </ComerziaModal>
   );
 };

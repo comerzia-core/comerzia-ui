@@ -1,18 +1,17 @@
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { salesService } from '../services/salesService';
-import type { SaleResponse, SalesCatalogItem, SaleDetailResponse, CustomerProfileResponse } from '../types/sales';
+import type { SaleResponse, SalesCatalogItem, CustomerProfileResponse } from '../types/sales';
 import { useToast } from '../../../context/ToastContext';
 import { ComerziaTable, type Column, type TablePaginationConfig } from '../../../components/ui/ComerziaTable';
 import { ComerziaBadge } from '../../../components/ui/ComerziaBadge';
 import { ComerziaModal } from '../../../components/ui/ComerziaModal';
 import { ComerziaButton } from '../../../components/ui/ComerziaButton';
-import { ComerziaInput } from '../../../components/ui/ComerziaInput';
 import { ComerziaContextMenu, ContextMenuItem } from '../../../components/ui/ComerziaContextMenu';
 import { BtnCancel, BtnSave, BtnDeleteIcon, BtnModalYes } from '../../../components/ui/CrudButtons';
 import { SaleDetailsModal } from '../components/SaleDetailsModal';
 import { RegisterSaleCustomerModal } from '../components/RegisterSaleCustomerModal';
-import { History, AlertTriangle, Plus, Eye, Edit, Trash2, RotateCcw, RotateCcw as RefundIcon, Info, UserCheck, UserPlus, User } from 'lucide-react';
+import { AlertTriangle, Eye, Edit, Trash2, RotateCcw, UserCheck, UserPlus, History, Plus } from 'lucide-react';
 
 export const SalesHistoryPage = () => {
   const { userProfile, hasPermission, hasRole } = useAuthStore();
@@ -399,6 +398,15 @@ export const SalesHistoryPage = () => {
             )}
 
             {/* Si la venta está PENDING (601) */}
+            {getStatusCode(contextMenu.sale.saleStatus) === 601 && canManageSales && (
+              <ContextMenuItem
+                icon={Edit}
+                label="Editar Venta Pendiente"
+                onClick={() => {
+                  if (contextMenu.sale) startEditSale(contextMenu.sale);
+                }}
+              />
+            )}
             {getStatusCode(contextMenu.sale.saleStatus) === 601 && canCancel && (
               <ContextMenuItem
                 icon={Trash2}

@@ -19,8 +19,10 @@ import { useLoadDictionaries } from '../../../hooks/useLoadDictionaries';
 import { DICTIONARIES } from '../../../config/dictionaries';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { ComerziaSingleImageUploader, type SingleImageValue } from '../../../components/ui/ComerziaSingleImageUploader';
+import { BarcodeScannerModal } from '../../../components/ui/BarcodeScannerModal';
 import { uploadFile } from '../../shared/services/storageService';
 import { STORAGE_FOLDERS } from '../../../config/storage';
+import { ScanBarcode } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
@@ -53,6 +55,7 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
     { name: '', sku: '', barCode: '', prices: [] }
   ]);
   const [variantImages, setVariantImages] = useState<(SingleImageValue | null)[]>([null]);
+  const [scanningVariantIndex, setScanningVariantIndex] = useState<number | null>(null);
 
   const { options, isLoading: isLoadingDict } = useLoadDictionaries([DICTIONARIES.VARIANT_TYPE]);
   const variantTypeOptions = options[DICTIONARIES.VARIANT_TYPE] || [];
@@ -360,14 +363,26 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
                         shakeKey={shakeKey}
                         isRequired
                       />
-                      <ComerziaInput
-                        label="Código de Barras"
-                        value={variant.barCode}
-                        onChange={(e) => updateVariant(index, 'barCode', e.target.value)}
-                        error={!variant.barCode && shakeKey > 0 ? "Requerido" : ""}
-                        shakeKey={shakeKey}
-                        isRequired
-                      />
+                      <div className="flex items-end gap-1.5">
+                        <div className="flex-1">
+                          <ComerziaInput
+                            label="Código de Barras"
+                            value={variant.barCode}
+                            onChange={(e) => updateVariant(index, 'barCode', e.target.value)}
+                            error={!variant.barCode && shakeKey > 0 ? "Requerido" : ""}
+                            shakeKey={shakeKey}
+                            isRequired
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setScanningVariantIndex(index)}
+                          className="btn btn-outline btn-primary btn-sm mb-0.5 h-[38px] px-2.5"
+                          title="Escanear con cámara"
+                        >
+                          <ScanBarcode size={18} />
+                        </button>
+                      </div>
                     </div>
                   </div>
 
@@ -492,6 +507,17 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
           )}
         </div>
       </div>
+
+      <BarcodeScannerModal
+        isOpen={scanningVariantIndex !== null}
+        onClose={() => setScanningVariantIndex(null)}
+        onScan={(detectedCode) => {
+          if (scanningVariantIndex !== null) {
+            updateVariant(scanningVariantIndex, 'barCode', detectedCode);
+          }
+        }}
+        title={`Escanear Código para Variante ${scanningVariantIndex !== null ? scanningVariantIndex + 1 : ''}`}
+      />
     </ComerziaModal>
   );
 };

@@ -8,7 +8,6 @@ import { useAuthStore } from '../../../stores/useAuthStore';
 import { posService } from '../services/posService';
 import { branchService } from '../../organization/services/branchService';
 import { useToast } from '../../../context/ToastContext';
-import type { BranchResponse } from '../../organization/types/branch';
 
 interface Props {
   isOpen: boolean;
@@ -36,7 +35,6 @@ export const OpenShiftModal = ({ isOpen, onClose, onSuccess }: Props) => {
   });
 
   const [branches, setBranches] = useState<{ value: string; label: string }[]>([]);
-  const [rawBranches, setRawBranches] = useState<BranchResponse[]>([]);
   const [registers, setRegisters] = useState<{ value: string; label: string }[]>([]);
   const [cashiers, setCashiers] = useState<{ value: string; label: string }[]>([]);
   const [loadingBranches, setLoadingBranches] = useState(false);
@@ -69,7 +67,6 @@ export const OpenShiftModal = ({ isOpen, onClose, onSuccess }: Props) => {
     try {
       const data = await branchService.getBranches(0, 100, true);
       const list = data.content || [];
-      setRawBranches(list);
       setBranches(list.map(b => ({ value: b.id, label: b.name })));
     } catch (err) {
       console.error('Error loading active branches:', err);

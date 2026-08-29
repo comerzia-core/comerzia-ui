@@ -1,6 +1,5 @@
 import api from '../../../lib/axios';
 import type {
-  SalesCatalogItem,
   SalesCatalogSuggestionResponse,
   SalesProductResponse,
   CreateSaleRequest,

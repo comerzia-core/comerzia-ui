@@ -9,9 +9,10 @@ import { ComerziaProductSearch } from '../components/ComerziaProductSearch';
 import { ComerziaModal } from '../../../components/ui/ComerziaModal';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
 import { ComerziaButton } from '../../../components/ui/ComerziaButton';
+import { BarcodeScannerModal } from '../../../components/ui/BarcodeScannerModal';
 import { BtnCancel, BtnDeleteIcon } from '../../../components/ui/CrudButtons';
 import type { CartItem } from '../store/useCartStore';
-import { AlertCircle, ArrowRight, Barcode, Hash, Scan, ShoppingCart, Store } from 'lucide-react';
+import { AlertCircle, ArrowRight, Barcode, Hash, Scan, ShoppingCart, Store, ScanBarcode } from 'lucide-react';
 
 interface QuantityControlProps {
   item: CartItem;
@@ -210,6 +211,7 @@ export const NewSalePage = () => {
 
   const [isSkuModalOpen, setIsSkuModalOpen] = useState(false);
   const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false);
+  const [isScannerModalOpen, setIsScannerModalOpen] = useState(false);
   const [manualSearchTerm, setManualSearchTerm] = useState('');
   const [isManualSearching, setIsManualSearching] = useState(false);
 
@@ -289,6 +291,20 @@ export const NewSalePage = () => {
       toastWarning(res.message);
     } else {
       toastSuccess(`Agregado: ${product.nameVariant}`);
+    }
+  };
+
+  const handleScanBarcode = async (scannedCode: string) => {
+    if (!scannedCode.trim()) return;
+    try {
+      const productResponse = await salesService.getProductDetailsByBarcode(scannedCode.trim());
+      if (productResponse) {
+        handleProductSelect(productResponse);
+      } else {
+        toastError(`No se encontró ningún producto con código "${scannedCode}"`);
+      }
+    } catch (err: any) {
+      toastError(`No se encontró ningún producto con código "${scannedCode}"`);
     }
   };
 
@@ -408,6 +424,13 @@ export const NewSalePage = () => {
               <Scan size={18} className="text-primary" /> Selección de Productos
             </h2>
             <div className="flex items-center gap-2">
+              <ComerziaButton
+                variant="primary"
+                label="Escanear Cámara / QR"
+                icon={<ScanBarcode size={14} />}
+                className="btn-xs"
+                onClick={() => setIsScannerModalOpen(true)}
+              />
               <ComerziaButton
                 variant="ghost"
                 label="Buscar por SKU"
@@ -651,18 +674,37 @@ export const NewSalePage = () => {
             onKeyDown={(e) => e.key === 'Enter' && handleManualSearch('barcode')}
             autoFocus
           />
-          <div className="flex justify-end gap-2 mt-6">
-            <BtnCancel onClick={() => setIsBarcodeModalOpen(false)} />
+          <div className="flex justify-between items-center mt-6">
             <ComerziaButton
-              variant="primary"
-              label="Buscar"
-              onClick={() => handleManualSearch('barcode')}
-              disabled={!manualSearchTerm.trim() || isManualSearching}
-              isLoading={isManualSearching}
+              variant="secondary"
+              label="Escanear con Cámara"
+              icon={<ScanBarcode size={16} />}
+              className="btn-sm"
+              onClick={() => {
+                setIsBarcodeModalOpen(false);
+                setIsScannerModalOpen(true);
+              }}
             />
+            <div className="flex gap-2">
+              <BtnCancel onClick={() => setIsBarcodeModalOpen(false)} />
+              <ComerziaButton
+                variant="primary"
+                label="Buscar"
+                onClick={() => handleManualSearch('barcode')}
+                disabled={!manualSearchTerm.trim() || isManualSearching}
+                isLoading={isManualSearching}
+              />
+            </div>
           </div>
         </div>
       </ComerziaModal>
+
+      <BarcodeScannerModal
+        isOpen={isScannerModalOpen}
+        onClose={() => setIsScannerModalOpen(false)}
+        onScan={handleScanBarcode}
+        title="Escanear Código de Barras / QR para Venta"
+      />
     </div>
   );
 };

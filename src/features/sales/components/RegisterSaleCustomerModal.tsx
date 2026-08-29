@@ -8,7 +8,7 @@ import { salesService } from '../services/salesService';
 import { useToast } from '../../../context/ToastContext';
 import { useLoadDictionaries } from '../../../hooks/useLoadDictionaries';
 import { DICTIONARIES } from '../../../config/dictionaries';
-import { UserCheck, UserPlus, Info, Search, Phone, CheckCircle2, RotateCcw } from 'lucide-react';
+import { UserPlus, Info, Search, Phone, CheckCircle2, RotateCcw } from 'lucide-react';
 import type { CustomerProfileResponse } from '../types/sales';
 
 interface Props {
