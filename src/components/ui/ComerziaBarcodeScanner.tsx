@@ -1,5 +1,5 @@
 // src/components/ui/ComerziaBarcodeScanner.tsx
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BrowserMultiFormatReader, type IScannerControls } from "@zxing/browser";
 import { BarcodeFormat, DecodeHintType } from "@zxing/library";
 import { CameraOff, Loader2, RefreshCw } from "lucide-react";
@@ -23,7 +23,7 @@ export const ComerziaBarcodeScanner = ({
 }: Props) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const controlsRef = useRef<IScannerControls | null>(null);
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeDeviceId, setActiveDeviceId] = useState<string>("");
   const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
@@ -31,72 +31,121 @@ export const ComerziaBarcodeScanner = ({
   const hints = useRef(new Map());
   hints.current.set(DecodeHintType.POSSIBLE_FORMATS, formats);
 
-  const initCameras = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const devices = await BrowserMultiFormatReader.listVideoInputDevices();
-      setVideoDevices(devices);
-
-      if (devices.length > 0) {
-        // Priorizar la cámara trasera en smartphones
-        const backCamera = devices.find((d) =>
-          d.label.toLowerCase().match(/back|rear|environment|trasera/)
-        );
-        setActiveDeviceId(backCamera ? backCamera.deviceId : devices[0].deviceId);
-        setHasPermission(true);
-      } else {
-        setHasPermission(false);
-      }
-    } catch (err) {
-      setHasPermission(false);
-      if (onScanError && err instanceof Error) onScanError(err);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [onScanError]);
-
   useEffect(() => {
-    initCameras();
-  }, [initCameras]);
-
-  useEffect(() => {
-    if (!activeDeviceId || !videoRef.current) return;
-
-    const codeReader = new BrowserMultiFormatReader(hints.current, {
-      delayBetweenScanAttempts: 120, // Previene sobrecalentamiento y ahorro de batería
-    });
-
     let isMounted = true;
+    let controls: IScannerControls | null = null;
 
-    codeReader
-      .decodeFromVideoDevice(
-        activeDeviceId,
-        videoRef.current,
-        (result, _error, controls) => {
-          if (!isMounted) return;
-          controlsRef.current = controls;
+    const startScanning = async () => {
+      setIsLoading(true);
+      setErrorMessage(null);
 
-          if (result) {
-            const rawText = result.getText().trim();
-            // Sanitización estricta de entrada antes de propagar
-            const sanitized = rawText.replace(/[^\w\-./$ %*+]/gi, "");
-            onScanSuccess(sanitized);
+      try {
+        // 1. Validar soporte de API WebRTC en el navegador
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error("El navegador no soporta acceso a la cámara o el entorno no es seguro (requiere HTTPS o localhost).");
+        }
+
+        // 2. Solicitar permiso explícito al usuario.
+        // Esto dispara inmediatamente la ventana emergente de permisos nativos del navegador.
+        const probeStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: "environment" } }
+        });
+
+        // Detener los tracks temporales del probe para liberar el sensor de video
+        probeStream.getTracks().forEach((t) => t.stop());
+
+        if (!isMounted) return;
+
+        // 3. Enumerar dispositivos ahora que los permisos están concedidos y se tienen los labels reales
+        const devices = await BrowserMultiFormatReader.listVideoInputDevices();
+        if (!isMounted) return;
+
+        setVideoDevices(devices);
+
+        // 4. Seleccionar la mejor cámara (trasera si existe, o la primera disponible)
+        let chosenDeviceId = activeDeviceId;
+        if (!chosenDeviceId && devices.length > 0) {
+          const backCam = devices.find((d) =>
+            d.label.toLowerCase().match(/back|rear|environment|trasera|posterior|externa/)
+          );
+          chosenDeviceId = backCam ? backCam.deviceId : devices[0].deviceId;
+          setActiveDeviceId(chosenDeviceId);
+        }
+
+        if (!videoRef.current) return;
+
+        // 5. Configurar lector ZXing
+        const codeReader = new BrowserMultiFormatReader(hints.current, {
+          delayBetweenScanAttempts: 120, // Previene sobrecalentamiento y optimiza el consumo de batería
+        });
+
+        // 6. Iniciar decodificación continua
+        const activeControls = await codeReader.decodeFromVideoDevice(
+          chosenDeviceId || undefined,
+          videoRef.current,
+          (result, _error, c) => {
+            if (!isMounted) return;
+            controls = c;
+
+            if (result) {
+              const rawText = result.getText().trim();
+              // Sanitización estricta de entrada antes de propagar
+              const sanitized = rawText.replace(/[^\w\-./$ %*+]/gi, "");
+              if (sanitized) {
+                onScanSuccess(sanitized);
+              }
+            }
           }
+        );
+
+        controls = activeControls;
+        controlsRef.current = activeControls;
+        setIsLoading(false);
+      } catch (err: any) {
+        if (!isMounted) return;
+        console.error("Error iniciando cámara:", err);
+        setIsLoading(false);
+
+        let msg = "No se pudo acceder a la cámara.";
+        if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+          msg = "Permiso de cámara denegado. Por favor, autoriza el acceso a la cámara en los ajustes del navegador.";
+        } else if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
+          msg = "No se encontró ningún sensor de cámara disponible en este dispositivo.";
+        } else if (err.name === "NotReadableError" || err.name === "TrackStartError") {
+          msg = "La cámara está ocupada por otra aplicación o pestaña del navegador.";
+        } else if (err.message) {
+          msg = err.message;
         }
-      )
-      .catch((err) => {
-        if (isMounted) {
-          setHasPermission(false);
-          if (onScanError && err instanceof Error) onScanError(err);
+
+        setErrorMessage(msg);
+        if (onScanError && err instanceof Error) {
+          onScanError(err);
         }
-      });
+      }
+    };
+
+    startScanning();
 
     // Cleanup estricto para apagar la cámara y liberar tracks de memoria
     return () => {
       isMounted = false;
+      if (controls) {
+        try {
+          controls.stop();
+        } catch (_) {}
+      }
       if (controlsRef.current) {
-        controlsRef.current.stop();
+        try {
+          controlsRef.current.stop();
+        } catch (_) {}
         controlsRef.current = null;
+      }
+      if (videoRef.current && videoRef.current.srcObject) {
+        try {
+          const stream = videoRef.current.srcObject as MediaStream;
+          stream.getTracks().forEach((t) => t.stop());
+          videoRef.current.srcObject = null;
+        } catch (_) {}
       }
     };
   }, [activeDeviceId, onScanSuccess, onScanError]);
@@ -108,13 +157,13 @@ export const ComerziaBarcodeScanner = ({
     setActiveDeviceId(videoDevices[nextIndex].deviceId);
   };
 
-  if (hasPermission === false) {
+  if (errorMessage) {
     return (
       <div className="flex flex-col items-center justify-center p-8 bg-base-200 rounded-xl text-center">
         <CameraOff size={40} className="text-error mb-2" />
-        <p className="font-bold text-base-content">Acceso a cámara denegado o no disponible</p>
-        <p className="text-xs text-base-content/60 mt-1">
-          Verifique los permisos en el navegador y compruebe que la conexión sea HTTPS segura o localhost.
+        <p className="font-bold text-base-content">Acceso a cámara no disponible</p>
+        <p className="text-xs text-base-content/60 mt-1 max-w-xs">
+          {errorMessage}
         </p>
       </div>
     );
@@ -132,6 +181,7 @@ export const ComerziaBarcodeScanner = ({
       <video
         ref={videoRef}
         className="w-full h-full object-cover"
+        autoPlay
         playsInline
         muted
       />
