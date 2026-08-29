@@ -1,12 +1,12 @@
 import { useRef } from "react";
-import { ImagePlus, X, Star, ArrowUp, ArrowDown } from "lucide-react";
+import { ImagePlus, X, Star, ArrowUp, ArrowDown, Camera, Upload } from "lucide-react";
 import { 
     MAX_FILE_SIZE_BYTES, 
     MAX_FILE_SIZE_MB, 
     ALLOWED_IMAGE_TYPES, 
     MAX_IMAGES_PER_PRODUCT 
 } from "../../config/storage";
-import { useToast } from "../../context/ToastContext"; // ✅ Usamos tu contexto de Toast
+import { useToast } from "../../context/ToastContext";
 
 export interface ImageItem {
     id: string; 
@@ -24,8 +24,9 @@ interface Props {
 }
 
 export const ComerziaImageUploader = ({ images, onChange, error, shakeKey }: Props) => {
-    const inputRef = useRef<HTMLInputElement>(null);
-    const { error: toastError, success: toastSuccess } = useToast(); // ✅ Hook de notificaciones
+    const galleryInputRef = useRef<HTMLInputElement>(null);
+    const cameraInputRef = useRef<HTMLInputElement>(null);
+    const { error: toastError, success: toastSuccess } = useToast();
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
@@ -37,15 +38,15 @@ export const ComerziaImageUploader = ({ images, onChange, error, shakeKey }: Pro
 
             files.forEach(file => {
                 // 1. Validar Tipo
-                if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+                if (!ALLOWED_IMAGE_TYPES.includes(file.type) && !file.type.startsWith('image/')) {
                     invalidTypeCount++;
-                    return; // Saltamos este archivo
+                    return;
                 }
 
                 // 2. Validar Tamaño (Max 5MB)
                 if (file.size > MAX_FILE_SIZE_BYTES) {
                     skippedCount++;
-                    return; // Saltamos este archivo, pero seguimos con el resto
+                    return;
                 }
 
                 // Si pasa, lo preparamos
@@ -65,7 +66,6 @@ export const ComerziaImageUploader = ({ images, onChange, error, shakeKey }: Pro
             if (potentialTotal > MAX_IMAGES_PER_PRODUCT) {
                 toastError(`Solo puedes tener un máximo de ${MAX_IMAGES_PER_PRODUCT} imágenes por producto.`);
                 
-                // Opción B: Agregar solo las que quepan (Recomendado)
                 const slotsAvailable = MAX_IMAGES_PER_PRODUCT - currentTotal;
                 if (slotsAvailable > 0) {
                     const toAdd = validNewItems.slice(0, slotsAvailable);
@@ -74,7 +74,6 @@ export const ComerziaImageUploader = ({ images, onChange, error, shakeKey }: Pro
                     toastSuccess(`Se agregaron ${toAdd.length} imágenes.`);
                 }
             } else {
-                // Si caben todas, las agregamos
                 if (validNewItems.length > 0) {
                     const updatedList = [...images, ...validNewItems];
                     updateListState(updatedList);
@@ -90,8 +89,9 @@ export const ComerziaImageUploader = ({ images, onChange, error, shakeKey }: Pro
             }
         }
 
-        // Reset input
-        if (inputRef.current) inputRef.current.value = "";
+        // Reset inputs
+        if (galleryInputRef.current) galleryInputRef.current.value = "";
+        if (cameraInputRef.current) cameraInputRef.current.value = "";
     };
 
     const updateListState = (list: ImageItem[]) => {
@@ -128,12 +128,22 @@ export const ComerziaImageUploader = ({ images, onChange, error, shakeKey }: Pro
         }
     };
 
+    const openGallery = (e?: React.MouseEvent) => {
+        if (e) e.stopPropagation();
+        galleryInputRef.current?.click();
+    };
+
+    const openCamera = (e?: React.MouseEvent) => {
+        if (e) e.stopPropagation();
+        cameraInputRef.current?.click();
+    };
+
     return (
         <div className={`space-y-4 ${shakeKey ? 'animate-shake' : ''}`}>
             
             {/* ZONA DE CARGA */}
             {images.length >= MAX_IMAGES_PER_PRODUCT ? (
-                <div className="border-2 border-dashed border-base-200 rounded-xl p-6 flex flex-col items-center justify-center text-center bg-base-200/50 cursor-not-allowed opacity-60">
+                <div className="border-2 border-dashed border-base-200 rounded-2xl p-6 flex flex-col items-center justify-center text-center bg-base-200/50 cursor-not-allowed opacity-60">
                     <div className="bg-base-300 p-3 rounded-full mb-2">
                         <ImagePlus size={24} className="text-base-content/40" />
                     </div>
@@ -142,28 +152,68 @@ export const ComerziaImageUploader = ({ images, onChange, error, shakeKey }: Pro
                 </div>
             ) : (
                 <div 
-                    className={`border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center text-center cursor-pointer transition-colors
+                    className={`border-2 border-dashed rounded-2xl p-4 sm:p-6 flex flex-col items-center justify-center text-center transition-all bg-base-100
                         ${error ? 'border-error bg-error/5' : 'border-base-300 hover:bg-base-200/50 hover:border-primary/50'}
                     `}
-                    onClick={() => inputRef.current?.click()}
                 >
-                    <input 
-                        ref={inputRef}
-                        type="file" 
-                        multiple 
-                        accept={ALLOWED_IMAGE_TYPES.join(',')} 
-                        className="hidden" 
-                        onChange={handleFileSelect}
-                    />
-                    <div className="bg-base-200 p-3 rounded-full mb-2">
-                        <ImagePlus size={24} className="text-base-content/60" />
+                    <div className="flex items-center gap-2 mb-2">
+                        <div className="p-2 rounded-xl bg-primary/10 text-primary">
+                            <Camera size={24} />
+                        </div>
+                        <div className="p-2 rounded-xl bg-base-200 text-base-content/70">
+                            <ImagePlus size={24} />
+                        </div>
                     </div>
-                    <p className="font-medium text-sm">Click para seleccionar imágenes</p>
-                    <p className="text-xs text-base-content/50 mt-1">
-                        Máx. {MAX_FILE_SIZE_MB}MB • {MAX_IMAGES_PER_PRODUCT} imágenes máx.
+
+                    <p className="font-bold text-sm text-base-content">
+                        Subir o Capturar Imágenes del Producto
                     </p>
+                    <p className="text-xs text-base-content/50 mt-0.5 mb-3">
+                        Máx. {MAX_FILE_SIZE_MB}MB • {images.length}/{MAX_IMAGES_PER_PRODUCT} imágenes
+                    </p>
+
+                    {/* BOTONES DIRECTOS: TOMAR FOTO O SUBIR DE GALERÍA */}
+                    <div className="flex items-center gap-2 w-full max-w-xs justify-center">
+                        <button
+                            type="button"
+                            onClick={openCamera}
+                            className="btn btn-xs sm:btn-sm btn-comerzia-primary text-white border-none flex-1 gap-1.5 shadow-sm font-semibold hover:brightness-110 active:scale-95 transition-all"
+                        >
+                            <Camera size={15} />
+                            <span>Tomar Foto</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={openGallery}
+                            className="btn btn-xs sm:btn-sm btn-outline flex-1 gap-1.5 font-semibold hover:bg-base-200 active:scale-95 transition-all"
+                        >
+                            <Upload size={15} />
+                            <span>Galería</span>
+                        </button>
+                    </div>
                 </div>
             )}
+
+            {/* Input 1: Galería / Selector Múltiple de Archivos */}
+            <input 
+                ref={galleryInputRef}
+                type="file" 
+                multiple 
+                accept="image/*,image/jpeg,image/png,image/webp,image/jpg" 
+                className="hidden" 
+                onChange={handleFileSelect}
+            />
+
+            {/* Input 2: Cámara directa */}
+            <input 
+                ref={cameraInputRef}
+                type="file" 
+                accept="image/*" 
+                capture="environment"
+                className="hidden" 
+                onChange={handleFileSelect}
+            />
 
             {error && <p className="text-xs text-error font-medium">{error}</p>}
 
