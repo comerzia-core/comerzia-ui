@@ -88,30 +88,67 @@ export const CompanyEmployeesTab = ({ companyId }: Props) => {
     ];
 
     return (
-        <div className="p-4 bg-base-100 rounded-b-xl border border-t-0 border-base-200">
-            <h2 className="text-lg font-bold mb-4 text-base-content">
+        <div className="p-2 sm:p-4 bg-base-100 rounded-b-xl border border-t-0 border-base-200">
+            <h2 className="text-base sm:text-lg font-bold mb-4 text-base-content">
                 Personal Registrado ({totalElements})
             </h2>
             
-            <ComerziaTable<EmployeeSummaryResponse> 
-                data={data} 
-                columns={columns} 
-                isLoading={isLoading}
-                showRowNumbers={true}
-                // Detalle UX: Si el usuario está deshabilitado, sombreamos la fila
-                rowClassName={(row) => !row.userEnabled ? 'bg-error/5' : ''}
-                pagination={{
-                    currentPage,
-                    pageSize,
-                    totalElements,
-                    totalPages,
-                    onPageChange: setCurrentPage,
-                    onPageSizeChange: (newSize) => {
-                        setPageSize(newSize);
-                        setCurrentPage(0); // Regla de oro: Al cambiar tamaño, volver a página 0
-                    }
-                }}
-            />
+            {/* Desktop Table */}
+            <div className="hidden md:block">
+                <ComerziaTable<EmployeeSummaryResponse> 
+                    data={data} 
+                    columns={columns} 
+                    isLoading={isLoading}
+                    showRowNumbers={true}
+                    rowClassName={(row) => !row.userEnabled ? 'bg-error/5' : ''}
+                    pagination={{
+                        currentPage,
+                        pageSize,
+                        totalElements,
+                        totalPages,
+                        onPageChange: setCurrentPage,
+                        onPageSizeChange: (newSize) => {
+                            setPageSize(newSize);
+                            setCurrentPage(0);
+                        }
+                    }}
+                />
+            </div>
+
+            {/* Mobile Cards */}
+            <div className="block md:hidden space-y-2.5">
+                {isLoading ? (
+                    <div className="py-8 text-center">
+                        <span className="loading loading-spinner loading-md text-primary"></span>
+                    </div>
+                ) : data.length === 0 ? (
+                    <div className="text-center py-6 text-base-content/50 bg-base-200/50 rounded-xl text-xs">
+                        No hay empleados registrados.
+                    </div>
+                ) : (
+                    data.map((emp) => (
+                        <div key={emp.id} className={`bg-base-100 p-3.5 rounded-xl border border-base-200 shadow-xs space-y-2 text-xs ${!emp.userEnabled ? 'bg-error/5 border-error/20' : ''}`}>
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <span className="font-bold text-sm text-base-content block">{emp.fullName}</span>
+                                    <span className="text-[11px] text-base-content/60">{emp.branchName || 'Sin sucursal'} • CI: {emp.documentNumber || '-'}</span>
+                                </div>
+                                <ComerziaBadge 
+                                    label={emp.userEnabled ? 'Habilitado' : 'Bloqueado'} 
+                                    variant={emp.userEnabled ? 'success' : 'error'} 
+                                />
+                            </div>
+                            <div className="flex flex-wrap gap-1 pt-1">
+                                {emp.roleNames.map((r) => (
+                                    <span key={r} className="badge badge-neutral badge-xs text-[10px]">
+                                        {r}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
         </div>
     );
 };

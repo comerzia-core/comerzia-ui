@@ -39,9 +39,9 @@ export const BranchesGrid = ({
     branch: null
   });
 
-  // Manejador del evento de clic derecho en la tarjeta
-  const handleContextMenu = (e: React.MouseEvent, branch: BranchResponse) => {
-    e.preventDefault();
+  // Manejador del evento de clic derecho / long-press en la tarjeta
+  const handleContextMenu = (e: React.MouseEvent | { clientX: number; clientY: number; preventDefault?: () => void }, branch: BranchResponse) => {
+    if (e.preventDefault) e.preventDefault();
     setContextMenu({
       isOpen: true,
       x: e.clientX,

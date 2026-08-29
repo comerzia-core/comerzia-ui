@@ -41,30 +41,31 @@ export const CompanyDashboardPage = () => {
     if (!company) return null;
 
     return (
-        <div className="flex flex-col gap-6 p-6">
+        <div className="flex flex-col gap-6 p-4 sm:p-6 animate-fade-in">
             
             {/* Cabecera / Info Rápida */}
-            <div className="flex items-center gap-4 bg-base-100 p-6 rounded-xl shadow-sm border border-base-200">
-                <div className="avatar">
-                    <div className="w-16 rounded-xl border border-base-300">
-                        {company.saasCompanySettingsResponse?.companyLogoUrl ? (
-                            <img src={company.saasCompanySettingsResponse.companyLogoUrl} alt="Logo" />
-                        ) : (
-                            <div className="bg-base-200 w-full h-full flex items-center justify-center font-bold text-base-content/50">
-                                {company.legalName.substring(0, 2).toUpperCase()}
-                            </div>
-                        )}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-base-100 p-4 sm:p-6 rounded-2xl shadow-sm border border-base-200">
+                <div className="flex items-center gap-4">
+                    <div className="avatar">
+                        <div className="w-14 sm:w-16 rounded-xl border border-base-300">
+                            {company.saasCompanySettingsResponse?.companyLogoUrl ? (
+                                <img src={company.saasCompanySettingsResponse.companyLogoUrl} alt="Logo" />
+                            ) : (
+                                <div className="bg-base-200 w-full h-full flex items-center justify-center font-bold text-base-content/50">
+                                    {company.legalName.substring(0, 2).toUpperCase()}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    <div>
+                        <h1 className="text-xl sm:text-2xl font-bold text-base-content leading-tight">{company.legalName}</h1>
+                        <p className="text-xs sm:text-sm text-base-content/70 mt-0.5">
+                            NIT: {company.taxId} | Comercial: {company.commercialName}
+                        </p>
                     </div>
                 </div>
-                <div>
-                    <h1 className="text-2xl font-bold text-base-content">{company.legalName}</h1>
-                    <p className="text-sm text-base-content/70">
-                        NIT: {company.taxId} | Comercial: {company.commercialName}
-                    </p>
-                </div>
-                <div className="ml-auto">
-                    {/* Botón estandarizado de "Regresar" o breadcrumb */}
-                    <button onClick={() => navigate('/saas/tenants')} className="btn btn-sm btn-ghost">
+                <div className="w-full sm:w-auto sm:ml-auto">
+                    <button onClick={() => navigate('/saas/tenants')} className="btn btn-sm btn-ghost w-full sm:w-auto">
                         Volver al Listado
                     </button>
                 </div>
@@ -72,23 +73,23 @@ export const CompanyDashboardPage = () => {
 
             {/* Sistema de Tabs (Manejado por Estado Local) */}
             <div className="w-full">
-                <div className="tabs tabs-boxed bg-base-200 p-1 rounded-t-xl gap-1 font-semibold">
-                    <a className={`tab ${activeTab === 0 ? 'tab-active !bg-base-100 shadow-sm' : ''}`} onClick={() => setActiveTab(0)}>
+                <div className="tabs tabs-boxed bg-base-200 p-1 rounded-t-xl gap-1 font-semibold overflow-x-auto flex-nowrap">
+                    <a className={`tab text-xs sm:text-sm whitespace-nowrap ${activeTab === 0 ? 'tab-active !bg-base-100 shadow-sm' : ''}`} onClick={() => setActiveTab(0)}>
                         Configuración General
                     </a>
-                    <a className={`tab ${activeTab === 1 ? 'tab-active !bg-base-100 shadow-sm' : ''}`} onClick={() => setActiveTab(1)}>
+                    <a className={`tab text-xs sm:text-sm whitespace-nowrap ${activeTab === 1 ? 'tab-active !bg-base-100 shadow-sm' : ''}`} onClick={() => setActiveTab(1)}>
                         Suscripciones
                     </a>
-                    <a className={`tab ${activeTab === 2 ? 'tab-active !bg-base-100 shadow-sm' : ''}`} onClick={() => setActiveTab(2)}>
+                    <a className={`tab text-xs sm:text-sm whitespace-nowrap ${activeTab === 2 ? 'tab-active !bg-base-100 shadow-sm' : ''}`} onClick={() => setActiveTab(2)}>
                         Sucursales
                     </a>
-                    <a className={`tab ${activeTab === 3 ? 'tab-active !bg-base-100 shadow-sm' : ''}`} onClick={() => setActiveTab(3)}>
+                    <a className={`tab text-xs sm:text-sm whitespace-nowrap ${activeTab === 3 ? 'tab-active !bg-base-100 shadow-sm' : ''}`} onClick={() => setActiveTab(3)}>
                         Empleados
                     </a>
                 </div>
 
                 {/* Renderizado de Componentes según Tab Activo (Lazy Loading implicito) */}
-                <div className="bg-base-100 rounded-b-xl border border-t-0 border-base-200 p-6 min-h-[400px]">
+                <div className="bg-base-100 rounded-b-xl border border-t-0 border-base-200 p-4 sm:p-6 min-h-[400px]">
                     
                     {/* TAB 1: Ajustes Generales Mejorados visualmente */}
                     {activeTab === 0 && (

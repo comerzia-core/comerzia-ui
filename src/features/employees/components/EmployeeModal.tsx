@@ -277,7 +277,7 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
                 error={!person.firstName && shakeKey > 0 ? 'Requerido' : ''}
                 disabled={isEditing && !!person.firstName}
               />
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <ComerziaInput
                   label="Ap. Paterno"
                   value={person.paternalSurname}
@@ -344,7 +344,7 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <ComerziaInput
                   label="Teléfono"
                   value={person.phoneNumber}
@@ -390,7 +390,7 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
               />
 
               {isEditing ? (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <ComerziaInput
                     label="Fecha Inicio Contrato"
                     type="date"
@@ -419,7 +419,7 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
                 />
               )}
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <ComerziaInput
                   label="Salario Base"
                   type="number"
@@ -446,18 +446,22 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
         </div>
 
         {/* FOOTER DEL MODAL */}
-        <div className="flex justify-between items-center border-t mt-6 pt-4">
-          {currentStep > 1 ? (
-            <BtnBack onClick={handleBack} disabled={isLoading} />
-          ) : (
-            <BtnCancel onClick={onClose} disabled={isLoading} />
-          )}
+        <div className="flex flex-row items-center gap-2 border-t border-base-200 mt-6 pt-4 w-full sm:justify-between">
+          <div className="flex-1 sm:flex-none">
+            {currentStep > 1 ? (
+              <BtnBack onClick={handleBack} disabled={isLoading} responsive={true} className="w-full sm:w-auto min-w-0" />
+            ) : (
+              <BtnCancel onClick={onClose} disabled={isLoading} responsive={true} className="w-full sm:w-auto min-w-0" />
+            )}
+          </div>
 
-          {currentStep < STEPS.length ? (
-            <BtnNext onClick={handleNext} disabled={isLoading} />
-          ) : (
-            <BtnSave onClick={handleSubmit} isLoading={isLoading} />
-          )}
+          <div className="flex-1 sm:flex-none">
+            {currentStep < STEPS.length ? (
+              <BtnNext onClick={handleNext} disabled={isLoading} responsive={true} className="w-full sm:w-auto min-w-0" />
+            ) : (
+              <BtnSave onClick={handleSubmit} isLoading={isLoading} responsive={true} className="w-full sm:w-auto min-w-0" />
+            )}
+          </div>
         </div>
       </ComerziaModal>
 

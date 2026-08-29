@@ -4,7 +4,7 @@ import { CreateCompanyWizard } from "../components/companies/CreateCompanyWizard
 import { CompanyCredentialsModal } from "../components/companies/CompanyCredentialsModal";
 import { getCompanies } from "../services/companyService";
 import type { SaasCompanyListResponse, CompanyCreatedResponse } from "../types/company";
-import { Plus } from "lucide-react";
+import { BtnCreate } from "../../../components/ui/CrudButtons";
 
 export const CompaniesPage = () => {
     const [companies, setCompanies] = useState<SaasCompanyListResponse[]>([]);
@@ -44,22 +44,21 @@ export const CompaniesPage = () => {
     };
 
     return (
-        <div className="flex flex-col gap-6 p-6">
-            
-            <div className="flex justify-between items-center bg-base-100 p-4 rounded-xl shadow-sm border border-base-200">
+        <div className="flex flex-col gap-6 p-4 sm:p-6 animate-fade-in">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-base-100 p-4 rounded-2xl shadow-sm border border-base-200">
                 <div>
                     <h1 className="text-2xl font-bold text-base-content">Empresas (Tenants)</h1>
-                    <p className="text-sm text-base-content/70">
+                    <p className="text-xs sm:text-sm text-base-content/70 mt-0.5">
                         Administración global de clientes SaaS
                     </p>
                 </div>
                 
-                <button 
+                <BtnCreate 
                     onClick={() => setIsWizardOpen(true)}
-                    className="btn btn-primary btn-sm rounded-lg"
-                >
-                    <Plus size={16} /> Nueva Empresa
-                </button>
+                    label="Nueva Empresa"
+                    responsive={true}
+                    className="w-full sm:w-auto"
+                />
             </div>
 
             <CompaniesTable 

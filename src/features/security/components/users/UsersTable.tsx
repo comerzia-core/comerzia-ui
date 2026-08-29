@@ -1,5 +1,4 @@
-// src/features/security/components/users/UsersTable.tsx
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   UserCheck,
   UserX,
@@ -7,7 +6,9 @@ import {
   Key,
   UserCog,
   AlertTriangle,
-  Calendar
+  Calendar,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { ComerziaTable, type Column } from '../../../../components/ui/ComerziaTable';
 import { ComerziaBadge } from '../../../../components/ui/ComerziaBadge';
@@ -41,7 +42,7 @@ export const UsersTable = ({
   onResetPasswordRequest,
   onModifyRolesRequest
 }: Props) => {
-  // Estado para el menú contextual de clic derecho
+  // Estado para el menú contextual de clic derecho / long-press
   const [contextMenu, setContextMenu] = useState<{
     isOpen: boolean;
     x: number;
@@ -53,6 +54,9 @@ export const UsersTable = ({
     y: 0,
     user: null
   });
+
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const touchStartPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   const handleContextMenu = (e: React.MouseEvent, user: UserResponse) => {
     e.preventDefault();
@@ -96,13 +100,11 @@ export const UsersTable = ({
       header: 'Estado de Cuenta',
       render: row => (
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Insignia con el statusTypeName del Backend y variante mapeada por statusTypeCode */}
           <ComerziaBadge
             label={row.statusTypeName || (row.disabled ? 'Deshabilitado' : 'Activo')}
             variant={getStatusBadgeVariant(row.statusTypeCode, row.disabled)}
           />
 
-          {/* ICONO DE ALERTA SIN FONDO NI TEXTO SOLO CUANDO LA CUENTA TIENE LOCKED === TRUE */}
           {row.locked && (
             <div
               className="inline-flex items-center justify-center text-warning animate-pulse cursor-help"
@@ -156,19 +158,133 @@ export const UsersTable = ({
     }
     : undefined;
 
+  const usersList = data?.content || [];
+
   return (
     <>
-      <ComerziaTable
-        columns={columns}
-        data={data?.content || []}
-        isLoading={isLoading}
-        showRowNumbers={true}
-        pagination={paginationConfig}
-        onRowContextMenu={handleContextMenu}
-        rowClassName={() => 'hover:!bg-primary/10 transition-colors cursor-pointer'}
-      />
+      {/* VISTA DESKTOP: TABLA */}
+      <div className="hidden md:block">
+        <ComerziaTable
+          columns={columns}
+          data={usersList}
+          isLoading={isLoading}
+          showRowNumbers={true}
+          pagination={paginationConfig}
+          onRowContextMenu={handleContextMenu}
+          rowClassName={() => 'hover:!bg-primary/10 transition-colors cursor-pointer'}
+        />
+      </div>
 
-      {/* MENÚ CONTEXTUAL AL HACER CLIC DERECHO EN UNA FILA */}
+      {/* VISTA MOBILE: CARDS */}
+      <div className="block md:hidden space-y-2.5 p-3">
+        {isLoading ? (
+          <div className="py-10 text-center">
+            <span className="loading loading-spinner loading-md text-primary"></span>
+          </div>
+        ) : usersList.length === 0 ? (
+          <div className="text-center py-8 text-base-content/50 bg-base-200/50 rounded-xl text-xs">
+            No se encontraron usuarios.
+          </div>
+        ) : (
+          usersList.map((user) => (
+            <div
+              key={user.id}
+              onTouchStart={(e) => {
+                touchStartPosRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                longPressTimerRef.current = setTimeout(() => {
+                  if (navigator.vibrate) navigator.vibrate(40);
+                  setContextMenu({
+                    isOpen: true,
+                    x: touchStartPosRef.current.x,
+                    y: touchStartPosRef.current.y,
+                    user
+                  });
+                }, 500);
+              }}
+              onTouchEnd={() => {
+                if (longPressTimerRef.current) {
+                  clearTimeout(longPressTimerRef.current);
+                  longPressTimerRef.current = null;
+                }
+              }}
+              onTouchMove={(e) => {
+                const moveX = Math.abs(e.touches[0].clientX - touchStartPosRef.current.x);
+                const moveY = Math.abs(e.touches[0].clientY - touchStartPosRef.current.y);
+                if (moveX > 10 || moveY > 10) {
+                  if (longPressTimerRef.current) {
+                    clearTimeout(longPressTimerRef.current);
+                    longPressTimerRef.current = null;
+                  }
+                }
+              }}
+              onContextMenu={(e) => handleContextMenu(e, user)}
+              className="bg-base-100 p-3.5 rounded-xl border border-base-200 shadow-xs space-y-2 text-xs select-none"
+            >
+              <div className="flex justify-between items-start">
+                <div>
+                  <span className="font-bold text-sm text-base-content block">{user.fullName || 'Usuario'}</span>
+                  <span className="font-mono text-xs text-primary font-semibold block">@{user.username}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <ComerziaBadge
+                    label={user.statusTypeName || (user.disabled ? 'Deshabilitado' : 'Activo')}
+                    variant={getStatusBadgeVariant(user.statusTypeCode, user.disabled)}
+                  />
+                  {user.locked && (
+                    <AlertTriangle className="w-4 h-4 text-warning" />
+                  )}
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-1 pt-1 border-t border-base-200/50">
+                {user.roles && user.roles.length > 0 ? (
+                  user.roles.map((r, i) => (
+                    <span key={i} className="badge badge-xs badge-neutral font-semibold">
+                      {r}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-[10px] text-base-content/40 italic">Sin roles</span>
+                )}
+              </div>
+
+              {user.lastLoginAt && (
+                <div className="text-[10px] text-base-content/50 pt-1 flex items-center gap-1">
+                  <Calendar size={12} className="text-primary/70" />
+                  <span>Último acceso: {formatDateForUser(user.lastLoginAt)}</span>
+                </div>
+              )}
+            </div>
+          ))
+        )}
+
+        {/* Paginación Mobile */}
+        {data && data.totalPages > 1 && (
+          <div className="flex justify-between items-center px-1 pt-2">
+            <button
+              type="button"
+              className="btn btn-sm btn-outline gap-1"
+              disabled={page === 0 || isLoading}
+              onClick={() => onPageChange(Math.max(0, page - 1))}
+            >
+              <ChevronLeft size={16} /> Ant.
+            </button>
+            <span className="text-xs font-semibold text-base-content/70">
+              Pág. {page + 1} de {data.totalPages}
+            </span>
+            <button
+              type="button"
+              className="btn btn-sm btn-outline gap-1"
+              disabled={page >= data.totalPages - 1 || isLoading}
+              onClick={() => onPageChange(page + 1)}
+            >
+              Sig. <ChevronRight size={16} />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* MENÚ CONTEXTUAL */}
       <ComerziaContextMenu
         isOpen={contextMenu.isOpen}
         x={contextMenu.x}
@@ -177,7 +293,6 @@ export const UsersTable = ({
       >
         {contextMenu.user && (
           <>
-            {/* Opción 1: Activar o Desactivar acceso */}
             {contextMenu.user.disabled ? (
               <ContextMenuItem
                 icon={UserCheck}
@@ -197,7 +312,6 @@ export const UsersTable = ({
               />
             )}
 
-            {/* Opción 2: Desbloquear usuario (si está bloqueado) */}
             {contextMenu.user.locked && (
               <ContextMenuItem
                 icon={Unlock}
@@ -208,7 +322,6 @@ export const UsersTable = ({
               />
             )}
 
-            {/* Opción 3: Resetear contraseña */}
             <ContextMenuItem
               icon={Key}
               label="Resetear contraseña"
@@ -217,7 +330,6 @@ export const UsersTable = ({
               }}
             />
 
-            {/* Opción 4: Modificar roles */}
             <ContextMenuItem
               icon={UserCog}
               label="Modificar roles"

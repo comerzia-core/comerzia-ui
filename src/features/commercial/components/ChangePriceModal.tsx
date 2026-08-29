@@ -97,7 +97,7 @@ export const ChangePriceModal = ({ isOpen, onClose, variantId, variantName, acti
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           <ComerziaInput
             label="Precio con Descuento"
             type="number"
@@ -123,9 +123,9 @@ export const ChangePriceModal = ({ isOpen, onClose, variantId, variantName, acti
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 mt-8">
-          <BtnCancel onClick={onClose} disabled={isSubmitting} />
-          <BtnSave onClick={handleSubmit} isLoading={isSubmitting} />
+        <div className="flex flex-row items-center gap-2 mt-6 pt-3 border-t border-base-200 w-full sm:justify-end">
+          <BtnCancel onClick={onClose} disabled={isSubmitting} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
+          <BtnSave onClick={handleSubmit} isLoading={isSubmitting} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
         </div>
       </div>
     </ComerziaModal>

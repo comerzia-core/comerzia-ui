@@ -380,19 +380,19 @@ export const CreateCompanyWizard = ({ isOpen, onClose, onSuccess }: Props) => {
             </div>
 
             {/* FOOTER */}
-            <div className="flex justify-between mt-8 pt-4 border-t border-base-200">
+            <div className="flex flex-row items-center gap-2 mt-6 pt-3 border-t border-base-200 w-full sm:justify-between">
                 <div>
                     {step > 1 && (
-                        <BtnBack onClick={handlePrev} disabled={isSaving} />
+                        <BtnBack onClick={handlePrev} disabled={isSaving} responsive={true} className="min-w-0" />
                     )}
                 </div>
-                <div className="flex gap-2">
-                    <BtnCancel onClick={handleClose} disabled={isSaving} />
+                <div className="flex flex-1 sm:flex-none justify-end gap-2">
+                    <BtnCancel onClick={handleClose} disabled={isSaving} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
                     
                     {step < steps.length ? (
-                        <BtnNext onClick={handleNext} />
+                        <BtnNext onClick={handleNext} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
                     ) : (
-                        <BtnSave onClick={handleSubmit} isLoading={isSaving} />
+                        <BtnSave onClick={handleSubmit} isLoading={isSaving} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
                     )}
                 </div>
             </div>

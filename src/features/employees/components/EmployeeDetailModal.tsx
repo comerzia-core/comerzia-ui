@@ -49,7 +49,7 @@ export const EmployeeDetailModal = ({ isOpen, onClose, employeeId }: Props) => {
       size="lg"
       actions={
         <div className="flex gap-2 w-full justify-end">
-          <BtnCancel onClick={onClose} label="Cerrar" />
+          <BtnCancel onClick={onClose} label="Cerrar" responsive={true} className="w-full sm:w-auto" />
         </div>
       }
     >

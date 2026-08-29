@@ -139,23 +139,103 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
         title={`Variantes de ${productName}`}
         size="xl"
       >
-        <div className="mb-4 flex justify-between items-center">
-          <h3 className="font-semibold text-base-content/70">Listado de Variantes</h3>
+        <div className="mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+          <div>
+            <h3 className="font-semibold text-base-content/70">Listado de Variantes</h3>
+            <span className="text-[11px] text-base-content/50 md:hidden italic">Mantén presionado para opciones</span>
+          </div>
           {canManage && (
-            <BtnCreate onClick={() => setIsCreatingVariant(true)} label="Añadir Variante" />
+            <BtnCreate onClick={() => setIsCreatingVariant(true)} label="Añadir Variante" responsive={true} className="w-full sm:w-auto" />
           )}
         </div>
-        <ComerziaTable
-          data={data}
-          columns={columns}
-          isLoading={isLoading}
-          pagination={pagination}
-          showRowNumbers={true}
-          onRowContextMenu={(e, row) => {
-            e.preventDefault();
-            setContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, row });
-          }}
-        />
+
+        {/* VISTA DESKTOP: TABLA */}
+        <div className="hidden md:block">
+          <ComerziaTable
+            data={data}
+            columns={columns}
+            isLoading={isLoading}
+            pagination={pagination}
+            showRowNumbers={true}
+            onRowContextMenu={(e, row) => {
+              e.preventDefault();
+              setContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, row });
+            }}
+          />
+        </div>
+
+        {/* VISTA MOBILE: CARDS */}
+        <div className="block md:hidden space-y-3">
+          {isLoading ? (
+            <div className="py-8 text-center">
+              <span className="loading loading-spinner loading-md text-primary"></span>
+            </div>
+          ) : data.length === 0 ? (
+            <div className="text-center py-6 text-base-content/50 bg-base-200/50 rounded-xl text-xs">
+              No hay variantes registradas para este producto.
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              {data.map((variant) => (
+                <div
+                  key={variant.id}
+                  onTouchStart={(e) => {
+                    const x = e.touches[0].clientX;
+                    const y = e.touches[0].clientY;
+                    const timer = setTimeout(() => {
+                      if (navigator.vibrate) navigator.vibrate(40);
+                      setContextMenu({ isOpen: true, x, y, row: variant });
+                    }, 500);
+                    (e.target as any)._longPressTimer = timer;
+                  }}
+                  onTouchEnd={(e) => {
+                    if ((e.target as any)._longPressTimer) {
+                      clearTimeout((e.target as any)._longPressTimer);
+                    }
+                  }}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    setContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, row: variant });
+                  }}
+                  className="bg-base-100 p-3.5 rounded-xl border border-base-200 shadow-xs space-y-2 text-xs select-none"
+                >
+                  <div className="flex items-start gap-3">
+                    <div 
+                      className="w-12 h-12 rounded-lg bg-base-200 overflow-hidden border border-base-300 shrink-0"
+                      onClick={() => {
+                        if (variant.imageUrl) {
+                          setViewingImage({
+                            isOpen: true,
+                            url: variant.imageUrl,
+                            title: `${productName} - ${variant.name}`
+                          });
+                        }
+                      }}
+                    >
+                      {variant.imageUrl ? (
+                        <img src={variant.imageUrl} alt={variant.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-base-content/30 text-[9px]">Sin img</div>
+                      )}
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-start gap-1">
+                        <h4 className="font-bold text-sm text-base-content truncate">{variant.name}</h4>
+                        <span className={`badge badge-xs shrink-0 font-semibold ${variant.status ? 'badge-success' : 'badge-error'}`}>
+                          {variant.status ? 'Activo' : 'Inactivo'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-base-content/60 font-mono mt-0.5">
+                        SKU: {variant.sku} | Barcode: {variant.barCode}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </ComerziaModal>
 
       <ComerziaContextMenu

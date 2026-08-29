@@ -47,16 +47,16 @@ export const AuditDetailsModal = ({ isOpen, onClose, log }: Props) => {
   };
 
   const modalActions = (
-    <div className="flex items-center justify-between w-full">
+    <div className="flex flex-row items-center justify-between gap-2 w-full">
       <button
         type="button"
         onClick={handleCopyJson}
-        className="btn btn-sm btn-ghost gap-2 text-primary hover:bg-primary/10"
+        className="btn btn-sm btn-ghost gap-1.5 text-primary hover:bg-primary/10 px-2 sm:px-3"
       >
         {copied ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
-        {copied ? '¡Copiado!' : 'Copiar JSON'}
+        <span className="text-xs sm:text-sm">{copied ? '¡Copiado!' : 'Copiar JSON'}</span>
       </button>
-      <BtnCancel onClick={onClose} label="Cerrar" />
+      <BtnCancel onClick={onClose} label="Cerrar" responsive={true} className="w-auto" />
     </div>
   );
 

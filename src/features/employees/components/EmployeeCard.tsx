@@ -1,3 +1,4 @@
+import React, { useRef } from 'react';
 import { Building2, IdCard, Users, ChevronRight } from 'lucide-react';
 import type { EmployeeSummaryResponse } from '../types/employee';
 
@@ -5,13 +6,51 @@ interface Props {
   employee: EmployeeSummaryResponse;
   index: number;
   onClick: (employee: EmployeeSummaryResponse) => void;
-  onContextMenu?: (e: React.MouseEvent, employee: EmployeeSummaryResponse) => void;
+  onContextMenu?: (e: React.MouseEvent | { clientX: number; clientY: number; preventDefault?: () => void }, employee: EmployeeSummaryResponse) => void;
 }
 
 export const EmployeeCard = ({ employee, index, onClick, onContextMenu }: Props) => {
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const touchStartPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartPosRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    longPressTimerRef.current = setTimeout(() => {
+      if (navigator.vibrate) navigator.vibrate(40);
+      if (onContextMenu) {
+        onContextMenu(
+          {
+            clientX: touchStartPosRef.current.x,
+            clientY: touchStartPosRef.current.y,
+            preventDefault: () => {}
+          },
+          employee
+        );
+      }
+    }, 500);
+  };
+
+  const handleTouchEnd = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    const moveX = Math.abs(e.touches[0].clientX - touchStartPosRef.current.x);
+    const moveY = Math.abs(e.touches[0].clientY - touchStartPosRef.current.y);
+    if (moveX > 10 || moveY > 10) {
+      handleTouchEnd();
+    }
+  };
+
   return (
     <div 
-      className="bg-base-100 rounded-2xl p-5 border border-base-200 shadow-sm hover:shadow-md hover:border-primary/30 transition-all cursor-pointer relative group flex flex-col justify-between h-full select-none"
+      className="bg-base-100 rounded-2xl p-4 sm:p-5 border border-base-200 shadow-sm hover:shadow-md hover:border-primary/30 transition-all cursor-pointer relative group flex flex-col justify-between h-full select-none"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onTouchMove={handleTouchMove}
       onClick={() => onClick(employee)}
       onContextMenu={(e) => {
         if (onContextMenu) {

@@ -64,22 +64,23 @@ export const ExecuteInventoryModal = ({ isOpen, onClose, inventory, onSuccess }:
           onChange={(e) => setStaffNotes(e.target.value)}
         />
 
-        <div className="flex justify-between items-center mt-8">
-          <BtnCancel onClick={onClose} disabled={isSubmitting} />
-          <div className="flex gap-2">
-            <button 
-              className="btn btn-outline" 
-              onClick={handleSaveDraft}
-              disabled={isSubmitting}
-            >
-              Guardar Borrador
-            </button>
-            <BtnSave 
-              label="Enviar a Revisión" 
-              onClick={handleSaveDraft} 
-              isLoading={isSubmitting} 
-            />
-          </div>
+        <div className="flex flex-row items-center gap-2 mt-6 pt-3 border-t border-base-200 w-full sm:justify-end">
+          <BtnCancel onClick={onClose} disabled={isSubmitting} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
+          <button 
+            type="button"
+            className="btn btn-outline btn-md flex-1 sm:flex-none sm:w-auto min-w-0" 
+            onClick={handleSaveDraft}
+            disabled={isSubmitting}
+          >
+            <span className="hidden sm:inline">Guardar </span>Borrador
+          </button>
+          <BtnSave 
+            label="Enviar" 
+            onClick={handleSaveDraft} 
+            isLoading={isSubmitting} 
+            responsive={true}
+            className="flex-1 sm:flex-none sm:w-auto min-w-0"
+          />
         </div>
       </div>
     </ComerziaModal>

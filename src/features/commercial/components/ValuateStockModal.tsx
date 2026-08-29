@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ComerziaModal } from '../../../components/ui/ComerziaModal';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
 import { ComerziaRadioGroup } from '../../../components/ui/ComerziaRadioGroup';
-import { BtnSave } from '../../../components/ui/CrudButtons';
+import { BtnSave, BtnCancel } from '../../../components/ui/CrudButtons';
 import { useToast } from '../../../context/ToastContext';
 import { Coins, Banknote } from 'lucide-react';
 import { commercialService } from '../services/commercialService';
@@ -97,12 +97,16 @@ export const ValuateStockModal = ({ isOpen, onClose, onSuccess, stockEntry }: Pr
           </div>
         )}
 
-        <BtnSave 
-          className="w-full mt-4" 
-          label="Valorizar" 
-          onClick={handleSubmit} 
-          isLoading={isSubmitting} 
-        />
+        <div className="flex flex-row items-center gap-2 mt-6 pt-3 border-t border-base-200 w-full sm:justify-end">
+          <BtnCancel onClick={onClose} disabled={isSubmitting} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
+          <BtnSave 
+            label="Valorizar" 
+            onClick={handleSubmit} 
+            isLoading={isSubmitting} 
+            responsive={true}
+            className="flex-1 sm:flex-none sm:w-auto min-w-0"
+          />
+        </div>
       </div>
     </ComerziaModal>
   );

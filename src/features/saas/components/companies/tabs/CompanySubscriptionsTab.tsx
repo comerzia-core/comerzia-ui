@@ -42,16 +42,44 @@ export const CompanySubscriptionsTab = ({ subscriptions, companyTimezone }: Prop
     ];
 
     return (
-        <div className="p-4 bg-base-100 rounded-b-xl border border-t-0 border-base-200">
-            <h2 className="text-lg font-bold mb-4 text-base-content">
+        <div className="p-2 sm:p-4 bg-base-100 rounded-b-xl border border-t-0 border-base-200">
+            <h2 className="text-base sm:text-lg font-bold mb-4 text-base-content">
                 Historial de Suscripciones ({subscriptions.length})
             </h2>
             
-            <ComerziaTable<SaasSubscriptionResponse> 
-                data={subscriptions} 
-                columns={columns} 
-                showRowNumbers={true}
-            />
+            {/* Desktop Table */}
+            <div className="hidden md:block">
+                <ComerziaTable<SaasSubscriptionResponse> 
+                    data={subscriptions} 
+                    columns={columns} 
+                    showRowNumbers={true}
+                />
+            </div>
+
+            {/* Mobile Cards */}
+            <div className="block md:hidden space-y-2.5">
+                {subscriptions.length === 0 ? (
+                    <div className="text-center py-6 text-base-content/50 bg-base-200/50 rounded-xl text-xs">
+                        No hay suscripciones registradas.
+                    </div>
+                ) : (
+                    subscriptions.map((sub) => (
+                        <div key={sub.id} className="bg-base-100 p-3.5 rounded-xl border border-base-200 shadow-xs space-y-2 text-xs">
+                            <div className="flex justify-between items-start">
+                                <span className="font-bold text-sm text-base-content">{sub.planName}</span>
+                                <StatusBadge statusName={sub.statusName} statusCode={sub.statusTypeCode} />
+                            </div>
+                            <div className="text-[11px] text-base-content/70 space-y-0.5">
+                                <div>Desde: {formatDateForUser(sub.validFrom, companyTimezone)}</div>
+                                <div>Hasta: {formatDateForUser(sub.validUntil, companyTimezone)}</div>
+                            </div>
+                            <div className="text-[11px] font-medium pt-1 border-t border-base-200/60">
+                                🏢 {sub.maxBranches} sucursales | 👤 {sub.maxUsers} usuarios
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
         </div>
     );
 };

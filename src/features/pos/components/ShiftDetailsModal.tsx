@@ -76,32 +76,94 @@ export const ShiftDetailsModal = ({ isOpen, onClose, shiftId }: Props) => {
       onClose={onClose}
       title="Detalle y Cuadre del Turno"
       size="xl"
-      actions={<BtnCancel label="Cerrar" onClick={onClose} />}
+      actions={
+        <div className="flex flex-row justify-end w-full">
+          <BtnCancel label="Cerrar" onClick={onClose} responsive={true} className="w-full sm:w-auto" />
+        </div>
+      }
     >
-      <div className="space-y-6 pt-4">
+      <div className="space-y-6 pt-2">
         {/* Resumen del Cuadre */}
-        <div className="space-y-2">
-          <h3 className="font-bold text-lg border-b pb-2">Cuadre del Turno</h3>
+        <div className="space-y-3">
+          <h3 className="font-bold text-base sm:text-lg border-b border-base-200 pb-2">Cuadre del Turno</h3>
           {details.length === 0 && !isLoading ? (
-            <p className="text-sm text-base-content/60 italic">El turno aún está abierto, no tiene cuadre final.</p>
+            <p className="text-xs sm:text-sm text-base-content/60 italic">El turno aún está abierto, no tiene cuadre final.</p>
           ) : (
-            <ComerziaTable
-              data={details}
-              columns={detailsColumns}
-              isLoading={isLoading}
-            />
+            <>
+              {/* Desktop Table */}
+              <div className="hidden md:block">
+                <ComerziaTable
+                  data={details}
+                  columns={detailsColumns}
+                  isLoading={isLoading}
+                />
+              </div>
+
+              {/* Mobile Cards */}
+              <div className="block md:hidden space-y-2">
+                {details.map((d, idx) => {
+                  const isDiff = d.differenceAmount !== 0;
+                  return (
+                    <div key={idx} className="bg-base-100 p-3 rounded-xl border border-base-200 shadow-xs space-y-1.5 text-xs">
+                      <div className="flex justify-between items-center font-bold">
+                        <span>{d.paymentType.label}</span>
+                        <span className={isDiff ? (d.differenceAmount > 0 ? 'text-success' : 'text-error') : 'text-base-content'}>
+                          Dif: {currency} {d.differenceAmount.toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-[11px] text-base-content/60 pt-1 border-t border-base-200/50">
+                        <span>Sistema: {currency} {d.expectedAmount.toFixed(2)}</span>
+                        <span>Contado: {currency} {d.countedAmount.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
           )}
         </div>
 
         {/* Movimientos */}
-        <div className="space-y-2">
-          <h3 className="font-bold text-lg border-b pb-2">Listado de Movimientos</h3>
-          <ComerziaTable
-            data={movements}
-            columns={movementColumns}
-            isLoading={isLoading}
-            showRowNumbers={true}
-          />
+        <div className="space-y-3">
+          <h3 className="font-bold text-base sm:text-lg border-b border-base-200 pb-2">Listado de Movimientos</h3>
+          
+          {/* Desktop Table */}
+          <div className="hidden md:block">
+            <ComerziaTable
+              data={movements}
+              columns={movementColumns}
+              isLoading={isLoading}
+              showRowNumbers={true}
+            />
+          </div>
+
+          {/* Mobile Cards */}
+          <div className="block md:hidden space-y-2">
+            {isLoading ? (
+              <div className="py-6 text-center">
+                <span className="loading loading-spinner loading-md text-primary"></span>
+              </div>
+            ) : movements.length === 0 ? (
+              <p className="text-xs text-base-content/50 italic py-4 text-center">Sin movimientos registrados en este turno.</p>
+            ) : (
+              movements.map((m) => (
+                <div key={m.id} className="bg-base-100 p-3 rounded-xl border border-base-200 shadow-xs space-y-1 text-xs">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <span className="font-bold text-base-content">{m.movementType.label}</span>
+                      <span className="text-[10px] text-base-content/50 block">{m.paymentType.label} • {new Date(m.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                    <span className="font-bold font-mono text-sm">
+                      {currency} {m.amount.toFixed(2)}
+                    </span>
+                  </div>
+                  {m.observation && (
+                    <p className="text-[10px] text-base-content/60 italic mt-0.5">"{m.observation}"</p>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
     </ComerziaModal>

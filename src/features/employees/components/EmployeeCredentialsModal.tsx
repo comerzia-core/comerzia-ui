@@ -72,11 +72,13 @@ export const EmployeeCredentialsModal = ({ isOpen, onClose, data }: Props) => {
                 </div>
             </div>
 
-            <div className="mt-6 flex justify-end">
+            <div className="mt-6 flex justify-end w-full">
                 <ComerziaButton 
                     variant="primary" 
                     label="Entendido, cerrar" 
                     onClick={onClose} 
+                    responsive={true}
+                    className="w-full sm:w-auto"
                 />
             </div>
         </ComerziaModal>

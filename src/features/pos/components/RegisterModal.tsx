@@ -109,9 +109,9 @@ export const RegisterModal = ({ isOpen, onClose, onSuccess, registerToEdit }: Pr
       title={registerToEdit ? "Editar Caja Registradora" : "Nueva Caja Registradora"}
       size="md"
       actions={
-        <div className="flex justify-end gap-2 w-full mt-4">
-          <BtnCancel onClick={onClose} disabled={isLoading} />
-          <BtnSave onClick={handleSubmit} isLoading={isLoading} />
+        <div className="flex flex-row items-center gap-2 w-full sm:justify-end mt-4">
+          <BtnCancel onClick={onClose} disabled={isLoading} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
+          <BtnSave onClick={handleSubmit} isLoading={isLoading} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
         </div>
       }
     >

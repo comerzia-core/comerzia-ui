@@ -116,7 +116,8 @@ export const EmployeePage = () => {
     setDetailModalOpen(true);
   };
 
-  const handleContextMenu = (e: React.MouseEvent, employee: EmployeeSummaryResponse) => {
+  const handleContextMenu = (e: React.MouseEvent | { clientX: number; clientY: number; preventDefault?: () => void }, employee: EmployeeSummaryResponse) => {
+    if (e.preventDefault) e.preventDefault();
     setContextMenu({
       isOpen: true,
       x: e.clientX,
@@ -138,9 +139,9 @@ export const EmployeePage = () => {
       setPendingAction(null);
       setTargetEmployee(null);
     } catch (err: any) {
-      console.error('Error executing employee administrative action:', err);
+      console.error('Error handling employee action:', err);
       const apiMsg = err.response?.data?.message || err.response?.data?.error;
-      error(apiMsg || 'Error al ejecutar la acción en el empleado.');
+      error(apiMsg || 'Ocurrió un error al procesar la acción del empleado.');
     } finally {
       setIsProcessingAction(false);
     }
@@ -201,8 +202,8 @@ export const EmployeePage = () => {
             Administra el personal, asigna sucursales y configura sus accesos.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <BtnCreate onClick={handleCreate} label="Nuevo Empleado" />
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <BtnCreate onClick={handleCreate} label="Nuevo Empleado" responsive={true} className="w-full sm:w-auto" />
         </div>
       </div>
 

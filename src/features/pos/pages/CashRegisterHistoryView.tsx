@@ -105,13 +105,92 @@ export const CashRegisterHistoryView = ({ register, onBack }: Props) => {
         </div>
       </div>
 
-      <ComerziaTable
-        data={shifts}
-        columns={columns}
-        isLoading={isLoading}
-        pagination={pagination}
-        showRowNumbers={true}
-      />
+      {/* VISTA DESKTOP: TABLA */}
+      <div className="hidden md:block">
+        <ComerziaTable
+          data={shifts}
+          columns={columns}
+          isLoading={isLoading}
+          pagination={pagination}
+          showRowNumbers={true}
+        />
+      </div>
+
+      {/* VISTA MOBILE: CARDS */}
+      <div className="block md:hidden space-y-3">
+        {isLoading ? (
+          <div className="py-10 text-center">
+            <span className="loading loading-spinner loading-md text-primary"></span>
+          </div>
+        ) : shifts.length === 0 ? (
+          <div className="text-center py-8 text-base-content/50 bg-base-200/50 rounded-xl text-xs">
+            No hay turnos registrados para esta caja.
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            {shifts.map((shift) => (
+              <div key={shift.id} className="bg-base-100 p-3.5 rounded-xl border border-base-200 shadow-xs space-y-2 text-xs">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <span className="font-bold text-sm text-base-content block font-mono">
+                      Inicial: {currency} {shift.initialAmount.toFixed(2)}
+                    </span>
+                    <span className="text-[10px] text-base-content/50 block mt-0.5">
+                      Apertura: {new Date(shift.openedAt).toLocaleString()}
+                    </span>
+                    <span className="text-[10px] text-base-content/50 block">
+                      Cierre: {shift.closedAt ? new Date(shift.closedAt).toLocaleString() : <strong className="text-success">En curso</strong>}
+                    </span>
+                  </div>
+                  <span className={`badge badge-xs font-semibold ${shift.closedAt ? 'badge-neutral' : 'badge-success'}`}>
+                    {shift.statusType.label}
+                  </span>
+                </div>
+
+                <div className="pt-2 border-t border-base-200/60 flex items-center justify-end gap-2">
+                  <BtnDetails 
+                    onClick={() => setSelectedShiftId(shift.id)}
+                    responsive={true}
+                    className="flex-1 min-w-0"
+                  />
+                  {shift.closedAt && (
+                    <BtnReopen 
+                      onClick={() => setShiftToReopen(shift.id)}
+                      responsive={true}
+                      className="flex-1 min-w-0"
+                    />
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Paginación Mobile */}
+        {totalPages > 1 && (
+          <div className="flex justify-between items-center px-1 pt-2">
+            <button
+              type="button"
+              className="btn btn-sm btn-outline gap-1"
+              disabled={page === 0 || isLoading}
+              onClick={() => setPage(prev => Math.max(0, prev - 1))}
+            >
+              Ant.
+            </button>
+            <span className="text-xs font-semibold text-base-content/70">
+              Pág. {page + 1} de {totalPages}
+            </span>
+            <button
+              type="button"
+              className="btn btn-sm btn-outline gap-1"
+              disabled={page >= totalPages - 1 || isLoading}
+              onClick={() => setPage(prev => prev + 1)}
+            >
+              Sig.
+            </button>
+          </div>
+        )}
+      </div>
 
       {selectedShiftId && (
         <ShiftDetailsModal

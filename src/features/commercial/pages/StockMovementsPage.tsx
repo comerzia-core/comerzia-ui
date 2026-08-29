@@ -66,6 +66,10 @@ export const StockMovementsPage = () => {
   const inputRef = useRef<HTMLInputElement>(null);
   const { error: toastError, success: toastSuccess } = useToast();
   
+  // Long press refs for mobile cards
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const touchStartPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  
   // Entry Form State
   const [quantityIn, setQuantityIn] = useState<number | ''>('');
   const [costInputType, setCostInputType] = useState<'unit' | 'total'>('unit');
@@ -605,19 +609,193 @@ export const StockMovementsPage = () => {
               </div>
             )}
 
-            <ComerziaTable
-              data={kardexData}
-              columns={(activeTab === 'entries' ? entryColumns : adjustmentColumns) as any}
-              isLoading={isLoadingKardex}
-              pagination={pagination}
-              showRowNumbers={true}
-              onRowContextMenu={(e, row) => {
-                if (activeTab === 'entries' && hasCostPermission) {
-                  e.preventDefault();
-                  setContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, row: row as StockEntryResponse });
-                }
-              }}
-            />
+            {/* VISTA DESKTOP: TABLA KARDEX */}
+            <div className="hidden md:block">
+              <ComerziaTable
+                data={kardexData}
+                columns={(activeTab === 'entries' ? entryColumns : adjustmentColumns) as any}
+                isLoading={isLoadingKardex}
+                pagination={pagination}
+                showRowNumbers={true}
+                onRowContextMenu={(e, row) => {
+                  if (activeTab === 'entries' && hasCostPermission) {
+                    e.preventDefault();
+                    setContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, row: row as StockEntryResponse });
+                  }
+                }}
+              />
+            </div>
+
+            {/* VISTA MOBILE: CARDS DE KARDEX */}
+            <div className="block md:hidden space-y-3">
+              {isLoadingKardex ? (
+                <div className="py-10 text-center">
+                  <span className="loading loading-spinner loading-md text-primary"></span>
+                  <p className="text-xs text-base-content/50 mt-2">Cargando kardex...</p>
+                </div>
+              ) : kardexData.length === 0 ? (
+                <div className="text-center py-8 text-base-content/50 bg-base-200/50 rounded-xl text-xs">
+                  No se registraron movimientos en este historial.
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  {kardexData.map((item: any) => {
+                    if (activeTab === 'entries') {
+                      const entry = item as StockEntryResponse;
+                      const statusObj = typeof entry.statusType === 'object' ? entry.statusType : null;
+                      const statusNum = typeof entry.statusType === 'number' ? entry.statusType : statusObj?.code;
+                      const statusName = statusObj?.label || (stockStatusOptions.find(o => Number(o.value) === statusNum)?.label) || 'Activo';
+                      const badgeClass = statusNum === 332 ? 'badge-success' : statusNum === 333 ? 'badge-error' : 'badge-warning';
+
+                      return (
+                        <div
+                          key={entry.id}
+                          onTouchStart={(e) => {
+                            if (hasCostPermission) {
+                              touchStartPosRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                              longPressTimerRef.current = setTimeout(() => {
+                                if (navigator.vibrate) navigator.vibrate(40);
+                                setContextMenu({
+                                  isOpen: true,
+                                  x: touchStartPosRef.current.x,
+                                  y: touchStartPosRef.current.y,
+                                  row: entry
+                                });
+                              }, 500);
+                            }
+                          }}
+                          onTouchEnd={() => {
+                            if (longPressTimerRef.current) {
+                              clearTimeout(longPressTimerRef.current);
+                              longPressTimerRef.current = null;
+                            }
+                          }}
+                          onTouchMove={(e) => {
+                            const moveX = Math.abs(e.touches[0].clientX - touchStartPosRef.current.x);
+                            const moveY = Math.abs(e.touches[0].clientY - touchStartPosRef.current.y);
+                            if (moveX > 10 || moveY > 10) {
+                              if (longPressTimerRef.current) {
+                                clearTimeout(longPressTimerRef.current);
+                                longPressTimerRef.current = null;
+                              }
+                            }
+                          }}
+                          onContextMenu={(e) => {
+                            if (hasCostPermission) {
+                              e.preventDefault();
+                              setContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, row: entry });
+                            }
+                          }}
+                          className="bg-base-100 p-3.5 rounded-xl border border-base-200 shadow-xs space-y-2 text-xs select-none"
+                        >
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <span className="text-[10px] text-base-content/50 block">
+                                {new Date(entry.entryDate).toLocaleDateString()} {new Date(entry.entryDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                              {isOwner && entry.branchName && (
+                                <span className="font-semibold text-primary block">{entry.branchName}</span>
+                              )}
+                            </div>
+                            <span className={`badge badge-xs font-semibold ${badgeClass}`}>
+                              {statusName}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2 bg-base-200/40 p-2 rounded-lg">
+                            <div>
+                              <span className="text-base-content/50 block text-[10px]">Cant. Inicial / Disp.</span>
+                              <span className="font-bold text-base-content">
+                                {entry.availableQuantity} <span className="text-base-content/40 font-normal">/ {entry.quantityIn} uds</span>
+                              </span>
+                            </div>
+                            {hasCostPermission && (
+                              <div className="text-right">
+                                <span className="text-base-content/50 block text-[10px]">Costo Unit.</span>
+                                <span className="font-bold font-mono text-primary">
+                                  {currencyCode} {(entry.unitCost || 0).toFixed(2)}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+
+                          {entry.hasAdjustments && (
+                            <div className="flex justify-between items-center pt-1 border-t border-base-200/60">
+                              <span className="text-[10px] text-warning font-semibold flex items-center gap-1">
+                                <SlidersHorizontal size={12} /> Tiene ajustes manuales
+                              </span>
+                              <button
+                                type="button"
+                                className="btn btn-ghost btn-xs text-primary font-bold"
+                                onClick={() => {
+                                  setFilterStockId(entry.id);
+                                  setActiveTab('adjustments');
+                                  setPage(0);
+                                }}
+                              >
+                                Ver Ajustes
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    } else {
+                      const adj = item as StockAdjustmentResponse;
+                      const adjTypeObj = typeof adj.adjustmentType === 'object' ? adj.adjustmentType : null;
+                      const adjCode = typeof adj.adjustmentType === 'number' ? adj.adjustmentType : adjTypeObj?.code;
+                      const adjName = adjTypeObj?.label || (adjustmentTypeOptions.find(o => Number(o.value) === adjCode)?.label) || 'Ajuste';
+                      const isNegative = adjCode === 301 || adjCode === 303;
+
+                      return (
+                        <div key={adj.id} className="bg-base-100 p-3.5 rounded-xl border border-base-200 shadow-xs space-y-2 text-xs">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <span className="badge badge-sm font-semibold badge-outline">{adjName}</span>
+                              <span className="text-[10px] text-base-content/50 block mt-1">
+                                {new Date(adj.date).toLocaleString()}
+                              </span>
+                            </div>
+                            <span className={`text-base font-black font-mono ${isNegative ? 'text-error' : 'text-success'}`}>
+                              {isNegative ? '-' : '+'}{adj.quantity} uds
+                            </span>
+                          </div>
+                          {adj.observation && (
+                            <p className="text-base-content/70 italic bg-base-200/40 p-2 rounded-lg text-[11px]">
+                              "{adj.observation}"
+                            </p>
+                          )}
+                        </div>
+                      );
+                    }
+                  })}
+                </div>
+              )}
+
+              {/* Paginación Mobile Kardex */}
+              {totalPages > 1 && (
+                <div className="flex justify-between items-center px-1 pt-2">
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline gap-1"
+                    disabled={page === 0 || isLoadingKardex}
+                    onClick={() => setPage(prev => Math.max(0, prev - 1))}
+                  >
+                    Ant.
+                  </button>
+                  <span className="text-xs font-semibold text-base-content/70">
+                    Pág. {page + 1} de {totalPages}
+                  </span>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline gap-1"
+                    disabled={page >= totalPages - 1 || isLoadingKardex}
+                    onClick={() => setPage(prev => prev + 1)}
+                  >
+                    Sig.
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

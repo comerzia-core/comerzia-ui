@@ -58,8 +58,8 @@ export const InventoryReportModal = ({ isOpen, onClose, inventoryId }: Props) =>
       title="Reporte de Inventario"
       size="lg"
       actions={
-        <div className="flex justify-end w-full">
-          <BtnCancel onClick={onClose} label="Cerrar" />
+        <div className="flex flex-row justify-end w-full">
+          <BtnCancel onClick={onClose} label="Cerrar" responsive={true} className="w-full sm:w-auto" />
         </div>
       }
     >

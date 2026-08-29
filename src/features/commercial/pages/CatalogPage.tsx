@@ -94,21 +94,23 @@ export const CatalogPage = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-base-content tracking-tight">Catálogo de Productos</h1>
-          <p className="text-base-content/60 mt-1">Administración de jerarquías y maestro de artículos</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-base-content tracking-tight">Catálogo de Productos</h1>
+          <p className="text-xs sm:text-sm text-base-content/60 mt-0.5">Administración de jerarquías y maestro de artículos</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 w-full sm:w-auto">
           <BtnCreate 
             label="Nuevo Producto" 
-            onClick={() => setIsCreateModalOpen(true)} 
+            onClick={() => setIsCreateModalOpen(true)}
+            responsive={true}
+            className="w-full sm:w-auto"
           />
         </div>
       </div>
 
-      <div className="bg-base-100 p-6 rounded-2xl shadow-sm border border-base-200">
-        <h2 className="text-lg font-bold mb-4">Filtros de Búsqueda</h2>
+      <div className="bg-base-100 p-4 sm:p-6 rounded-2xl shadow-sm border border-base-200">
+        <h2 className="text-base sm:text-lg font-bold mb-4">Filtros de Búsqueda</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <ComerziaCreatableSelect
             label="1. Categoría"

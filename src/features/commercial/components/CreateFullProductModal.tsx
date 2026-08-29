@@ -494,16 +494,16 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
           </div>
         )}
 
-        <div className="flex justify-between mt-8 pt-4 border-t border-base-200">
+        <div className="flex flex-row items-center gap-2 mt-8 pt-4 border-t border-base-200 w-full sm:justify-end">
           {step === 1 ? (
-            <BtnCancel onClick={onClose} disabled={isSubmitting} />
+            <BtnCancel onClick={onClose} disabled={isSubmitting} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
           ) : (
-            <BtnBack onClick={() => setStep(prev => prev - 1)} disabled={isSubmitting} />
+            <BtnBack onClick={() => setStep(prev => prev - 1)} disabled={isSubmitting} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
           )}
           {step < 3 ? (
-            <BtnNext onClick={handleNext} disabled={isSubmitting} />
+            <BtnNext onClick={handleNext} disabled={isSubmitting} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
           ) : (
-            <BtnSave onClick={handleSubmit} isLoading={isSubmitting} />
+            <BtnSave onClick={handleSubmit} isLoading={isSubmitting} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
           )}
         </div>
       </div>

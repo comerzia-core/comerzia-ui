@@ -10,7 +10,7 @@ import { useToast } from '../../../context/ToastContext';
 import { useLoadDictionaries } from '../../../hooks/useLoadDictionaries';
 import { DICTIONARIES } from '../../../config/dictionaries';
 import { useAuthStore } from '../../../stores/useAuthStore';
-import { ArrowDownLeft, ArrowUpRight } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight } from 'lucide-react';
 import type { MovementResponse } from '../types/pos';
 
 interface Props {
@@ -138,9 +138,9 @@ export const MovementModal = ({ isOpen, onClose, onSuccess, shiftId, movementToE
       title={movementToEdit ? 'Editar Movimiento' : 'Nuevo Movimiento de Caja'}
       size="md"
       actions={
-        <div className="flex justify-end gap-2 w-full mt-4">
-          <BtnCancel onClick={onClose} disabled={isLoading} />
-          <BtnSave onClick={handleSubmit} isLoading={isLoading} />
+        <div className="flex flex-row items-center gap-2 w-full sm:justify-end mt-4">
+          <BtnCancel onClick={onClose} disabled={isLoading} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
+          <BtnSave onClick={handleSubmit} isLoading={isLoading} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
         </div>
       }
     >
@@ -159,64 +159,56 @@ export const MovementModal = ({ isOpen, onClose, onSuccess, shiftId, movementToE
           />
         )}
 
-        {/* Selector de Tipo de Movimiento: 201 (Ingreso) / 202 (Egreso) */}
-        <div className="space-y-1.5">
-          <label className="text-sm font-semibold text-base-content/80 flex items-center gap-1">
-            Tipo de Movimiento <span className="text-error">*</span>
+        {/* Selector de Tipo (Ingreso / Egreso) */}
+        <div>
+          <label className="label">
+            <span className="label-text font-semibold text-base-content/80">
+              Tipo de Movimiento <span className="text-error">*</span>
+            </span>
           </label>
-          <div className="grid grid-cols-2 gap-4">
-            {/* Botón Ingreso (201) */}
+          <div className="grid grid-cols-2 gap-3">
+            {/* INGRESO (201) */}
             <button
               type="button"
               onClick={() => setForm({ ...form, movementType: '201' })}
-              className={`
-                p-4 rounded-2xl border-2 flex items-center gap-3 transition-all duration-200 cursor-pointer text-left
-                ${
-                  form.movementType === '201'
-                    ? 'border-success bg-success/10 text-success shadow-md scale-[1.02]'
-                    : 'border-base-200 bg-base-100 hover:border-success/40 text-base-content/70 hover:bg-base-200/50'
-                }
-              `}
+              className={`p-4 rounded-2xl border-2 flex items-center gap-3 transition-all ${
+                form.movementType === '201'
+                  ? 'border-success bg-success/10 text-success shadow-xs'
+                  : 'border-base-300 hover:border-base-content/20 text-base-content/60'
+              }`}
             >
               <div
-                className={`p-3 rounded-xl shrink-0 transition-colors ${
-                  form.movementType === '201'
-                    ? 'bg-success text-success-content'
-                    : 'bg-success/10 text-success'
+                className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                  form.movementType === '201' ? 'bg-success text-success-content' : 'bg-base-200'
                 }`}
               >
-                <ArrowDownLeft size={24} />
+                <ArrowDownRight size={20} />
               </div>
-              <div>
-                <div className="font-bold text-base">Ingreso</div>
+              <div className="text-left">
+                <div className="font-bold text-sm">Ingreso</div>
                 <div className="text-xs opacity-75">Entrada de dinero</div>
               </div>
             </button>
 
-            {/* Botón Egreso (202) */}
+            {/* EGRESO (202) */}
             <button
               type="button"
               onClick={() => setForm({ ...form, movementType: '202' })}
-              className={`
-                p-4 rounded-2xl border-2 flex items-center gap-3 transition-all duration-200 cursor-pointer text-left
-                ${
-                  form.movementType === '202'
-                    ? 'border-error bg-error/10 text-error shadow-md scale-[1.02]'
-                    : 'border-base-200 bg-base-100 hover:border-error/40 text-base-content/70 hover:bg-base-200/50'
-                }
-              `}
+              className={`p-4 rounded-2xl border-2 flex items-center gap-3 transition-all ${
+                form.movementType === '202'
+                  ? 'border-error bg-error/10 text-error shadow-xs'
+                  : 'border-base-300 hover:border-base-content/20 text-base-content/60'
+              }`}
             >
               <div
-                className={`p-3 rounded-xl shrink-0 transition-colors ${
-                  form.movementType === '202'
-                    ? 'bg-error text-error-content'
-                    : 'bg-error/10 text-error'
+                className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                  form.movementType === '202' ? 'bg-error text-error-content' : 'bg-base-200'
                 }`}
               >
-                <ArrowUpRight size={24} />
+                <ArrowUpRight size={20} />
               </div>
-              <div>
-                <div className="font-bold text-base">Egreso</div>
+              <div className="text-left">
+                <div className="font-bold text-sm">Egreso</div>
                 <div className="text-xs opacity-75">Salida de dinero</div>
               </div>
             </button>
@@ -226,8 +218,7 @@ export const MovementModal = ({ isOpen, onClose, onSuccess, shiftId, movementToE
           )}
         </div>
 
-        {/* Método de Pago y Monto */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           <ComerziaSelect
             label="Método de Pago"
             options={options[DICTIONARIES.PAYMENT_TYPE] || []}

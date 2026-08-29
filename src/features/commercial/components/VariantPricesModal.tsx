@@ -236,9 +236,9 @@ export const VariantPricesModal = ({ isOpen, onClose, variantId, variantName }: 
         )}
 
         {isEditing && (
-          <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-base-200">
-            <BtnCancel onClick={() => setIsEditing(false)} disabled={isSubmitting} label="Cancelar" />
-            <BtnSave onClick={handleSubmit} isLoading={isSubmitting} label="Guardar" />
+          <div className="flex flex-row items-center gap-2 mt-6 pt-4 border-t border-base-200 w-full sm:justify-end">
+            <BtnCancel onClick={() => setIsEditing(false)} disabled={isSubmitting} label="Cancelar" responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
+            <BtnSave onClick={handleSubmit} isLoading={isSubmitting} label="Guardar" responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
           </div>
         )}
       </div>

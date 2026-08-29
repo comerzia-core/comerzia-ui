@@ -1,5 +1,4 @@
-// src/features/pos/pages/RegistersPage.tsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { posService } from '../services/posService';
 import { branchService } from '../../organization/services/branchService';
 import type { CashRegisterResponse } from '../types/pos';
@@ -99,20 +98,54 @@ export const RegistersPage = () => {
     ...branches.map(b => ({ value: b.id, label: b.name }))
   ];
 
+  // Touch Long-Press Support
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const touchStartPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  const handleTouchStart = (register: CashRegisterResponse, e: React.TouchEvent) => {
+    touchStartPosRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    longPressTimerRef.current = setTimeout(() => {
+      if (navigator.vibrate) navigator.vibrate(40);
+      setContextMenu({
+        isOpen: true,
+        x: touchStartPosRef.current.x,
+        y: touchStartPosRef.current.y,
+        register
+      });
+    }, 500);
+  };
+
+  const handleTouchEnd = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    const moveX = Math.abs(e.touches[0].clientX - touchStartPosRef.current.x);
+    const moveY = Math.abs(e.touches[0].clientY - touchStartPosRef.current.y);
+    if (moveX > 10 || moveY > 10) {
+      handleTouchEnd();
+    }
+  };
+
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in px-1 sm:px-0">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-base-content tracking-tight">Cajas Registradoras</h1>
-          <p className="text-base-content/60 mt-1">Administración de puntos de cobro físicos</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-base-content tracking-tight">Cajas Registradoras</h1>
+          <p className="text-xs sm:text-sm text-base-content/60 mt-0.5">Administración de puntos de cobro físicos</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 w-full sm:w-auto">
           <BtnCreate
             label="Nueva Caja"
             onClick={() => {
               setRegisterToEdit(null);
               setIsModalOpen(true);
             }}
+            responsive={true}
+            className="w-full sm:w-auto"
           />
         </div>
       </div>
@@ -143,28 +176,31 @@ export const RegistersPage = () => {
           No hay cajas registradoras configuradas para el filtro seleccionado.
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
           {registers.map(register => (
             <div
               key={register.id}
               className={`
-                bg-base-100 rounded-2xl p-6 shadow-sm border select-none flex flex-col justify-between
+                bg-base-100 rounded-2xl p-5 sm:p-6 shadow-sm border select-none flex flex-col justify-between
                 ${register.status ? 'border-base-200 hover:border-primary/40' : 'border-error/30 opacity-75'}
                 transition-all duration-300 hover:shadow-lg cursor-pointer relative group
               `}
+              onTouchStart={e => handleTouchStart(register, e)}
+              onTouchEnd={handleTouchEnd}
+              onTouchMove={handleTouchMove}
               onClick={() => setSelectedRegister(register)}
               onContextMenu={e => handleContextMenu(e, register)}
             >
               <div>
                 <div className="flex justify-between items-start mb-4">
                   <div
-                    className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-105 ${
+                    className={`w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-105 ${
                       register.status
                         ? 'bg-primary/10 text-primary'
                         : 'bg-base-200 text-base-content/40'
                     }`}
                   >
-                    <Monitor size={24} />
+                    <Monitor size={22} className="sm:w-6 sm:h-6" />
                   </div>
 
                   <div className="flex items-center gap-2">
@@ -174,12 +210,12 @@ export const RegistersPage = () => {
                         variant={register.status ? 'success' : 'neutral'}
                       />
                       {register.hasActiveShift ? (
-                        <span className="badge badge-warning badge-sm flex items-center gap-1 font-bold">
+                        <span className="badge badge-warning badge-sm flex items-center gap-1 font-bold text-[10px] sm:text-xs">
                           <span className="w-1.5 h-1.5 rounded-full bg-warning-content animate-pulse" />
                           Turno Abierto
                         </span>
                       ) : (
-                        <span className="badge badge-ghost badge-sm text-base-content/50 font-medium">
+                        <span className="badge badge-ghost badge-sm text-base-content/50 font-medium text-[10px] sm:text-xs">
                           Sin Turno
                         </span>
                       )}
@@ -188,13 +224,13 @@ export const RegistersPage = () => {
                 </div>
 
                 <h3
-                  className="text-xl font-bold text-base-content mb-1 truncate group-hover:text-primary transition-colors"
+                  className="text-lg sm:text-xl font-bold text-base-content mb-1 truncate group-hover:text-primary transition-colors"
                   title={register.name}
                 >
                   {register.name}
                 </h3>
-                <p className="text-sm text-base-content/60 font-medium flex items-center gap-1.5 mt-2">
-                  <MapPin size={15} className="text-base-content/40 shrink-0" />
+                <p className="text-xs sm:text-sm text-base-content/60 font-medium flex items-center gap-1.5 mt-2">
+                  <MapPin size={14} className="text-base-content/40 shrink-0 sm:w-4 sm:h-4" />
                   <span className="truncate">{register.branchName || 'Sin sucursal'}</span>
                 </p>
               </div>

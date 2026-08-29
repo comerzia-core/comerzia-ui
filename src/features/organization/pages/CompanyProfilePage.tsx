@@ -329,8 +329,8 @@ export const CompanyProfilePage = () => {
               </div>
 
               {/* ACTION BUTTONS */}
-              <div className="card-actions justify-end border-t border-base-200 pt-6 mt-auto">
-                <BtnSave onClick={handleSaveSettings} isLoading={isSaving} label="Guardar Cambios" />
+              <div className="card-actions justify-end border-t border-base-200 pt-6 mt-auto w-full">
+                <BtnSave onClick={handleSaveSettings} isLoading={isSaving} label="Guardar Cambios" responsive={true} className="w-full sm:w-auto" />
               </div>
 
             </div>

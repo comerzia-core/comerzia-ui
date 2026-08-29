@@ -251,35 +251,90 @@ export const PricesPage = () => {
 
             {!selectedPriceType ? (
               <div className="flex-1">
-                <h3 className="text-lg font-bold mb-4 text-base-content/80">Precios Activos</h3>
-                <p className="text-sm text-base-content/50 mb-4">Haz clic derecho sobre un precio para ver opciones.</p>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-base sm:text-lg font-bold text-base-content/80">Precios Activos</h3>
+                  <span className="text-[11px] text-base-content/50 md:hidden italic">Mantén presionado para opciones</span>
+                </div>
+
                 {productData.activePrices && productData.activePrices.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="table table-sm w-full">
-                      <thead>
-                        <tr>
-                          <th>#</th>
-                          {activePricesColumns.map((col, idx) => (
-                            <th key={idx}>{col.header as React.ReactNode}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {productData.activePrices.map((price, idx) => (
-                          <tr 
-                            key={price.priceTypeId} 
-                            className="hover hover:bg-base-200 transition-colors cursor-context-menu"
-                            onContextMenu={(e) => handleContextMenu(e, price)}
-                          >
-                            <td><span className="text-base-content/50">{idx + 1}</span></td>
-                            {activePricesColumns.map((col, colIdx) => (
-                              <td key={colIdx}>{col.render ? col.render(price) : null}</td>
+                  <>
+                    {/* VISTA DESKTOP: TABLA */}
+                    <div className="hidden md:block overflow-x-auto">
+                      <table className="table table-sm w-full">
+                        <thead>
+                          <tr>
+                            <th>#</th>
+                            {activePricesColumns.map((col, idx) => (
+                              <th key={idx}>{col.header as React.ReactNode}</th>
                             ))}
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody>
+                          {productData.activePrices.map((price, idx) => (
+                            <tr 
+                              key={price.priceTypeId} 
+                              className="hover hover:bg-base-200 transition-colors cursor-context-menu"
+                              onContextMenu={(e) => handleContextMenu(e, price)}
+                            >
+                              <td><span className="text-base-content/50">{idx + 1}</span></td>
+                              {activePricesColumns.map((col, colIdx) => (
+                                <td key={colIdx}>{col.render ? col.render(price) : null}</td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* VISTA MOBILE: CARDS */}
+                    <div className="block md:hidden space-y-2.5">
+                      {productData.activePrices.map((price) => (
+                        <div
+                          key={price.priceTypeId}
+                          onTouchStart={(e) => {
+                            const x = e.touches[0].clientX;
+                            const y = e.touches[0].clientY;
+                            const timer = setTimeout(() => {
+                              if (navigator.vibrate) navigator.vibrate(40);
+                              setContextMenu({ isOpen: true, x, y, row: price });
+                            }, 500);
+                            (e.target as any)._longPressTimer = timer;
+                          }}
+                          onTouchEnd={(e) => {
+                            if ((e.target as any)._longPressTimer) {
+                              clearTimeout((e.target as any)._longPressTimer);
+                            }
+                          }}
+                          onContextMenu={(e) => handleContextMenu(e, price)}
+                          className="bg-base-100 p-3.5 rounded-xl border border-base-200 shadow-xs space-y-2 text-xs select-none"
+                        >
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h4 className="font-bold text-sm text-base-content">{price.priceTypeName}</h4>
+                              <span className="text-[10px] text-base-content/50">Factor: {price.priceType?.equivalenceFactor || 1} u.</span>
+                            </div>
+                            <div className="text-right">
+                              {price.discountPrice != null && price.salePrice != null && price.discountPrice !== price.salePrice && (
+                                <span className="text-[10px] text-error block line-through">
+                                  {currencyCode} {price.discountPrice.toFixed(2)}
+                                </span>
+                              )}
+                              <span className="font-bold font-mono text-base text-success">
+                                {price.salePrice != null ? `${currencyCode} ${price.salePrice.toFixed(2)}` : 'Sin precio'}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex justify-between items-center pt-1 border-t border-base-200/60 font-mono text-[11px] text-base-content/70">
+                            <span>Total Presentación:</span>
+                            <span className="font-bold text-base-content">
+                              {price.salePrice != null ? `${currencyCode} ${(price.salePrice * (price.priceType?.equivalenceFactor || 1)).toFixed(2)}` : '-'}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
                 ) : (
                   <div className="text-center p-8 text-base-content/50 bg-base-50 rounded-box border border-base-200">
                     Esta variante no tiene precios configurados.
@@ -288,23 +343,60 @@ export const PricesPage = () => {
               </div>
             ) : (
               <div className="flex-1 flex flex-col space-y-4">
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3">
                   <BtnCancel 
                     label="Volver" 
                     onClick={() => setSelectedPriceType(null)} 
+                    responsive={true}
                   />
-                  <h3 className="text-lg font-bold flex items-center gap-2">
-                    <History className="h-5 w-5 text-primary" />
+                  <h3 className="text-base sm:text-lg font-bold flex items-center gap-2 truncate">
+                    <History className="h-5 w-5 text-primary shrink-0" />
                     Historial: {selectedPriceType.priceTypeName}
                   </h3>
                 </div>
                 <div className="flex-1">
-                  <ComerziaTable
-                    data={historyData}
-                    columns={historyColumns}
-                    isLoading={isLoadingHistory}
-                    pagination={pagination}
-                  />
+                  {/* VISTA DESKTOP: TABLA HISTORIAL */}
+                  <div className="hidden md:block">
+                    <ComerziaTable
+                      data={historyData}
+                      columns={historyColumns}
+                      isLoading={isLoadingHistory}
+                      pagination={pagination}
+                    />
+                  </div>
+
+                  {/* VISTA MOBILE: CARDS HISTORIAL */}
+                  <div className="block md:hidden space-y-2.5">
+                    {isLoadingHistory ? (
+                      <div className="py-8 text-center">
+                        <span className="loading loading-spinner loading-md text-primary"></span>
+                      </div>
+                    ) : historyData.length === 0 ? (
+                      <div className="text-center py-6 text-base-content/50 bg-base-200/40 rounded-xl text-xs">
+                        Sin cambios históricos registrados.
+                      </div>
+                    ) : (
+                      historyData.map((h, idx) => (
+                        <div key={idx} className="bg-base-100 p-3 rounded-xl border border-base-200 text-xs space-y-1.5 shadow-xs">
+                          <div className="flex justify-between items-center">
+                            <span className="font-bold font-mono text-sm text-base-content">
+                              {currencyCode} {(h.salePrice || 0).toFixed(2)}
+                            </span>
+                            {h.variationPercentage != null && (
+                              <ComerziaBadge 
+                                variant={h.variationPercentage < 0 ? 'error' : h.variationPercentage > 0 ? 'success' : 'neutral'} 
+                                label={`${h.variationPercentage > 0 ? '+' : ''}${h.variationPercentage.toFixed(2)}%`} 
+                              />
+                            )}
+                          </div>
+                          <div className="flex justify-between text-[10px] text-base-content/50 pt-1 border-t border-base-200/40">
+                            <span>Desde: {new Date(h.validFrom).toLocaleDateString()}</span>
+                            <span>Hasta: {h.validTo ? new Date(h.validTo).toLocaleDateString() : 'Vigente'}</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </div>
               </div>
             )}

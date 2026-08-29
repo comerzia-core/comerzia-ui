@@ -80,10 +80,10 @@ export const UserRolesModal = ({ isOpen, onClose, user, onSuccess }: Props) => {
   };
 
   const modalActions = (
-    <>
-      <BtnCancel onClick={onClose} disabled={isSaving} />
-      <BtnSave onClick={handleSave} isLoading={isSaving} label="Guardar Roles" />
-    </>
+    <div className="flex flex-row items-center gap-2 w-full sm:justify-end">
+      <BtnCancel onClick={onClose} disabled={isSaving} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
+      <BtnSave onClick={handleSave} isLoading={isSaving} label="Guardar Roles" responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
+    </div>
   );
 
   return (

@@ -95,12 +95,12 @@ export const BranchesPage = () => {
         </div>
 
         {/* BOTÓN ESTANDARIZADO DE CREACIÓN */}
-        <BtnCreate onClick={handleCreateNew} label="Nueva Sucursal" />
+        <BtnCreate onClick={handleCreateNew} label="Nueva Sucursal" responsive={true} className="w-full sm:w-auto" />
       </div>
 
       {/* BARRA DE BÚSQUEDA Y FILTROS */}
       <div className="card bg-base-100 border border-base-200 shadow-xs p-4 rounded-2xl">
-        <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
+        <div className="flex flex-col md:flex-row gap-3 sm:gap-4 justify-between items-stretch md:items-center">
           {/* CAMPO DE BÚSQUEDA CON COMERZIAINPUT */}
           <div className="w-full md:w-80">
             <ComerziaInput
@@ -112,12 +112,12 @@ export const BranchesPage = () => {
           </div>
 
           {/* FILTROS POR ESTADO CON BOTONES DE PÍLDORA ANIMADOS */}
-          <div className="flex items-center gap-2.5 w-full md:w-auto">
+          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
             <span className="text-xs font-semibold text-base-content/60 uppercase tracking-wider shrink-0">
               Estado:
             </span>
 
-            <div className="flex items-center gap-1.5 bg-base-200/80 p-1.5 rounded-xl border border-base-300/50 shrink-0">
+            <div className="flex items-center gap-1 bg-base-200/80 p-1 rounded-xl border border-base-300/50 flex-1 sm:flex-none justify-between sm:justify-start">
               {(
                 [
                   { id: 'all', label: 'Todas', icon: Layers },
