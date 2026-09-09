@@ -284,7 +284,7 @@ export const BtnReopen = ({ label = "Reabrir", responsive = true, ...props }: Ba
 );
 
 // 19. BOTÓN CERRAR TURNO (Error + Candado Cerrado, para realizar arqueo o cierre)
-export const BtnCloseShift = ({ label = "Arqueo y Cierre", responsive = true, ...props }: BaseBtnProps) => (
+export const BtnCloseShift = ({ label = "Arqueo y Cierre", responsive = false, ...props }: BaseBtnProps) => (
     <ComerziaButton 
         variant="error" 
         label={label} 

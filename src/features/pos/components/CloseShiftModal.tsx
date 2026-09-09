@@ -1,24 +1,32 @@
 // src/features/pos/components/CloseShiftModal.tsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { ComerziaModal } from '../../../components/ui/ComerziaModal';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
 import { ComerziaTextarea } from '../../../components/ui/ComerziaTextarea';
 import { BtnCancel, BtnSave } from '../../../components/ui/CrudButtons';
 import { posService } from '../services/posService';
+import type { ShiftSummaryResponse } from '../types/pos';
 import { useToast } from '../../../context/ToastContext';
 import { useLoadDictionaries } from '../../../hooks/useLoadDictionaries';
 import { DICTIONARIES } from '../../../config/dictionaries';
 import { useAuthStore } from '../../../stores/useAuthStore';
-import { Banknote, CreditCard, ArrowLeftRight, Wallet, Info } from 'lucide-react';
+import { Banknote, CreditCard, ArrowLeftRight, Wallet, QrCode } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
   shiftId: string | null;
+  shiftSummary?: ShiftSummaryResponse | null;
 }
 
-export const CloseShiftModal = ({ isOpen, onClose, onSuccess, shiftId }: Props) => {
+interface PaymentItemRow {
+  paymentCode: number;
+  label: string;
+  expectedAmount: number;
+}
+
+export const CloseShiftModal = ({ isOpen, onClose, onSuccess, shiftId, shiftSummary }: Props) => {
   const { error: toastError, success: toastSuccess } = useToast();
   const { userProfile } = useAuthStore();
   const currency = userProfile?.companySettings?.currencyCode || '$';
@@ -26,55 +34,102 @@ export const CloseShiftModal = ({ isOpen, onClose, onSuccess, shiftId }: Props) 
   const { options, isLoading: isLoadingDicts } = useLoadDictionaries([DICTIONARIES.PAYMENT_TYPE]);
 
   const [isLoading, setIsLoading] = useState(false);
-  const [, setShakeKey] = useState(0);
+  const [shakeKey, setShakeKey] = useState(0);
 
-  // Mapeamos los IDs de payment_type al monto contado (valor por defecto 0)
-  const [counts, setCounts] = useState<Record<string, string>>({});
+  const [counts, setCounts] = useState<Record<number, string>>({});
   const [observation, setObservation] = useState('');
+  const [observationError, setObservationError] = useState<string | undefined>(undefined);
+
+  const paymentItems: PaymentItemRow[] = useMemo(() => {
+    if (shiftSummary?.payments && shiftSummary.payments.length > 0) {
+      return shiftSummary.payments.map(p => ({
+        paymentCode: Number(p.paymentType.code),
+        label: p.paymentType.label,
+        expectedAmount: Number(p.expectedAmount ?? 0)
+      }));
+    }
+
+    const dictList = options[DICTIONARIES.PAYMENT_TYPE] || [];
+    return dictList.map(pt => ({
+      paymentCode: Number(pt.value),
+      label: pt.label,
+      expectedAmount: 0
+    }));
+  }, [shiftSummary, options]);
 
   useEffect(() => {
     if (isOpen) {
-      const paymentTypes = options[DICTIONARIES.PAYMENT_TYPE] || [];
-      const initialCounts: Record<string, string> = {};
-      paymentTypes.forEach(pt => {
-        initialCounts[pt.value] = '0';
-      });
-      setCounts(initialCounts);
+      setCounts({});
       setObservation('');
+      setObservationError(undefined);
     }
-  }, [isOpen, options]);
+  }, [isOpen, shiftSummary]);
 
-  const getPaymentTypeIcon = (label: string, value: string | number) => {
+  const getPaymentTypeIcon = (label: string, code: number) => {
     const l = label.toLowerCase();
-    const v = String(value);
-    if (l.includes('efectivo') || v === '701') return Banknote;
-    if (l.includes('tarjeta') || v === '702') return CreditCard;
-    if (l.includes('transf') || v === '703') return ArrowLeftRight;
+    if (l.includes('efectivo') || code === 701) return Banknote;
+    if (l.includes('qr') || code === 702) return QrCode;
+    if (l.includes('tarjeta') || code === 703) return CreditCard;
+    if (l.includes('transf') || code === 704) return ArrowLeftRight;
     return Wallet;
   };
 
-  const handleSubmit = async () => {
-    const paymentTypes = options[DICTIONARIES.PAYMENT_TYPE] || [];
-    const details = paymentTypes.map(pt => ({
-      paymentType: Number(pt.value),
-      countedAmount: Number(counts[pt.value] || 0)
-    }));
+  const handleCountChange = (paymentCode: number, value: string) => {
+    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+      setCounts(prev => ({
+        ...prev,
+        [paymentCode]: value
+      }));
+      if (observationError) {
+        setObservationError(undefined);
+      }
+    }
+  };
 
+  const getCountedNumber = (code: number): number => {
+    const val = counts[code];
+    if (!val || val.trim() === '') return 0;
+    const num = parseFloat(val);
+    return isNaN(num) ? 0 : num;
+  };
+
+  const hasAnyDifference = useMemo(() => {
+    return paymentItems.some(p => {
+      const c = getCountedNumber(p.paymentCode);
+      const e = p.expectedAmount;
+      return Math.abs(c - e) >= 0.01;
+    });
+  }, [paymentItems, counts]);
+
+  const handleSubmit = async () => {
     if (!shiftId) return;
+
+    if (hasAnyDifference && !observation.trim()) {
+      setObservationError('Se requiere observación por descuadre en caja.');
+      setShakeKey(prev => prev + 1);
+      toastError('Se requiere observación al existir descuadre en caja.');
+      return;
+    }
+
+    const details = paymentItems.map(p => ({
+      paymentType: p.paymentCode,
+      countedAmount: getCountedNumber(p.paymentCode)
+    }));
 
     setIsLoading(true);
     try {
       await posService.closeShift(shiftId, {
         details,
-        observation: observation || undefined
+        observation: observation.trim() || undefined
       });
-      toastSuccess('Turno cerrado.');
+      toastSuccess('Turno cerrado exitosamente.');
       onSuccess();
       onClose();
     } catch (err: any) {
       const status = err.response?.status;
       const apiMsg = err.response?.data?.message || err.response?.data?.error || '';
       if (status === 400 || apiMsg.toLowerCase().includes('observation')) {
+        setObservationError('Se requiere observación por descuadre en caja.');
         toastError('Se requiere observación al existir descuadre en caja.');
       } else if (status === 409) {
         toastError('El turno no está abierto o ya fue cerrado.');
@@ -93,69 +148,76 @@ export const CloseShiftModal = ({ isOpen, onClose, onSuccess, shiftId }: Props) 
     <ComerziaModal
       isOpen={isOpen}
       onClose={onClose}
-      title="Arqueo y Cierre de Caja"
+      title="Cierre de Turno"
       size="md"
       actions={
-        <div className="flex flex-row items-center gap-2 w-full sm:justify-end mt-4">
-          <BtnCancel onClick={onClose} disabled={isLoading} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
-          <BtnSave onClick={handleSubmit} label="Cerrar Turno" isLoading={isLoading} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
+        <div className="flex flex-row items-center gap-2 w-full sm:justify-end">
+          <BtnCancel
+            onClick={onClose}
+            disabled={isLoading}
+            responsive={true}
+            className="flex-1 sm:flex-none sm:w-auto min-w-0"
+          />
+          <BtnSave
+            onClick={handleSubmit}
+            label="Cerrar Turno"
+            isLoading={isLoading}
+            responsive={true}
+            className="flex-1 sm:flex-none sm:w-auto min-w-0"
+          />
         </div>
       }
     >
-      <div className="space-y-5 pt-2">
-        {/* Banner Informativo */}
-        <div className="bg-primary/5 border border-primary/15 p-4 rounded-2xl flex items-start gap-3 text-sm">
-          <Info size={20} className="text-primary shrink-0 mt-0.5" />
-          <div>
-            <p className="font-semibold text-base-content mb-1">Instrucciones de Arqueo</p>
-            <p className="text-base-content/75 text-xs leading-relaxed">
-              Ingresa el dinero en efectivo y totales de cupones/tarjetas contados físicamente en caja. 
-              En caso de encontrarse un descuadre respecto al sistema, completa obligatoriamente la observación.
-            </p>
-          </div>
-        </div>
-
-        {/* Listado de Formas de Pago con Diseño Filas (Izquierda: Tipo, Derecha: Monto) */}
+      <div className="space-y-4 pt-1">
+        {/* LISTADO MINIMALISTA DE MÉTODOS DE PAGO */}
         {isLoadingDicts ? (
-          <div className="flex justify-center p-8">
+          <div className="flex justify-center py-6">
             <span className="loading loading-spinner loading-md text-primary"></span>
           </div>
         ) : (
-          <div className="space-y-3">
-            {options[DICTIONARIES.PAYMENT_TYPE]?.map(pt => {
-              const IconComponent = getPaymentTypeIcon(pt.label, pt.value);
+          <div className="space-y-2.5">
+            {paymentItems.map(p => {
+              const IconComponent = getPaymentTypeIcon(p.label, p.paymentCode);
+              const counted = getCountedNumber(p.paymentCode);
+              const diff = counted - p.expectedAmount;
+              const hasDiff = Math.abs(diff) >= 0.01;
+
               return (
                 <div
-                  key={pt.value}
-                  className="bg-base-100 p-4 rounded-2xl border border-base-200 hover:border-primary/30 flex items-center justify-between gap-4 transition-all shadow-xs"
+                  key={p.paymentCode}
+                  className="bg-base-200 p-3.5 sm:p-4 rounded-2xl border border-base-300 flex items-center justify-between gap-3 sm:gap-4 shadow-xs transition-colors"
                 >
-                  {/* LADO IZQUIERDO: Ícono e Identificador del Método de Pago */}
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                  {/* Método: Ícono encapsulado en tarjeta blanca y Nombre en negrita */}
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="w-11 h-11 rounded-xl bg-base-100 border border-base-300/80 shadow-xs text-primary flex items-center justify-center shrink-0">
                       <IconComponent size={22} />
                     </div>
                     <div className="min-w-0">
-                      <p className="font-bold text-base text-base-content truncate">{pt.label}</p>
-                      <p className="text-xs text-base-content/50 font-medium truncate">
-                        Conteo físico en caja ({currency})
+                      <p className="font-bold text-base sm:text-lg text-base-content truncate leading-tight">
+                        {p.label}
                       </p>
                     </div>
                   </div>
 
-                  {/* LADO DERECHO: Campo de Monto (Por defecto 0, usando componente del UI Kit) */}
-                  <div className="w-40 sm:w-48 shrink-0 relative flex items-center">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-base-content/50 pointer-events-none select-none z-10">
-                      {currency}
-                    </span>
+                  {/* Input de conteo físico */}
+                  <div className="flex flex-col items-end shrink-0 w-32 sm:w-36">
                     <ComerziaInput
-                      type="number"
-                      min="0"
-                      step="any"
-                      className="pl-8 pr-3 font-extrabold text-right text-base rounded-xl"
-                      value={counts[pt.value] ?? '0'}
-                      onChange={e => setCounts({ ...counts, [pt.value]: e.target.value })}
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="0.00"
+                      className="font-bold text-right text-base rounded-xl h-10 min-h-10 px-3 font-mono bg-base-100 border border-base-300 shadow-xs focus:border-primary"
+                      value={counts[p.paymentCode] ?? ''}
+                      onChange={e => handleCountChange(p.paymentCode, e.target.value)}
                       onClick={e => (e.target as HTMLInputElement).select()}
+                      shakeKey={shakeKey}
                     />
+
+                    {/* Diferencia ubicada debajo del input */}
+                    {hasDiff && (
+                      <span className={`text-xs font-mono font-bold mt-1.5 leading-tight ${diff < 0 ? 'text-error' : 'text-warning'}`}>
+                        {currency} {diff > 0 ? '+' : ''}{diff.toFixed(2)}
+                      </span>
+                    )}
                   </div>
                 </div>
               );
@@ -163,12 +225,23 @@ export const CloseShiftModal = ({ isOpen, onClose, onSuccess, shiftId }: Props) 
           </div>
         )}
 
-        {/* Observación Requerida en Descuadre */}
-        <ComerziaTextarea
-          label="Observaciones (Requerido en caso de descuadre)"
-          value={observation}
-          onChange={e => setObservation(e.target.value)}
-        />
+        {/* CAMPO DE OBSERVACIÓN */}
+        <div className="pt-1">
+          <ComerziaTextarea
+            label="Observaciones"
+            isRequired={hasAnyDifference}
+            placeholder={
+              hasAnyDifference
+                ? "Justifica el faltante o sobrante de caja..."
+                : "Notas adicionales sobre el cierre (opcional)..."
+            }
+            value={observation}
+            onChange={e => setObservation(e.target.value)}
+            error={observationError}
+            shakeKey={shakeKey}
+            rows={2}
+          />
+        </div>
       </div>
     </ComerziaModal>
   );

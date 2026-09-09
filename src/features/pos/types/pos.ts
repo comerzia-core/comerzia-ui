@@ -86,6 +86,15 @@ export interface PageShiftResponse {
   empty: boolean;
 }
 
+export interface ShiftPaymentSummaryResponse {
+  paymentType: DictionaryResponse;
+  salesAmount: number;
+  inflowsAmount: number;
+  outflowsAmount: number;
+  returnsAmount: number;
+  expectedAmount: number;
+}
+
 export interface ShiftSummaryResponse {
   id: string;
   cashName: string;
@@ -94,6 +103,7 @@ export interface ShiftSummaryResponse {
   totalInflows: number;
   totalOutflows: number;
   employeeName: string;
+  payments?: ShiftPaymentSummaryResponse[];
 }
 
 export interface OpenShiftRequest {

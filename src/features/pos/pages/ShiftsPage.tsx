@@ -8,6 +8,7 @@ import { Monitor, User, MapPin, Clock, TrendingUp, TrendingDown } from 'lucide-r
 import { OpenShiftModal } from '../components/OpenShiftModal';
 import { CloseShiftModal } from '../components/CloseShiftModal';
 import { useToast } from '../../../context/ToastContext';
+import { formatDateForUser } from '../../../utils/date';
 
 export const ShiftsPage = () => {
   const { userProfile } = useAuthStore();
@@ -66,7 +67,6 @@ export const ShiftsPage = () => {
           label="Abrir Turno"
           onClick={() => setIsOpenerOpen(true)}
           disabled={isOpenerDisabled}
-          responsive={true}
           className="w-full sm:w-auto"
           title={isOpenerDisabled ? 'Ya tienes un turno activo abierto' : undefined}
         />
@@ -120,7 +120,7 @@ export const ShiftsPage = () => {
                 )}
                 <div className="flex items-center gap-2 text-base-content/70">
                   <Clock size={15} className="shrink-0" />
-                  <span>Apertura: {shift.openedAt ? new Date(shift.openedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}</span>
+                  <span>Apertura: {shift.openedAt ? formatDateForUser(shift.openedAt) : '-'}</span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-base-200">
@@ -168,6 +168,7 @@ export const ShiftsPage = () => {
           onClose={() => setCloserShiftId(null)}
           onSuccess={loadShifts}
           shiftId={closerShiftId}
+          shiftSummary={shifts.find(s => s.id === closerShiftId)}
         />
       )}
     </div>

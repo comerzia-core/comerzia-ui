@@ -1,24 +1,33 @@
 import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { posService } from '../services/posService';
 import type { CashRegisterResponse, ShiftResponse } from '../types/pos';
 import { ComerziaTable, type Column, type TablePaginationConfig } from '../../../components/ui/ComerziaTable';
 import { useToast } from '../../../context/ToastContext';
-import { BtnBack, BtnDetails, BtnReopen } from '../../../components/ui/CrudButtons';
+import { BtnDetails, BtnReopen } from '../../../components/ui/CrudButtons';
 import { ShiftDetailsModal } from '../components/ShiftDetailsModal';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
+import { formatDateForUser } from '../../../utils/date';
+import { History } from 'lucide-react';
 
 interface Props {
-  register: CashRegisterResponse;
-  onBack: () => void;
+  register?: CashRegisterResponse;
+  onBack?: () => void;
 }
 
-export const CashRegisterHistoryView = ({ register, onBack }: Props) => {
+export const CashRegisterHistoryView = ({ register: propRegister, onBack: propOnBack }: Props) => {
+  const { registerId } = useParams<{ registerId: string }>();
+  const navigate = useNavigate();
+
   const { userProfile } = useAuthStore();
   const currency = userProfile?.companySettings?.currencyCode || '$';
   
   const { error: toastError, success: toastSuccess } = useToast();
   
+  const [register, setRegister] = useState<CashRegisterResponse | null>(propRegister || null);
+  const [isRegisterLoading, setIsRegisterLoading] = useState<boolean>(!propRegister);
+
   const [shifts, setShifts] = useState<ShiftResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [page, setPage] = useState(0);
@@ -29,14 +38,44 @@ export const CashRegisterHistoryView = ({ register, onBack }: Props) => {
   const [selectedShiftId, setSelectedShiftId] = useState<string | null>(null);
   const [shiftToReopen, setShiftToReopen] = useState<string | null>(null);
 
+  // Cargar datos de la caja si se entra directamente por URL
   useEffect(() => {
-    loadShifts();
-  }, [register.id, page, size]);
+    if (propRegister) {
+      setRegister(propRegister);
+      setIsRegisterLoading(false);
+      return;
+    }
 
-  const loadShifts = async () => {
+    if (registerId) {
+      loadRegisterInfo(registerId);
+    }
+  }, [registerId, propRegister]);
+
+  const loadRegisterInfo = async (id: string) => {
+    setIsRegisterLoading(true);
+    try {
+      const data = await posService.getCashRegisterById(id);
+      setRegister(data);
+    } catch (err) {
+      console.error('Error loading cash register:', err);
+      toastError('No se pudo cargar la información de la caja registradora.');
+    } finally {
+      setIsRegisterLoading(false);
+    }
+  };
+
+  const targetRegisterId = register?.id || registerId;
+
+  useEffect(() => {
+    if (targetRegisterId) {
+      loadShifts(targetRegisterId);
+    }
+  }, [targetRegisterId, page, size]);
+
+  const loadShifts = async (regId: string) => {
     setIsLoading(true);
     try {
-      const data = await posService.getShiftsByCashRegister(register.id, page, size);
+      const data = await posService.getShiftsByCashRegister(regId, page, size);
       setShifts(data.content);
       setTotalPages(data.totalPages);
       setTotalElements(data.totalElements);
@@ -48,12 +87,12 @@ export const CashRegisterHistoryView = ({ register, onBack }: Props) => {
   };
 
   const handleReopen = async () => {
-    if (!shiftToReopen) return;
+    if (!shiftToReopen || !targetRegisterId) return;
     setIsLoading(true);
     try {
       await posService.reopenShift(shiftToReopen);
       toastSuccess("Turno reabierto exitosamente.");
-      loadShifts();
+      loadShifts(targetRegisterId);
     } catch (err: any) {
       toastError(err.response?.data?.message || "Error al reabrir el turno.");
     } finally {
@@ -72,8 +111,8 @@ export const CashRegisterHistoryView = ({ register, onBack }: Props) => {
   };
 
   const columns: Column<ShiftResponse>[] = [
-    { header: 'Apertura', render: row => new Date(row.openedAt).toLocaleString() },
-    { header: 'Cierre', render: row => row.closedAt ? new Date(row.closedAt).toLocaleString() : 'En curso' },
+    { header: 'Apertura', render: row => formatDateForUser(row.openedAt) },
+    { header: 'Cierre', render: row => row.closedAt ? formatDateForUser(row.closedAt) : 'En curso' },
     { header: 'Monto Inicial', render: row => `${currency} ${row.initialAmount.toFixed(2)}` },
     { header: 'Estado', render: row => row.statusType.label },
     { 
@@ -95,13 +134,39 @@ export const CashRegisterHistoryView = ({ register, onBack }: Props) => {
     }
   ];
 
+  if (isRegisterLoading) {
+    return (
+      <div className="flex justify-center py-16">
+        <span className="loading loading-spinner loading-lg text-primary"></span>
+      </div>
+    );
+  }
+
+  if (!register) {
+    return (
+      <div className="space-y-4 w-full animate-fade-in">
+        <div className="flex items-start gap-2.5">
+          <History className="w-6 h-6 sm:w-7 sm:h-7 text-primary shrink-0 mt-0.5" />
+          <h1 className="text-lg sm:text-2xl font-bold text-base-content">Caja no encontrada</h1>
+        </div>
+        <div className="card bg-base-100 p-8 text-center text-base-content/60 border border-base-200 shadow-xs">
+          No se encontró la información de la caja registradora solicitada.
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center gap-4">
-        <BtnBack onClick={onBack} />
+    <div className="space-y-6 w-full animate-fade-in">
+      <div className="flex items-start gap-2.5">
+        <History className="w-6 h-6 sm:w-7 sm:h-7 text-primary shrink-0 mt-0.5" />
         <div>
-          <h2 className="text-2xl font-bold text-base-content">Historial: {register.name}</h2>
-          <p className="text-base-content/60 text-sm">Turnos registrados en esta máquina</p>
+          <h1 className="text-lg sm:text-2xl font-bold text-base-content tracking-tight">
+            Historial: {register.name}
+          </h1>
+          <p className="text-xs sm:text-sm text-base-content/70 mt-0.5 leading-relaxed">
+            Turnos registrados en esta caja registradora
+          </p>
         </div>
       </div>
 
@@ -136,10 +201,10 @@ export const CashRegisterHistoryView = ({ register, onBack }: Props) => {
                       Inicial: {currency} {shift.initialAmount.toFixed(2)}
                     </span>
                     <span className="text-[10px] text-base-content/50 block mt-0.5">
-                      Apertura: {new Date(shift.openedAt).toLocaleString()}
+                      Apertura: {formatDateForUser(shift.openedAt)}
                     </span>
                     <span className="text-[10px] text-base-content/50 block">
-                      Cierre: {shift.closedAt ? new Date(shift.closedAt).toLocaleString() : <strong className="text-success">En curso</strong>}
+                      Cierre: {shift.closedAt ? formatDateForUser(shift.closedAt) : <strong className="text-success">En curso</strong>}
                     </span>
                   </div>
                   <span className={`badge badge-xs font-semibold ${shift.closedAt ? 'badge-neutral' : 'badge-success'}`}>

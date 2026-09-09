@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../../../stores/useAuthStore';
+import { formatDateForUser } from '../../../utils/date';
 import { useToast } from '../../../context/ToastContext';
 import { PaySaleModal } from '../../sales/components/PaySaleModal';
 import { RegisterSaleCustomerModal } from '../../sales/components/RegisterSaleCustomerModal';
@@ -235,7 +236,7 @@ export const TerminalPage = () => {
               <div>
                 <p className="text-base-content/60 text-sm font-medium">Apertura</p>
                 <h3 className="text-xl font-bold">
-                  {summary.openedAt ? new Date(summary.openedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                  {summary.openedAt ? formatDateForUser(summary.openedAt) : '--:--'}
                 </h3>
               </div>
             </div>
@@ -376,7 +377,7 @@ export const TerminalPage = () => {
                     <span className="flex items-center gap-1.5">
                       <Calendar size={14} className="text-base-content/50" /> Fecha/Hora:
                     </span>
-                    <span className="font-medium">{new Date(sale.date).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</span>
+                    <span className="font-medium">{formatDateForUser(sale.date)}</span>
                   </div>
 
                   <div className="flex justify-between items-center text-base-content/70">

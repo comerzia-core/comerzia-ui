@@ -6,6 +6,7 @@ import { ComerziaTable, type Column } from '../../../components/ui/ComerziaTable
 import { useToast } from '../../../context/ToastContext';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { BtnCancel } from '../../../components/ui/CrudButtons';
+import { formatDateForUser } from '../../../utils/date';
 
 interface Props {
   isOpen: boolean;
@@ -63,7 +64,7 @@ export const ShiftDetailsModal = ({ isOpen, onClose, shiftId }: Props) => {
   ];
 
   const movementColumns: Column<MovementResponse>[] = [
-    { header: 'Hora', render: row => new Date(row.date).toLocaleTimeString() },
+    { header: 'Fecha / Hora', render: row => formatDateForUser(row.date) },
     { header: 'Tipo', render: row => row.movementType.label },
     { header: 'Forma de Pago', render: row => row.paymentType.label },
     { header: 'Monto', render: row => `${currency} ${row.amount.toFixed(2)}` },
@@ -151,7 +152,7 @@ export const ShiftDetailsModal = ({ isOpen, onClose, shiftId }: Props) => {
                   <div className="flex justify-between items-start">
                     <div>
                       <span className="font-bold text-base-content">{m.movementType.label}</span>
-                      <span className="text-[10px] text-base-content/50 block">{m.paymentType.label} • {new Date(m.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      <span className="text-[10px] text-base-content/50 block">{m.paymentType.label} • {formatDateForUser(m.date)}</span>
                     </div>
                     <span className="font-bold font-mono text-sm">
                       {currency} {m.amount.toFixed(2)}

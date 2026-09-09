@@ -19,6 +19,7 @@ import { TerminalPage } from "../features/pos/pages/TerminalPage";
 import { ShiftsPage } from "../features/pos/pages/ShiftsPage";
 import { MovementsPage } from "../features/pos/pages/MovementsPage";
 import { RegistersPage } from "../features/pos/pages/RegistersPage";
+import { CashRegisterHistoryView } from "../features/pos/pages/CashRegisterHistoryView";
 
 // --- COMMERCIAL ---
 import { CatalogPage } from "../features/commercial/pages/CatalogPage";
@@ -79,6 +80,7 @@ export const AppRouter = () => {
             <Route path="/pos/shifts" element={<ShiftsPage />} />
             <Route path="/pos/movements" element={<MovementsPage />} />
             <Route path="/pos/registers" element={<RegistersPage />} />
+            <Route path="/pos/registers/:registerId/history" element={<CashRegisterHistoryView />} />
 
             {/* --- SALES MODULES --- */}
             <Route path="/sales/new" element={<NewSalePage />} />
