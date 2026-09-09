@@ -44,7 +44,7 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
     url: '',
     title: ''
   });
-  const [contextMenu, setContextMenu] = useState<{ isOpen: boolean; x: number; y: number; row: ProductVariantResponse | null }>({ isOpen: false, x: 0, y: 0, row: null });
+  const [contextMenu, setContextMenu] = useState<{ isOpen: boolean; x: number; y: number; isCentered?: boolean; row: ProductVariantResponse | null }>({ isOpen: false, x: 0, y: 0, isCentered: false, row: null });
 
   useEffect(() => {
     if (isOpen && productId) {
@@ -140,12 +140,8 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
         size="xl"
       >
         <div className="mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-          <div>
-            <h3 className="font-semibold text-base-content/70">Listado de Variantes</h3>
-            <span className="text-[11px] text-base-content/50 md:hidden italic">Mantén presionado para opciones</span>
-          </div>
           {canManage && (
-            <BtnCreate onClick={() => setIsCreatingVariant(true)} label="Añadir Variante" responsive={true} className="w-full sm:w-auto" />
+            <BtnCreate onClick={() => setIsCreatingVariant(true)} label="Añadir Variante" className="w-full sm:w-auto" />
           )}
         </div>
 
@@ -159,7 +155,7 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
             showRowNumbers={true}
             onRowContextMenu={(e, row) => {
               e.preventDefault();
-              setContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, row });
+              setContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, isCentered: false, row });
             }}
           />
         </div>
@@ -179,31 +175,21 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
               {data.map((variant) => (
                 <div
                   key={variant.id}
-                  onTouchStart={(e) => {
-                    const x = e.touches[0].clientX;
-                    const y = e.touches[0].clientY;
-                    const timer = setTimeout(() => {
-                      if (navigator.vibrate) navigator.vibrate(40);
-                      setContextMenu({ isOpen: true, x, y, row: variant });
-                    }, 500);
-                    (e.target as any)._longPressTimer = timer;
-                  }}
-                  onTouchEnd={(e) => {
-                    if ((e.target as any)._longPressTimer) {
-                      clearTimeout((e.target as any)._longPressTimer);
-                    }
+                  onClick={() => {
+                    setContextMenu({ isOpen: true, x: 0, y: 0, isCentered: true, row: variant });
                   }}
                   onContextMenu={(e) => {
                     e.preventDefault();
-                    setContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, row: variant });
+                    setContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, isCentered: false, row: variant });
                   }}
-                  className="bg-base-100 p-3.5 rounded-xl border border-base-200 shadow-xs space-y-2 text-xs select-none"
+                  className="bg-base-100 p-3.5 rounded-xl border border-base-200 shadow-xs space-y-2 text-xs select-none cursor-pointer hover:border-primary/40 active:scale-[0.99] transition-all"
                 >
                   <div className="flex items-start gap-3">
                     <div 
                       className="w-12 h-12 rounded-lg bg-base-200 overflow-hidden border border-base-300 shrink-0"
-                      onClick={() => {
+                      onClick={(e) => {
                         if (variant.imageUrl) {
+                          e.stopPropagation();
                           setViewingImage({
                             isOpen: true,
                             url: variant.imageUrl,
@@ -242,6 +228,7 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
         isOpen={contextMenu.isOpen}
         x={contextMenu.x}
         y={contextMenu.y}
+        isCentered={contextMenu.isCentered}
         onClose={() => setContextMenu({ ...contextMenu, isOpen: false })}
       >
         {contextMenu.row?.imageUrl && (

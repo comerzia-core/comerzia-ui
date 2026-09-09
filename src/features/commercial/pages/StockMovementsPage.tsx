@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { commercialService } from '../services/commercialService';
 import type { 
@@ -11,11 +11,11 @@ import { ComerziaInput } from '../../../components/ui/ComerziaInput';
 import { ComerziaTextarea } from '../../../components/ui/ComerziaTextarea';
 import { BtnSave, BtnCreate } from '../../../components/ui/CrudButtons';
 import { ComerziaTable, type Column, type TablePaginationConfig } from '../../../components/ui/ComerziaTable';
-import { CreateFullProductModal } from '../components/CreateFullProductModal';
+import { CommercialProductSearchBar } from '../components/CommercialProductSearchBar';
 import { ComerziaSelect } from '../../../components/ui/ComerziaSelect';
 import { ComerziaContextMenu, ContextMenuItem } from '../../../components/ui/ComerziaContextMenu';
 import { ComerziaRadioGroup } from '../../../components/ui/ComerziaRadioGroup';
-import { Settings2, X, Barcode, DollarSign, Coins, Banknote, SlidersHorizontal, ClipboardList } from 'lucide-react';
+import { Settings2, X, DollarSign, Coins, Banknote, SlidersHorizontal, ClipboardList, ArrowRightLeft } from 'lucide-react';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { branchService } from '../../organization/services/branchService';
 import type { BranchResponse } from '../../organization/types/branch';
@@ -59,16 +59,10 @@ const CurrencyCell = ({ amount, currencyCode = 'USD' }: { amount: number, curren
 
 export const StockMovementsPage = () => {
   const [searchParams] = useSearchParams();
-  const [barcode, setBarcode] = useState('');
   const [productData, setProductData] = useState<ScannerProductResponse | null>(null);
   const [isLoadingScan, setIsLoadingScan] = useState(false);
   const [shakeKey, setShakeKey] = useState(0);
-  const inputRef = useRef<HTMLInputElement>(null);
   const { error: toastError, success: toastSuccess } = useToast();
-  
-  // Long press refs for mobile cards
-  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const touchStartPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   
   // Entry Form State
   const [quantityIn, setQuantityIn] = useState<number | ''>('');
@@ -104,10 +98,11 @@ export const StockMovementsPage = () => {
   const [adjustmentObs, setAdjustmentObs] = useState('');
   const [isSubmittingAdjustment, setIsSubmittingAdjustment] = useState(false);
 
-  const [contextMenu, setContextMenu] = useState<{ isOpen: boolean; x: number; y: number; row: StockEntryResponse | null }>({
+  const [contextMenu, setContextMenu] = useState<{ isOpen: boolean; x: number; y: number; isCentered?: boolean; row: StockEntryResponse | null }>({
     isOpen: false,
     x: 0,
     y: 0,
+    isCentered: false,
     row: null
   });
 
@@ -115,16 +110,11 @@ export const StockMovementsPage = () => {
   const adjustmentTypeOptions = options[DICTIONARIES.ADJUSTMENT_TYPE] || [];
   const stockStatusOptions = options[DICTIONARIES.STOCK_STATUS] || [];
 
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isValuateModalOpen, setIsValuateModalOpen] = useState(false);
 
   useEffect(() => {
-    if (inputRef.current) {
-      inputRef.current.focus();
-    }
     const urlBarcode = searchParams.get('barcode');
     if (urlBarcode) {
-      setBarcode(urlBarcode);
       executeScan(urlBarcode);
     }
   }, [searchParams]);
@@ -195,20 +185,6 @@ export const StockMovementsPage = () => {
       setShakeKey(prev => prev + 1);
     } finally {
       setIsLoadingScan(false);
-      setBarcode('');
-      if (inputRef.current) {
-        inputRef.current.focus();
-      }
-    }
-  };
-
-  const handleScan = async (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      if (!barcode.trim()) {
-        setShakeKey(prev => prev + 1);
-        return;
-      }
-      await executeScan(barcode);
     }
   };
 
@@ -363,48 +339,40 @@ export const StockMovementsPage = () => {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-base-content tracking-tight">Kardex y Movimientos</h1>
-          <p className="text-base-content/60 mt-1">Registro de entradas y ajustes manuales</p>
+    <div className="space-y-6 animate-fade-in max-w-7xl mx-auto mt-2 sm:mt-6 px-2 sm:px-0">
+      {/* 1. HEADER DE LA PÁGINA */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-start gap-2.5">
+          <ArrowRightLeft className="w-6 h-6 sm:w-7 sm:h-7 text-primary shrink-0 mt-0.5" />
+          <div>
+            <h1 className="text-lg sm:text-2xl font-bold text-base-content tracking-tight">
+              Kardex y Movimientos
+            </h1>
+            <p className="text-xs sm:text-sm text-base-content/70 mt-0.5 leading-relaxed">
+              Registro de entradas de stock, historial de movimientos y ajustes manuales.
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          {!isEntryCardOpen && !adjustmentTarget && (
+        {!isEntryCardOpen && !adjustmentTarget && (
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <BtnCreate 
-              label="Registrar Entrada Stock" 
+              label="Registrar Entrada" 
               onClick={() => setIsEntryCardOpen(true)} 
+              responsive={true}
+              className="w-full sm:w-auto"
             />
-          )}
-          <BtnCreate 
-            label="Crear Producto desde Cero" 
-            onClick={() => setIsCreateModalOpen(true)} 
-          />
-        </div>
+          </div>
+        )}
       </div>
 
-      <div className="bg-base-100 p-6 rounded-2xl shadow-sm border border-base-200">
-        <h2 className="text-lg font-bold mb-4">Escanear Producto</h2>
-        <div className={`relative w-full max-w-md ${shakeKey > 0 ? 'animate-shake' : ''}`} key={shakeKey}>
-          <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-            <Barcode className="h-5 w-5 text-base-content/40" strokeWidth={1.5} />
-          </div>
-          <input 
-            ref={inputRef}
-            type="text" 
-            placeholder="Escanea el código de barras..." 
-            className="input input-bordered w-full pl-12 bg-base-50 focus:outline-none focus:ring-2 focus:ring-primary/20"
-            value={barcode}
-            onChange={(e) => setBarcode(e.target.value)}
-            onKeyDown={handleScan}
-            disabled={isLoadingScan}
-          />
-          {isLoadingScan && (
-            <div className="absolute inset-y-0 right-4 flex items-center">
-              <span className="loading loading-spinner loading-sm text-primary"></span>
-            </div>
-          )}
-        </div>
+      {/* 2. BARRA DE BÚSQUEDA Y SUGERENCIAS */}
+      <div className="card bg-base-100 p-3.5 sm:p-4 rounded-2xl shadow-xs border border-base-200">
+        <CommercialProductSearchBar
+          onSearchBarcode={executeScan}
+          isLoading={isLoadingScan}
+          shakeKey={shakeKey}
+          placeholder="Buscar producto por nombre, código o SKU..."
+        />
       </div>
 
       {scannedVariant && productData && (
@@ -650,43 +618,20 @@ export const StockMovementsPage = () => {
                       return (
                         <div
                           key={entry.id}
-                          onTouchStart={(e) => {
+                          onClick={() => {
                             if (hasCostPermission) {
-                              touchStartPosRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-                              longPressTimerRef.current = setTimeout(() => {
-                                if (navigator.vibrate) navigator.vibrate(40);
-                                setContextMenu({
-                                  isOpen: true,
-                                  x: touchStartPosRef.current.x,
-                                  y: touchStartPosRef.current.y,
-                                  row: entry
-                                });
-                              }, 500);
-                            }
-                          }}
-                          onTouchEnd={() => {
-                            if (longPressTimerRef.current) {
-                              clearTimeout(longPressTimerRef.current);
-                              longPressTimerRef.current = null;
-                            }
-                          }}
-                          onTouchMove={(e) => {
-                            const moveX = Math.abs(e.touches[0].clientX - touchStartPosRef.current.x);
-                            const moveY = Math.abs(e.touches[0].clientY - touchStartPosRef.current.y);
-                            if (moveX > 10 || moveY > 10) {
-                              if (longPressTimerRef.current) {
-                                clearTimeout(longPressTimerRef.current);
-                                longPressTimerRef.current = null;
-                              }
+                              setContextMenu({ isOpen: true, x: 0, y: 0, isCentered: true, row: entry });
                             }
                           }}
                           onContextMenu={(e) => {
                             if (hasCostPermission) {
                               e.preventDefault();
-                              setContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, row: entry });
+                              setContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, isCentered: false, row: entry });
                             }
                           }}
-                          className="bg-base-100 p-3.5 rounded-xl border border-base-200 shadow-xs space-y-2 text-xs select-none"
+                          className={`bg-base-100 p-3.5 rounded-xl border border-base-200 shadow-xs space-y-2 text-xs select-none transition-all ${
+                            hasCostPermission ? 'cursor-pointer hover:border-primary/40 active:scale-[0.99]' : ''
+                          }`}
                         >
                           <div className="flex justify-between items-start">
                             <div>
@@ -810,6 +755,7 @@ export const StockMovementsPage = () => {
         isOpen={contextMenu.isOpen}
         x={contextMenu.x}
         y={contextMenu.y}
+        isCentered={contextMenu.isCentered}
         onClose={() => setContextMenu(prev => ({ ...prev, isOpen: false }))}
       >
         {(() => {
@@ -872,12 +818,6 @@ export const StockMovementsPage = () => {
         isOpen={!!selectedInventoryId}
         onClose={() => setSelectedInventoryId(null)}
         inventoryId={selectedInventoryId}
-      />
-
-      <CreateFullProductModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onSuccess={() => {}}
       />
     </div>
   );

@@ -265,16 +265,13 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
             )}
 
             {isOpen && !disabled && (
-                <div 
-                    className="absolute z-50 w-full mt-1 bg-base-100 dark:bg-slate-800 rounded-xl shadow-2xl border border-base-200 dark:border-slate-700 max-h-80 overflow-auto top-full"
-                    onPointerDown={(e) => e.stopPropagation()}
-                >
+                <div className="absolute z-50 w-full mt-1 bg-base-100 dark:bg-slate-800 rounded-xl shadow-2xl border border-base-200 dark:border-slate-700 max-h-80 overflow-y-auto overscroll-contain top-full">
                     <ul className="menu menu-sm p-2 w-full">
                         {filteredOptions.length > 0 ? (
                             filteredOptions.map((opt) => (
                                 <li key={opt.value} className="relative group w-full">
                                     {editOptionId === opt.value ? (
-                                        <div className="flex flex-col gap-2 p-2 w-full" onPointerDown={e => e.stopPropagation()} onClick={e => e.stopPropagation()}>
+                                        <div className="flex flex-col gap-2 p-2 w-full" onClick={e => e.stopPropagation()}>
                                             <div className="flex items-center gap-2 w-full">
                                                 <input 
                                                     ref={editInputRef}
@@ -289,7 +286,7 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
                                                         if (e.key === 'Escape') setEditOptionId(null);
                                                     }}
                                                 />
-                                                <div className="flex-shrink-0" onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                                                <div className="flex-shrink-0" onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}>
                                                     <ComerziaSwitch 
                                                         checked={editOptionStatus} 
                                                         onChange={() => setEditOptionStatus(!editOptionStatus)} 
@@ -301,7 +298,7 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
                                                     label={`Eliminar ${entityName}`}
                                                     className="btn-sm w-full mt-1"
                                                     responsive={false}
-                                                    onPointerDown={(e) => {
+                                                    onClick={(e) => {
                                                         e.preventDefault();
                                                         e.stopPropagation();
                                                         setEditOptionId(null);
@@ -320,7 +317,7 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
                                                 } 
                                                 ${opt.status === false ? "max-md:bg-error/10 max-md:text-error" : ""}
                                             `}
-                                            onPointerDown={(e) => {
+                                            onClick={(e) => {
                                                 e.stopPropagation();
                                                 handleSelect(opt.value);
                                             }}
@@ -333,8 +330,9 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
                                             </span>
                                             {onUpdate && canManage && (
                                                 <button 
+                                                    type="button"
                                                     className="btn btn-ghost btn-xs btn-square opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                                                    onPointerDown={(e) => {
+                                                    onClick={(e) => {
                                                         e.stopPropagation();
                                                         startEditing(e, opt);
                                                     }}
@@ -354,7 +352,7 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
                             <li className="w-full">
                                 <a 
                                     className="text-primary font-medium flex items-center gap-2 hover:!bg-primary hover:!text-white active:!bg-primary-focus transition-all duration-150 px-3 py-2 rounded-lg w-full cursor-pointer"
-                                    onPointerDown={(e) => {
+                                    onClick={(e) => {
                                         e.stopPropagation();
                                         handleCreate();
                                     }}

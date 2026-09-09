@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { commercialService } from '../services/commercialService';
 import type { VariantWithPricesResponse, SalePriceResponse, SalePriceHistoryResponse, SalePriceTrendResponse } from '../types/commercial';
@@ -6,7 +6,8 @@ import { useToast } from '../../../context/ToastContext';
 import { ComerziaTable, type Column, type TablePaginationConfig } from '../../../components/ui/ComerziaTable';
 import { BtnCancel } from '../../../components/ui/CrudButtons';
 import { ChangePriceModal } from '../components/ChangePriceModal';
-import { Barcode, History, TrendingUp, DollarSign, LineChart } from 'lucide-react';
+import { CommercialProductSearchBar } from '../components/CommercialProductSearchBar';
+import { History, TrendingUp, DollarSign, LineChart } from 'lucide-react';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { ComerziaBadge } from '../../../components/ui/ComerziaBadge';
 import { ComerziaLineChart } from '../../../components/ui/charts';
@@ -15,11 +16,9 @@ import { ComerziaContextMenu, ContextMenuItem } from '../../../components/ui/Com
 
 export const PricesPage = () => {
   const [searchParams] = useSearchParams();
-  const [barcode, setBarcode] = useState('');
   const [productData, setProductData] = useState<VariantWithPricesResponse | null>(null);
   const [isLoadingScan, setIsLoadingScan] = useState(false);
   const [shakeKey, setShakeKey] = useState(0);
-  const inputRef = useRef<HTMLInputElement>(null);
   const { error: toastError } = useToast();
   const { userProfile } = useAuthStore();
   const currencyCode = userProfile?.companySettings?.currencyCode || 'USD';
@@ -28,10 +27,11 @@ export const PricesPage = () => {
   const [selectedPriceType, setSelectedPriceType] = useState<SalePriceResponse | null>(null);
   
   // Context Menu State
-  const [contextMenu, setContextMenu] = useState<{ isOpen: boolean; x: number; y: number; row: SalePriceResponse | null }>({
+  const [contextMenu, setContextMenu] = useState<{ isOpen: boolean; x: number; y: number; isCentered?: boolean; row: SalePriceResponse | null }>({
     isOpen: false,
     x: 0,
     y: 0,
+    isCentered: false,
     row: null
   });
 
@@ -69,19 +69,12 @@ export const PricesPage = () => {
       setShakeKey(prev => prev + 1);
     } finally {
       setIsLoadingScan(false);
-      if (inputRef.current) {
-        inputRef.current.focus();
-      }
     }
   }, [toastError]);
 
   useEffect(() => {
-    if (inputRef.current) {
-      inputRef.current.focus();
-    }
     const urlBarcode = searchParams.get('barcode');
     if (urlBarcode) {
-      setBarcode(urlBarcode);
       executeScan(urlBarcode);
     }
   }, [searchParams, executeScan]);
@@ -128,22 +121,13 @@ export const PricesPage = () => {
     }
   }, [selectedPriceType, page, size, trendMonths, loadHistoryAndTrend]);
 
-  const handleScan = async (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      if (!barcode.trim()) {
-        setShakeKey(prev => prev + 1);
-        return;
-      }
-      await executeScan(barcode.trim());
-    }
-  };
-
   const handleContextMenu = (e: React.MouseEvent, row: SalePriceResponse) => {
     e.preventDefault();
     setContextMenu({
       isOpen: true,
       x: e.clientX,
       y: e.clientY,
+      isCentered: false,
       row
     });
   };
@@ -178,59 +162,60 @@ export const PricesPage = () => {
     { header: 'Fecha Hasta', render: (row) => row.validTo ? new Date(row.validTo).toLocaleString() : '-' },
     { header: 'Nuevo', render: (row) => <span className="font-bold">{currencyCode} {(row.salePrice || 0).toFixed(2)}</span> },
     { 
+      header: 'Descuento', 
+      render: (row) => row.discountPrice != null && row.discountPrice !== row.salePrice
+        ? <span className="text-error">{currencyCode} {row.discountPrice.toFixed(2)}</span>
+        : '-'
+    },
+    { 
       header: 'Variación', 
       render: (row) => {
-        if (row.variationPercentage == null) return '-';
-        const isUp = row.variationPercentage < 0;
-        const type = isUp ? 'error' : row.variationPercentage > 0 ? 'success' : 'neutral';
-        return <ComerziaBadge variant={type} label={`${isUp ? '' : '+'}${row.variationPercentage.toFixed(2)}%`} />;
-      }
+        if (!row.previousSalePrice || row.previousSalePrice === row.salePrice) return '-';
+        const diff = row.salePrice - row.previousSalePrice;
+        const pct = (diff / row.previousSalePrice) * 100;
+        return (
+          <span className={`text-xs font-semibold ${diff > 0 ? 'text-success' : 'text-error'}`}>
+            {diff > 0 ? '+' : ''}{pct.toFixed(1)}%
+          </span>
+        );
+      } 
     }
   ];
 
-  const pagination: TablePaginationConfig = {
+  const historyPagination: TablePaginationConfig = {
     currentPage: page,
     pageSize: size,
-    totalElements,
+    totalElements: totalElements,
     totalPages: Math.ceil(totalElements / size),
     onPageChange: setPage,
     onPageSizeChange: setSize
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-base-content tracking-tight">Gestión de Precios</h1>
-          <p className="text-base-content/60 mt-1">Trazabilidad e historial de listas de precios (SCD Type 2)</p>
+    <div className="space-y-6 animate-fade-in max-w-7xl mx-auto mt-2 sm:mt-6 px-2 sm:px-0">
+      {/* 1. HEADER DE LA PÁGINA */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-start gap-2.5">
+          <DollarSign className="w-6 h-6 sm:w-7 sm:h-7 text-primary shrink-0 mt-0.5" />
+          <div>
+            <h1 className="text-lg sm:text-2xl font-bold text-base-content tracking-tight">
+              Gestión de Precios
+            </h1>
+            <p className="text-xs sm:text-sm text-base-content/70 mt-0.5 leading-relaxed">
+              Trazabilidad, historial y actualización de listas de precios (SCD Type 2).
+            </p>
+          </div>
         </div>
       </div>
 
-      <div className="bg-base-100 p-6 rounded-2xl shadow-sm border border-base-200">
-        <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-          <Barcode className="h-5 w-5 text-primary" />
-          Buscar Variante
-        </h2>
-        <div className={`relative w-full max-w-md ${shakeKey > 0 ? 'animate-shake' : ''}`} key={shakeKey}>
-          <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-            <Barcode className="h-5 w-5 text-base-content/40" />
-          </div>
-          <input 
-            ref={inputRef}
-            type="text" 
-            placeholder="Escanea el código de barras..." 
-            className="input input-bordered w-full pl-12 bg-base-50 focus:outline-none focus:ring-2 focus:ring-primary/20"
-            value={barcode}
-            onChange={(e) => setBarcode(e.target.value)}
-            onKeyDown={handleScan}
-            disabled={isLoadingScan}
-          />
-          {isLoadingScan && (
-            <div className="absolute inset-y-0 right-4 flex items-center">
-              <span className="loading loading-spinner loading-sm text-primary"></span>
-            </div>
-          )}
-        </div>
+      {/* 2. BARRA DE BÚSQUEDA Y SUGERENCIAS */}
+      <div className="card bg-base-100 p-3.5 sm:p-4 rounded-2xl shadow-xs border border-base-200">
+        <CommercialProductSearchBar
+          onSearchBarcode={executeScan}
+          isLoading={isLoadingScan}
+          shakeKey={shakeKey}
+          placeholder="Buscar producto por nombre, código o SKU..."
+        />
       </div>
 
       {productData && (
@@ -253,7 +238,6 @@ export const PricesPage = () => {
               <div className="flex-1">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-base sm:text-lg font-bold text-base-content/80">Precios Activos</h3>
-                  <span className="text-[11px] text-base-content/50 md:hidden italic">Mantén presionado para opciones</span>
                 </div>
 
                 {productData.activePrices && productData.activePrices.length > 0 ? (
@@ -291,22 +275,9 @@ export const PricesPage = () => {
                       {productData.activePrices.map((price) => (
                         <div
                           key={price.priceTypeId}
-                          onTouchStart={(e) => {
-                            const x = e.touches[0].clientX;
-                            const y = e.touches[0].clientY;
-                            const timer = setTimeout(() => {
-                              if (navigator.vibrate) navigator.vibrate(40);
-                              setContextMenu({ isOpen: true, x, y, row: price });
-                            }, 500);
-                            (e.target as any)._longPressTimer = timer;
-                          }}
-                          onTouchEnd={(e) => {
-                            if ((e.target as any)._longPressTimer) {
-                              clearTimeout((e.target as any)._longPressTimer);
-                            }
-                          }}
+                          onClick={() => setContextMenu({ isOpen: true, x: 0, y: 0, isCentered: true, row: price })}
                           onContextMenu={(e) => handleContextMenu(e, price)}
-                          className="bg-base-100 p-3.5 rounded-xl border border-base-200 shadow-xs space-y-2 text-xs select-none"
+                          className="bg-base-100 p-3.5 rounded-xl border border-base-200 shadow-xs space-y-2 text-xs select-none cursor-pointer hover:border-primary/40 active:scale-[0.99] transition-all"
                         >
                           <div className="flex justify-between items-start">
                             <div>
@@ -468,6 +439,7 @@ export const PricesPage = () => {
         isOpen={contextMenu.isOpen}
         x={contextMenu.x}
         y={contextMenu.y}
+        isCentered={contextMenu.isCentered}
         onClose={() => setContextMenu({ ...contextMenu, isOpen: false })}
       >
         <ContextMenuItem
@@ -502,7 +474,9 @@ export const PricesPage = () => {
           initialPriceTypeId={priceTypeToEdit}
           onSuccess={() => {
             // Re-fetch to update the active prices list
-            executeScan(barcode);
+            if (productData.barCode) {
+              executeScan(productData.barCode);
+            }
           }}
         />
       )}

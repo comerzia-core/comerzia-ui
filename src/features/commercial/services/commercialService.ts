@@ -98,12 +98,15 @@ export const commercialService = {
     await api.delete(`/tenant/brands/${id}`);
   },
 
-  getProductsByBrand: async (brandId: string, page = 0, size = 20, activeOnly?: boolean): Promise<PageProductResponse> => {
-    const params = new URLSearchParams({ page: String(page), size: String(size) });
-    if (activeOnly !== undefined) {
-      params.append('activeOnly', String(activeOnly));
-    }
-    const response = await api.get(`/tenant/products/brand/${brandId}?${params.toString()}`);
+  getProducts: async (filters: { categoryId?: string; segmentId?: string; brandId?: string; page?: number; size?: number; activeOnly?: boolean } = {}): Promise<PageProductResponse> => {
+    const params = new URLSearchParams();
+    if (filters.categoryId) params.append('categoryId', filters.categoryId);
+    if (filters.segmentId) params.append('segmentId', filters.segmentId);
+    if (filters.brandId) params.append('brandId', filters.brandId);
+    if (filters.page !== undefined) params.append('page', String(filters.page));
+    if (filters.size !== undefined) params.append('size', String(filters.size));
+    if (filters.activeOnly !== undefined) params.append('activeOnly', String(filters.activeOnly));
+    const response = await api.get(`/tenant/products${params.toString() ? `?${params.toString()}` : ''}`);
     return response.data;
   },
 

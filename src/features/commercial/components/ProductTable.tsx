@@ -1,28 +1,42 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { commercialService } from '../services/commercialService';
 import { ComerziaTable, type Column, type TablePaginationConfig } from '../../../components/ui/ComerziaTable';
+import { ComerziaBadge } from '../../../components/ui/ComerziaBadge';
 import type { ProductResponse } from '../types/commercial';
 import { ProductVariantsModal } from './ProductVariantsModal';
 import { useAuthStore } from '../../../stores/useAuthStore';
-
 import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
 import { useToast } from '../../../context/ToastContext';
 import { ComerziaContextMenu, ContextMenuItem } from '../../../components/ui/ComerziaContextMenu';
 import { EditProductModal } from './EditProductModal';
-import { Edit, Trash2, Layers, ChevronLeft, ChevronRight, Package } from 'lucide-react';
+import { 
+  Pencil, 
+  Trash2, 
+  Layers, 
+  ChevronLeft, 
+  ChevronRight, 
+  ChevronsLeft, 
+  ChevronsRight, 
+  Package 
+} from 'lucide-react';
 
 interface Props {
-  brandId: string;
-  selectedProducts: string[];
-  setSelectedProducts: (val: string[]) => void;
+  categoryId?: string;
+  segmentId?: string;
+  brandId?: string;
   refreshKey?: number;
 }
 
-export const ProductTable = ({ brandId, selectedProducts, setSelectedProducts, refreshKey = 0 }: Props) => {
+export const ProductTable = ({ 
+  categoryId, 
+  segmentId, 
+  brandId, 
+  refreshKey = 0 
+}: Props) => {
   const [data, setData] = useState<ProductResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [page, setPage] = useState(0);
-  const [size, setSize] = useState(20);
+  const [size, setSize] = useState(5);
   const [totalElements, setTotalElements] = useState(0);
 
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
@@ -35,49 +49,67 @@ export const ProductTable = ({ brandId, selectedProducts, setSelectedProducts, r
   const [productToEdit, setProductToEdit] = useState<ProductResponse | null>(null);
   const [productToDelete, setProductToDelete] = useState<ProductResponse | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [contextMenu, setContextMenu] = useState<{ isOpen: boolean; x: number; y: number; row: ProductResponse | null }>({ isOpen: false, x: 0, y: 0, row: null });
 
-  // Touch Long-Press Support
-  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const touchStartPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  // Menú contextual (Desktop: coordenadas del mouse; Mobile: centrado en pantalla con telón)
+  const [contextMenu, setContextMenu] = useState<{
+    isOpen: boolean;
+    x: number;
+    y: number;
+    product: ProductResponse | null;
+    isCentered: boolean;
+  }>({
+    isOpen: false,
+    x: 0,
+    y: 0,
+    product: null,
+    isCentered: false
+  });
 
-  const handleTouchStart = (product: ProductResponse, e: React.TouchEvent) => {
-    touchStartPosRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-    longPressTimerRef.current = setTimeout(() => {
-      if (navigator.vibrate) navigator.vibrate(40);
-      setContextMenu({
-        isOpen: true,
-        x: touchStartPosRef.current.x,
-        y: touchStartPosRef.current.y,
-        row: product
-      });
-    }, 500);
+  const handleContextMenu = (e: React.MouseEvent, product: ProductResponse) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({
+      isOpen: true,
+      x: e.clientX,
+      y: e.clientY,
+      product,
+      isCentered: false
+    });
   };
 
-  const handleTouchEnd = () => {
-    if (longPressTimerRef.current) {
-      clearTimeout(longPressTimerRef.current);
-      longPressTimerRef.current = null;
-    }
+  const handleMobileCardTap = (e: React.MouseEvent, product: ProductResponse) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({
+      isOpen: true,
+      x: 0,
+      y: 0,
+      product,
+      isCentered: true
+    });
   };
 
-  const handleTouchMove = (e: React.TouchEvent) => {
-    const moveX = Math.abs(e.touches[0].clientX - touchStartPosRef.current.x);
-    const moveY = Math.abs(e.touches[0].clientY - touchStartPosRef.current.y);
-    if (moveX > 10 || moveY > 10) {
-      handleTouchEnd();
-    }
-  };
+  // Reset page to 0 when filters change
+  useEffect(() => {
+    setPage(0);
+  }, [categoryId, segmentId, brandId]);
 
   useEffect(() => {
     loadData();
-  }, [brandId, page, size, refreshKey, canManage]);
+  }, [categoryId, segmentId, brandId, page, size, refreshKey, canManage]);
 
   const loadData = async () => {
     setIsLoading(true);
     try {
       const activeOnly = canManage ? false : undefined;
-      const res = await commercialService.getProductsByBrand(brandId, page, size, activeOnly);
+      const res = await commercialService.getProducts({
+        categoryId: categoryId || undefined,
+        segmentId: segmentId || undefined,
+        brandId: brandId || undefined,
+        page,
+        size,
+        activeOnly
+      });
       setData(res.content);
       setTotalElements(res.totalElements);
     } catch (e) {
@@ -85,22 +117,6 @@ export const ProductTable = ({ brandId, selectedProducts, setSelectedProducts, r
       setData([]);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedProducts(data.map(p => p.id));
-    } else {
-      setSelectedProducts([]);
-    }
-  };
-
-  const handleSelectOne = (checked: boolean, id: string) => {
-    if (checked) {
-      setSelectedProducts([...selectedProducts, id]);
-    } else {
-      setSelectedProducts(selectedProducts.filter(p => p !== id));
     }
   };
 
@@ -119,44 +135,41 @@ export const ProductTable = ({ brandId, selectedProducts, setSelectedProducts, r
     }
   };
 
-  const isAllSelected = data.length > 0 && selectedProducts.length === data.length;
   const totalPages = Math.ceil(totalElements / size);
 
   const columns: Column<ProductResponse>[] = [
-    {
-      header: (
-        <input 
-          type="checkbox" 
-          className="checkbox checkbox-sm checkbox-primary" 
-          checked={isAllSelected}
-          onChange={(e) => handleSelectAll(e.target.checked)}
-        />
-      ),
-      accessorKey: 'id',
+    { 
+      header: 'Nombre', 
+      accessorKey: 'name',
       render: (row) => (
-        <input 
-          type="checkbox" 
-          className="checkbox checkbox-sm checkbox-primary" 
-          checked={selectedProducts.includes(row.id)}
-          onChange={(e) => handleSelectOne(e.target.checked, row.id)}
-        />
+        <span className="font-semibold text-sm text-base-content block">
+          {row.name}
+        </span>
       )
     },
-    { header: 'Nombre', accessorKey: 'name' },
     { 
       header: 'Descripción', 
-      render: (row) => row.description ? row.description : <span className="text-xs text-base-content/40 italic">(sin descripción)</span>
+      render: (row) => row.description ? (
+        <span className="text-sm text-base-content/80">{row.description}</span>
+      ) : (
+        <span className="text-xs text-base-content/40 italic">(sin descripción)</span>
+      )
     },
     { 
       header: 'Tipo de Variante', 
-      accessorKey: 'variantName'
+      render: (row) => (
+        <span className="badge badge-sm badge-neutral font-semibold border-0 text-[11px]">
+          {row.variantName || 'Variante Simple'}
+        </span>
+      )
     },
     { 
       header: 'Estado', 
       render: (row) => (
-        <span className={`badge badge-sm ${row.status ? 'badge-success' : 'badge-error'}`}>
-          {row.status ? 'Activo' : 'Inactivo'}
-        </span>
+        <ComerziaBadge
+          label={row.status ? 'Activo' : 'Inactivo'}
+          variant={row.status ? 'success' : 'error'}
+        />
       )
     }
   ];
@@ -180,34 +193,13 @@ export const ProductTable = ({ brandId, selectedProducts, setSelectedProducts, r
           isLoading={isLoading}
           pagination={pagination}
           showRowNumbers={true}
-          onRowClick={(row) => {
-            setSelectedProductId(row.id);
-            setSelectedProductName(row.name);
-          }}
-          onRowContextMenu={(e, row) => {
-            e.preventDefault();
-            setContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, row });
-          }}
+          onRowContextMenu={handleContextMenu}
+          rowClassName={() => 'hover:!bg-primary/10 transition-colors cursor-pointer'}
         />
       </div>
 
-      {/* VISTA MOBILE: CARDS COMPACTAS CON LONG-PRESS */}
+      {/* VISTA MOBILE: CARDS COMPACTAS CON TAP DIRECTO AL MENÚ CONTEXTUAL */}
       <div className="block md:hidden space-y-3">
-        {data.length > 0 && (
-          <div className="flex items-center justify-between px-2 py-1.5 bg-base-200/50 rounded-xl text-xs">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                className="checkbox checkbox-xs checkbox-primary"
-                checked={isAllSelected}
-                onChange={(e) => handleSelectAll(e.target.checked)}
-              />
-              <span className="font-semibold text-base-content/80">Seleccionar todos ({data.length})</span>
-            </label>
-            <span className="text-[11px] text-base-content/50 italic">Mantén presionado para opciones</span>
-          </div>
-        )}
-
         {isLoading ? (
           <div className="py-12 text-center">
             <span className="loading loading-spinner loading-md text-primary"></span>
@@ -216,122 +208,148 @@ export const ProductTable = ({ brandId, selectedProducts, setSelectedProducts, r
         ) : data.length === 0 ? (
           <div className="text-center py-10 text-base-content/50 bg-base-200/50 rounded-2xl">
             <Package size={32} className="mx-auto text-base-content/30 mb-2" />
-            <p className="text-sm font-medium">No hay productos registrados en esta marca</p>
+            <p className="text-sm font-medium">No se encontraron productos registrados</p>
           </div>
         ) : (
           <div className="space-y-2.5">
-            {data.map((product) => {
-              const isSelected = selectedProducts.includes(product.id);
-              return (
-                <div
-                  key={product.id}
-                  onTouchStart={(e) => handleTouchStart(product, e)}
-                  onTouchEnd={handleTouchEnd}
-                  onTouchMove={handleTouchMove}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    setContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, row: product });
-                  }}
-                  className={`bg-base-100 p-4 rounded-2xl border transition-all select-none ${
-                    isSelected ? 'border-primary bg-primary/5 shadow-sm' : 'border-base-200 hover:border-base-300 shadow-xs'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-3 min-w-0">
-                      <input
-                        type="checkbox"
-                        className="checkbox checkbox-sm checkbox-primary mt-0.5 shrink-0"
-                        checked={isSelected}
-                        onChange={(e) => handleSelectOne(e.target.checked, product.id)}
-                      />
-                      <div className="min-w-0">
-                        <h4 className="font-bold text-sm text-base-content leading-tight truncate">
-                          {product.name}
-                        </h4>
-                        <p className="text-xs text-base-content/60 line-clamp-1 mt-0.5">
-                          {product.description || <span className="text-xs text-base-content/40 italic">(sin descripción)</span>}
-                        </p>
-                      </div>
-                    </div>
-                    <span className={`badge badge-xs shrink-0 font-semibold ${product.status ? 'badge-success' : 'badge-error'}`}>
-                      {product.status ? 'Activo' : 'Inactivo'}
+            {data.map((product, index) => (
+              <article
+                key={product.id}
+                onClick={(e) => handleMobileCardTap(e, product)}
+                className="bg-base-100 p-3.5 rounded-2xl border border-base-200 hover:border-base-300 shadow-xs active:scale-[0.99] transition-all flex flex-col gap-2.5 select-none cursor-pointer"
+              >
+                {/* FILA SUPERIOR: NÚMERO, NOMBRE Y ESTADO */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start gap-2.5 min-w-0">
+                    <span className="text-xs font-bold text-base-content/40 w-4 text-center shrink-0 mt-0.5">
+                      {page * size + index + 1}
                     </span>
+                    <div className="min-w-0">
+                      <h3 className="text-sm font-semibold text-base-content leading-tight truncate">
+                        {product.name}
+                      </h3>
+                      <p className="text-xs text-base-content/60 line-clamp-1 mt-0.5">
+                        {product.description || <span className="text-xs text-base-content/40 italic">(sin descripción)</span>}
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-base-200/60 text-xs text-base-content/70">
-                    <span className="badge badge-neutral badge-outline badge-sm font-mono text-[10px]">
-                      {product.variantName || 'Variante Simple'}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedProductId(product.id);
-                        setSelectedProductName(product.name);
-                      }}
-                      className="btn btn-ghost btn-xs text-primary font-bold gap-1"
-                    >
-                      <Layers size={13} /> Ver Variantes
-                    </button>
+                  <div className="shrink-0">
+                    <ComerziaBadge
+                      label={product.status ? 'Activo' : 'Inactivo'}
+                      variant={product.status ? 'success' : 'error'}
+                    />
                   </div>
                 </div>
-              );
-            })}
+
+                {/* FILA INFERIOR: TIPO DE VARIANTE */}
+                <div className="pl-[26px] flex items-center justify-between text-xs text-base-content/70">
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-neutral text-neutral-content tracking-wider uppercase">
+                    {product.variantName || 'Variante Simple'}
+                  </span>
+                </div>
+              </article>
+            ))}
           </div>
         )}
 
-        {/* Paginación Mobile */}
-        {totalPages > 1 && (
-          <div className="flex justify-between items-center px-1 pt-2">
-            <button
-              type="button"
-              className="btn btn-sm btn-outline gap-1"
-              disabled={page === 0 || isLoading}
-              onClick={() => setPage(prev => Math.max(0, prev - 1))}
-            >
-              <ChevronLeft size={16} /> Ant.
-            </button>
-            <span className="text-xs font-semibold text-base-content/70">
-              Pág. {page + 1} de {totalPages} ({totalElements} tot.)
-            </span>
-            <button
-              type="button"
-              className="btn btn-sm btn-outline gap-1"
-              disabled={page >= totalPages - 1 || isLoading}
-              onClick={() => setPage(prev => prev + 1)}
-            >
-              Sig. <ChevronRight size={16} />
-            </button>
-          </div>
+        {/* PAGINACIÓN MOBILE ESTANDARIZADA */}
+        {totalElements > 0 && (
+          <footer className="mt-4 pt-3 pb-3 px-3 bg-base-100 border border-base-200 rounded-2xl shadow-xs" data-purpose="mobile-pagination">
+            <div className="flex items-center justify-between text-[11px] sm:text-xs text-base-content/70 mb-3 gap-2">
+              <div className="flex items-center gap-1.5 whitespace-nowrap shrink-0">
+                <span>Mostrar</span>
+                <select
+                  value={size}
+                  onChange={(e) => {
+                    setSize(Number(e.target.value));
+                    setPage(0);
+                  }}
+                  className="select select-bordered select-xs text-[11px] sm:text-xs font-semibold bg-base-100 h-6 min-h-6 px-1.5"
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+                <span className="whitespace-nowrap">de {totalElements} registros</span>
+              </div>
+              <span className="font-semibold text-base-content/80 whitespace-nowrap shrink-0">
+                Página {page + 1} de {Math.max(1, totalPages)}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-center gap-1.5">
+              <button
+                type="button"
+                aria-label="Primera página"
+                disabled={page === 0 || isLoading}
+                onClick={() => setPage(0)}
+                className="w-8 h-8 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
+              >
+                <ChevronsLeft className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                aria-label="Página anterior"
+                disabled={page === 0 || isLoading}
+                onClick={() => setPage(Math.max(0, page - 1))}
+                className="w-8 h-8 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                aria-label="Página siguiente"
+                disabled={page >= totalPages - 1 || isLoading}
+                onClick={() => setPage(page + 1)}
+                className="w-8 h-8 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                aria-label="Última página"
+                disabled={page >= totalPages - 1 || isLoading}
+                onClick={() => setPage(totalPages - 1)}
+                className="w-8 h-8 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
+              >
+                <ChevronsRight className="w-4 h-4" />
+              </button>
+            </div>
+          </footer>
         )}
       </div>
       
-      {/* MENÚ CONTEXTUAL */}
+      {/* MENÚ CONTEXTUAL (Centrado en móvil con telón / Posición de mouse en PC) */}
       <ComerziaContextMenu
         isOpen={contextMenu.isOpen}
         x={contextMenu.x}
         y={contextMenu.y}
-        onClose={() => setContextMenu({ ...contextMenu, isOpen: false })}
+        isCentered={contextMenu.isCentered}
+        onClose={() => setContextMenu(prev => ({ ...prev, isOpen: false }))}
       >
-        {contextMenu.row && (
+        {contextMenu.product && (
           <>
             <ContextMenuItem 
               icon={Layers}
               label="Ver Variantes"
               onClick={() => {
-                if (contextMenu.row) {
-                  setSelectedProductId(contextMenu.row.id);
-                  setSelectedProductName(contextMenu.row.name);
+                if (contextMenu.product) {
+                  setSelectedProductId(contextMenu.product.id);
+                  setSelectedProductName(contextMenu.product.name);
                 }
               }}
             />
             {canManage && (
               <>
                 <ContextMenuItem 
-                  icon={Edit}
+                  icon={Pencil}
                   label="Modificar Producto"
                   onClick={() => { 
-                    setProductToEdit(contextMenu.row); 
-                    setContextMenu({ ...contextMenu, isOpen: false }); 
+                    if (contextMenu.product) {
+                      setProductToEdit(contextMenu.product); 
+                    }
                   }} 
                 />
                 <ContextMenuItem 
@@ -339,8 +357,9 @@ export const ProductTable = ({ brandId, selectedProducts, setSelectedProducts, r
                   label="Eliminar Producto"
                   variant="error"
                   onClick={() => { 
-                    setProductToDelete(contextMenu.row); 
-                    setContextMenu({ ...contextMenu, isOpen: false }); 
+                    if (contextMenu.product) {
+                      setProductToDelete(contextMenu.product); 
+                    }
                   }} 
                 />
               </>

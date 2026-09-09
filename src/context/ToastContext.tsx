@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useRef, useCallback, useMemo, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { CheckCircle, AlertTriangle, XCircle, Info, X } from "lucide-react";
 
 type ToastType = "success" | "error" | "warning" | "info";
@@ -72,52 +73,46 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
     <ToastContext.Provider value={contextValue}>
       {children}
 
-      {/* CONTENEDOR: Ajustado el margen derecho para que el slide se vea limpio */}
-      <div className="fixed top-4 right-0 z-[10000] flex flex-col gap-3 w-full pointer-events-none pr-4 sm:pr-6">
-        {toasts.map((toast) => (
-          <div
-            key={toast.id}
-            // Aquí aplicamos la animación de entrada O la de salida según el estado
-            className={`
-                pointer-events-auto flex justify-end
-                ${toast.closing ? 'animate-slide-out-right' : 'animate-slide-in-right'}
-            `}
-          >
+      {/* Usar portal para asegurar que siempre sea fixed en el viewport */}
+      {typeof document !== 'undefined' && createPortal(
+        <div className="fixed top-4 right-0 z-[100000] flex flex-col gap-3 w-full pointer-events-none pr-4 sm:pr-6">
+          {toasts.map((toast) => (
             <div
-              role="alert"
+              key={toast.id}
               className={`
-                    alert alert-soft shadow-xl flex items-start border border-base-200/50
-                    ${getAlertClass(toast.type)}
-                    
-                    /* --- RESPONSIVE DESIGN --- */
-                    /* Móvil (Por defecto): Ancho flexible, texto normal */
-                    w-auto max-w-[90vw]
-                    
-                    /* PC (md): Ancho fijo más grande, padding extra */
-                    md:min-w-[420px] md:max-w-xl md:p-5
-                `}
+                  pointer-events-auto flex justify-end
+                  ${toast.closing ? 'animate-slide-out-right' : 'animate-slide-in-right'}
+              `}
             >
-              {/* Icono: Pequeño en móvil (20), Grande en PC (28) */}
-              <div className="mt-0.5 md:mt-1">
-                {getIcon(toast.type)}
-              </div>
-
-              {/* Texto: Normal en móvil (sm), Grande en PC (lg) */}
-              <span className="font-medium text-sm md:text-lg flex-1 leading-snug">
-                {toast.message}
-              </span>
-
-              {/* Botón X: Un poco más grande en PC */}
-              <button
-                onClick={() => startClosing(toast.id)}
-                className="btn btn-xs md:btn-sm btn-ghost btn-circle"
+              <div
+                role="alert"
+                className={`
+                      alert alert-soft shadow-xl flex items-start border border-base-200/50
+                      ${getAlertClass(toast.type)}
+                      w-auto max-w-[90vw]
+                      md:min-w-[420px] md:max-w-xl md:p-5
+                  `}
               >
-                <X size={18} />
-              </button>
+                <div className="mt-0.5 md:mt-1">
+                  {getIcon(toast.type)}
+                </div>
+
+                <span className="font-medium text-sm md:text-lg flex-1 leading-snug">
+                  {toast.message}
+                </span>
+
+                <button
+                  onClick={() => startClosing(toast.id)}
+                  className="btn btn-xs md:btn-sm btn-ghost btn-circle"
+                >
+                  <X size={18} />
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>,
+        document.body
+      )}
     </ToastContext.Provider>
   );
 };
@@ -139,11 +134,8 @@ const getAlertClass = (type: ToastType) => {
   }
 };
 
-// Utilidades de Iconos (Hacemos los iconos responsivos aquí también)
 const getIcon = (type: ToastType) => {
-  // Clase para controlar tamaño: 20px en móvil, 28px en escritorio
   const sizeClass = "w-5 h-5 md:w-7 md:h-7";
-
   switch (type) {
     case "success": return <CheckCircle className={sizeClass} />;
     case "error": return <XCircle className={sizeClass} />;

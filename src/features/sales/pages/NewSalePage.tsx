@@ -5,14 +5,11 @@ import { branchService } from '../../organization/services/branchService';
 import { useCartStore } from '../store/useCartStore';
 import type { SalesCatalogItem, SalesProductResponse } from '../types/sales';
 import { useToast } from '../../../context/ToastContext';
-import { ComerziaProductSearch } from '../components/ComerziaProductSearch';
-import { ComerziaModal } from '../../../components/ui/ComerziaModal';
-import { ComerziaInput } from '../../../components/ui/ComerziaInput';
+import { CommercialProductSearchBar } from '../../commercial/components/CommercialProductSearchBar';
 import { ComerziaButton } from '../../../components/ui/ComerziaButton';
-import { BarcodeScannerModal } from '../../../components/ui/BarcodeScannerModal';
-import { BtnCancel, BtnDeleteIcon } from '../../../components/ui/CrudButtons';
+import { BtnDeleteIcon } from '../../../components/ui/CrudButtons';
 import type { CartItem } from '../store/useCartStore';
-import { AlertCircle, ArrowRight, Barcode, Hash, Scan, ShoppingCart, Store, ScanBarcode, ChevronDown, ChevronUp, Eye, Trash2 } from 'lucide-react';
+import { AlertCircle, ArrowRight, Scan, ShoppingCart, Store, ChevronDown, ChevronUp, Trash2, Tag, X } from 'lucide-react';
 
 interface QuantityControlProps {
   item: CartItem;
@@ -50,10 +47,10 @@ const QuantityControl = ({ item, updateQuantity, toastWarning }: QuantityControl
 
   return (
     <div className="flex flex-col items-center justify-center">
-      <div className="flex items-center justify-center gap-1">
+      <div className="flex items-center justify-center gap-0.5 sm:gap-1">
         <button
           type="button"
-          className="btn btn-circle btn-xs btn-ghost text-base-content/70 active:scale-95 transition-transform"
+          className="btn btn-circle btn-xs btn-ghost h-6 w-6 min-h-0 text-base-content/70 active:scale-95 transition-transform"
           onClick={() => {
             const res = updateQuantity(item.productVariantId, item.quantity - 1);
             const updatedItem = useCartStore.getState().items.find(i => i.productVariantId === item.productVariantId);
@@ -66,7 +63,7 @@ const QuantityControl = ({ item, updateQuantity, toastWarning }: QuantityControl
           min={1}
           step={1}
           max={maxPackages > 0 ? maxPackages : 1}
-          className="input input-bordered input-sm w-16 font-mono text-center px-1 rounded-lg [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          className="input input-bordered input-xs w-10 sm:w-12 font-mono text-xs font-bold text-center px-0.5 rounded-lg [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           value={val}
           onWheel={(e) => (e.target as HTMLInputElement).blur()}
           onChange={(e) => setVal(e.target.value)}
@@ -79,7 +76,7 @@ const QuantityControl = ({ item, updateQuantity, toastWarning }: QuantityControl
         />
         <button
           type="button"
-          className="btn btn-circle btn-xs btn-ghost text-base-content/70 active:scale-95 transition-transform"
+          className="btn btn-circle btn-xs btn-ghost h-6 w-6 min-h-0 text-base-content/70 active:scale-95 transition-transform"
           onClick={() => {
             const res = updateQuantity(item.productVariantId, item.quantity + 1);
             const updatedItem = useCartStore.getState().items.find(i => i.productVariantId === item.productVariantId);
@@ -89,7 +86,7 @@ const QuantityControl = ({ item, updateQuantity, toastWarning }: QuantityControl
         >+</button>
       </div>
       {factor > 1 && (
-        <span className="text-[10px] text-base-content/50 font-mono mt-0.5 font-medium">
+        <span className="text-[9px] text-base-content/50 font-mono font-medium leading-none mt-0.5">
           ({totalUnits} {totalUnits === 1 ? 'unid.' : 'unids.'})
         </span>
       )}
@@ -97,110 +94,227 @@ const QuantityControl = ({ item, updateQuantity, toastWarning }: QuantityControl
   );
 };
 
-interface UnitDiscountControlProps {
+interface ProductDiscountControlProps {
   item: CartItem;
-  maxDiscount: number;
-  hasDiscountLimit: boolean;
+  currency: string;
   updateDiscount: (id: string, disc: number) => { success: boolean; message?: string };
-  toastWarning: (msg: string) => void;
-}
-
-const UnitDiscountControl = ({ item, maxDiscount, hasDiscountLimit, updateDiscount, toastWarning }: UnitDiscountControlProps) => {
-  const [val, setVal] = useState<string>(item.discountAmount === 0 ? '' : item.discountAmount.toString());
-
-  useEffect(() => {
-    setVal(item.discountAmount === 0 ? '' : item.discountAmount.toString());
-  }, [item.discountAmount]);
-
-  const handleCommit = () => {
-    const disc = parseFloat(val) || 0;
-    const res = updateDiscount(item.productVariantId, disc);
-    const updatedItem = useCartStore.getState().items.find(i => i.productVariantId === item.productVariantId);
-    if (updatedItem) {
-      setVal(updatedItem.discountAmount === 0 ? '' : updatedItem.discountAmount.toString());
-    }
-    if (!res.success && res.message) {
-      toastWarning(res.message);
-    }
-  };
-
-  return (
-    <input
-      type="number"
-      min="0"
-      max={maxDiscount}
-      step="0.01"
-      className="input input-bordered input-sm w-full max-w-[80px] font-mono text-right text-info ml-auto block focus:ring-info/30"
-      value={val}
-      disabled={!hasDiscountLimit || item.quantity === 0}
-      onWheel={(e) => (e.target as HTMLElement).blur()}
-      placeholder="0.00"
-      onChange={(e) => setVal(e.target.value)}
-      onBlur={handleCommit}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') {
-          (e.target as HTMLInputElement).blur();
-        }
-      }}
-    />
-  );
-};
-
-interface TotalDiscountControlProps {
-  item: CartItem;
-  maxTotalDiscount: number;
-  totalDiscount: number;
-  hasDiscountLimit: boolean;
   updateTotalDiscount: (id: string, totDisc: number) => { success: boolean; message?: string };
   toastWarning: (msg: string) => void;
+  compact?: boolean;
 }
 
-const TotalDiscountControl = ({ item, maxTotalDiscount, totalDiscount, hasDiscountLimit, updateTotalDiscount, toastWarning }: TotalDiscountControlProps) => {
-  const [val, setVal] = useState<string>(totalDiscount === 0 ? '' : Number(totalDiscount.toFixed(2)).toString());
+const ProductDiscountControl = ({
+  item,
+  currency,
+  updateDiscount,
+  updateTotalDiscount,
+  toastWarning,
+  compact = false
+}: ProductDiscountControlProps) => {
+  const [mode, setMode] = useState<'UNIT' | 'TOTAL'>('UNIT');
+
+  const factor = item.equivalenceFactor || 1;
+  const totalUnits = item.quantity * factor;
+  const maxUnitDiscount = Math.max(0, item.salePrice - item.discountPrice);
+  const maxTotalDiscount = maxUnitDiscount * totalUnits;
+  const currentTotalDiscount = item.discountAmount * totalUnits;
+
+  const [val, setVal] = useState<string>(() => {
+    if (mode === 'UNIT') {
+      return item.discountAmount === 0 ? '' : Number(item.discountAmount.toFixed(2)).toString();
+    } else {
+      return currentTotalDiscount === 0 ? '' : Number(currentTotalDiscount.toFixed(2)).toString();
+    }
+  });
 
   useEffect(() => {
-    setVal(totalDiscount === 0 ? '' : Number(totalDiscount.toFixed(2)).toString());
-  }, [totalDiscount]);
-
-  const handleCommit = () => {
-    const totDisc = parseFloat(val) || 0;
-    const res = updateTotalDiscount(item.productVariantId, totDisc);
-    const updatedItem = useCartStore.getState().items.find(i => i.productVariantId === item.productVariantId);
-    if (updatedItem) {
-      const updatedTotal = updatedItem.discountAmount * updatedItem.quantity * (updatedItem.equivalenceFactor || 1);
-      setVal(updatedTotal === 0 ? '' : Number(updatedTotal.toFixed(2)).toString());
+    if (mode === 'UNIT') {
+      setVal(item.discountAmount === 0 ? '' : Number(item.discountAmount.toFixed(2)).toString());
+    } else {
+      setVal(currentTotalDiscount === 0 ? '' : Number(currentTotalDiscount.toFixed(2)).toString());
     }
-    if (!res.success && res.message) {
-      toastWarning(res.message);
+  }, [item.discountAmount, item.quantity, mode]);
+
+  const handleModeChange = (newMode: 'UNIT' | 'TOTAL') => {
+    setMode(newMode);
+    if (newMode === 'UNIT') {
+      setVal(item.discountAmount === 0 ? '' : Number(item.discountAmount.toFixed(2)).toString());
+    } else {
+      setVal(currentTotalDiscount === 0 ? '' : Number(currentTotalDiscount.toFixed(2)).toString());
     }
   };
 
+  const handleCommit = () => {
+    const num = parseFloat(val) || 0;
+    if (mode === 'UNIT') {
+      const res = updateDiscount(item.productVariantId, num);
+      const updatedItem = useCartStore.getState().items.find(i => i.productVariantId === item.productVariantId);
+      if (updatedItem) {
+        setVal(updatedItem.discountAmount === 0 ? '' : Number(updatedItem.discountAmount.toFixed(2)).toString());
+      }
+      if (!res.success && res.message) {
+        toastWarning(res.message);
+      }
+    } else {
+      const res = updateTotalDiscount(item.productVariantId, num);
+      const updatedItem = useCartStore.getState().items.find(i => i.productVariantId === item.productVariantId);
+      if (updatedItem) {
+        const updatedTot = updatedItem.discountAmount * updatedItem.quantity * (updatedItem.equivalenceFactor || 1);
+        setVal(updatedTot === 0 ? '' : Number(updatedTot.toFixed(2)).toString());
+      }
+      if (!res.success && res.message) {
+        toastWarning(res.message);
+      }
+    }
+  };
+
+  const handleClear = () => {
+    updateDiscount(item.productVariantId, 0);
+    setVal('');
+  };
+
+  const currentMax = mode === 'UNIT' ? maxUnitDiscount : maxTotalDiscount;
+
+  if (compact) {
+    return (
+      <div className="flex flex-col items-end gap-1 min-w-[125px]">
+        {/* Toggle segmented button */}
+        <div className="inline-flex p-0.5 rounded-md bg-base-200 border border-base-300">
+          <button
+            type="button"
+            onClick={() => handleModeChange('UNIT')}
+            className={`px-1.5 py-0.5 text-[10px] font-bold rounded transition-all ${
+              mode === 'UNIT' ? 'bg-base-100 text-info shadow-xs' : 'text-base-content/50 hover:text-base-content'
+            }`}
+            title="Descuento por Unidad"
+          >
+            x Unid.
+          </button>
+          <button
+            type="button"
+            onClick={() => handleModeChange('TOTAL')}
+            className={`px-1.5 py-0.5 text-[10px] font-bold rounded transition-all ${
+              mode === 'TOTAL' ? 'bg-base-100 text-info shadow-xs' : 'text-base-content/50 hover:text-base-content'
+            }`}
+            title="Descuento sobre Total"
+          >
+            Total
+          </button>
+        </div>
+
+        {/* Input container with currency prefix & clean padding */}
+        <div className="relative w-28">
+          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-base-content/40 select-none pointer-events-none">
+            {currency}
+          </span>
+          <input
+            type="number"
+            min="0"
+            max={currentMax}
+            step="0.01"
+            placeholder="0.00"
+            value={val}
+            disabled={item.quantity === 0}
+            onWheel={(e) => (e.target as HTMLInputElement).blur()}
+            onChange={(e) => setVal(e.target.value)}
+            onBlur={handleCommit}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                (e.target as HTMLInputElement).blur();
+              }
+            }}
+            className="input input-bordered input-xs w-full pl-8 pr-2.5 text-right font-mono font-bold text-info rounded focus:border-info focus:ring-1 focus:ring-info/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          />
+        </div>
+        <span className="text-[9px] text-base-content/40 font-mono">
+          Máx: {currentMax.toFixed(2)}
+        </span>
+      </div>
+    );
+  }
+
   return (
-    <input
-      type="number"
-      min="0"
-      max={maxTotalDiscount}
-      step="0.01"
-      className="input input-bordered input-sm w-full max-w-[80px] font-mono text-right text-info font-bold ml-auto block focus:ring-info/30"
-      value={val}
-      disabled={!hasDiscountLimit || item.quantity === 0}
-      onWheel={(e) => (e.target as HTMLInputElement).blur()}
-      placeholder="0.00"
-      onChange={(e) => setVal(e.target.value)}
-      onBlur={handleCommit}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') {
-          (e.target as HTMLInputElement).blur();
-        }
-      }}
-    />
+    <div className="space-y-3">
+      {/* Switcher Header */}
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs font-semibold text-base-content/70">Modo de descuento:</span>
+        <div className="inline-flex p-0.5 rounded-lg bg-base-300/60 border border-base-300">
+          <button
+            type="button"
+            onClick={() => handleModeChange('UNIT')}
+            className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${
+              mode === 'UNIT'
+                ? 'bg-base-100 text-info shadow-xs'
+                : 'text-base-content/60 hover:text-base-content'
+            }`}
+          >
+            Por Unidad
+          </button>
+          <button
+            type="button"
+            onClick={() => handleModeChange('TOTAL')}
+            className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${
+              mode === 'TOTAL'
+                ? 'bg-base-100 text-info shadow-xs'
+                : 'text-base-content/60 hover:text-base-content'
+            }`}
+          >
+            Por Total
+          </button>
+        </div>
+      </div>
+
+      {/* Input row */}
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-base-content/40 select-none pointer-events-none">
+            {currency}
+          </span>
+          <input
+            type="number"
+            min="0"
+            max={currentMax}
+            step="0.01"
+            placeholder="0.00"
+            value={val}
+            disabled={item.quantity === 0}
+            onWheel={(e) => (e.target as HTMLInputElement).blur()}
+            onChange={(e) => setVal(e.target.value)}
+            onBlur={handleCommit}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                (e.target as HTMLInputElement).blur();
+              }
+            }}
+            className="input input-bordered input-sm w-full pl-12 pr-3 text-right font-mono font-bold text-info rounded-xl focus:border-info focus:ring-1 focus:ring-info/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          />
+        </div>
+        {item.discountAmount > 0 && (
+          <button
+            type="button"
+            onClick={handleClear}
+            className="btn btn-sm btn-ghost text-error hover:bg-error/10 px-2 rounded-xl"
+            title="Quitar descuento"
+          >
+            <X size={16} />
+          </button>
+        )}
+      </div>
+
+      {/* Helper text */}
+      <div className="flex items-center justify-between text-[11px] text-base-content/50 px-0.5">
+        <span>{mode === 'UNIT' ? 'Descuento unitario' : 'Descuento total'}</span>
+        <span className="font-mono font-medium">
+          Máx. permitido: {currency} {currentMax.toFixed(2)}
+        </span>
+      </div>
+    </div>
   );
 };
 
 export const NewSalePage = () => {
-  const { userProfile } = useAuthStore();
-  const roles = userProfile?.roles || [];
-  const isOwner = roles.includes('OWNER');
+  const { hasPermission, userProfile } = useAuthStore();
+  const hasSwitchBranchPerm = hasPermission('SWITCH_BRANCH');
 
   const { success: toastSuccess, error: toastError, warning: toastWarning } = useToast();
 
@@ -209,11 +323,6 @@ export const NewSalePage = () => {
   const [isLoadingInit, setIsLoadingInit] = useState(true);
   const [initError, setInitError] = useState<string | null>(null);
 
-  const [isSkuModalOpen, setIsSkuModalOpen] = useState(false);
-  const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false);
-  const [isScannerModalOpen, setIsScannerModalOpen] = useState(false);
-  const [manualSearchTerm, setManualSearchTerm] = useState('');
-  const [isManualSearching, setIsManualSearching] = useState(false);
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
 
   const {
@@ -232,7 +341,7 @@ export const NewSalePage = () => {
     setIsLoadingInit(true);
     setInitError(null);
     try {
-      if (isOwner) {
+      if (hasSwitchBranchPerm) {
         const branchPage = await branchService.getBranches(0, 100, true);
         const branchList = branchPage.content || [];
         setBranches(branchList);
@@ -249,7 +358,7 @@ export const NewSalePage = () => {
         setCartBranchId(null);
       }
     } catch (err: any) {
-      if (isOwner) {
+      if (hasSwitchBranchPerm) {
         setInitError('Error al inicializar las sucursales activas.');
       }
     } finally {
@@ -309,32 +418,7 @@ export const NewSalePage = () => {
     }
   };
 
-  const handleManualSearch = async (type: 'sku' | 'barcode') => {
-    if (!manualSearchTerm.trim()) return;
 
-    setIsManualSearching(true);
-    try {
-      let productResponse: SalesProductResponse;
-      if (type === 'sku') {
-        productResponse = await salesService.getProductDetailsBySku(manualSearchTerm.trim());
-      } else {
-        productResponse = await salesService.getProductDetailsByBarcode(manualSearchTerm.trim());
-      }
-
-      if (productResponse) {
-        handleProductSelect(productResponse);
-        setManualSearchTerm('');
-        if (type === 'sku') setIsSkuModalOpen(false);
-        else setIsBarcodeModalOpen(false);
-      } else {
-        toastError(`No se encontró ningún producto con ese ${type.toUpperCase()}`);
-      }
-    } catch (err: any) {
-      toastError(`No se encontró ningún producto con ese ${type.toUpperCase()}`);
-    } finally {
-      setIsManualSearching(false);
-    }
-  };
 
   const handleSendToRegister = async () => {
     if (items.length === 0) {
@@ -353,7 +437,7 @@ export const NewSalePage = () => {
             lineDiscountAmount: i.discountAmount
           }))
         },
-        isOwner && selectedBranchId ? selectedBranchId : null
+        hasSwitchBranchPerm && selectedBranchId ? selectedBranchId : null
       );
       toastSuccess('¡Venta registrada con éxito y enviada a Caja!');
       clearCart();
@@ -383,29 +467,33 @@ export const NewSalePage = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-base-100 p-6 rounded-2xl border border-base-200 shadow-sm">
-        <div>
-          <h1 className="text-2xl font-bold text-base-content flex items-center gap-2">
-            <ShoppingCart className="text-primary" size={28} /> Nueva Venta (Registro)
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-base-100 p-4 sm:p-6 rounded-2xl border border-base-200 shadow-sm">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-base-content flex items-center gap-2">
+            <ShoppingCart className="text-primary shrink-0" size={26} /> Nueva Venta (Registro)
           </h1>
-          <p className="text-sm text-base-content/60 mt-1">
+          <p className="text-xs sm:text-sm text-base-content/60 mt-1">
             Busca y selecciona productos para armar el pedido antes de enviar a caja.
           </p>
         </div>
 
         {/* Selector de Sucursal */}
-        {isOwner && branches.length > 0 && (
-          <div className="flex items-center gap-3 bg-base-200/50 p-2.5 rounded-xl border border-base-300">
-            <Store size={20} className="text-primary" />
-            <div className="flex flex-col">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-base-content/60">Sucursal de Origen</span>
+        {hasSwitchBranchPerm && branches.length > 0 && (
+          <div className="flex items-center gap-3 bg-base-200/50 p-2 sm:p-2.5 rounded-xl border border-base-300 w-full sm:w-auto max-w-full sm:max-w-xs shrink-0">
+            <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0">
+              <Store size={18} />
+            </div>
+            <div className="flex flex-col min-w-0 flex-1">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-base-content/60 truncate">
+                Sucursal de Origen
+              </span>
               <select
-                className="select select-ghost select-sm font-bold text-base-content focus:bg-transparent -ml-2 -mt-1"
+                className="select select-bordered select-sm w-full bg-base-100 font-bold text-xs sm:text-sm text-base-content truncate pr-8 focus:border-primary focus:outline-none"
                 value={selectedBranchId}
                 onChange={(e) => handleBranchChange(e.target.value)}
               >
                 {branches.map((b) => (
-                  <option key={b.id} value={b.id}>
+                  <option key={b.id} value={b.id} title={b.name}>
                     {b.name}
                   </option>
                 ))}
@@ -419,48 +507,11 @@ export const NewSalePage = () => {
       <div className="space-y-6">
 
         {/* Tarjeta de Búsqueda */}
-        <div className="bg-base-100 p-4 sm:p-5 rounded-2xl border border-base-200 shadow-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-base-200 pb-3 gap-2">
-            <h2 className="font-bold text-base-content flex items-center gap-2 text-xs sm:text-sm uppercase tracking-wide truncate">
-              <Scan size={18} className="text-primary shrink-0" />
-              <span className="hidden sm:inline">Selección de Productos</span>
-              <span className="sm:hidden">Productos</span>
-            </h2>
-            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-              <ComerziaButton
-                variant="primary"
-                label="Escanear Cámara / QR"
-                icon={<ScanBarcode size={15} />}
-                className="btn-xs sm:btn-sm px-2 sm:px-3 min-w-0"
-                responsive={true}
-                onClick={() => setIsScannerModalOpen(true)}
-                tooltip="Escanear Cámara / QR"
-              />
-              <ComerziaButton
-                variant="ghost"
-                label="Buscar por SKU"
-                icon={<Hash size={15} />}
-                className="btn-xs sm:btn-sm px-2 sm:px-3 min-w-0 text-base-content/70 hover:bg-base-200"
-                responsive={true}
-                onClick={() => { setManualSearchTerm(''); setIsSkuModalOpen(true); }}
-                tooltip="Buscar por SKU"
-              />
-              <ComerziaButton
-                variant="ghost"
-                label="Buscar por Código Barras"
-                icon={<Barcode size={15} />}
-                className="btn-xs sm:btn-sm px-2 sm:px-3 min-w-0 text-base-content/70 hover:bg-base-200"
-                responsive={true}
-                onClick={() => { setManualSearchTerm(''); setIsBarcodeModalOpen(true); }}
-                tooltip="Buscar por Código de Barras"
-              />
-            </div>
-          </div>
-
-          {/* Componente Autocomplete */}
-          <ComerziaProductSearch
-            onProductSelect={handleProductSelect}
-            onError={toastError}
+        {/* Componente Buscador Optimizado (Nombre, SKU, Barcode, Cámara) */}
+        <div className="bg-base-100 p-4 sm:p-5 rounded-2xl border border-base-200 shadow-sm">
+          <CommercialProductSearchBar 
+            onSearchBarcode={handleScanBarcode}
+            placeholder="Buscar producto por nombre, SKU o escanear..."
           />
         </div>
 
@@ -499,44 +550,43 @@ export const NewSalePage = () => {
                   const factor = item.equivalenceFactor || 1;
                   const totalUnits = item.quantity * factor;
                   const maxDiscount = item.salePrice - item.discountPrice;
-                  const hasDiscountLimit = item.discountPrice < item.salePrice;
+                  const hasDiscountLimit = item.discountPrice < item.salePrice && maxDiscount > 0;
                   const totalDiscount = item.discountAmount * totalUnits;
-                  const maxTotalDiscount = maxDiscount * totalUnits;
                   const subtotal = item.salePrice * totalUnits;
                   const finalTotal = subtotal - totalDiscount;
                   const isExpanded = !!expandedItems[item.productVariantId];
 
                   return (
-                    <div key={`mobile-${item.productVariantId}-${item.priceTypeId}`} className="p-3.5 space-y-3 bg-base-100">
-                      {/* Cabecera de la Card: #, Nombre, Variante, SKU y Eliminar */}
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-start gap-2 min-w-0 flex-1">
-                          <span className="badge badge-sm badge-ghost font-mono mt-0.5 shrink-0">{idx + 1}</span>
-                          <div className="min-w-0">
-                            <h4 className="font-bold text-sm text-base-content leading-tight">
+                    <div key={`mobile-${item.productVariantId}-${item.priceTypeId}`} className="p-3 space-y-2 bg-base-100">
+                      {/* Cabecera de la Card: #, Nombre + Variante en una sola línea y botón X rojo */}
+                      <div className="flex items-center justify-between gap-2 min-w-0">
+                        <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
+                          <span className="badge badge-xs badge-ghost font-mono shrink-0">{idx + 1}</span>
+                          <div className="min-w-0 flex-1 truncate whitespace-nowrap text-xs sm:text-sm">
+                            <span className="font-bold text-base-content">
                               {item.productName}
-                            </h4>
-                            <p className="text-xs text-primary font-medium mt-0.5">
-                              {item.variantName}
-                            </p>
-                            <span className="text-[10px] text-base-content/50 font-mono block mt-0.5">
-                              SKU: {item.sku}
+                            </span>
+                            <span className="text-primary font-semibold ml-1.5">
+                              · {item.variantName}
                             </span>
                           </div>
                         </div>
-                        <BtnDeleteIcon
+                        <button
+                          type="button"
                           onClick={() => removeItem(item.productVariantId)}
-                        />
+                          className="btn btn-ghost btn-xs text-error hover:bg-error/10 p-0.5 h-6 w-6 min-h-0 rounded-full shrink-0 flex items-center justify-center transition-colors"
+                          title="Eliminar producto"
+                        >
+                          <X size={15} className="stroke-[2.5]" />
+                        </button>
                       </div>
 
-                      {/* Select de Presentación y Control de Cantidad */}
-                      <div className="grid grid-cols-2 gap-2.5 items-center pt-1">
-                        <div>
-                          <label className="text-[11px] font-semibold text-base-content/60 block mb-1">
-                            Presentación
-                          </label>
+                      {/* Fila Dividida en 3 Espacios: Presentación | Cantidad | Total */}
+                      <div className="grid grid-cols-3 gap-2 items-center pt-0.5">
+                        {/* 1. Presentación (Tipo de Precio) */}
+                        <div className="w-full min-w-0">
                           <select
-                            className="select select-bordered select-sm w-full font-medium text-xs rounded-lg"
+                            className="select select-bordered select-xs w-full font-bold text-xs text-base-content rounded-lg px-2 truncate"
                             value={item.priceTypeId}
                             onChange={(e) => {
                               const res = updatePriceType(item.productVariantId, e.target.value);
@@ -550,6 +600,7 @@ export const NewSalePage = () => {
                                   key={p.priceTypeId}
                                   value={p.priceTypeId}
                                   disabled={isDisabled}
+                                  title={p.priceTypeName}
                                 >
                                   {p.priceTypeName} {isDisabled ? '(Sin stock)' : ''}
                                 </option>
@@ -558,94 +609,54 @@ export const NewSalePage = () => {
                           </select>
                         </div>
 
-                        <div>
-                          <label className="text-[11px] font-semibold text-base-content/60 block mb-1 text-center">
-                            Cantidad
-                          </label>
+                        {/* 2. Cantidad */}
+                        <div className="flex justify-center w-full min-w-0">
                           <QuantityControl
                             item={item}
                             updateQuantity={updateQuantity}
                             toastWarning={toastWarning}
                           />
                         </div>
-                      </div>
 
-                      {/* Pie de Card: Botón Desglose y Total del Producto */}
-                      <div className="flex items-center justify-between pt-1 border-t border-base-200/60">
-                        <button
-                          type="button"
-                          onClick={() => setExpandedItems(prev => ({ ...prev, [item.productVariantId]: !prev[item.productVariantId] }))}
-                          className="btn btn-ghost btn-xs gap-1 text-primary pl-0 hover:bg-transparent"
-                        >
-                          <Eye size={13} />
-                          <span className="text-xs font-semibold">
-                            {isExpanded ? 'Ocultar precios' : 'Detalles de precios'}
-                          </span>
-                          {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                        </button>
-
-                        <div className="text-right">
-                          <span className="text-[10px] text-base-content/50 uppercase block font-medium">
-                            Importe Final
-                          </span>
-                          <span className="text-sm font-bold font-mono text-primary">
+                        {/* 3. Total (Importe Final) */}
+                        <div className="text-right w-full min-w-0">
+                          <span className="text-xs sm:text-sm font-bold font-mono text-primary truncate block">
                             {currency} {finalTotal.toFixed(2)}
                           </span>
                         </div>
                       </div>
 
-                      {/* Acordeón Desplegable de Precios y Descuentos */}
-                      {isExpanded && (
-                        <div className="bg-base-200/60 rounded-xl p-3 space-y-2.5 border border-base-200 text-xs mt-1">
-                          <div className="grid grid-cols-2 gap-2">
-                            <div>
-                              <span className="text-base-content/60 block text-[11px]">Precio Unit.</span>
-                              <span className="font-mono font-semibold text-base-content/80">
-                                {currency} {item.salePrice.toFixed(2)}
-                              </span>
-                            </div>
-                            <div className="text-right">
-                              <span className="text-base-content/60 block text-[11px]">Subtotal</span>
-                              <span className="font-mono font-semibold text-base-content/80">
-                                {currency} {subtotal.toFixed(2)}
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-2 pt-1 border-t border-base-200">
-                            <div>
-                              <label className="text-info font-medium block text-[11px] mb-1">
-                                Desc. Unitario
-                              </label>
-                              <UnitDiscountControl
-                                item={item}
-                                maxDiscount={maxDiscount}
-                                hasDiscountLimit={hasDiscountLimit}
-                                updateDiscount={updateDiscount}
-                                toastWarning={toastWarning}
-                              />
-                            </div>
-                            <div className="text-right">
-                              <label className="text-info font-medium block text-[11px] mb-1">
-                                Desc. Total
-                              </label>
-                              <TotalDiscountControl
-                                item={item}
-                                maxTotalDiscount={maxTotalDiscount}
-                                totalDiscount={totalDiscount}
-                                hasDiscountLimit={hasDiscountLimit}
-                                updateTotalDiscount={updateTotalDiscount}
-                                toastWarning={toastWarning}
-                              />
-                            </div>
-                          </div>
-
-                          <div className="flex justify-between items-center pt-1 border-t border-base-200 text-xs">
-                            <span className="text-base-content/70">P. Final Unit.:</span>
-                            <span className="font-mono font-bold text-base-content/90">
-                              {currency} {(item.salePrice - item.discountAmount).toFixed(2)}
+                      {/* Botón de Descuento (Solo si el tipo de precio lo permite) */}
+                      {hasDiscountLimit && (
+                        <div className="pt-0.5">
+                          <button
+                            type="button"
+                            onClick={() => setExpandedItems(prev => ({ ...prev, [item.productVariantId]: !prev[item.productVariantId] }))}
+                            className={`btn btn-ghost btn-xs gap-1 pl-0 h-5 min-h-0 hover:bg-transparent ${
+                              item.discountAmount > 0 ? 'text-info font-bold' : 'text-base-content/60 font-medium'
+                            }`}
+                          >
+                            <Tag size={12} className={item.discountAmount > 0 ? 'text-info' : 'text-base-content/40'} />
+                            <span className="text-[11px]">
+                              {item.discountAmount > 0
+                                ? `Desc: -${currency} ${totalDiscount.toFixed(2)}`
+                                : (isExpanded ? 'Cerrar descuento' : '+ Agregar descuento')}
                             </span>
-                          </div>
+                            {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Acordeón Desplegable de Descuento (Solo si tiene límite y está expandido) */}
+                      {hasDiscountLimit && isExpanded && (
+                        <div className="bg-base-200/50 rounded-xl p-2.5 border border-base-200 text-xs mt-1">
+                          <ProductDiscountControl
+                            item={item}
+                            currency={currency}
+                            updateDiscount={updateDiscount}
+                            updateTotalDiscount={updateTotalDiscount}
+                            toastWarning={toastWarning}
+                          />
                         </div>
                       )}
                     </div>
@@ -660,13 +671,11 @@ export const NewSalePage = () => {
                     <tr className="bg-base-200/50 border-b border-base-200 text-xs font-semibold uppercase">
                       <th className="w-8">#</th>
                       <th>Producto</th>
-                      <th>Tipo Unidad</th>
+                      <th>Presentación</th>
                       <th className="text-center w-36">Cantidad</th>
                       <th className="text-right">Precio Unit.</th>
-                      <th className="text-right border-r border-base-300/50 text-info">Desc. Unit.</th>
-                      <th className="text-right bg-primary/5">Subtotal</th>
-                      <th className="text-right border-r border-base-300/50 text-info font-bold">Desc. Total</th>
-                      <th className="text-right bg-primary/5">P. Final Unit.</th>
+                      <th className="text-right">Subtotal</th>
+                      <th className="text-right text-info font-bold">Descuento</th>
                       <th className="text-right bg-primary/5 font-bold text-primary">Importe Final</th>
                       <th className="w-10"></th>
                     </tr>
@@ -676,9 +685,8 @@ export const NewSalePage = () => {
                       const factor = item.equivalenceFactor || 1;
                       const totalUnits = item.quantity * factor;
                       const maxDiscount = item.salePrice - item.discountPrice;
-                      const hasDiscountLimit = item.discountPrice < item.salePrice;
+                      const hasDiscountLimit = item.discountPrice < item.salePrice && maxDiscount > 0;
                       const totalDiscount = item.discountAmount * totalUnits;
-                      const maxTotalDiscount = maxDiscount * totalUnits;
                       const subtotal = item.salePrice * totalUnits;
                       const finalTotal = subtotal - totalDiscount;
 
@@ -721,41 +729,38 @@ export const NewSalePage = () => {
                               toastWarning={toastWarning}
                             />
                           </td>
-                          <td className="font-mono text-sm text-right border-l border-base-300/50 text-base-content/60">
-                            {item.salePrice.toFixed(2)}
+                          <td className="font-mono text-sm text-right text-base-content/70">
+                            {currency} {item.salePrice.toFixed(2)}
                           </td>
-                          <td className="border-r border-base-300/50">
-                            <UnitDiscountControl
-                              item={item}
-                              maxDiscount={maxDiscount}
-                              hasDiscountLimit={hasDiscountLimit}
-                              updateDiscount={updateDiscount}
-                              toastWarning={toastWarning}
-                            />
+                          <td className="font-mono text-sm text-right text-base-content/70">
+                            {currency} {subtotal.toFixed(2)}
                           </td>
-                          <td className="font-mono text-sm text-right text-base-content/60">
-                            {subtotal.toFixed(2)}
-                          </td>
-                          <td className="border-r border-base-300/50">
-                            <TotalDiscountControl
-                              item={item}
-                              maxTotalDiscount={maxTotalDiscount}
-                              totalDiscount={totalDiscount}
-                              hasDiscountLimit={hasDiscountLimit}
-                              updateTotalDiscount={updateTotalDiscount}
-                              toastWarning={toastWarning}
-                            />
-                          </td>
-                          <td className="font-mono text-sm text-right bg-primary/5 text-base-content/80 font-medium">
-                            {(item.salePrice - item.discountAmount).toFixed(2)}
+                          <td className="text-right">
+                            {hasDiscountLimit ? (
+                              <ProductDiscountControl
+                                item={item}
+                                currency={currency}
+                                updateDiscount={updateDiscount}
+                                updateTotalDiscount={updateTotalDiscount}
+                                toastWarning={toastWarning}
+                                compact={true}
+                              />
+                            ) : (
+                              <span className="text-xs text-base-content/30 font-mono">-</span>
+                            )}
                           </td>
                           <td className="font-bold text-sm font-mono text-right bg-primary/5 text-primary">
                             {currency} {finalTotal.toFixed(2)}
                           </td>
                           <td className="text-right">
-                            <BtnDeleteIcon
+                            <button
+                              type="button"
                               onClick={() => removeItem(item.productVariantId)}
-                            />
+                              className="btn btn-ghost btn-xs text-error hover:bg-error/10 p-1 h-6 w-6 min-h-0 rounded-full flex items-center justify-center ml-auto transition-colors"
+                              title="Eliminar producto"
+                            >
+                              <X size={15} className="stroke-[2.5]" />
+                            </button>
                           </td>
                         </tr>
                       );
@@ -767,42 +772,34 @@ export const NewSalePage = () => {
           )}
         </div>
 
-        {/* Resumen del Pedido en la Parte Inferior */}
-        <div className="bg-base-100 p-4 sm:p-6 rounded-2xl border border-base-200 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 md:gap-6">
-          <div>
+        {/* Resumen del Pedido en la Parte Inferior (Minimalista) */}
+        <div className="bg-base-100 p-4 sm:p-6 rounded-2xl border border-base-200 shadow-sm flex flex-col md:flex-row items-stretch md:items-end justify-between gap-6">
+          <div className="flex flex-col gap-1">
             <h2 className="font-bold text-base-content text-sm uppercase tracking-wide">
-              Resumen del Pedido
+              Total del Pedido
             </h2>
-            <p className="text-xs text-base-content/60 mt-0.5">
-              {items.length} {items.length === 1 ? 'producto seleccionado' : 'productos seleccionados'}
-            </p>
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 sm:gap-6 md:gap-8">
-            <div className="grid grid-cols-2 sm:flex sm:items-center gap-3 sm:gap-6">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-xs sm:text-sm text-base-content/70 bg-base-200/40 sm:bg-transparent p-2.5 sm:p-0 rounded-xl">
-                <span className="font-medium">Subtotal:</span>
-                <span className="font-mono font-bold text-base-content">{currency} {getSubtotal().toFixed(2)}</span>
-              </div>
-
-              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-xs sm:text-sm text-error bg-error/5 sm:bg-transparent p-2.5 sm:p-0 rounded-xl">
-                <span className="font-medium">Descuento:</span>
-                <span className="font-mono font-bold">-{currency} {getDiscountedAmount().toFixed(2)}</span>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between sm:justify-start gap-3 bg-base-200/60 px-4 py-2.5 rounded-xl border border-base-200">
-              <span className="font-bold text-sm sm:text-base text-base-content">Total:</span>
-              <span className="font-bold text-xl sm:text-2xl font-mono text-primary">
+            <div className="flex items-baseline gap-2">
+              <span className="text-4xl sm:text-5xl font-mono font-black text-primary tracking-tight">
                 {currency} {getTotal().toFixed(2)}
               </span>
+              <span className="text-sm font-medium text-base-content/50 uppercase tracking-wide">Final</span>
             </div>
+            {(getDiscountedAmount() > 0 || getSubtotal() > 0) && (
+              <div className="flex items-center gap-3 text-xs sm:text-sm mt-2 font-medium">
+                <span className="text-base-content/60">Subtotal: <span className="font-mono text-base-content">{currency} {getSubtotal().toFixed(2)}</span></span>
+                {getDiscountedAmount() > 0 && (
+                  <span className="text-error">Descuento: <span className="font-mono">-{currency} {getDiscountedAmount().toFixed(2)}</span></span>
+                )}
+              </div>
+            )}
+          </div>
 
+          <div className="flex flex-col justify-end w-full md:w-auto shrink-0">
             <ComerziaButton
               variant="primary"
               label="Enviar a Caja"
-              icon={<ArrowRight size={20} />}
-              className="shadow-lg shadow-primary/20 text-sm sm:text-base font-bold py-3 px-6 sm:px-8 w-full sm:w-auto"
+              icon={<ArrowRight size={24} />}
+              className="shadow-xl shadow-primary/20 text-base sm:text-lg font-bold py-4 px-8 w-full md:w-auto h-auto rounded-2xl"
               disabled={items.length === 0}
               onClick={handleSendToRegister}
             />
@@ -810,80 +807,7 @@ export const NewSalePage = () => {
         </div>
       </div>
 
-      {/* MODAL SKU */}
-      <ComerziaModal
-        isOpen={isSkuModalOpen}
-        onClose={() => setIsSkuModalOpen(false)}
-        title="Buscar por SKU"
-      >
-        <div className="space-y-4 pt-4">
-          <ComerziaInput
-            label="Código SKU"
-            value={manualSearchTerm}
-            onChange={(e) => setManualSearchTerm(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleManualSearch('sku')}
-            autoFocus
-          />
-          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 mt-6">
-            <BtnCancel onClick={() => setIsSkuModalOpen(false)} className="w-full sm:w-auto" />
-            <ComerziaButton
-              variant="primary"
-              label="Buscar"
-              onClick={() => handleManualSearch('sku')}
-              disabled={!manualSearchTerm.trim() || isManualSearching}
-              isLoading={isManualSearching}
-              className="w-full sm:w-auto"
-            />
-          </div>
-        </div>
-      </ComerziaModal>
 
-      {/* MODAL CÓDIGO BARRAS */}
-      <ComerziaModal
-        isOpen={isBarcodeModalOpen}
-        onClose={() => setIsBarcodeModalOpen(false)}
-        title="Buscar por Código de Barras"
-      >
-        <div className="space-y-4 pt-4">
-          <ComerziaInput
-            label="Código de Barras"
-            value={manualSearchTerm}
-            onChange={(e) => setManualSearchTerm(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleManualSearch('barcode')}
-            autoFocus
-          />
-          <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 mt-6">
-            <ComerziaButton
-              variant="secondary"
-              label="Escanear con Cámara"
-              icon={<ScanBarcode size={16} />}
-              className="btn-sm w-full sm:w-auto"
-              onClick={() => {
-                setIsBarcodeModalOpen(false);
-                setIsScannerModalOpen(true);
-              }}
-            />
-            <div className="flex flex-col-reverse sm:flex-row gap-2">
-              <BtnCancel onClick={() => setIsBarcodeModalOpen(false)} className="w-full sm:w-auto" />
-              <ComerziaButton
-                variant="primary"
-                label="Buscar"
-                onClick={() => handleManualSearch('barcode')}
-                disabled={!manualSearchTerm.trim() || isManualSearching}
-                isLoading={isManualSearching}
-                className="w-full sm:w-auto"
-              />
-            </div>
-          </div>
-        </div>
-      </ComerziaModal>
-
-      <BarcodeScannerModal
-        isOpen={isScannerModalOpen}
-        onClose={() => setIsScannerModalOpen(false)}
-        onScan={handleScanBarcode}
-        title="Escanear Código de Barras / QR para Venta"
-      />
     </div>
   );
 };

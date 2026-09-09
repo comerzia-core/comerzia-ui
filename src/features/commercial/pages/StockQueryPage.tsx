@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { commercialService } from '../services/commercialService';
 import type { ScannerProductResponse } from '../types/commercial';
@@ -7,36 +7,27 @@ import { useAuthStore } from '../../../stores/useAuthStore';
 import { ComerziaBadge } from '../../../components/ui/ComerziaBadge';
 import { ComerziaSelectableCard } from '../../../components/ui/ComerziaSelectableCard';
 import { ComerziaImageViewer } from '../../../components/ui/ComerziaImageViewer';
-import { BarcodeScannerModal } from '../../../components/ui/BarcodeScannerModal';
-import { ImageOff, Store, Tag, Layers, Barcode, ZoomIn, ScanBarcode } from 'lucide-react';
+import { CommercialProductSearchBar } from '../components/CommercialProductSearchBar';
+import { ImageOff, Store, Tag, Layers, ZoomIn, PackageSearch } from 'lucide-react';
 
 export const StockQueryPage = () => {
   const [searchParams] = useSearchParams();
-  const [barcode, setBarcode] = useState('');
   const [productData, setProductData] = useState<ScannerProductResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [shakeKey, setShakeKey] = useState(0);
   const [viewingImage, setViewingImage] = useState<{ isOpen: boolean; url: string; title: string }>({
     isOpen: false,
     url: '',
     title: ''
   });
-  const inputRef = useRef<HTMLInputElement>(null);
   const { error: toastError } = useToast();
   const { userProfile } = useAuthStore();
   const currencyCode = userProfile?.companySettings?.currencyCode || 'USD';
 
   useEffect(() => {
-    // Auto-focus on mount
-    if (inputRef.current) {
-      inputRef.current.focus();
-    }
-
     // Check for barcode in URL
     const urlBarcode = searchParams.get('barcode');
     if (urlBarcode) {
-      setBarcode(urlBarcode);
       executeScan(urlBarcode);
     }
   }, [searchParams]);
@@ -52,63 +43,36 @@ export const StockQueryPage = () => {
       setShakeKey(prev => prev + 1);
     } finally {
       setIsLoading(false);
-      setBarcode(''); // Clear after scan
-      if (inputRef.current) {
-        inputRef.current.focus();
-      }
-    }
-  };
-
-  const handleScan = async (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      if (!barcode.trim()) {
-        setShakeKey(prev => prev + 1);
-        return;
-      }
-      await executeScan(barcode);
     }
   };
 
   const scannedVariant = productData?.scannedVariant;
 
   return (
-    <div className="space-y-6 animate-fade-in max-w-5xl mx-auto mt-4 sm:mt-8 px-2 sm:px-0">
-      <div className="text-center mb-6 sm:mb-8">
-        <h1 className="text-2xl sm:text-4xl font-bold text-base-content tracking-tight">Consulta de Stock</h1>
+    <div className="space-y-6 animate-fade-in max-w-5xl mx-auto mt-2 sm:mt-6 px-2 sm:px-0">
+      {/* 1. HEADER DE LA PÁGINA */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-start gap-2.5">
+          <PackageSearch className="w-6 h-6 sm:w-7 sm:h-7 text-primary shrink-0 mt-0.5" />
+          <div>
+            <h1 className="text-lg sm:text-2xl font-bold text-base-content tracking-tight">
+              Consulta de Stock
+            </h1>
+            <p className="text-xs sm:text-sm text-base-content/70 mt-0.5 leading-relaxed">
+              Busca productos por nombre, código de barras o escanea con la cámara para verificar disponibilidad.
+            </p>
+          </div>
+        </div>
       </div>
 
-      <div className="flex justify-center mb-6 sm:mb-10">
-        <div className={`relative w-full max-w-2xl flex items-center gap-2 ${shakeKey > 0 ? 'animate-shake' : ''}`} key={shakeKey}>
-          <div className="relative flex-1">
-            <input
-              ref={inputRef}
-              type="text"
-              placeholder="Escanea o escribe el código y presiona Enter..."
-              className="input input-md sm:input-lg input-bordered w-full pl-10 sm:pl-12 pr-10 sm:pr-12 shadow-md sm:shadow-lg text-sm sm:text-xl bg-base-100 focus:outline-none focus:ring-4 focus:ring-primary/20 transition-shadow relative z-0"
-              value={barcode}
-              onChange={(e) => setBarcode(e.target.value)}
-              onKeyDown={handleScan}
-              disabled={isLoading}
-            />
-            <div className="absolute inset-y-0 left-3 sm:left-4 flex items-center pointer-events-none z-10">
-              <Barcode className="h-5 w-5 sm:h-6 sm:w-6 text-base-content/40" />
-            </div>
-            {isLoading && (
-              <div className="absolute inset-y-0 right-3 sm:right-4 flex items-center z-10">
-                <span className="loading loading-spinner loading-sm sm:loading-md text-primary"></span>
-              </div>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={() => setIsScannerOpen(true)}
-            className="btn btn-md sm:btn-lg btn-primary shadow-md sm:shadow-lg flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4"
-            title="Escanear con cámara"
-          >
-            <ScanBarcode size={20} className="sm:w-6 sm:h-6" />
-            <span className="hidden sm:inline">Cámara</span>
-          </button>
-        </div>
+      {/* 2. BARRA DE BÚSQUEDA Y SUGERENCIAS */}
+      <div className="card bg-base-100 p-3.5 sm:p-4 rounded-2xl shadow-xs border border-base-200">
+        <CommercialProductSearchBar
+          onSearchBarcode={executeScan}
+          isLoading={isLoading}
+          shakeKey={shakeKey}
+          placeholder="Buscar producto por nombre, código o SKU..."
+        />
       </div>
 
       {productData && scannedVariant && (
@@ -254,7 +218,6 @@ export const StockQueryPage = () => {
                     description={variant.barCode}
                     selected={false}
                     onClick={() => {
-                      setBarcode(variant.barCode);
                       executeScan(variant.barCode);
                     }}
                     icon={
@@ -277,16 +240,6 @@ export const StockQueryPage = () => {
         onClose={() => setViewingImage({ ...viewingImage, isOpen: false })}
         imageUrl={viewingImage.url}
         title={viewingImage.title}
-      />
-
-      <BarcodeScannerModal
-        isOpen={isScannerOpen}
-        onClose={() => setIsScannerOpen(false)}
-        onScan={(scannedCode) => {
-          setBarcode(scannedCode);
-          executeScan(scannedCode);
-        }}
-        title="Escanear Código de Barras / QR"
       />
     </div>
   );
