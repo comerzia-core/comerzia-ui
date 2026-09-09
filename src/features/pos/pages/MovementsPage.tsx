@@ -251,8 +251,8 @@ export const MovementsPage = () => {
     {
       header: 'Observación',
       render: (row: MovementResponse) => (
-        <span className="text-xs text-base-content/60 italic truncate max-w-[200px] block" title={row.observation}>
-          {row.observation || '-'}
+        <span className="text-xs text-base-content/60 italic truncate max-w-[200px] block" title={row.observation || ''}>
+          {row.observation ? row.observation : <span className="text-xs text-base-content/40 italic">(sin observación)</span>}
         </span>
       )
     }
@@ -422,13 +422,17 @@ export const MovementsPage = () => {
                 )}
 
                 {/* OBSERVACIÓN */}
-                {mov.observation && (
-                  <div className="pl-[26px]">
+                <div className="pl-[26px]">
+                  {mov.observation ? (
                     <p className="text-base-content/70 italic bg-base-200/50 px-2.5 py-1.5 rounded-lg text-[11px] leading-relaxed">
                       "{mov.observation}"
                     </p>
-                  </div>
-                )}
+                  ) : (
+                    <p className="text-base-content/40 italic text-[11px]">
+                      (sin observación)
+                    </p>
+                  )}
+                </div>
 
                 {/* PIE DE TARJETA: FECHA */}
                 <div className="pl-[26px] pt-1.5 border-t border-base-100 flex items-center text-[11px] text-base-content/60">

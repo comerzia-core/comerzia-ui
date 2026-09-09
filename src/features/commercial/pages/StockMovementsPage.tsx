@@ -759,11 +759,17 @@ export const StockMovementsPage = () => {
                               {isNegative ? '-' : '+'}{adj.quantity} uds
                             </span>
                           </div>
-                          {adj.observation && (
-                            <p className="text-base-content/70 italic bg-base-200/40 p-2 rounded-lg text-[11px]">
-                              "{adj.observation}"
-                            </p>
-                          )}
+                          <div className="mt-1">
+                            {adj.observation ? (
+                              <p className="text-base-content/70 italic bg-base-200/40 p-2 rounded-lg text-[11px]">
+                                "{adj.observation}"
+                              </p>
+                            ) : (
+                              <p className="text-base-content/40 italic text-[11px]">
+                                (sin observación)
+                              </p>
+                            )}
+                          </div>
                         </div>
                       );
                     }

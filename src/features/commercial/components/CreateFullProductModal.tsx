@@ -22,7 +22,7 @@ import { ComerziaSingleImageUploader, type SingleImageValue } from '../../../com
 import { BarcodeScannerModal } from '../../../components/ui/BarcodeScannerModal';
 import { uploadFile } from '../../shared/services/storageService';
 import { STORAGE_FOLDERS } from '../../../config/storage';
-import { ScanBarcode } from 'lucide-react';
+import { ScanBarcode, BadgePercent, X, Plus } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
@@ -66,6 +66,9 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
   const [shakeKey, setShakeKey] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { error: toastError, success: toastSuccess } = useToast();
+  const [openDiscounts, setOpenDiscounts] = useState<Record<string, boolean>>({});
+
+  const hasPreselectedHierarchy = Boolean(initialCategoryId && initialSegmentId && initialBrandId);
 
   useEffect(() => {
     if (isOpen) {
@@ -78,9 +81,16 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
       setVariantType('');
       setVariants([{ name: '', sku: '', barCode: '', prices: [] }]);
       setVariantImages([null]);
+      setOpenDiscounts({});
       loadInitialData();
+      if (initialCategoryId) {
+        commercialService.getSegmentsByCategory(initialCategoryId).then(setSegments);
+      }
+      if (initialSegmentId) {
+        commercialService.getBrandsBySegment(initialSegmentId).then(setBrands);
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, initialCategoryId, initialSegmentId, initialBrandId]);
 
   const loadInitialData = async () => {
     try {
@@ -114,23 +124,30 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
     }
     if (step === 2) {
       for (const v of variants) {
-        if (!v.name || !v.sku || !v.barCode) {
+        if (!v.name || !v.barCode) {
           setShakeKey(prev => prev + 1);
           toastError("Por favor completa todos los campos de las variantes.");
           return;
         }
       }
 
-      // Initialize prices for step 3 if empty
-      const updatedVariants = variants.map(v => {
+      // Ensure sku is generated automatically in background
+      const variantsWithSku = variants.map(v => ({
+        ...v,
+        sku: v.sku || generateSku(name, v.name)
+      }));
+
+      // Initialize prices for step 3 if empty (only first price type enabled by default)
+      const updatedVariants = variantsWithSku.map(v => {
         if (v.prices.length === 0) {
+          const initialPrices = priceTypes.length > 0 ? [{
+            priceTypeId: priceTypes[0].id,
+            salePrice: '' as unknown as number,
+            discountPrice: '' as unknown as number
+          }] : [];
           return {
             ...v,
-            prices: priceTypes.map(pt => ({
-              priceTypeId: pt.id,
-              salePrice: '' as unknown as number,
-              discountPrice: '' as unknown as number
-            }))
+            prices: initialPrices
           };
         }
         return v;
@@ -218,6 +235,35 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
     setVariants(updated);
   };
 
+  const toggleDiscount = (key: string, variantIndex: number, priceIndex: number) => {
+    const isCurrentlyOpen = openDiscounts[key] ?? (Number(variants[variantIndex]?.prices[priceIndex]?.discountPrice) > 0);
+    if (isCurrentlyOpen) {
+      updatePrice(variantIndex, priceIndex, 'discountPrice', '');
+      setOpenDiscounts(prev => ({ ...prev, [key]: false }));
+    } else {
+      setOpenDiscounts(prev => ({ ...prev, [key]: true }));
+    }
+  };
+
+  const removePriceType = (variantIndex: number, priceIndex: number) => {
+    const updated = [...variants];
+    updated[variantIndex].prices = updated[variantIndex].prices.filter((_, i) => i !== priceIndex);
+    setVariants(updated);
+  };
+
+  const addPriceType = (variantIndex: number, priceTypeId: string) => {
+    const updated = [...variants];
+    updated[variantIndex].prices = [
+      ...updated[variantIndex].prices,
+      {
+        priceTypeId,
+        salePrice: '' as unknown as number,
+        discountPrice: '' as unknown as number
+      }
+    ];
+    setVariants(updated);
+  };
+
   const addVariant = () => {
     setVariants([...variants, { name: '', sku: '', barCode: '', prices: [] }]);
     setVariantImages([...variantImages, null]);
@@ -242,6 +288,20 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
 
         {step === 1 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
+            {/* Resumen sutil cuando ya vienen preseleccionadas Categoría, Rubro y Marca */}
+            {hasPreselectedHierarchy && (
+              <div className="md:col-span-2 bg-base-200/60 px-3.5 py-2.5 rounded-xl border border-base-200 text-xs">
+                <div className="flex flex-wrap items-center gap-1.5 text-base-content/70">
+                  <span className="font-semibold text-base-content">Jerarquía preseleccionada:</span>
+                  <span>{categories.find(c => c.id === categoryId)?.name || 'Categoría'}</span>
+                  <span>›</span>
+                  <span>{segments.find(s => s.id === segmentId)?.name || 'Rubro'}</span>
+                  <span>›</span>
+                  <span className="font-semibold text-primary">{brands.find(b => b.id === brandId)?.name || 'Marca'}</span>
+                </div>
+              </div>
+            )}
+
             <ComerziaInput
               label="Nombre del Producto"
               value={name}
@@ -273,39 +333,43 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
               isRequired
             />
 
-            <ComerziaSelect
-              label="Categoría"
-              options={categories.map(c => ({ value: c.id, label: c.name }))}
-              value={categoryId}
-              onChange={(e) => {
-                setCategoryId(e.target.value);
-                setSegmentId('');
-                setBrandId('');
-              }}
-            />
-            <ComerziaSelect
-              label="Segmento/Rubro"
-              options={segments.map(s => ({ value: s.id, label: s.name }))}
-              value={segmentId}
-              onChange={(e) => {
-                setSegmentId(e.target.value);
-                setBrandId('');
-              }}
-              disabled={!categoryId}
-            />
+            {!hasPreselectedHierarchy && (
+              <>
+                <ComerziaSelect
+                  label="Categoría"
+                  options={categories.map(c => ({ value: c.id, label: c.name }))}
+                  value={categoryId}
+                  onChange={(e) => {
+                    setCategoryId(e.target.value);
+                    setSegmentId('');
+                    setBrandId('');
+                  }}
+                />
+                <ComerziaSelect
+                  label="Segmento/Rubro"
+                  options={segments.map(s => ({ value: s.id, label: s.name }))}
+                  value={segmentId}
+                  onChange={(e) => {
+                    setSegmentId(e.target.value);
+                    setBrandId('');
+                  }}
+                  disabled={!categoryId}
+                />
 
-            <div className="md:col-span-2">
-              <ComerziaSelect
-                label="Marca"
-                options={brands.map(b => ({ value: b.id, label: b.name }))}
-                value={brandId}
-                onChange={(e) => setBrandId(e.target.value)}
-                disabled={!segmentId}
-                error={!brandId && shakeKey > 0 ? "Requerido" : ""}
-                shakeKey={shakeKey}
-                isRequired
-              />
-            </div>
+                <div className="md:col-span-2">
+                  <ComerziaSelect
+                    label="Marca"
+                    options={brands.map(b => ({ value: b.id, label: b.name }))}
+                    value={brandId}
+                    onChange={(e) => setBrandId(e.target.value)}
+                    disabled={!segmentId}
+                    error={!brandId && shakeKey > 0 ? "Requerido" : ""}
+                    shakeKey={shakeKey}
+                    isRequired
+                  />
+                </div>
+              </>
+            )}
 
             <div className="md:col-span-2">
               <ComerziaTextarea
@@ -332,34 +396,19 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
                 <h4 className="font-bold mb-4 text-base-content">Variante {index + 1}</h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="md:col-span-2 space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="md:col-span-2">
-                        <ComerziaInput
-                          label="Nombre/Atributo (Ej: Azul - XL)"
-                          value={variant.name}
-                          uppercase
-                          onChange={(e) => {
-                            const val = e.target.value.toUpperCase();
-                            const prevAutoSku = generateSku(name, variant.name);
-
-                            const updated = [...variants];
-                            updated[index].name = val;
-                            if (!variant.sku || variant.sku === prevAutoSku) {
-                              updated[index].sku = generateSku(name, val);
-                            }
-                            setVariants(updated);
-                          }}
-                          error={!variant.name && shakeKey > 0 ? "Requerido" : ""}
-                          shakeKey={shakeKey}
-                          isRequired
-                        />
-                      </div>
+                    <div className="space-y-4">
                       <ComerziaInput
-                        label="SKU Interno"
-                        value={variant.sku}
+                        label="Nombre/Atributo (Ej: Azul - XL)"
+                        value={variant.name}
                         uppercase
-                        onChange={(e) => updateVariant(index, 'sku', e.target.value.toUpperCase())}
-                        error={!variant.sku && shakeKey > 0 ? "Requerido" : ""}
+                        onChange={(e) => {
+                          const val = e.target.value.toUpperCase();
+                          const updated = [...variants];
+                          updated[index].name = val;
+                          updated[index].sku = generateSku(name, val);
+                          setVariants(updated);
+                        }}
+                        error={!variant.name && shakeKey > 0 ? "Requerido" : ""}
                         shakeKey={shakeKey}
                         isRequired
                       />
@@ -409,68 +458,153 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
         )}
 
         {step === 3 && (
-          <div className="space-y-6 animate-fade-in">
+          <div className="space-y-5 animate-fade-in">
             {variants.map((variant, vIdx) => {
-              const isFirstVariantComplete = variant.prices.length > 0 && variant.prices.every(p => p.salePrice > 0);
+              const isFirstVariantComplete = variant.prices.length > 0 && variant.prices.every(p => Number(p.salePrice) > 0);
+              const availablePriceTypes = priceTypes.filter(pt => !variant.prices.some(p => p.priceTypeId === pt.id));
 
               return (
-                <div key={vIdx} className="bg-base-200/50 p-4 rounded-xl border border-base-200">
-                  <h4 className="font-bold mb-4">Precios para: {variant.name || `Variante ${vIdx + 1}`}</h4>
+                <div key={vIdx} className="bg-base-200/50 p-4 sm:p-5 rounded-2xl border border-base-200 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-bold text-sm sm:text-base text-base-content flex items-center gap-2">
+                      <span>Precios para:</span>
+                      <span className="badge badge-primary badge-outline font-semibold">
+                        {variant.name || `Variante ${vIdx + 1}`}
+                      </span>
+                    </h4>
+                  </div>
 
-                  {variant.prices.map((price, pIdx) => {
-                    const priceTypeObj = priceTypes.find(pt => pt.id === price.priceTypeId);
-                    const typeName = priceTypeObj?.name || 'Precio';
-                    const equivalenceFactor = priceTypeObj?.equivalenceFactor || 1;
+                  {variant.prices.length > 0 ? (
+                    <div className="space-y-2.5">
+                      {variant.prices.map((price, pIdx) => {
+                        const priceTypeObj = priceTypes.find(pt => pt.id === price.priceTypeId);
+                        const typeName = priceTypeObj?.name || 'Precio';
+                        const equivalenceFactor = priceTypeObj?.equivalenceFactor || 1;
+                        const rowKey = `${vIdx}-${pIdx}`;
+                        const isDiscountOpen = openDiscounts[rowKey] ?? (Number(price.discountPrice) > 0);
 
-                    const saleTotal = (Number(price.salePrice) || 0) * equivalenceFactor;
-                    const discountTotal = (Number(price.discountPrice) || 0) * equivalenceFactor;
+                        const saleTotal = (Number(price.salePrice) || 0) * equivalenceFactor;
 
-                    return (
-                      <div key={pIdx} className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 items-start">
-                        <div className="text-sm font-semibold opacity-70 mb-2 md:mb-0 mt-8">
-                          {typeName}
-                          <span className="block text-xs font-normal opacity-60 mt-1">
-                            (Equivalencia: x{equivalenceFactor})
-                          </span>
-                        </div>
-                        <div className="flex flex-col gap-1">
-                          <ComerziaInput
-                            label="Precio Descuento Unit."
-                            type="number"
-                            value={price.discountPrice}
-                            onChange={(e) => updatePrice(vIdx, pIdx, 'discountPrice', e.target.value.replace(/^0+(?=\d)/, ''))}
-                          />
-                          {discountTotal > 0 && (
-                            <div className="text-xs text-accent font-medium px-1 flex justify-between">
-                              <span>Total Descuento:</span>
-                              <span>{currencyCode} {discountTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        return (
+                          <div
+                            key={pIdx}
+                            className="bg-base-100 p-3.5 rounded-xl border border-base-200/80 shadow-2xs space-y-2.5 transition-all"
+                          >
+                            {/* Cabecera del Tipo de Precio: Nombre a la izq y X roja superior derecha */}
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <div className="font-semibold text-sm text-base-content flex items-center gap-2">
+                                  <span>{typeName}</span>
+                                  {equivalenceFactor > 1 && saleTotal > 0 && (
+                                    <span className="text-[11px] text-primary font-medium">
+                                      (Total: {currencyCode} {saleTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-xs text-base-content/60 font-medium">
+                                  x{equivalenceFactor} {equivalenceFactor === 1 ? 'unidad' : 'unidades'}
+                                </div>
+                              </div>
+
+                              {/* Botón X roja en la parte superior derecha */}
+                              <button
+                                type="button"
+                                onClick={() => removePriceType(vIdx, pIdx)}
+                                className="btn btn-ghost btn-xs btn-circle text-error hover:bg-error/10 shrink-0 -mr-1 -mt-1"
+                                title="Quitar este tipo de precio"
+                              >
+                                <X size={16} />
+                              </button>
                             </div>
-                          )}
-                        </div>
-                        <div className="flex flex-col gap-1">
-                          <ComerziaInput
-                            label="Precio Venta Unit."
-                            type="number"
-                            value={price.salePrice}
-                            onChange={(e) => updatePrice(vIdx, pIdx, 'salePrice', e.target.value.replace(/^0+(?=\d)/, ''))}
-                          />
-                          {saleTotal > 0 && (
-                            <div className="text-xs text-primary font-bold px-1 flex justify-between">
-                              <span>Total Venta:</span>
-                              <span>{currencyCode} {saleTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+
+                            {/* Debajo: Inputs para Precio Venta y Descuento */}
+                            {isDiscountOpen ? (
+                              <div className="grid grid-cols-2 gap-2 w-full animate-fade-in">
+                                {/* Precio Venta (50%) */}
+                                <div className="min-w-0">
+                                  <ComerziaInput
+                                    type="number"
+                                    placeholder="Precio Venta"
+                                    value={price.salePrice}
+                                    onChange={(e) => updatePrice(vIdx, pIdx, 'salePrice', e.target.value.replace(/^0+(?=\d)/, ''))}
+                                    className="h-10 text-sm"
+                                  />
+                                </div>
+
+                                {/* Precio Descuento (50%) con X roja interna */}
+                                <div className="relative min-w-0">
+                                  <ComerziaInput
+                                    type="number"
+                                    placeholder="Descuento"
+                                    value={price.discountPrice}
+                                    onChange={(e) => updatePrice(vIdx, pIdx, 'discountPrice', e.target.value.replace(/^0+(?=\d)/, ''))}
+                                    className="h-10 text-sm pr-8 border-secondary/50 focus:border-secondary"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleDiscount(rowKey, vIdx, pIdx)}
+                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-error hover:text-error/70 p-1 flex items-center justify-center transition-colors z-10"
+                                    title="Quitar precio de descuento"
+                                  >
+                                    <X size={15} />
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2 w-full">
+                                <div className="flex-1 min-w-0">
+                                  <ComerziaInput
+                                    type="number"
+                                    placeholder="Precio Venta"
+                                    value={price.salePrice}
+                                    onChange={(e) => updatePrice(vIdx, pIdx, 'salePrice', e.target.value.replace(/^0+(?=\d)/, ''))}
+                                    className="h-10 text-sm"
+                                  />
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => toggleDiscount(rowKey, vIdx, pIdx)}
+                                  className="btn btn-ghost btn-sm h-10 px-3 text-base-content/60 hover:text-secondary hover:bg-secondary/10 border border-dashed border-base-300 rounded-lg gap-1.5 text-xs font-medium shrink-0 transition-colors"
+                                  title="Agregar precio de descuento (opcional)"
+                                >
+                                  <BadgePercent size={16} className="text-secondary" />
+                                  <span>Descuento</span>
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-center py-4 px-3 bg-base-100/60 rounded-xl border border-dashed border-base-300">
+                      <p className="text-xs text-base-content/60 mb-2">No hay tipos de precio asignados para esta variante</p>
+                    </div>
+                  )}
+
+                  {/* Botones para agregar tipos de precio restantes si los hay */}
+                  {availablePriceTypes.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                      <span className="text-xs text-base-content/60 font-medium">Habilitar tipo de precio:</span>
+                      {availablePriceTypes.map(pt => (
+                        <button
+                          key={pt.id}
+                          type="button"
+                          onClick={() => addPriceType(vIdx, pt.id)}
+                          className="btn btn-xs bg-base-100 hover:bg-primary hover:text-white text-primary border border-dashed border-primary/40 rounded-lg gap-1 font-medium transition-all shadow-2xs"
+                        >
+                          <Plus size={13} /> {pt.name} {pt.equivalenceFactor > 1 ? `(x${pt.equivalenceFactor})` : ''}
+                        </button>
+                      ))}
+                    </div>
+                  )}
 
                   {vIdx === 0 && variants.length > 1 && (
-                    <div className="mt-4 pt-4 border-t border-base-300">
-                      <label className="label cursor-pointer justify-start gap-4">
+                    <div className="mt-3 pt-3 border-t border-base-200">
+                      <label className="label cursor-pointer justify-start gap-3 py-1">
                         <input
                           type="checkbox"
-                          className="checkbox checkbox-primary"
+                          className="checkbox checkbox-primary checkbox-sm rounded-md"
                           disabled={!isFirstVariantComplete}
                           onChange={(e) => {
                             if (e.target.checked) {
@@ -482,14 +616,14 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
                             }
                           }}
                         />
-                        <span className={`label-text font-medium ${!isFirstVariantComplete ? 'opacity-50' : ''}`}>
+                        <span className={`label-text text-sm font-medium ${!isFirstVariantComplete ? 'opacity-50' : ''}`}>
                           Asignar estos precios a todas las variantes
                         </span>
                       </label>
                     </div>
                   )}
                 </div>
-              )
+              );
             })}
           </div>
         )}

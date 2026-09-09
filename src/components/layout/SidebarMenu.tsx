@@ -4,6 +4,13 @@ import { IconRenderer } from "../ui/IconRenderer";
 import { ChevronLeft, ChevronRight } from "lucide-react"; // ✅ Importar Flechas
 import { useCompanyContext } from "../../hooks/useCompanyContext";
 
+const closeMobileDrawer = () => {
+    const drawerCheckbox = document.getElementById("my-drawer") as HTMLInputElement | null;
+    if (drawerCheckbox && drawerCheckbox.checked) {
+        drawerCheckbox.checked = false;
+    }
+};
+
 // ✅ Modificar el Renderer para que acepte 'isCollapsed'
 const MenuItemRenderer = ({ item, isCollapsed }: { item: MenuItem, isCollapsed: boolean }) => {
     const location = useLocation();
@@ -111,6 +118,7 @@ const MenuItemRenderer = ({ item, isCollapsed }: { item: MenuItem, isCollapsed: 
                 >
                     <NavLink 
                         to={item.route || "#"}
+                        onClick={closeMobileDrawer}
                         className={({ isActive }) => `
                             btn btn-ghost btn-circle
                             ${isActive ? 'text-primary bg-primary/10' : 'text-base-content/70'}
@@ -123,6 +131,7 @@ const MenuItemRenderer = ({ item, isCollapsed }: { item: MenuItem, isCollapsed: 
                 // Expandido: Icono + Texto + Indicador Activo
                 <NavLink 
                     to={item.route || "#"}
+                    onClick={closeMobileDrawer}
                     className={({ isActive }) => `
                         ${baseLinkClass}
                         ${isActive ? activeLinkClass : inactiveLinkClass}

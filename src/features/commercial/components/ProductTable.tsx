@@ -145,7 +145,7 @@ export const ProductTable = ({ brandId, selectedProducts, setSelectedProducts, r
     { header: 'Nombre', accessorKey: 'name' },
     { 
       header: 'Descripción', 
-      render: (row) => row.description ? row.description : <span className="text-base-content/40 italic">(sin descripción)</span>
+      render: (row) => row.description ? row.description : <span className="text-xs text-base-content/40 italic">(sin descripción)</span>
     },
     { 
       header: 'Tipo de Variante', 
@@ -249,7 +249,7 @@ export const ProductTable = ({ brandId, selectedProducts, setSelectedProducts, r
                           {product.name}
                         </h4>
                         <p className="text-xs text-base-content/60 line-clamp-1 mt-0.5">
-                          {product.description || <span className="italic opacity-60">Sin descripción</span>}
+                          {product.description || <span className="text-xs text-base-content/40 italic">(sin descripción)</span>}
                         </p>
                       </div>
                     </div>

@@ -1,18 +1,52 @@
+import { useEffect, useRef } from "react";
+
 interface Props {
     steps: string[];      // ["Información", "Precios", "Ubicación", "Imágenes"]
     currentStep: number;  // 1-based index
     className?: string;
+    autoScrollToTop?: boolean;
 }
 
-export const ComerziaStepper = ({ steps, currentStep, className = "" }: Props) => {
+export const ComerziaStepper = ({ steps, currentStep, className = "", autoScrollToTop = true }: Props) => {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const isFirstRender = useRef(true);
+
     // Calculamos el nombre del paso actual de forma segura
     const currentStepName = steps[currentStep - 1] || "";
     
     // Calculamos porcentaje para la barra de progreso en móvil
     const progressPercentage = (currentStep / steps.length) * 100;
 
+    // Scroll automático al inicio cuando cambia el paso (especialmente útil en mobile)
+    useEffect(() => {
+        if (isFirstRender.current) {
+            isFirstRender.current = false;
+            return;
+        }
+
+        if (!autoScrollToTop || !containerRef.current) return;
+
+        // 1. Scroll suave del elemento stepper a la vista
+        containerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+        // 2. Scroll de todos los ancestros scrollables (ej. modal body, modal-box)
+        let parent: HTMLElement | null = containerRef.current.parentElement;
+        while (parent) {
+            const style = window.getComputedStyle(parent);
+            if (
+                style.overflowY === 'auto' || 
+                style.overflowY === 'scroll' || 
+                parent.classList.contains('modal-box') || 
+                parent.classList.contains('modal')
+            ) {
+                parent.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+            parent = parent.parentElement;
+        }
+    }, [currentStep, autoScrollToTop]);
+
     return (
-        <div className={`w-full ${className}`}>
+        <div ref={containerRef} className={`w-full ${className}`}>
             
             {/* --- VISTA DE ESCRITORIO (PC) --- */}
             {/* Se oculta en pantallas pequeñas (hidden), se muestra en medianas en adelante (md:block) */}

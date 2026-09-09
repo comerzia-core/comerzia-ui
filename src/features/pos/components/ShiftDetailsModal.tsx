@@ -158,9 +158,9 @@ export const ShiftDetailsModal = ({ isOpen, onClose, shiftId }: Props) => {
                       {currency} {m.amount.toFixed(2)}
                     </span>
                   </div>
-                  {m.observation && (
-                    <p className="text-[10px] text-base-content/60 italic mt-0.5">"{m.observation}"</p>
-                  )}
+                  <p className="text-[10px] text-base-content/60 italic mt-0.5">
+                    {m.observation ? `"${m.observation}"` : <span className="text-base-content/40">(sin observación)</span>}
+                  </p>
                 </div>
               ))
             )}

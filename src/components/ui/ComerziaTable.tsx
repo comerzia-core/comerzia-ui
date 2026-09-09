@@ -170,13 +170,42 @@ export const ComerziaTable = <T extends { id: number | string }>({
                                         </td>
                                     )}
 
-                                    {columns.map((col, idx) => (
-                                        <td key={idx} className={`${col.className} ${shouldOverrideZebra ? '!bg-inherit' : ''}`}>
-                                            {col.render 
-                                                ? col.render(row) 
-                                                : (col.accessorKey ? String(row[col.accessorKey]) : '-')}
-                                        </td>
-                                    ))}
+                                    {columns.map((col, idx) => {
+                                         if (col.render) {
+                                             return (
+                                                 <td key={idx} className={`${col.className} ${shouldOverrideZebra ? '!bg-inherit' : ''}`}>
+                                                     {col.render(row)}
+                                                 </td>
+                                             );
+                                         }
+
+                                         const val = col.accessorKey ? row[col.accessorKey] : undefined;
+                                         const isNullOrEmpty = val === null || val === undefined || val === '';
+
+                                         let displayContent: ReactNode = '-';
+                                         if (isNullOrEmpty) {
+                                             const searchKey = `${String(col.accessorKey || '')} ${typeof col.header === 'string' ? col.header : ''}`.toLowerCase();
+                                             if (searchKey.includes('descrip')) {
+                                                 displayContent = <span className="text-xs text-base-content/40 italic">(sin descripción)</span>;
+                                             } else if (searchKey.includes('observa')) {
+                                                 displayContent = <span className="text-xs text-base-content/40 italic">(sin observación)</span>;
+                                             } else if (searchKey.includes('nota') || searchKey.includes('note')) {
+                                                 displayContent = <span className="text-xs text-base-content/40 italic">(sin nota)</span>;
+                                             } else if (searchKey.includes('motivo') || searchKey.includes('reason')) {
+                                                 displayContent = <span className="text-xs text-base-content/40 italic">(sin motivo)</span>;
+                                             } else if (searchKey.includes('comentar') || searchKey.includes('comment')) {
+                                                 displayContent = <span className="text-xs text-base-content/40 italic">(sin comentario)</span>;
+                                             }
+                                         } else {
+                                             displayContent = String(val);
+                                         }
+
+                                         return (
+                                             <td key={idx} className={`${col.className} ${shouldOverrideZebra ? '!bg-inherit' : ''}`}>
+                                                 {displayContent}
+                                             </td>
+                                         );
+                                     })}
                                 </tr>
                             );
                         })}

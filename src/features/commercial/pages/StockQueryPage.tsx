@@ -169,7 +169,9 @@ export const StockQueryPage = () => {
 
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 sm:gap-4 mt-3 sm:mt-4">
                 <ComerziaBadge variant="neutral" label={productData.brandName} />
-                <span className="text-xs sm:text-sm text-base-content/60">{productData.description || 'Sin descripción adicional'}</span>
+                <span className="text-xs sm:text-sm text-base-content/60">
+                  {productData.description || <span className="text-xs text-base-content/40 italic">(sin descripción)</span>}
+                </span>
               </div>
             </div>
           </div>

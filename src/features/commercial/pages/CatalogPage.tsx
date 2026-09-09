@@ -103,7 +103,6 @@ export const CatalogPage = () => {
           <BtnCreate 
             label="Nuevo Producto" 
             onClick={() => setIsCreateModalOpen(true)}
-            responsive={true}
             className="w-full sm:w-auto"
           />
         </div>

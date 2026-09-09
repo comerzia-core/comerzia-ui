@@ -181,6 +181,7 @@ export interface SalesCatalogItem {
 export interface SalesCatalogSuggestionResponse {
   variantId: string;
   label: string;
+  imageUrl?: string;
 }
 
 export interface ActivePriceResponse {
