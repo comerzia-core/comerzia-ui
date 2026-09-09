@@ -199,109 +199,70 @@ export const TerminalPage = () => {
   return (
     <div className="space-y-6 animate-fade-in max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-base-content tracking-tight">Terminal de Cobro</h1>
-          <p className="text-base-content/60 mt-1">Gestión de cobros para ventas pendientes del turno</p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <div className="flex items-start gap-2.5">
+          <ShoppingCart className="w-6 h-6 sm:w-7 sm:h-7 text-primary shrink-0 mt-0.5" />
+          <div>
+            <h1 className="text-lg sm:text-2xl font-bold text-base-content tracking-tight">
+              Terminal de Cobro
+            </h1>
+            <p className="text-xs sm:text-sm text-base-content/60 mt-0.5">
+              Gestión y cobro de pedidos pendientes del turno
+            </p>
+          </div>
         </div>
-        <ComerziaButton
-          variant="ghost"
-          label="Actualizar"
-          icon={<RefreshCw size={16} />}
-          className="btn-sm border border-base-200 text-base-content/70 hover:text-primary"
-          onClick={() => { loadSummary(); loadPendingSales(); }}
-        />
       </div>
 
       {/* Summary Cards: Solo para cajeros con turno activo */}
       {isCashierRole && summary && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-base-100 rounded-2xl p-6 shadow-sm border border-base-200">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-                <ShoppingCart size={24} />
-              </div>
-              <div>
-                <p className="text-base-content/60 text-sm font-medium">Caja Activa</p>
-                <h3 className="text-xl font-bold">{summary.cashName || 'Sin Caja'}</h3>
-              </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="bg-base-100 rounded-2xl p-3.5 sm:p-4 shadow-xs border border-base-200 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <ShoppingCart size={20} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-base-content/50 text-[11px] font-semibold uppercase tracking-wider truncate">Caja Activa</p>
+              <h3 className="text-sm sm:text-base font-bold text-base-content truncate">{summary.cashName || 'Sin Caja'}</h3>
             </div>
           </div>
 
-          <div className="bg-base-100 rounded-2xl p-6 shadow-sm border border-base-200">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-secondary/10 text-secondary flex items-center justify-center">
-                <Clock size={24} />
-              </div>
-              <div>
-                <p className="text-base-content/60 text-sm font-medium">Apertura</p>
-                <h3 className="text-xl font-bold">
-                  {summary.openedAt ? formatDateForUser(summary.openedAt) : '--:--'}
-                </h3>
-              </div>
+          <div className="bg-base-100 rounded-2xl p-3.5 sm:p-4 shadow-xs border border-base-200 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-secondary/10 text-secondary flex items-center justify-center shrink-0">
+              <Clock size={20} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-base-content/50 text-[11px] font-semibold uppercase tracking-wider truncate">Apertura</p>
+              <h3 className="text-sm sm:text-base font-bold text-base-content truncate">
+                {summary.openedAt ? formatDateForUser(summary.openedAt) : '--:--'}
+              </h3>
             </div>
           </div>
 
-          <div className="bg-base-100 rounded-2xl p-6 shadow-sm border border-base-200">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-success/10 text-success flex items-center justify-center">
-                <TrendingUp size={24} />
-              </div>
-              <div>
-                <p className="text-base-content/60 text-sm font-medium">Total Ingresos</p>
-                <h3 className="text-xl font-bold text-success">
-                  {currencyCode} {(summary.totalInflows || 0).toFixed(2)}
-                </h3>
-              </div>
+          <div className="bg-base-100 rounded-2xl p-3.5 sm:p-4 shadow-xs border border-base-200 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-success/10 text-success flex items-center justify-center shrink-0">
+              <TrendingUp size={20} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-base-content/50 text-[11px] font-semibold uppercase tracking-wider truncate">Ingresos</p>
+              <h3 className="text-sm sm:text-base font-bold font-mono text-success truncate">
+                {currencyCode} {(summary.totalInflows || 0).toFixed(2)}
+              </h3>
             </div>
           </div>
 
-          <div className="bg-base-100 rounded-2xl p-6 shadow-sm border border-base-200">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-error/10 text-error flex items-center justify-center">
-                <TrendingDown size={24} />
-              </div>
-              <div>
-                <p className="text-base-content/60 text-sm font-medium">Total Egresos</p>
-                <h3 className="text-xl font-bold text-error">
-                  {currencyCode} {(summary.totalOutflows || 0).toFixed(2)}
-                </h3>
-              </div>
+          <div className="bg-base-100 rounded-2xl p-3.5 sm:p-4 shadow-xs border border-base-200 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-error/10 text-error flex items-center justify-center shrink-0">
+              <TrendingDown size={20} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-base-content/50 text-[11px] font-semibold uppercase tracking-wider truncate">Egresos</p>
+              <h3 className="text-sm sm:text-base font-bold font-mono text-error truncate">
+                {currencyCode} {(summary.totalOutflows || 0).toFixed(2)}
+              </h3>
             </div>
           </div>
         </div>
       )}
-
-      {/* Sales Management Filter Bar */}
-      <div className="bg-base-100 p-4 rounded-2xl shadow-sm border border-base-200 flex flex-col md:flex-row gap-4 justify-between items-center">
-        {/* Search */}
-        <div className="relative w-full md:w-96">
-          <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base-content/40" />
-          <input
-            type="text"
-            placeholder="Buscar por N° Venta, vendedor, cliente o producto..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="input input-bordered w-full pl-10 bg-base-50 focus:bg-base-100 focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-base-content/40 hover:text-base-content cursor-pointer"
-            >
-              ✕
-            </button>
-          )}
-        </div>
-
-        {/* Count Badge */}
-        <div className="flex items-center gap-2">
-          <span className="badge badge-warning font-semibold text-xs py-3 px-3 gap-1.5">
-            <Clock size={14} />
-            Pendientes de Cobro ({pendingSales.length})
-          </span>
-        </div>
-      </div>
 
       {/* Sales List Grid */}
       {isLoadingSales ? (
@@ -309,80 +270,77 @@ export const TerminalPage = () => {
           <span className="loading loading-spinner loading-lg text-primary"></span>
         </div>
       ) : filteredSales.length === 0 ? (
-        <div className="bg-base-100 rounded-2xl p-12 text-center shadow-sm border border-base-200">
-          <ShoppingBag size={48} className="mx-auto text-base-content/20 mb-3" />
-          <h3 className="text-lg font-bold text-base-content">No hay ventas pendientes de cobro</h3>
-          <p className="text-base-content/60 text-sm mt-1">
+        <div className="bg-base-100 rounded-2xl p-10 sm:p-12 text-center shadow-xs border border-base-200">
+          <ShoppingBag size={44} className="mx-auto text-base-content/20 mb-3 stroke-1" />
+          <h3 className="text-base font-bold text-base-content">No hay ventas pendientes de cobro</h3>
+          <p className="text-base-content/60 text-xs sm:text-sm mt-1 max-w-sm mx-auto">
             {searchQuery 
               ? 'No se encontraron resultados para los términos de búsqueda.' 
               : 'Las ventas creadas en caja aparecerán aquí listas para ser cobradas.'}
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5 sm:gap-4">
           {filteredSales.map((sale) => {
             return (
               <div
                 key={sale.id}
-                className="bg-base-100 rounded-2xl p-5 shadow-sm border border-base-200 hover:border-primary/40 transition-all flex flex-col justify-between gap-4 group"
+                className="bg-base-100 rounded-2xl p-4 sm:p-5 shadow-xs border border-base-200 hover:border-primary/40 transition-all flex flex-col justify-between gap-3.5 group"
               >
                 {/* Card Top Header */}
-                <div className="flex justify-between items-start gap-2 border-b border-base-200/60 pb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-primary/10 text-primary rounded-xl shrink-0 group-hover:scale-105 transition-transform">
-                      <Receipt size={20} />
+                <div className="flex justify-between items-start gap-2 border-b border-base-200 pb-2.5">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="p-2 bg-primary/10 text-primary rounded-xl shrink-0 group-hover:scale-105 transition-transform">
+                      <Receipt size={18} />
                     </div>
-                    <div>
-                      <span className="text-[11px] font-semibold text-base-content/50 uppercase tracking-wider block">N° Venta</span>
-                      <div className="flex items-center gap-1.5">
-                        <h4 className="font-mono font-extrabold text-base text-primary">
-                          {sale.saleNumber ? `#${sale.saleNumber}` : '-'}
-                        </h4>
-                        {sale.customer && (
-                          <div className="tooltip tooltip-right" data-tip={`Cliente: ${sale.customer.fullName || sale.customer.firstName}`}>
-                            <UserCheck size={16} className="text-primary shrink-0 cursor-pointer" />
-                          </div>
-                        )}
-                      </div>
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-semibold text-base-content/50 uppercase tracking-wider block">N° Venta</span>
+                      <h4 className="font-mono font-extrabold text-sm sm:text-base text-base-content truncate">
+                        {sale.saleNumber ? `#${sale.saleNumber}` : '-'}
+                      </h4>
                     </div>
                   </div>
 
-                  <span className="badge badge-sm badge-warning gap-1 py-2 px-2.5 font-semibold shrink-0">
-                    <Clock size={13} />
+                  <span className="badge badge-sm badge-warning gap-1 py-1.5 px-2 font-bold shrink-0 text-[11px]">
+                    <Clock size={12} />
                     PENDIENTE
                   </span>
                 </div>
 
                 {/* Card Info Details */}
-                <div className="space-y-2 text-xs">
+                <div className="space-y-1.5 text-xs">
                   <div className="flex justify-between items-center text-base-content/70">
-                    <span className="flex items-center gap-1.5 font-medium">
-                      <User size={14} className="text-primary/70" /> Vendedor:
+                    <span className="flex items-center gap-1.5 text-base-content/60">
+                      <User size={13} className="text-primary/70 shrink-0" /> Vendedor:
                     </span>
-                    <strong className="text-base-content font-bold">{sale.employeeUsername || 'No asignado'}</strong>
+                    <strong className="text-base-content font-semibold truncate max-w-[150px]">
+                      {sale.employeeUsername || 'No asignado'}
+                    </strong>
                   </div>
 
                   {sale.customer && (
                     <div className="flex justify-between items-center text-base-content/70">
-                      <span className="flex items-center gap-1.5 font-medium">
-                        <UserCheck size={14} className="text-success" /> Cliente:
+                      <span className="flex items-center gap-1.5 text-base-content/60">
+                        <UserCheck size={13} className="text-success shrink-0" /> Cliente:
                       </span>
-                      <strong className="text-base-content truncate max-w-[170px]" title={sale.customer.fullName || sale.customer.firstName}>
+                      <strong className="text-base-content truncate max-w-[150px]" title={sale.customer.fullName || sale.customer.firstName}>
                         {sale.customer.fullName || sale.customer.firstName}
                       </strong>
                     </div>
                   )}
 
                   <div className="flex justify-between items-center text-base-content/70">
-                    <span className="flex items-center gap-1.5">
-                      <Calendar size={14} className="text-base-content/50" /> Fecha/Hora:
+                    <span className="flex items-center gap-1.5 text-base-content/60">
+                      <Calendar size={13} className="text-base-content/40 shrink-0" /> Fecha:
                     </span>
-                    <span className="font-medium">{formatDateForUser(sale.date)}</span>
+                    <span className="font-medium text-base-content/80 text-[11px]">
+                      {formatDateForUser(sale.date)}
+                    </span>
                   </div>
 
                   <div className="flex justify-between items-center text-base-content/70">
-                    <span className="flex items-center gap-1.5 font-medium">
-                      <ShoppingBag size={14} className="text-info" /> Items:
+                    <span className="flex items-center gap-1.5 text-base-content/60">
+                      <ShoppingBag size={13} className="text-info shrink-0" /> Items:
                     </span>
                     <strong className="text-base-content">
                       {sale.details?.length || 0} {sale.details?.length === 1 ? 'producto' : 'productos'}
@@ -390,32 +348,32 @@ export const TerminalPage = () => {
                   </div>
 
                   {sale.discountedAmount > 0 && (
-                    <div className="flex justify-between items-center text-error">
-                      <span>Descuento aplicado:</span>
-                      <span className="font-bold">-{currencyCode} {sale.discountedAmount.toFixed(2)}</span>
+                    <div className="flex justify-between items-center text-error pt-0.5">
+                      <span className="text-[11px]">Descuento:</span>
+                      <span className="font-mono font-bold text-xs">-{currencyCode} {sale.discountedAmount.toFixed(2)}</span>
                     </div>
                   )}
                 </div>
 
                 {/* Card Total Price Banner */}
-                <div className="bg-base-200/50 p-3 rounded-xl flex justify-between items-center border border-base-200">
-                  <span className="text-xs font-semibold text-base-content/60 uppercase">Monto Total</span>
-                  <span className="text-xl font-extrabold text-primary font-mono">
+                <div className="bg-base-200/50 p-2.5 sm:p-3 rounded-xl flex justify-between items-center border border-base-200/80">
+                  <span className="text-[11px] font-semibold text-base-content/60 uppercase tracking-wider">Total a Cobrar</span>
+                  <span className="text-lg sm:text-xl font-black text-primary font-mono">
                     {currencyCode} {(sale.totalAmount || 0).toFixed(2)}
                   </span>
                 </div>
 
                 {/* Card Action Buttons */}
-                <div className="space-y-2 pt-1">
+                <div className="space-y-1.5 pt-0.5">
                   {/* Botón Cobrar Venta */}
                   <ComerziaButton
                     variant="primary"
                     label="Cobrar Venta"
                     icon={<DollarSign size={16} />}
                     fullWidth
-                    className="btn-sm text-white font-bold shadow-md shadow-primary/20 hover:scale-[1.01]"
+                    className="btn-sm font-bold shadow-xs active:scale-[0.99] transition-transform"
                     disabled={!canProcessPayment}
-                    title={!canProcessPayment ? "Cobro deshabilitado: Se requiere permiso de cobro de ventas (SAL_PROCESS_PAYMENT)" : undefined}
+                    title={!canProcessPayment ? "Cobro deshabilitado: Se requiere permiso SAL_PROCESS_PAYMENT" : undefined}
                     onClick={() => setSelectedSaleToPay(sale)}
                   />
 
@@ -423,8 +381,8 @@ export const TerminalPage = () => {
                     {/* Botón Ver Detalle */}
                     <ComerziaButton
                       variant="ghost"
-                      label="Ver Detalle"
-                      icon={<Eye size={15} />}
+                      label="Detalle"
+                      icon={<Eye size={14} />}
                       fullWidth
                       className="btn-sm border border-base-200 text-base-content/70 hover:bg-base-200 hover:text-base-content"
                       onClick={() => setSelectedSaleDetail(sale)}
@@ -435,9 +393,9 @@ export const TerminalPage = () => {
                       <ComerziaButton
                         variant="cancel"
                         label="Cancelar"
-                        icon={<Trash2 size={15} />}
+                        icon={<Trash2 size={14} />}
                         fullWidth
-                        className="btn-sm text-white font-semibold"
+                        className="btn-sm"
                         onClick={() => setCancelingSale(sale)}
                       />
                     )}

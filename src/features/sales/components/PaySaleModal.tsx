@@ -105,20 +105,20 @@ export const PaySaleModal = ({ isOpen, onClose, sale, shiftId, onPaymentSuccess 
       title={`Procesar Cobro ${sale.saleNumber ? `- Venta #${sale.saleNumber}` : ''}`}
       size="lg"
     >
-      <div className="space-y-6 pt-2">
+      <div className="space-y-4 sm:space-y-5 pt-1">
         {/* Total Summary */}
-        <div className="bg-primary/10 border border-primary/20 p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <div className="bg-primary/10 border border-primary/20 p-3.5 sm:p-4 rounded-2xl flex items-center justify-between gap-3">
           <div>
-            <span className="text-xs font-semibold text-primary uppercase tracking-wider">Monto Total a Cobrar</span>
-            <h3 className="text-2xl sm:text-3xl font-extrabold text-primary mt-0.5">
+            <span className="text-[10px] sm:text-xs font-semibold text-primary uppercase tracking-wider block">Monto a Cobrar</span>
+            <h3 className="text-xl sm:text-2xl font-black text-primary font-mono mt-0.5">
               {currencyCode} {totalAmount.toFixed(2)}
             </h3>
           </div>
           {sale.details && (
-            <div className="text-left sm:text-right text-xs text-base-content/60 bg-base-100/50 sm:bg-transparent p-2 sm:p-0 rounded-lg w-full sm:w-auto">
-              <p>Items en orden: <strong>{sale.details.length}</strong></p>
+            <div className="text-right text-xs text-base-content/60">
+              <p className="font-medium">{sale.details.length} {sale.details.length === 1 ? 'producto' : 'productos'}</p>
               {sale.discountedAmount > 0 && (
-                <p className="text-success font-medium">Descuento: -{currencyCode} {sale.discountedAmount.toFixed(2)}</p>
+                <p className="text-error font-semibold text-[11px]">Desc: -{currencyCode} {sale.discountedAmount.toFixed(2)}</p>
               )}
             </div>
           )}
@@ -126,10 +126,10 @@ export const PaySaleModal = ({ isOpen, onClose, sale, shiftId, onPaymentSuccess 
 
         {/* Método de Pago Selector */}
         <div>
-          <label className="block text-xs sm:text-sm font-semibold text-base-content/80 mb-2.5">
-            Selecciona el Método de Pago
+          <label className="block text-xs font-semibold text-base-content/70 mb-2">
+            Método de Pago
           </label>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {paymentOptions.map((opt) => {
               const Icon = opt.icon;
               const isSelected = paymentType === opt.type;
@@ -138,14 +138,14 @@ export const PaySaleModal = ({ isOpen, onClose, sale, shiftId, onPaymentSuccess 
                   key={opt.type}
                   type="button"
                   onClick={() => handleSelectPaymentType(opt.type)}
-                  className={`p-3 sm:p-4 rounded-xl border-2 flex flex-col items-center justify-center gap-1.5 sm:gap-2 transition-all cursor-pointer ${
+                  className={`p-2.5 sm:p-3 rounded-xl border-2 flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer ${
                     isSelected 
-                      ? `${opt.color} ring-2 ring-primary border-primary shadow-md scale-[1.02]` 
+                      ? `${opt.color} ring-2 ring-primary border-primary shadow-xs scale-[1.02]` 
                       : 'border-base-200 bg-base-100 hover:border-base-300 text-base-content/70'
                   }`}
                 >
-                  <Icon size={24} className="sm:w-7 sm:h-7" />
-                  <span className="font-bold text-[11px] sm:text-xs text-center leading-tight">{opt.label}</span>
+                  <Icon size={20} className="shrink-0" />
+                  <span className="font-bold text-[11px] text-center leading-tight">{opt.label}</span>
                 </button>
               );
             })}
@@ -153,7 +153,7 @@ export const PaySaleModal = ({ isOpen, onClose, sale, shiftId, onPaymentSuccess 
         </div>
 
         {/* Form Inputs */}
-        <div className="space-y-4 bg-base-100 p-4 rounded-xl border border-base-200">
+        <div className="space-y-3 bg-base-100 p-3.5 rounded-xl border border-base-200">
           <ComerziaInput
             label={`Monto Recibido (${currencyCode})`}
             type="number"
@@ -166,11 +166,11 @@ export const PaySaleModal = ({ isOpen, onClose, sale, shiftId, onPaymentSuccess 
           />
 
           {paymentType === 701 && changeAmount > 0 && (
-            <div className="p-3.5 sm:p-4 bg-success/15 border border-success/30 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 animate-fade-in">
-              <span className="text-xs sm:text-sm font-semibold text-success flex items-center gap-2">
-                <CheckCircle size={16} /> Cambio / Vuelto a Entregar:
+            <div className="p-3 bg-success/15 border border-success/30 rounded-xl flex items-center justify-between gap-2 animate-fade-in text-xs sm:text-sm">
+              <span className="font-semibold text-success flex items-center gap-1.5">
+                <CheckCircle size={15} className="shrink-0" /> Cambio / Vuelto:
               </span>
-              <span className="text-lg sm:text-xl font-bold text-success font-mono">
+              <span className="text-base sm:text-lg font-bold text-success font-mono">
                 {currencyCode} {changeAmount.toFixed(2)}
               </span>
             </div>
@@ -178,13 +178,19 @@ export const PaySaleModal = ({ isOpen, onClose, sale, shiftId, onPaymentSuccess 
         </div>
 
         {/* Buttons */}
-        <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 pt-4 border-t border-base-200">
-          <BtnCancel onClick={onClose} disabled={isSubmitting} className="w-full sm:w-auto" />
+        <div className="flex flex-row items-center gap-2 pt-3 border-t border-base-200 w-full sm:justify-end">
+          <BtnCancel
+            onClick={onClose}
+            disabled={isSubmitting}
+            responsive={true}
+            className="flex-1 sm:flex-none sm:w-auto min-w-0"
+          />
           <BtnSave
             onClick={handlePay}
-            label="Confirmar y Registrar Pago"
+            label="Confirmar Pago"
             isLoading={isSubmitting}
-            className="w-full sm:w-auto"
+            responsive={true}
+            className="flex-1 sm:flex-none sm:w-auto min-w-0"
           />
         </div>
       </div>
