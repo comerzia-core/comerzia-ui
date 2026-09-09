@@ -45,12 +45,12 @@ export const ComerziaButton = ({
       case "create": return "btn-comerzia-create border-none";
       
       case "steps": return "btn-comerzia-steps border-none";
-      case "ghost": return "btn-comerzia-ghost text-white"; 
+      case "ghost": return "btn-comerzia-ghost"; 
       case "error": return "btn-comerzia-error border-none"; 
       case "warning": return "btn-comerzia-warning border-none";
       case "success": return "btn-comerzia-success border-none";
-      // Defaults de DaisyUI
-      case "neutral": return "btn-neutral text-white";
+      case "info": return "btn-comerzia-info border-none";
+      case "neutral": return "btn-comerzia-neutral border-none";
 
       case "white": return "bg-white text-base-content hover:bg-gray-100 border-none"; 
       case "overlay": return "bg-black/40 hover:bg-black/60 text-white border-none backdrop-blur-[2px] shadow-sm";

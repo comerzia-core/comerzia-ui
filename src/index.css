@@ -35,6 +35,18 @@
   }
   .btn-comerzia-info:hover { background-color: #0284c7 !important; }
 
+  /* Botón NEUTRAL Sólido (Gris Oscuro / Carbón) */
+  .btn-comerzia-neutral {
+    background-color: #374151 !important; /* gray-700 */
+    border-color: #374151 !important;
+    color: #ffffff !important;
+  }
+  .btn-comerzia-neutral:hover {
+    background-color: #1f2937 !important; /* gray-800 */
+    border-color: #1f2937 !important;
+    color: #ffffff !important;
+  }
+
   /* Botón SUCCESS Sólido (Reemplaza al estándar para consistencia) */
   .btn-comerzia-success {
     background-color: #22c55e !important; /* green-500 */

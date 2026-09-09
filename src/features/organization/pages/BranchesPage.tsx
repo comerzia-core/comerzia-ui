@@ -95,7 +95,7 @@ export const BranchesPage = () => {
         </div>
 
         {/* BOTÓN ESTANDARIZADO DE CREACIÓN */}
-        <BtnCreate onClick={handleCreateNew} label="Nueva Sucursal" responsive={true} className="w-full sm:w-auto" />
+        <BtnCreate onClick={handleCreateNew} label="Nueva Sucursal" className="w-full sm:w-auto" />
       </div>
 
       {/* BARRA DE BÚSQUEDA Y FILTROS */}

@@ -43,7 +43,7 @@ export const UserTemporaryPasswordModal = ({ isOpen, onClose, credentials }: Pro
       <div className="flex flex-col gap-4 text-center items-center py-2">
         <p className="text-sm text-base-content/70 bg-warning/10 p-3 rounded-xl border border-warning/20 text-left w-full">
           <ShieldAlert size={18} className="inline mr-2 text-warning -mt-0.5" />
-          <strong>¡Atención Administrador!</strong> La contraseña del usuario ha sido restablecida. Esta contraseña temporal se muestra por <strong>única vez</strong>. El sistema obligará al usuario a cambiarla en su próximo inicio de sesión.
+          <strong>La contraseña del usuario ha sido restablecida.</strong> Esta contraseña temporal se muestra por <strong>única vez</strong>.
         </p>
 
         <div className="w-full text-left bg-base-200/60 p-4 rounded-xl space-y-3 border border-base-200">
@@ -94,7 +94,6 @@ export const UserTemporaryPasswordModal = ({ isOpen, onClose, credentials }: Pro
           variant="primary"
           label="Entendido, cerrar"
           onClick={onClose}
-          responsive={true}
           className="w-full sm:w-auto"
         />
       </div>

@@ -1,6 +1,6 @@
 // src/features/security/pages/UsersPage.tsx
 import { useState } from 'react';
-import { Users, RefreshCw } from 'lucide-react';
+import { Users } from 'lucide-react';
 import { UsersTable } from '../components/users/UsersTable';
 import { UserRolesModal } from '../components/users/UserRolesModal';
 import { UserTemporaryPasswordModal } from '../components/users/UserTemporaryPasswordModal';
@@ -169,34 +169,24 @@ export const UsersPage = () => {
   const confirmationContent = getConfirmationContent();
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 w-full animate-fade-in">
       {/* HEADER DE LA PÁGINA */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+      <div className="flex items-start gap-2.5">
+        <Users className="w-6 h-6 sm:w-7 sm:h-7 text-primary shrink-0 mt-0.5" />
         <div>
-          <h1 className="text-2xl font-bold text-base-content flex items-center gap-2">
-            <Users className="w-7 h-7 text-primary" />
+          <h1 className="text-lg sm:text-2xl font-bold text-base-content tracking-tight">
             Administración de Usuarios
           </h1>
-          <p className="text-base-content/70 text-sm mt-1">
+          <p className="text-xs sm:text-sm text-base-content/70 mt-0.5 leading-relaxed">
             Gestión centralizada de cuentas de usuario del sistema, control de estado de acceso, desbloqueo y roles
           </p>
         </div>
-
-        <button
-          type="button"
-          onClick={refetch}
-          className="btn btn-ghost btn-sm gap-2 border border-base-300 hover:bg-base-200"
-          title="Recargar listado de usuarios"
-        >
-          <RefreshCw className={`w-4 h-4 text-primary ${isLoading ? 'animate-spin' : ''}`} />
-          <span>Actualizar</span>
-        </button>
       </div>
 
-      {/* BARRA DE BÚSQUEDA Y FILTRADO */}
-      <div className="card bg-base-100 border border-base-200 shadow-xs p-4 rounded-2xl">
-        <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
-          <div className="w-full md:w-96">
+      {/* BARRA DE FILTROS */}
+      <div className="card bg-base-100 p-4 rounded-2xl shadow-xs border border-base-200">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center w-full">
+          <div className="w-full sm:w-80">
             <ComerziaInput
               icon="Search"
               placeholder="Buscar por usuario, nombre o rol..."
@@ -204,15 +194,12 @@ export const UsersPage = () => {
               onChange={e => setSearchQuery(e.target.value)}
             />
           </div>
-          <span className="text-xs text-base-content/60 italic font-medium">
-            * Haz clic derecho sobre cualquier usuario para abrir las opciones de administración
-          </span>
         </div>
       </div>
 
       {/* TABLA PAGINADA DE USUARIOS */}
-      <div className="card bg-base-100 shadow-xs border border-base-200 rounded-2xl overflow-hidden">
-        <div className="card-body p-0">
+      <div className="md:card md:bg-base-100 md:shadow-xs md:border md:border-base-200 md:rounded-2xl md:overflow-hidden">
+        <div className="md:card-body md:p-0">
           <UsersTable
             data={data}
             isLoading={isLoading}

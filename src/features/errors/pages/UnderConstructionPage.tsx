@@ -1,7 +1,6 @@
 import { Construction, Home } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { ComerziaButton } from "../../../components/ui/ComerziaButton";
-import { BtnBack } from "../../../components/ui/CrudButtons";
 
 export const UnderConstruction = () => {
   const navigate = useNavigate();
@@ -22,11 +21,6 @@ export const UnderConstruction = () => {
       </div>
 
       <div className="flex flex-col-reverse sm:flex-row items-center gap-3 pt-2 w-full max-w-xs sm:max-w-none sm:w-auto">
-        <BtnBack 
-          label="Volver Atrás"
-          onClick={() => navigate(-1)}
-          className="w-full sm:w-auto"
-        />
         <ComerziaButton 
           variant="primary"
           label="Ir al Inicio"

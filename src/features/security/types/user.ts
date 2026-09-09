@@ -30,6 +30,8 @@ export interface ResetPasswordResponse {
 export interface RoleResponse {
   id: string;
   name: string;
+  displayName: string;
   description: string;
+  isPublic?: boolean;
   permissions?: string[];
 }

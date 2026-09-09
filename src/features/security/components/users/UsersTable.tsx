@@ -8,7 +8,10 @@ import {
   AlertTriangle,
   Calendar,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  User
 } from 'lucide-react';
 import { ComerziaTable, type Column } from '../../../../components/ui/ComerziaTable';
 import { ComerziaBadge } from '../../../../components/ui/ComerziaBadge';
@@ -42,29 +45,42 @@ export const UsersTable = ({
   onResetPasswordRequest,
   onModifyRolesRequest
 }: Props) => {
-  // Estado para el menú contextual de clic derecho / long-press
+  // Estado para el menú contextual (desktop: clic derecho; mobile: centrado en pantalla)
   const [contextMenu, setContextMenu] = useState<{
     isOpen: boolean;
     x: number;
     y: number;
     user: UserResponse | null;
+    isCentered: boolean;
   }>({
     isOpen: false,
     x: 0,
     y: 0,
-    user: null
+    user: null,
+    isCentered: false
   });
-
-  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const touchStartPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   const handleContextMenu = (e: React.MouseEvent, user: UserResponse) => {
     e.preventDefault();
+    e.stopPropagation();
     setContextMenu({
       isOpen: true,
       x: e.clientX,
       y: e.clientY,
-      user
+      user,
+      isCentered: false
+    });
+  };
+
+  const handleMobileCardTap = (e: React.MouseEvent, user: UserResponse) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({
+      isOpen: true,
+      x: 0,
+      y: 0,
+      user,
+      isCentered: true
     });
   };
 
@@ -89,8 +105,8 @@ export const UsersTable = ({
             <span className="font-bold text-sm text-base-content block line-clamp-1">
               {row.fullName || 'Usuario del Sistema'}
             </span>
-            <span className="font-mono text-xs text-primary font-semibold block">
-              @{row.username}
+            <span className="font-mono text-xs text-base-content/60 inline-flex items-center gap-1 whitespace-nowrap">
+              <User size={12} className="text-primary/70 shrink-0" /> {row.username}
             </span>
           </div>
         </div>
@@ -176,7 +192,7 @@ export const UsersTable = ({
       </div>
 
       {/* VISTA MOBILE: CARDS */}
-      <div className="block md:hidden space-y-2.5 p-3">
+      <div className="block md:hidden space-y-3">
         {isLoading ? (
           <div className="py-10 text-center">
             <span className="loading loading-spinner loading-md text-primary"></span>
@@ -186,101 +202,132 @@ export const UsersTable = ({
             No se encontraron usuarios.
           </div>
         ) : (
-          usersList.map((user) => (
-            <div
+          usersList.map((user, index) => (
+            <article
               key={user.id}
-              onTouchStart={(e) => {
-                touchStartPosRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-                longPressTimerRef.current = setTimeout(() => {
-                  if (navigator.vibrate) navigator.vibrate(40);
-                  setContextMenu({
-                    isOpen: true,
-                    x: touchStartPosRef.current.x,
-                    y: touchStartPosRef.current.y,
-                    user
-                  });
-                }, 500);
-              }}
-              onTouchEnd={() => {
-                if (longPressTimerRef.current) {
-                  clearTimeout(longPressTimerRef.current);
-                  longPressTimerRef.current = null;
-                }
-              }}
-              onTouchMove={(e) => {
-                const moveX = Math.abs(e.touches[0].clientX - touchStartPosRef.current.x);
-                const moveY = Math.abs(e.touches[0].clientY - touchStartPosRef.current.y);
-                if (moveX > 10 || moveY > 10) {
-                  if (longPressTimerRef.current) {
-                    clearTimeout(longPressTimerRef.current);
-                    longPressTimerRef.current = null;
-                  }
-                }
-              }}
-              onContextMenu={(e) => handleContextMenu(e, user)}
-              className="bg-base-100 p-3.5 rounded-xl border border-base-200 shadow-xs space-y-2 text-xs select-none"
+              onClick={(e) => handleMobileCardTap(e, user)}
+              className="bg-base-100 p-3.5 rounded-2xl border border-base-200 shadow-xs active:scale-[0.99] transition-all flex flex-col gap-2.5 select-none cursor-pointer"
             >
-              <div className="flex justify-between items-start">
-                <div>
-                  <span className="font-bold text-sm text-base-content block">{user.fullName || 'Usuario'}</span>
-                  <span className="font-mono text-xs text-primary font-semibold block">@{user.username}</span>
+              {/* FILA SUPERIOR: NUMERACIÓN, NOMBRES Y BADGE */}
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="text-xs font-bold text-base-content/40 w-4 text-center shrink-0">
+                    {page * pageSize + index + 1}
+                  </span>
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-semibold text-base-content leading-tight truncate">
+                      {user.fullName || 'Usuario del Sistema'}
+                    </h3>
+                    <p className="text-xs font-mono text-base-content/60 flex items-center gap-1 mt-0.5 truncate">
+                      <User size={12} className="text-primary/70 shrink-0" /> {user.username}
+                    </p>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1">
+
+                <div className="flex items-center gap-1 shrink-0">
                   <ComerziaBadge
                     label={user.statusTypeName || (user.disabled ? 'Deshabilitado' : 'Activo')}
                     variant={getStatusBadgeVariant(user.statusTypeCode, user.disabled)}
                   />
                   {user.locked && (
-                    <AlertTriangle className="w-4 h-4 text-warning" />
+                    <AlertTriangle className="w-4 h-4 text-warning shrink-0" />
                   )}
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-1 pt-1 border-t border-base-200/50">
+              {/* ROLES ASIGNADOS */}
+              <div className="pl-[26px] flex flex-wrap gap-1.5 items-center">
+                <span className="text-[10px] font-semibold text-base-content/50 uppercase mr-1">
+                  Roles:
+                </span>
                 {user.roles && user.roles.length > 0 ? (
-                  user.roles.map((r, i) => (
-                    <span key={i} className="badge badge-xs badge-neutral font-semibold">
-                      {r}
+                  user.roles.map((roleName, rIdx) => (
+                    <span
+                      key={rIdx}
+                      className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-neutral text-neutral-content tracking-wider uppercase"
+                    >
+                      {roleName}
                     </span>
                   ))
                 ) : (
-                  <span className="text-[10px] text-base-content/40 italic">Sin roles</span>
+                  <span className="text-[10px] text-base-content/40 italic">Sin roles asignados</span>
                 )}
               </div>
 
-              {user.lastLoginAt && (
-                <div className="text-[10px] text-base-content/50 pt-1 flex items-center gap-1">
-                  <Calendar size={12} className="text-primary/70" />
-                  <span>Último acceso: {formatDateForUser(user.lastLoginAt)}</span>
-                </div>
-              )}
-            </div>
+              {/* ÚLTIMO ACCESO */}
+              <div className="pl-[26px] pt-1.5 border-t border-base-100 flex items-center text-[11px] text-base-content/60">
+                <Calendar className="w-3.5 h-3.5 mr-1.5 text-base-content/40 shrink-0" />
+                <span>
+                  Último acceso: <strong className="font-medium text-base-content/80">{formatDateForUser(user.lastLoginAt)}</strong>
+                </span>
+              </div>
+            </article>
           ))
         )}
 
-        {/* Paginación Mobile */}
-        {data && data.totalPages > 1 && (
-          <div className="flex justify-between items-center px-1 pt-2">
-            <button
-              type="button"
-              className="btn btn-sm btn-outline gap-1"
-              disabled={page === 0 || isLoading}
-              onClick={() => onPageChange(Math.max(0, page - 1))}
-            >
-              <ChevronLeft size={16} /> Ant.
-            </button>
-            <span className="text-xs font-semibold text-base-content/70">
-              Pág. {page + 1} de {data.totalPages}
-            </span>
-            <button
-              type="button"
-              className="btn btn-sm btn-outline gap-1"
-              disabled={page >= data.totalPages - 1 || isLoading}
-              onClick={() => onPageChange(page + 1)}
-            >
-              Sig. <ChevronRight size={16} />
-            </button>
-          </div>
+        {/* PAGINACIÓN MOBILE */}
+        {data && (
+          <footer className="mt-4 pt-3 pb-3 px-3 bg-base-100 border border-base-200 rounded-2xl shadow-xs" data-purpose="mobile-pagination">
+            {/* Cantidad y resumen de página */}
+            <div className="flex items-center justify-between text-[11px] sm:text-xs text-base-content/70 mb-3 gap-2">
+              <div className="flex items-center gap-1.5 whitespace-nowrap shrink-0">
+                <span>Mostrar</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => onPageSizeChange(Number(e.target.value))}
+                  className="select select-bordered select-xs text-[11px] sm:text-xs font-semibold bg-base-100 h-6 min-h-6 px-1.5"
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                </select>
+                <span className="whitespace-nowrap">de {data.totalElements} registros</span>
+              </div>
+              <span className="font-semibold text-base-content/80 whitespace-nowrap shrink-0">
+                Página {page + 1} de {Math.max(1, data.totalPages)}
+              </span>
+            </div>
+
+            {/* Controles de navegación */}
+            <div className="flex items-center justify-center gap-1.5">
+              <button
+                type="button"
+                aria-label="Primera página"
+                disabled={page === 0 || isLoading}
+                onClick={() => onPageChange(0)}
+                className="w-8 h-8 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
+              >
+                <ChevronsLeft className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                aria-label="Página anterior"
+                disabled={page === 0 || isLoading}
+                onClick={() => onPageChange(Math.max(0, page - 1))}
+                className="w-8 h-8 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                aria-label="Página siguiente"
+                disabled={page >= data.totalPages - 1 || isLoading}
+                onClick={() => onPageChange(page + 1)}
+                className="w-8 h-8 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                aria-label="Última página"
+                disabled={page >= data.totalPages - 1 || isLoading}
+                onClick={() => onPageChange(data.totalPages - 1)}
+                className="w-8 h-8 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
+              >
+                <ChevronsRight className="w-4 h-4" />
+              </button>
+            </div>
+          </footer>
         )}
       </div>
 
@@ -289,6 +336,7 @@ export const UsersTable = ({
         isOpen={contextMenu.isOpen}
         x={contextMenu.x}
         y={contextMenu.y}
+        isCentered={contextMenu.isCentered}
         onClose={() => setContextMenu(prev => ({ ...prev, isOpen: false }))}
       >
         {contextMenu.user && (

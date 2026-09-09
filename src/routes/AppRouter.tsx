@@ -56,7 +56,17 @@ export const AppRouter = () => {
             {/* --- COMMERCIAL MODULES --- */}
             <Route path="/organization/company" element={<CompanyProfilePage />} />
             <Route path="/organization/branches" element={<BranchesPage />} />
+
+
+            {/* --- MÓDULO FINANCE --- */}
+            <Route path="/finance/cashflow" element={<UnderConstruction />} />
+            <Route path="/finance/profit" element={<UnderConstruction />} />
+            <Route path="/finance/analysis" element={<UnderConstruction />} />
+            <Route path="/finance/expenses" element={<UnderConstruction />} />
+
+            {/* --- MÓDULO RRHH --- */}
             <Route path="/hrm/staff" element={<EmployeePage />} />
+            <Route path="/hrm/payroll" element={<UnderConstruction />} />
             
             <Route path="/commercial/catalog" element={<CatalogPage />} />
             <Route path="/commercial/stock-query" element={<StockQueryPage />} />

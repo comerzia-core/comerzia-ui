@@ -41,7 +41,7 @@ export const salesService = {
 
   // --- Ventas (Shift Sales) ---
   createSale: async (data: CreateSaleRequest, branchId?: string | null): Promise<SaleResponse> => {
-    const config = branchId ? { headers: { 'BRANCH_CONTEXT_HEADER': branchId } } : undefined;
+    const config = branchId ? { headers: { 'X-Branch-Context': branchId } } : undefined;
     const response = await api.post<SaleResponse>('/tenant/sales', data, config);
     return response.data;
   },

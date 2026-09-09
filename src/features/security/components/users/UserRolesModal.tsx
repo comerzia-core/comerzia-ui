@@ -38,7 +38,7 @@ export const UserRolesModal = ({ isOpen, onClose, user, onSuccess }: Props) => {
 
       // Preseleccionar IDs de roles que coinciden por nombre o id
       const initialSelectedIds = allRoles
-        .filter(r => user?.roles?.includes(r.name) || user?.roles?.includes(r.id))
+        .filter(r => user?.roles?.includes(r.displayName) || user?.roles?.includes(r.id))
         .map(r => r.id);
 
       setSelectedRoleIds(initialSelectedIds);
@@ -115,7 +115,7 @@ export const UserRolesModal = ({ isOpen, onClose, user, onSuccess }: Props) => {
             {roles.map(role => (
               <ComerziaSelectableCard
                 key={role.id}
-                title={role.name}
+                title={role.displayName || role.name}
                 description={role.description}
                 selected={selectedRoleIds.includes(role.id)}
                 onClick={() => toggleRole(role.id)}

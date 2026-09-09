@@ -43,3 +43,12 @@ El proyecto usa una separación estricta entre componentes visuales puros y lóg
 ### 7. RENDERIZADO DE TIPOS Y CATÁLOGOS (DICCIONARIOS)
 - **Cero Hardcoding:** Está ESTRICTAMENTE PROHIBIDO usar `switch` locales o validaciones ternarias (ej. `type === 1 ? 'Merma' : 'Sobrante'`) para pintar etiquetas en tablas o vistas que provengan del backend.
 - **Uso de Diccionarios:** Siempre que el backend envíe un ID o código numérico que corresponda a un catálogo, se debe utilizar el hook global `useLoadDictionaries` con la llave correspondiente en `DICTIONARIES` (ej. `DICTIONARIES.ADJUSTMENT_TYPE`). Luego, buscar dinámicamente el `label` usando `.find()` sobre las opciones devueltas.
+
+### 8. VISTAS DE MÓDULOS, FILTROS Y MENÚ CONTEXTUAL (Ver .agents/rules/standard-views-and-responsive.md)
+- **Barra de Filtros:** Todas las páginas deben usar una tarjeta contenedora `card bg-base-100 p-4 rounded-2xl shadow-xs border border-base-200` con `ComerziaInput` de ancho `w-full sm:w-80`.
+- **Cero Modales al Clic:** Prohibido abrir modales automáticamente al hacer clic en una fila.
+- **Menú Contextual:**
+  - En PC (Desktop): Clic derecho (`onContextMenu`) en la fila abre `ComerziaContextMenu` en coordenadas del mouse.
+  - En Móvil (Mobile): Simple tap (`onClick`) en la tarjeta abre `ComerziaContextMenu` centrado en pantalla con telón oscuro (`isCentered={true}`).
+- **Paginación Mobile:** La barra de conteo y páginas debe mostrarse en una sola fila sin saltos de línea con `whitespace-nowrap`.
+

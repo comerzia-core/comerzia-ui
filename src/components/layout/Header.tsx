@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../stores/useAuthStore";
 import { useCurrentTime } from "../../hooks/useCurrentTime";
-import { Bell, LogOut, User as UserIcon, Settings, Shield, HelpCircle, Menu } from "lucide-react";
+import { LogOut, User as UserIcon, Settings, Shield, HelpCircle, Menu } from "lucide-react";
 import { ThemeToggle } from "../ui/ThemeToggle";
 import { 
     BtnModalYes, 
@@ -39,38 +39,28 @@ export const Header = () => {
 
   return (
     <>
-      <div className="navbar bg-base-100 px-6 py-4 border-b border-base-200 justify-between sticky top-0 z-30 shadow-sm">
+      <div className="h-16 flex items-center justify-between px-4 sm:px-6 border-b border-base-300 bg-base-100 sticky top-0 z-30 shadow-sm">
         
         {/* IZQUIERDA */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1 mr-2">
             
-            {/* ✅ NUEVO: BOTÓN HAMBURGUESA (Solo visible en Móvil 'lg:hidden') */}
-            {/* Este label busca un input con id="my-drawer" que pondremos en el Layout */}
-            <label htmlFor="my-drawer" className="btn btn-square btn-ghost lg:hidden text-base-content">
-                <Menu size={24} />
+            {/* BOTÓN HAMBURGUESA (Solo visible en Móvil 'lg:hidden') */}
+            <label htmlFor="my-drawer" className="btn btn-square btn-ghost btn-sm sm:btn-md lg:hidden text-base-content shrink-0">
+                <Menu size={22} />
             </label>
 
-            <div className="flex flex-col">
-                <h1 className="text-2xl font-bold text-base-content">
+            <div className="flex flex-col min-w-0 justify-center">
+                <h1 className="text-sm sm:text-base font-bold text-base-content leading-tight truncate" title={`Hola, ${userProfile?.firstName || 'Usuario'}`}>
                     Hola, {userProfile?.firstName || 'Usuario'}
                 </h1>
-                <p className="text-sm text-base-content/60 font-medium mt-1 capitalize">
+                <p className="text-[11px] sm:text-xs text-base-content/60 font-medium capitalize truncate leading-tight mt-0.5">
                     {currentTime}
                 </p>
             </div>
         </div>
         
         {/* DERECHA */}
-        <div className="flex items-center gap-4">
-          
-          <button className="btn btn-ghost btn-circle">
-            <div className="indicator">
-              <Bell className="w-6 h-6" />
-              <span className="badge badge-xs badge-primary indicator-item"></span>
-            </div>
-          </button>
-
-          <div className="h-8 w-px bg-base-300 mx-2"></div>
+        <div className="flex items-center gap-2 shrink-0">
 
           {/* --- DROPDOWN (MODO CLICK) --- */}
           {/* Quitamos 'dropdown-hover' y 'group' */}
