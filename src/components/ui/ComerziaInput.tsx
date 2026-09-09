@@ -5,7 +5,8 @@ import { useShake } from "../../hooks/useShake";
 interface Props extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
-  icon?: string;
+  icon?: string | React.ReactNode;
+  rightAction?: React.ReactNode;
   isRequired?: boolean;
   shakeKey?: number;
   helperText?: React.ReactNode;
@@ -13,7 +14,7 @@ interface Props extends React.InputHTMLAttributes<HTMLInputElement> {
 }
 
 export const ComerziaInput = forwardRef<HTMLInputElement, Props>(({ 
-  label, error, icon, isRequired, shakeKey, helperText, uppercase, className = "", 
+  label, error, icon, rightAction, isRequired, shakeKey, helperText, uppercase, className = "", 
   onChange, onBlur, ...props 
 }, ref) => {
   
@@ -49,7 +50,7 @@ export const ComerziaInput = forwardRef<HTMLInputElement, Props>(({
         </label>
       )}
       
-      <div className="relative">
+      <div className="relative flex items-center">
         <input
           ref={ref}
           className={`
@@ -60,6 +61,7 @@ export const ComerziaInput = forwardRef<HTMLInputElement, Props>(({
             shadow-2xs
             ${error ? "!border-error !ring-error/20 bg-error/5" : ""} 
             ${icon ? "pl-10" : ""} 
+            ${rightAction ? "pr-10" : ""}
             ${className}
           `}
           onChange={handleChange}
@@ -72,7 +74,13 @@ export const ComerziaInput = forwardRef<HTMLInputElement, Props>(({
 
         {icon && (
           <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-base-content/50">
-             <IconRenderer iconName={icon} size={18} />
+             {typeof icon === 'string' ? <IconRenderer iconName={icon} size={18} /> : icon}
+          </div>
+        )}
+
+        {rightAction && (
+          <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+             {rightAction}
           </div>
         )}
       </div>

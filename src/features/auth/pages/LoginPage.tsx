@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { isAxiosError } from "axios";
-import { AlertTriangle, Eye, EyeOff, Lock } from "lucide-react";
+import { AlertTriangle, Eye, EyeOff, Lock, User, Key } from "lucide-react";
 import api from "../../../lib/axios";
 import { useAuthStore } from "../../../stores/useAuthStore";
 import { PasswordChecklist } from "../components/PasswordChecklist";
@@ -202,43 +202,52 @@ export const LoginPage = () => {
                     {currentStep === 'LOGIN' && (
                         <form onSubmit={handleLoginSubmit} className="space-y-4">
                             <ComerziaInput
+                                id="login-username"
+                                name="username"
                                 label="Usuario"
                                 type="text"
-                                icon="user" 
+                                icon={<User size={18} />} 
                                 value={username}
                                 onChange={(e) => setUsername(e.target.value)}
                                 shakeKey={shakeKey}
                                 isRequired
                                 disabled={isLoading}
+                                autoComplete="username"
+                                autoCapitalize="none"
+                                autoCorrect="off"
+                                spellCheck={false}
                             />
 
-                            <div className="relative">
-                                <ComerziaInput
-                                    label="Contraseña"
-                                    type={showPassword ? "text" : "password"}
-                                    icon="key"
-                                    value={currentPassword}
-                                    onChange={(e) => setCurrentPassword(e.target.value)}
-                                    shakeKey={shakeKey}
-                                    isRequired
-                                    disabled={isLoading}
-                                />
-                                {/* BOTÓN DE OJO (Posicionado absolutamente sobre el input) */}
-                                <button 
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-3 top-10 text-base-content/50 hover:text-primary transition-colors"
-                                >
-                                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                                </button>
-                            </div>
+                            <ComerziaInput
+                                id="login-password"
+                                name="password"
+                                label="Contraseña"
+                                type={showPassword ? "text" : "password"}
+                                icon={<Key size={18} />}
+                                value={currentPassword}
+                                onChange={(e) => setCurrentPassword(e.target.value)}
+                                shakeKey={shakeKey}
+                                isRequired
+                                disabled={isLoading}
+                                autoComplete="current-password"
+                                rightAction={
+                                    <button 
+                                        type="button"
+                                        tabIndex={-1}
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="text-base-content/50 hover:text-primary transition-colors p-1"
+                                        title={showPassword ? "Ocultar contraseña" : "Ver contraseña"}
+                                    >
+                                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    </button>
+                                }
+                            />
 
                             <BtnLogin 
                                 type="submit" 
                                 label="Iniciar Sesión" 
                                 className={`btn btn-primary w-full mt-6 ${isLoading ? 'loading' : ''}`}
                                 disabled={isLoading}
-                                
                             />
                         </form>
                     )}
@@ -253,28 +262,36 @@ export const LoginPage = () => {
                                 </span>
                             </div>
 
-                            <div className="relative">
-                                <ComerziaInput
-                                    label="Nueva Contraseña"
-                                    type={showPassword ? "text" : "password"}
-                                    icon="shield-check"
-                                    value={newPassword}
-                                    onChange={(e) => {
-                                        setNewPassword(e.target.value);
-                                        setShowErrorsInChecklist(false); // Resetea el rojo al escribir
-                                    }}
-                                    shakeKey={shakeKey}
-                                    isRequired
-                                    disabled={isLoading}
-                                />
-                                <button 
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-3 top-10 text-base-content/50 hover:text-primary transition-colors"
-                                >
-                                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                                </button>
-                            </div>
+                            <ComerziaInput
+                                id="new-password"
+                                name="newPassword"
+                                label="Nueva Contraseña"
+                                type={showPassword ? "text" : "password"}
+                                icon={<Lock size={18} />}
+                                value={newPassword}
+                                onChange={(e) => {
+                                    setNewPassword(e.target.value);
+                                    setShowErrorsInChecklist(false);
+                                }}
+                                shakeKey={shakeKey}
+                                isRequired
+                                disabled={isLoading}
+                                autoComplete="new-password"
+                                autoCapitalize="none"
+                                autoCorrect="off"
+                                spellCheck={false}
+                                rightAction={
+                                    <button 
+                                        type="button"
+                                        tabIndex={-1}
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="text-base-content/50 hover:text-primary transition-colors p-1"
+                                        title={showPassword ? "Ocultar contraseña" : "Ver contraseña"}
+                                    >
+                                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    </button>
+                                }
+                            />
 
                             <PasswordChecklist 
                                 passwordValue={newPassword} 
@@ -296,12 +313,12 @@ export const LoginPage = () => {
                                     Cancelar
                                 </button>
                                 
-                            <BtnLogin 
-                                type="submit" 
-                                label="Actualizar e Iniciar Sesión"
-                                className={`btn btn-primary flex-1 ${isLoading ? 'loading' : ''}`}
-                                disabled={isLoading}                                
-                            />
+                                <BtnLogin 
+                                    type="submit" 
+                                    label="Actualizar e Iniciar Sesión"
+                                    className={`btn btn-primary flex-1 ${isLoading ? 'loading' : ''}`}
+                                    disabled={isLoading}                                
+                                />
                             </div>
                         </form>
                     )}
