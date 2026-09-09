@@ -313,6 +313,6 @@ export interface PageSalePriceHistoryResponse {
 export interface ChangePriceRequest {
   priceTypeId: string;
   salePrice: number;
-  discountPrice: number;
+  discountPrice?: number;
   variantId: string;
 }

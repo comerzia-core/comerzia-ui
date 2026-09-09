@@ -1,5 +1,5 @@
 // src/features/employees/components/EmployeeTable.tsx
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Building2,
   IdCard,

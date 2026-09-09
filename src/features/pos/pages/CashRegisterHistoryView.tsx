@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { posService } from '../services/posService';
 import type { CashRegisterResponse, ShiftResponse } from '../types/pos';
 import { ComerziaTable, type Column, type TablePaginationConfig } from '../../../components/ui/ComerziaTable';
@@ -13,12 +13,10 @@ import { History } from 'lucide-react';
 
 interface Props {
   register?: CashRegisterResponse;
-  onBack?: () => void;
 }
 
-export const CashRegisterHistoryView = ({ register: propRegister, onBack: propOnBack }: Props) => {
+export const CashRegisterHistoryView = ({ register: propRegister }: Props) => {
   const { registerId } = useParams<{ registerId: string }>();
-  const navigate = useNavigate();
 
   const { userProfile } = useAuthStore();
   const currency = userProfile?.companySettings?.currencyCode || '$';

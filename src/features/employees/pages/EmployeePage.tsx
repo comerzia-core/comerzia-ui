@@ -12,19 +12,14 @@ import { useToast } from '../../../context/ToastContext';
 import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
 import { EmployeeCredentialsModal } from '../components/EmployeeCredentialsModal';
-import { useAuthStore } from '../../../stores/useAuthStore';
 
 type EmployeeActionType = 'DELETE' | null;
 
 export const EmployeePage = () => {
-  const { hasRole } = useAuthStore();
-  const isOwner = hasRole('OWNER');
-
   const [data, setData] = useState<PageResponse<EmployeeSummaryResponse> | null>(null);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(5);
   const [search, setSearch] = useState('');
-  const [selectedBranch, setSelectedBranch] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   // Modales
@@ -140,24 +135,16 @@ export const EmployeePage = () => {
 
   const confirmationContent = getConfirmationContent();
 
-  // Lista única de sucursales para el filtro
-  const uniqueBranches = Array.from(
-    new Set((data?.content || []).filter(e => e.branchName).map(e => e.branchName))
-  );
-
   // Filtrado reactivo en cliente (si aplica)
   const filteredData = data
     ? {
       ...data,
       content: data.content.filter(employee => {
-        const matchesSearch =
+        return (
           search === '' ||
           (employee.fullName || '').toLowerCase().includes(search.toLowerCase()) ||
-          (employee.documentNumber || '').includes(search);
-
-        const matchesBranch = selectedBranch === '' || employee.branchName === selectedBranch;
-
-        return matchesSearch && matchesBranch;
+          (employee.documentNumber || '').includes(search)
+        );
       })
     }
     : null;

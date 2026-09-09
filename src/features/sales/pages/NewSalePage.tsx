@@ -7,9 +7,8 @@ import type { SalesCatalogItem, SalesProductResponse } from '../types/sales';
 import { useToast } from '../../../context/ToastContext';
 import { CommercialProductSearchBar } from '../../commercial/components/CommercialProductSearchBar';
 import { ComerziaButton } from '../../../components/ui/ComerziaButton';
-import { BtnDeleteIcon } from '../../../components/ui/CrudButtons';
 import type { CartItem } from '../store/useCartStore';
-import { AlertCircle, ArrowRight, Scan, ShoppingCart, Store, ChevronDown, ChevronUp, Trash2, Tag, X } from 'lucide-react';
+import { AlertCircle, ArrowRight, ShoppingCart, Store, ChevronDown, ChevronUp, Trash2, Tag, X } from 'lucide-react';
 
 interface QuantityControlProps {
   item: CartItem;

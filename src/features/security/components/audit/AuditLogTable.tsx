@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Calendar, Network, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Eye } from 'lucide-react';
+import { Calendar, Network, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Eye } from 'lucide-react';
 import { ComerziaTable, type Column } from '../../../../components/ui/ComerziaTable';
 import { ComerziaBadge } from '../../../../components/ui/ComerziaBadge';
 import { ComerziaContextMenu, ContextMenuItem } from '../../../../components/ui/ComerziaContextMenu';

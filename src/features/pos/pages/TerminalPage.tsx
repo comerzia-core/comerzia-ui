@@ -11,14 +11,12 @@ import {
   TrendingDown, 
   DollarSign, 
   Eye, 
-  RefreshCw,
   Receipt,
   User,
   Calendar,
   ShoppingBag,
   Trash2,
   AlertTriangle,
-  Search,
   UserCheck
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -40,9 +38,6 @@ export const TerminalPage = () => {
   // Sales List State (Pending sales from /tenant/sales/pending)
   const [pendingSales, setPendingSales] = useState<SaleResponse[]>([]);
   const [isLoadingSales, setIsLoadingSales] = useState(false);
-
-  // Filter & Search State
-  const [searchQuery, setSearchQuery] = useState('');
 
   // Modals State
   const [selectedSaleToPay, setSelectedSaleToPay] = useState<SaleResponse | null>(null);
@@ -142,16 +137,7 @@ export const TerminalPage = () => {
     }
   };
 
-  // Filtrado de Ventas Pendientes
-  const filteredSales = pendingSales.filter((sale) => {
-    if (!searchQuery.trim()) return true;
-    const query = searchQuery.toLowerCase();
-    const matchNum = sale.saleNumber?.toLowerCase().includes(query) || sale.id.toLowerCase().includes(query);
-    const matchUser = sale.employeeUsername?.toLowerCase().includes(query);
-    const matchCustomer = sale.customer?.fullName?.toLowerCase().includes(query) || sale.customer?.firstName?.toLowerCase().includes(query) || sale.customer?.documentNumber?.toLowerCase().includes(query);
-    const matchItem = sale.details?.some(d => d.productName?.toLowerCase().includes(query) || d.variantName?.toLowerCase().includes(query));
-    return matchNum || matchUser || matchCustomer || matchItem;
-  });
+  const filteredSales = pendingSales;
 
   if (!canAccessTerminal) {
     return (
@@ -274,9 +260,7 @@ export const TerminalPage = () => {
           <ShoppingBag size={44} className="mx-auto text-base-content/20 mb-3 stroke-1" />
           <h3 className="text-base font-bold text-base-content">No hay ventas pendientes de cobro</h3>
           <p className="text-base-content/60 text-xs sm:text-sm mt-1 max-w-sm mx-auto">
-            {searchQuery 
-              ? 'No se encontraron resultados para los términos de búsqueda.' 
-              : 'Las ventas creadas en caja aparecerán aquí listas para ser cobradas.'}
+            Las ventas creadas en caja aparecerán aquí listas para ser cobradas.
           </p>
         </div>
       ) : (

@@ -17,8 +17,7 @@ export const AuditPage = () => {
     searchQuery,
     setSearchQuery,
     handlePageChange,
-    handlePageSizeChange,
-    refetch
+    handlePageSizeChange
   } = useAuditLogs({ initialPageSize: 5 });
 
   // Estado para el modal de detalles completos

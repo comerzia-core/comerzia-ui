@@ -170,12 +170,13 @@ export const PricesPage = () => {
     { 
       header: 'Variación', 
       render: (row) => {
-        if (!row.previousSalePrice || row.previousSalePrice === row.salePrice) return '-';
-        const diff = row.salePrice - row.previousSalePrice;
-        const pct = (diff / row.previousSalePrice) * 100;
+        if (row.previousPrice == null || row.previousPrice === row.salePrice) return '-';
+        const pct = row.variationPercentage != null 
+          ? row.variationPercentage 
+          : ((row.salePrice - row.previousPrice) / row.previousPrice) * 100;
         return (
-          <span className={`text-xs font-semibold ${diff > 0 ? 'text-success' : 'text-error'}`}>
-            {diff > 0 ? '+' : ''}{pct.toFixed(1)}%
+          <span className={`text-xs font-semibold ${pct > 0 ? 'text-success' : 'text-error'}`}>
+            {pct > 0 ? '+' : ''}{pct.toFixed(1)}%
           </span>
         );
       } 
@@ -332,7 +333,7 @@ export const PricesPage = () => {
                       data={historyData}
                       columns={historyColumns}
                       isLoading={isLoadingHistory}
-                      pagination={pagination}
+                      pagination={historyPagination}
                     />
                   </div>
 
