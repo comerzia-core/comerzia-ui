@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useShake } from "../../hooks/useShake";
-import { Search, Plus, MoreHorizontal, X } from "lucide-react";
+import { Plus, MoreHorizontal, X, ChevronDown } from "lucide-react";
 import { ConfirmationModal } from "./ConfirmationModal";
 import { BtnDelete } from "./CrudButtons";
 import { ComerziaSwitch } from "./ComerziaSwitch";
@@ -72,15 +72,17 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
         }
     }, [value, options, isOpen]);
 
-    // Handle click outside to close dropdown
+    // Handle click / touch outside to close dropdown
     useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
+        const handleOutside = (event: PointerEvent) => {
             if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
                 setIsOpen(false);
             }
         };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
+        document.addEventListener("pointerdown", handleOutside);
+        return () => {
+            document.removeEventListener("pointerdown", handleOutside);
+        };
     }, []);
 
     const filteredOptions = options.filter(opt => 
@@ -120,7 +122,36 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
         }
     };
 
-    const startEditing = (e: React.MouseEvent, opt: SelectOption) => {
+    // Toggle dropdown on tap / click
+    const handleInputPointerDown = (e: React.PointerEvent) => {
+        if (disabled || isLoading || isCreating) return;
+        if (isOpen) {
+            // Si ya está abierto y se hace tap en el input, cerrar y desenfocar
+            e.preventDefault();
+            setIsOpen(false);
+            inputRef.current?.blur();
+        } else {
+            // Si está cerrado, abrir
+            setIsOpen(true);
+        }
+    };
+
+    const handleToggleChevron = (e: React.PointerEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (disabled || isLoading || isCreating) return;
+        setIsOpen((prev) => {
+            const next = !prev;
+            if (next) {
+                inputRef.current?.focus();
+            } else {
+                inputRef.current?.blur();
+            }
+            return next;
+        });
+    };
+
+    const startEditing = (e: React.MouseEvent | React.PointerEvent, opt: SelectOption) => {
         e.stopPropagation();
         setEditOptionId(opt.value);
         setEditOptionLabel(opt.label);
@@ -173,10 +204,13 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
                     ref={inputRef}
                     type="text"
                     className={`
-                        input input-bordered w-full transition-colors pr-16 uppercase
-                        focus:border-primary focus:ring-1 focus:ring-primary/20
-                        ${error ? "input-error bg-error/5" : ""} 
-                        ${disabled ? "bg-base-200 text-base-content/50 cursor-not-allowed" : ""}
+                        input input-bordered w-full transition-all duration-200 pr-16 uppercase
+                        bg-base-100 text-base-content
+                        border-base-300 hover:border-base-content/40
+                        focus:border-primary focus:ring-2 focus:ring-primary/20 focus:bg-base-100
+                        shadow-2xs
+                        ${error ? "!border-error !ring-error/20 bg-error/5" : ""} 
+                        ${disabled ? "!bg-base-200 text-base-content/50 cursor-not-allowed" : "cursor-pointer"}
                     `}
                     placeholder={placeholder}
                     value={searchTerm}
@@ -184,7 +218,7 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
                         setSearchTerm(e.target.value.toUpperCase());
                         if (!isOpen) setIsOpen(true);
                     }}
-                    onFocus={() => setIsOpen(true)}
+                    onPointerDown={handleInputPointerDown}
                     onKeyDown={handleKeyDown}
                     disabled={disabled || isLoading || isCreating}
                 />
@@ -196,7 +230,9 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
                         <>
                             {value && !disabled && (
                                 <button 
-                                    className="btn btn-ghost btn-xs btn-circle text-error hover:bg-error/20"
+                                    type="button"
+                                    className="btn btn-ghost btn-xs btn-circle text-error hover:bg-error/20 z-10"
+                                    onPointerDown={(e) => e.stopPropagation()}
                                     onClick={(e) => {
                                         e.preventDefault();
                                         e.stopPropagation();
@@ -208,9 +244,15 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
                                     <X className="w-4 h-4" />
                                 </button>
                             )}
-                            <div className="pointer-events-none px-1">
-                                <Search className="w-4 h-4 text-base-content/50" />
-                            </div>
+                            <button
+                                type="button"
+                                className="btn btn-ghost btn-xs btn-circle text-base-content/60 hover:text-base-content"
+                                onPointerDown={handleToggleChevron}
+                                tabIndex={-1}
+                                title={isOpen ? "Cerrar opciones" : "Ver opciones"}
+                            >
+                                <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+                            </button>
                         </>
                     )}
                 </div>
@@ -223,13 +265,16 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
             )}
 
             {isOpen && !disabled && (
-                <div className="absolute z-50 w-full mt-1 bg-base-100 rounded-xl shadow-xl border border-base-200 max-h-80 overflow-auto top-full">
+                <div 
+                    className="absolute z-50 w-full mt-1 bg-base-100 dark:bg-slate-800 rounded-xl shadow-2xl border border-base-200 dark:border-slate-700 max-h-80 overflow-auto top-full"
+                    onPointerDown={(e) => e.stopPropagation()}
+                >
                     <ul className="menu menu-sm p-2 w-full">
                         {filteredOptions.length > 0 ? (
                             filteredOptions.map((opt) => (
                                 <li key={opt.value} className="relative group w-full">
                                     {editOptionId === opt.value ? (
-                                        <div className="flex flex-col gap-2 p-2 w-full" onClick={e => e.stopPropagation()}>
+                                        <div className="flex flex-col gap-2 p-2 w-full" onPointerDown={e => e.stopPropagation()} onClick={e => e.stopPropagation()}>
                                             <div className="flex items-center gap-2 w-full">
                                                 <input 
                                                     ref={editInputRef}
@@ -244,7 +289,7 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
                                                         if (e.key === 'Escape') setEditOptionId(null);
                                                     }}
                                                 />
-                                                <div className="flex-shrink-0" onMouseDown={(e) => { e.preventDefault(); /* Prevent blur before toggle */ }}>
+                                                <div className="flex-shrink-0" onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); }}>
                                                     <ComerziaSwitch 
                                                         checked={editOptionStatus} 
                                                         onChange={() => setEditOptionStatus(!editOptionStatus)} 
@@ -256,8 +301,9 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
                                                     label={`Eliminar ${entityName}`}
                                                     className="btn-sm w-full mt-1"
                                                     responsive={false}
-                                                    onMouseDown={(e) => {
-                                                        e.preventDefault(); // Prevents input blur before click
+                                                    onPointerDown={(e) => {
+                                                        e.preventDefault();
+                                                        e.stopPropagation();
                                                         setEditOptionId(null);
                                                         setIsOpen(false);
                                                         setIsDeletingId(opt.value);
@@ -267,8 +313,17 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
                                         </div>
                                     ) : (
                                         <a 
-                                            className={`flex justify-between items-center w-full ${opt.value === value ? "active" : ""} ${opt.status === false ? "max-md:bg-error/10 max-md:text-error" : ""}`}
-                                            onClick={() => handleSelect(opt.value)}
+                                            className={`flex justify-between items-center w-full px-3 py-2 rounded-lg cursor-pointer transition-all duration-150
+                                                ${opt.value === value 
+                                                    ? "!bg-primary !text-primary-content font-bold shadow-xs" 
+                                                    : "hover:!bg-primary/15 hover:!text-primary active:!bg-primary/25 text-base-content"
+                                                } 
+                                                ${opt.status === false ? "max-md:bg-error/10 max-md:text-error" : ""}
+                                            `}
+                                            onPointerDown={(e) => {
+                                                e.stopPropagation();
+                                                handleSelect(opt.value);
+                                            }}
                                         >
                                             <span className="flex-1 truncate flex items-center gap-2">
                                                 {opt.label}
@@ -279,7 +334,10 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
                                             {onUpdate && canManage && (
                                                 <button 
                                                     className="btn btn-ghost btn-xs btn-square opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                                                    onClick={(e) => startEditing(e, opt)}
+                                                    onPointerDown={(e) => {
+                                                        e.stopPropagation();
+                                                        startEditing(e, opt);
+                                                    }}
                                                 >
                                                     <MoreHorizontal className="w-4 h-4" />
                                                 </button>
@@ -295,8 +353,11 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
                         {canCreate && canManage && (
                             <li className="w-full">
                                 <a 
-                                    className="text-primary font-medium flex items-center gap-2 hover:bg-primary/10 w-full"
-                                    onClick={handleCreate}
+                                    className="text-primary font-medium flex items-center gap-2 hover:!bg-primary hover:!text-white active:!bg-primary-focus transition-all duration-150 px-3 py-2 rounded-lg w-full cursor-pointer"
+                                    onPointerDown={(e) => {
+                                        e.stopPropagation();
+                                        handleCreate();
+                                    }}
                                 >
                                     <Plus className="w-4 h-4" />
                                     Crear "{searchTerm}"

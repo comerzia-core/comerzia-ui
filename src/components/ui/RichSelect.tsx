@@ -47,10 +47,12 @@ export const RichSelect = ({ label, placeholder, options, value, onChange, error
         window.addEventListener("scroll", handleScrollOrResize, true);
         window.addEventListener("resize", handleScrollOrResize);
         document.addEventListener("mousedown", handleClickOutside);
+        document.addEventListener("touchstart", handleClickOutside);
         return () => {
             window.removeEventListener("scroll", handleScrollOrResize, true);
             window.removeEventListener("resize", handleScrollOrResize);
             document.removeEventListener("mousedown", handleClickOutside);
+            document.removeEventListener("touchstart", handleClickOutside);
         };
     }, [isOpen]);
 
@@ -74,7 +76,7 @@ export const RichSelect = ({ label, placeholder, options, value, onChange, error
         }
     };
 
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
         if (buttonRef.current && !buttonRef.current.contains(event.target as Node) &&
             dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
             setIsOpen(false);
@@ -120,8 +122,8 @@ export const RichSelect = ({ label, placeholder, options, value, onChange, error
                                 setSearchTerm("");
                             }}
                             className={`
-                                w-full text-left px-3 py-2 rounded-lg flex items-center justify-between group transition-colors
-                                ${value === opt.value ? 'bg-primary/10 text-primary' : 'hover:bg-base-200'}
+                                w-full text-left px-3 py-2.5 rounded-lg flex items-center justify-between group transition-all duration-150 cursor-pointer
+                                ${value === opt.value ? '!bg-primary !text-primary-content font-bold shadow-xs' : 'hover:!bg-primary/15 hover:!text-primary active:!bg-primary/25 text-base-content'}
                             `}
                         >
                             <div className="flex items-center gap-3 overflow-hidden">

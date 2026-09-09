@@ -37,10 +37,12 @@ export const ComerziaTextarea = forwardRef<HTMLTextAreaElement, Props>(
                     className={`
                         textarea textarea-bordered 
                         w-full h-24 
-                        focus:border-primary focus:ring-1 focus:ring-primary/20 
                         bg-base-100 text-base-content
+                        border-base-300 hover:border-base-content/40
+                        focus:border-primary focus:ring-2 focus:ring-primary/20 focus:bg-base-100
+                        shadow-2xs
                         transition-all duration-200
-                        ${error ? 'textarea-error' : 'border-base-300'}
+                        ${error ? '!border-error !ring-error/20 bg-error/5' : ''}
                         ${className}
                     `}
                     {...props}

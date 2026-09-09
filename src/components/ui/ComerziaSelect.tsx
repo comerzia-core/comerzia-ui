@@ -41,9 +41,12 @@ export const ComerziaSelect = forwardRef<HTMLSelectElement, Props>(({
             <select 
                 ref={ref}
                 className={`
-                    select select-bordered w-full transition-colors
-                    focus:border-primary focus:ring-1 focus:ring-primary/20
-                    ${error ? "select-error bg-error/5" : ""} 
+                    select select-bordered w-full transition-all duration-200
+                    bg-base-100 text-base-content
+                    border-base-300 hover:border-base-content/40
+                    focus:border-primary focus:ring-2 focus:ring-primary/20 focus:bg-base-100
+                    shadow-2xs
+                    ${error ? "!border-error !ring-error/20 bg-error/5" : ""} 
                     ${className}
                 `} 
                 disabled={isLoading}

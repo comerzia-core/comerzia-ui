@@ -298,4 +298,90 @@
       display: none !important;
   }
 
+  /* --- COMERZIA GLOBAL INPUTS, SELECTS & TEXTAREAS CONTRAST & VISIBILITY --- */
+  .input:not(.checkbox):not(.radio):not(.toggle):not(.range), 
+  .select, 
+  .textarea {
+    border: 1.5px solid #cbd5e1 !important; /* slate-300 */
+    background-color: #f8fafc !important; /* slate-50 */
+    color: #0f172a !important;
+    transition: all 0.2s ease-in-out !important;
+  }
+
+  .input:not(.checkbox):not(.radio):not(.toggle):not(.range):hover, 
+  .select:hover, 
+  .textarea:hover {
+    border-color: #94a3b8 !important; /* slate-400 */
+    background-color: #ffffff !important;
+  }
+
+  .input:not(.checkbox):not(.radio):not(.toggle):not(.range):focus, 
+  .select:focus, 
+  .textarea:focus {
+    border-color: #432ad5 !important;
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    outline: none !important;
+    box-shadow: 0 0 0 3px rgba(67, 42, 213, 0.2) !important;
+  }
+
+  /* Native Options & Select Color Scheme (Restores native OS hover effect) */
+  :root, [data-theme="light"] {
+    color-scheme: light;
+  }
+
+  [data-theme="dark"] {
+    color-scheme: dark;
+  }
+
+  select {
+    color-scheme: light;
+  }
+
+  [data-theme="dark"] select {
+    color-scheme: dark;
+  }
+
+  /* Dark Theme Contrast - Solid & High Contrast (Never Transparent) */
+  [data-theme="dark"] .input:not(.checkbox):not(.radio):not(.toggle):not(.range),
+  [data-theme="dark"] .select,
+  [data-theme="dark"] .textarea {
+    border: 1.5px solid #475569 !important; /* slate-600 */
+    background-color: #1e293b !important; /* slate-800 - 100% solid, fully opaque */
+    color: #f8fafc !important; /* slate-50 */
+  }
+
+  [data-theme="dark"] .input:not(.checkbox):not(.radio):not(.toggle):not(.range):hover,
+  [data-theme="dark"] .select:hover,
+  [data-theme="dark"] .textarea:hover {
+    border-color: #94a3b8 !important; /* slate-400 */
+    background-color: #273449 !important;
+  }
+
+  [data-theme="dark"] .input:not(.checkbox):not(.radio):not(.toggle):not(.range):focus,
+  [data-theme="dark"] .select:focus,
+  [data-theme="dark"] .textarea:focus {
+    border-color: #818cf8 !important; /* indigo-400 */
+    background-color: #0f172a !important; /* slate-900 */
+    color: #ffffff !important;
+    outline: none !important;
+    box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.3) !important;
+  }
+
+  /* Error states */
+  .input-error, .select-error, .textarea-error,
+  .input.border-error, .select.border-error, .textarea.border-error {
+    border-color: #ef4444 !important;
+    background-color: rgba(239, 68, 68, 0.08) !important;
+  }
+
+  [data-theme="dark"] .input-error, 
+  [data-theme="dark"] .select-error, 
+  [data-theme="dark"] .textarea-error,
+  [data-theme="dark"] .input.border-error, 
+  [data-theme="dark"] .select.border-error, 
+  [data-theme="dark"] .textarea.border-error {
+    border-color: #ef4444 !important;
+    background-color: rgba(239, 68, 68, 0.18) !important;
+  }
 }
