@@ -13,10 +13,10 @@ import { ChevronLeft, ChevronRight, ClipboardList, User } from 'lucide-react';
 export const InventoriesPage = () => {
   const { userProfile } = useAuthStore();
   const roles = userProfile?.roles || [];
-  
+
   const isAdmin = roles.includes('OWNER') || roles.includes('BRANCH_MANAGER');
   const isExecutor = roles.includes('CASHIER') || roles.includes('SELLER');
-  
+
   const [viewMode, setViewMode] = useState<'admin' | 'executor'>(isAdmin ? 'admin' : 'executor');
 
   // Modals state
@@ -79,7 +79,7 @@ export const InventoriesPage = () => {
       render: (row) => {
         const status = getStatusCode(row.statusType);
         return (
-          <button 
+          <button
             className="btn btn-sm btn-outline"
             onClick={() => setSelectedInventoryForApprove(row)}
             disabled={status === 3}
@@ -101,7 +101,7 @@ export const InventoriesPage = () => {
       render: (row) => {
         const status = getStatusCode(row.statusType);
         return (
-          <button 
+          <button
             className="btn btn-sm btn-primary"
             onClick={() => setSelectedInventoryForExecute(row)}
             disabled={status !== 1}
@@ -134,13 +134,13 @@ export const InventoriesPage = () => {
         <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
           {isAdmin && isExecutor && (
             <div className="tabs tabs-boxed">
-              <a 
+              <a
                 className={`tab tab-sm sm:tab-md ${viewMode === 'admin' ? 'tab-active' : ''}`}
                 onClick={() => { setViewMode('admin'); setPage(0); }}
               >
                 Panel Admin
               </a>
-              <a 
+              <a
                 className={`tab tab-sm sm:tab-md ${viewMode === 'executor' ? 'tab-active' : ''}`}
                 onClick={() => { setViewMode('executor'); setPage(0); }}
               >
@@ -149,8 +149,8 @@ export const InventoriesPage = () => {
             </div>
           )}
           {viewMode === 'admin' && (
-            <BtnCreate 
-              label="Nueva Orden" 
+            <BtnCreate
+              label="Nueva Orden"
               onClick={() => setIsCreateModalOpen(true)}
               responsive={true}
               className="flex-1 sm:flex-none sm:w-auto"
@@ -213,7 +213,7 @@ export const InventoriesPage = () => {
 
                     <div className="pt-2 border-t border-base-200/60 flex justify-end">
                       {viewMode === 'admin' ? (
-                        <button 
+                        <button
                           className="btn btn-sm btn-outline btn-primary w-full"
                           onClick={() => setSelectedInventoryForApprove(row)}
                           disabled={status === 3}
@@ -221,7 +221,7 @@ export const InventoriesPage = () => {
                           {status === 2 ? 'Revisar Conteo' : 'Ver Detalles'}
                         </button>
                       ) : (
-                        <button 
+                        <button
                           className="btn btn-sm btn-primary w-full"
                           onClick={() => setSelectedInventoryForExecute(row)}
                           disabled={status !== 1}
@@ -263,7 +263,7 @@ export const InventoriesPage = () => {
         </div>
       </div>
 
-      <CreateInventoryModal 
+      <CreateInventoryModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onSuccess={() => {

@@ -13,6 +13,7 @@ import { ComerziaBadge } from '../../../components/ui/ComerziaBadge';
 import { ComerziaLineChart } from '../../../components/ui/charts';
 import { ComerziaSelect } from '../../../components/ui/ComerziaSelect';
 import { ComerziaContextMenu, ContextMenuItem } from '../../../components/ui/ComerziaContextMenu';
+import { formatDateForUser } from '../../../utils/date';
 
 export const PricesPage = () => {
   const [searchParams] = useSearchParams();
@@ -25,7 +26,7 @@ export const PricesPage = () => {
 
   // State B
   const [selectedPriceType, setSelectedPriceType] = useState<SalePriceResponse | null>(null);
-  
+
   // Context Menu State
   const [contextMenu, setContextMenu] = useState<{ isOpen: boolean; x: number; y: number; isCentered?: boolean; row: SalePriceResponse | null }>({
     isOpen: false,
@@ -48,9 +49,9 @@ export const PricesPage = () => {
   const [trendMonths, setTrendMonths] = useState('6');
 
   const [isChangeModalOpen, setIsChangeModalOpen] = useState(false);
-  
+
   // Used to pre-fill ChangePriceModal if opened from context menu
-  const [priceTypeToEdit, setPriceTypeToEdit] = useState<string>(''); 
+  const [priceTypeToEdit, setPriceTypeToEdit] = useState<string>('');
 
   const executeScan = useCallback(async (code: string) => {
     setIsLoadingScan(true);
@@ -81,7 +82,7 @@ export const PricesPage = () => {
 
   const loadHistoryAndTrend = useCallback(async () => {
     if (!productData || !selectedPriceType || !selectedPriceType.priceTypeId) return;
-    
+
     // Load History
     setIsLoadingHistory(true);
     try {
@@ -99,7 +100,7 @@ export const PricesPage = () => {
     setIsLoadingTrend(true);
     try {
       const trendRes = await commercialService.getSalePriceTrend(productData.variantId, selectedPriceType.priceTypeId, Number(trendMonths));
-      
+
       setTrendData(trendRes.map(item => {
         const d = new Date(item.validFrom);
         return {
@@ -133,24 +134,24 @@ export const PricesPage = () => {
   };
 
   const activePricesColumns: Column<SalePriceResponse>[] = [
-    { 
-      header: 'Nombre', 
-      render: (row) => <span className="font-semibold">{row.priceTypeName}</span> 
+    {
+      header: 'Nombre',
+      render: (row) => <span className="font-semibold">{row.priceTypeName}</span>
     },
-    { 
-      header: 'Descuento', 
-      render: (row) => row.discountPrice != null && row.salePrice != null && row.discountPrice !== row.salePrice 
-        ? <span className="text-error">{currencyCode} {row.discountPrice.toFixed(2)}</span> 
+    {
+      header: 'Descuento',
+      render: (row) => row.discountPrice != null && row.salePrice != null && row.discountPrice !== row.salePrice
+        ? <span className="text-error">{currencyCode} {row.discountPrice.toFixed(2)}</span>
         : '-'
     },
-    { 
-      header: 'Venta', 
-      render: (row) => row.salePrice != null 
-        ? <span className="font-bold text-success">{currencyCode} {row.salePrice.toFixed(2)}</span> 
+    {
+      header: 'Venta',
+      render: (row) => row.salePrice != null
+        ? <span className="font-bold text-success">{currencyCode} {row.salePrice.toFixed(2)}</span>
         : <span className="text-warning text-xs">No configurado</span>
     },
-    { 
-      header: 'Total', 
+    {
+      header: 'Total',
       render: (row) => row.salePrice != null
         ? <span className="text-base-content/80 font-mono">{currencyCode} {(row.salePrice * (row.priceType?.equivalenceFactor || 1)).toFixed(2)}</span>
         : '-'
@@ -158,28 +159,28 @@ export const PricesPage = () => {
   ];
 
   const historyColumns: Column<SalePriceHistoryResponse>[] = [
-    { header: 'Fecha Desde', render: (row) => new Date(row.validFrom).toLocaleString() },
-    { header: 'Fecha Hasta', render: (row) => row.validTo ? new Date(row.validTo).toLocaleString() : '-' },
+    { header: 'Fecha Desde', render: (row) => formatDateForUser(row.validFrom) },
+    { header: 'Fecha Hasta', render: (row) => row.validTo ? formatDateForUser(row.validTo) : '-' },
     { header: 'Nuevo', render: (row) => <span className="font-bold">{currencyCode} {(row.salePrice || 0).toFixed(2)}</span> },
-    { 
-      header: 'Descuento', 
+    {
+      header: 'Descuento',
       render: (row) => row.discountPrice != null && row.discountPrice !== row.salePrice
         ? <span className="text-error">{currencyCode} {row.discountPrice.toFixed(2)}</span>
         : '-'
     },
-    { 
-      header: 'Variación', 
+    {
+      header: 'Variación',
       render: (row) => {
         if (row.previousPrice == null || row.previousPrice === row.salePrice) return '-';
-        const pct = row.variationPercentage != null 
-          ? row.variationPercentage 
+        const pct = row.variationPercentage != null
+          ? row.variationPercentage
           : ((row.salePrice - row.previousPrice) / row.previousPrice) * 100;
         return (
           <span className={`text-xs font-semibold ${pct > 0 ? 'text-success' : 'text-error'}`}>
             {pct > 0 ? '+' : ''}{pct.toFixed(1)}%
           </span>
         );
-      } 
+      }
     }
   ];
 
@@ -256,8 +257,8 @@ export const PricesPage = () => {
                         </thead>
                         <tbody>
                           {productData.activePrices.map((price, idx) => (
-                            <tr 
-                              key={price.priceTypeId} 
+                            <tr
+                              key={price.priceTypeId}
                               className="hover hover:bg-base-200 transition-colors cursor-context-menu"
                               onContextMenu={(e) => handleContextMenu(e, price)}
                             >
@@ -316,9 +317,9 @@ export const PricesPage = () => {
             ) : (
               <div className="flex-1 flex flex-col space-y-4">
                 <div className="flex items-center gap-3">
-                  <BtnCancel 
-                    label="Volver" 
-                    onClick={() => setSelectedPriceType(null)} 
+                  <BtnCancel
+                    label="Volver"
+                    onClick={() => setSelectedPriceType(null)}
                     responsive={true}
                   />
                   <h3 className="text-base sm:text-lg font-bold flex items-center gap-2 truncate">
@@ -355,9 +356,9 @@ export const PricesPage = () => {
                               {currencyCode} {(h.salePrice || 0).toFixed(2)}
                             </span>
                             {h.variationPercentage != null && (
-                              <ComerziaBadge 
-                                variant={h.variationPercentage < 0 ? 'error' : h.variationPercentage > 0 ? 'success' : 'neutral'} 
-                                label={`${h.variationPercentage > 0 ? '+' : ''}${h.variationPercentage.toFixed(2)}%`} 
+                              <ComerziaBadge
+                                variant={h.variationPercentage < 0 ? 'error' : h.variationPercentage > 0 ? 'success' : 'neutral'}
+                                label={`${h.variationPercentage > 0 ? '+' : ''}${h.variationPercentage.toFixed(2)}%`}
                               />
                             )}
                           </div>
@@ -404,7 +405,7 @@ export const PricesPage = () => {
                     />
                   </div>
                 </div>
-                
+
                 <div className="flex-1 min-h-[350px]">
                   {isLoadingTrend ? (
                     <div className="h-full flex items-center justify-center">

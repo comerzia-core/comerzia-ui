@@ -7,6 +7,7 @@ import { useToast } from '../../../context/ToastContext';
 import { Coins, Banknote } from 'lucide-react';
 import { commercialService } from '../services/commercialService';
 import type { StockEntryResponse } from '../types/commercial';
+import { formatDateForUser } from '../../../utils/date';
 
 interface Props {
   isOpen: boolean;
@@ -66,7 +67,7 @@ export const ValuateStockModal = ({ isOpen, onClose, onSuccess, stockEntry }: Pr
       <div className="space-y-4">
         <div className="bg-base-200 p-4 rounded-lg text-sm text-base-content/80 mb-4">
           <p>Cantidad Ingresada: <strong className="text-base-content">{qty}</strong></p>
-          <p>Fecha de Ingreso: <strong>{new Date(stockEntry.entryDate).toLocaleString()}</strong></p>
+          <p>Fecha de Ingreso: <strong>{formatDateForUser(stockEntry.entryDate)}</strong></p>
         </div>
         
         <ComerziaRadioGroup

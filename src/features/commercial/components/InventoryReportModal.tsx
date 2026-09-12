@@ -5,6 +5,7 @@ import { commercialService } from '../services/commercialService';
 import type { InventoryResponse } from '../types/commercial';
 import { useToast } from '../../../context/ToastContext';
 import { ClipboardList, Calendar, User, FileText, Image as ImageIcon } from 'lucide-react';
+import { formatDateForUser } from '../../../utils/date';
 
 interface Props {
   isOpen: boolean;
@@ -93,12 +94,12 @@ export const InventoryReportModal = ({ isOpen, onClose, inventoryId }: Props) =>
               </div>
               {inventory.assignedAt && (
                 <p className="text-xs">
-                  Asignado: <strong className="text-base-content">{new Date(inventory.assignedAt).toLocaleString()}</strong>
+                  Asignado: <strong className="text-base-content">{formatDateForUser(inventory.assignedAt)}</strong>
                 </p>
               )}
               {inventory.uploadedAt ? (
                 <p className="text-xs">
-                  Cargado: <strong className="text-base-content">{new Date(inventory.uploadedAt).toLocaleString()}</strong>
+                  Cargado: <strong className="text-base-content">{formatDateForUser(inventory.uploadedAt)}</strong>
                 </p>
               ) : (
                 <p className="text-xs text-base-content/40 italic">Pendiente de carga</p>

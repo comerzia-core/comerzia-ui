@@ -79,10 +79,9 @@ export const StockQueryPage = () => {
         <div className="bg-base-100 rounded-2xl sm:rounded-3xl shadow-sm border border-base-200 overflow-hidden animate-slide-up">
           {/* Header Producto */}
           <div className="p-4 sm:p-8 border-b border-base-200 flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6 text-center sm:text-left">
-            <div 
-              className={`w-24 h-24 sm:w-32 sm:h-32 bg-base-200 rounded-2xl flex-shrink-0 overflow-hidden border border-base-300 relative group ${
-                scannedVariant.imageUrl ? 'cursor-pointer' : ''
-              }`}
+            <div
+              className={`w-24 h-24 sm:w-32 sm:h-32 bg-base-200 rounded-2xl flex-shrink-0 overflow-hidden border border-base-300 relative group ${scannedVariant.imageUrl ? 'cursor-pointer' : ''
+                }`}
               onClick={() => {
                 if (scannedVariant.imageUrl) {
                   setViewingImage({
@@ -96,10 +95,10 @@ export const StockQueryPage = () => {
             >
               {scannedVariant.imageUrl ? (
                 <>
-                  <img 
-                    src={scannedVariant.imageUrl} 
-                    alt={scannedVariant.variantName} 
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" 
+                  <img
+                    src={scannedVariant.imageUrl}
+                    alt={scannedVariant.variantName}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                   />
                   <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
                     <ZoomIn size={24} />

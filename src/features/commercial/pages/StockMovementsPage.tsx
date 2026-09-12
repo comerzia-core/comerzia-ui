@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { commercialService } from '../services/commercialService';
-import type { 
-  ScannerProductResponse, 
-  StockEntryResponse, 
-  StockAdjustmentResponse 
+import type {
+  ScannerProductResponse,
+  StockEntryResponse,
+  StockAdjustmentResponse
 } from '../types/commercial';
 import { useToast } from '../../../context/ToastContext';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
@@ -15,7 +15,7 @@ import { CommercialProductSearchBar } from '../components/CommercialProductSearc
 import { ComerziaSelect } from '../../../components/ui/ComerziaSelect';
 import { ComerziaContextMenu, ContextMenuItem } from '../../../components/ui/ComerziaContextMenu';
 import { ComerziaRadioGroup } from '../../../components/ui/ComerziaRadioGroup';
-import { Settings2, X, DollarSign, Coins, Banknote, SlidersHorizontal, ClipboardList, ArrowRightLeft } from 'lucide-react';
+import { Settings2, X, DollarSign, Coins, Banknote, SlidersHorizontal, ClipboardList, ArrowRightLeft, Store, Plus, Minus } from 'lucide-react';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { branchService } from '../../organization/services/branchService';
 import type { BranchResponse } from '../../organization/types/branch';
@@ -23,12 +23,13 @@ import { DICTIONARIES } from '../../../config/dictionaries';
 import { useLoadDictionaries } from '../../../hooks/useLoadDictionaries';
 import { ValuateStockModal } from '../components/ValuateStockModal';
 import { InventoryReportModal } from '../components/InventoryReportModal';
+import { formatDateForUser } from '../../../utils/date';
 
 const CurrencyCell = ({ amount, currencyCode = 'USD' }: { amount: number, currencyCode?: string }) => {
   const safeAmount = Number(amount) || 0;
   let currencySymbol = currencyCode;
   let formattedAmount = safeAmount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  
+
   try {
     const formatter = new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -63,9 +64,10 @@ export const StockMovementsPage = () => {
   const [isLoadingScan, setIsLoadingScan] = useState(false);
   const [shakeKey, setShakeKey] = useState(0);
   const { error: toastError, success: toastSuccess } = useToast();
-  
+
   // Entry Form State
   const [quantityIn, setQuantityIn] = useState<number | ''>('');
+  const [branchQuantities, setBranchQuantities] = useState<Record<string, number | ''>>({});
   const [costInputType, setCostInputType] = useState<'unit' | 'total'>('unit');
   const [costInputValue, setCostInputValue] = useState<number | ''>('');
   const [note, setNote] = useState('');
@@ -75,9 +77,21 @@ export const StockMovementsPage = () => {
 
   const { hasPermission, hasRole, userProfile } = useAuthStore();
   const hasCostPermission = hasPermission('COM_STOCK_COST_MANAGE');
+  const hasDistributePermission = hasPermission('COM_STOCK_DISTRIBUTE');
   const hasAdjustmentReadPermission = hasPermission('COM_STOCK_ADJUSTMENT_READ');
   const isOwner = hasRole('OWNER');
   const currencyCode = userProfile?.companySettings?.currencyCode || 'USD';
+
+  // Total distribuido calculado en modo multi-tienda
+  const totalDistributedQty = useMemo(() => {
+    if (!hasDistributePermission) {
+      return typeof quantityIn === 'number' ? quantityIn : 0;
+    }
+    return Object.values(branchQuantities).reduce((acc: number, curr) => {
+      const val = typeof curr === 'number' ? curr : 0;
+      return acc + val;
+    }, 0);
+  }, [hasDistributePermission, quantityIn, branchQuantities]);
 
   // Tabs and Kardex State
   const [activeTab, setActiveTab] = useState<'entries' | 'adjustments'>('entries');
@@ -120,10 +134,10 @@ export const StockMovementsPage = () => {
   }, [searchParams]);
 
   useEffect(() => {
-    if (hasCostPermission) {
-      branchService.getBranches(0, 100).then(res => setBranches(res.content));
+    if (hasCostPermission || hasDistributePermission) {
+      branchService.getBranches(0, 100, true).then(res => setBranches(res.content || []));
     }
-  }, [hasCostPermission]);
+  }, [hasCostPermission, hasDistributePermission]);
 
   const scannedVariant = productData?.scannedVariant;
 
@@ -167,6 +181,7 @@ export const StockMovementsPage = () => {
     setIsLoadingScan(true);
     setProductData(null);
     setQuantityIn('');
+    setBranchQuantities({});
     setCostInputValue('');
     setNote('');
     setFilterStockId(null);
@@ -176,7 +191,7 @@ export const StockMovementsPage = () => {
     } catch (err: any) {
       const status = err.response?.status;
       const errorCode = err.response?.data?.errorCode;
-      
+
       if (status === 404 || errorCode === 'not_found') {
         toastError("No se encontró ningún producto con este código de barras.");
       } else {
@@ -189,43 +204,120 @@ export const StockMovementsPage = () => {
   };
 
   const handleSubmitEntry = async () => {
-    const qty = typeof quantityIn === 'number' ? quantityIn : 0;
+    if (!scannedVariant) {
+      toastError("Debes escanear o seleccionar un producto.");
+      return;
+    }
+
+    const qty = hasDistributePermission ? totalDistributedQty : (typeof quantityIn === 'number' ? quantityIn : 0);
     const val = typeof costInputValue === 'number' ? costInputValue : 0;
     const finalUnitCost = costInputType === 'unit' ? val : (qty > 0 ? Number((val / qty).toFixed(4)) : 0);
     const finalTotalCost = costInputType === 'total' ? val : Number((qty * val).toFixed(4));
 
-    if (!scannedVariant || !quantityIn || (hasCostPermission && costInputValue === '')) {
-      toastError("Completa todos los campos obligatorios.");
-      return;
-    }
-    setIsSubmitting(true);
-    try {
-      await commercialService.createStockEntry(
-        {
+    if (hasDistributePermission) {
+      const distributions = Object.entries(branchQuantities)
+        .filter(([_, q]) => typeof q === 'number' && q > 0)
+        .map(([branchId, q]) => ({
+          branchId,
+          quantityIn: Number(q)
+        }));
+
+      if (distributions.length === 0) {
+        setShakeKey(prev => prev + 1);
+        toastError("Debes ingresar una cantidad mayor a cero en al menos una sucursal.");
+        return;
+      }
+
+      if (hasCostPermission && costInputValue === '') {
+        setShakeKey(prev => prev + 1);
+        toastError("Completa el costo unitario o total.");
+        return;
+      }
+
+      setIsSubmitting(true);
+      try {
+        await commercialService.createStockEntry({
           variantId: scannedVariant.variantId,
-          quantityIn: Number(quantityIn),
           unitCost: hasCostPermission ? finalUnitCost : 0,
           totalCost: hasCostPermission ? finalTotalCost : 0,
-          note: note || undefined
-        },
-        hasCostPermission ? (selectedBranchId || undefined) : undefined
-      );
-      toastSuccess("Entrada registrada exitosamente.");
-      setQuantityIn('');
-      setCostInputValue('');
-      setNote('');
-      loadKardex();
-    } catch (e: any) {
-      const errorCode = e.response?.data?.errorCode;
-      if (errorCode === 'invalid_cost_calculation') {
-        toastError('El cálculo de costos es incorrecto. Verifica los montos.');
-      } else if (errorCode === 'invalid_quantity') {
-        toastError('La cantidad de entrada debe ser mayor a cero.');
-      } else {
-        toastError(e.response?.data?.message || "Error al registrar la entrada.");
+          note: note || undefined,
+          branchDistributions: distributions
+        });
+        toastSuccess("Entrada y distribución de stock registradas exitosamente.");
+        setBranchQuantities({});
+        setCostInputValue('');
+        setNote('');
+        loadKardex();
+      } catch (e: any) {
+        const data = e.response?.data;
+        const errorCode = data?.errorCode || data?.code;
+        const message = data?.message;
+
+        if (errorCode === 'invalid_cost_calculation' || message?.includes('Total cost provided does not match')) {
+          toastError("El cálculo de costos es incorrecto. Verifica los montos ingresados.");
+        } else if (errorCode === 'branch_required_for_stock_entry') {
+          toastError("Se requiere especificar una sucursal para la entrada de stock.");
+        } else if (errorCode === 'invalid_stock_entry') {
+          toastError("Debes ingresar una cantidad válida o distribuir el stock entre las sucursales.");
+        } else if (errorCode === 'access_denied') {
+          toastError("No cuentas con los permisos necesarios para realizar esta operación.");
+        } else if (errorCode === 'resource_not_found') {
+          toastError("La variante del producto o la sucursal seleccionada no fue encontrada.");
+        } else if (errorCode === 'invalid_quantity') {
+          toastError("La cantidad de entrada debe ser mayor a cero.");
+        } else {
+          toastError(message || "Error al registrar la entrada de stock.");
+        }
+      } finally {
+        setIsSubmitting(false);
       }
-    } finally {
-      setIsSubmitting(false);
+    } else {
+      if (!quantityIn || (hasCostPermission && costInputValue === '')) {
+        setShakeKey(prev => prev + 1);
+        toastError("Completa todos los campos obligatorios.");
+        return;
+      }
+
+      setIsSubmitting(true);
+      try {
+        await commercialService.createStockEntry(
+          {
+            variantId: scannedVariant.variantId,
+            quantityIn: Number(quantityIn),
+            unitCost: hasCostPermission ? finalUnitCost : 0,
+            totalCost: hasCostPermission ? finalTotalCost : 0,
+            note: note || undefined
+          },
+          hasCostPermission ? (selectedBranchId || undefined) : undefined
+        );
+        toastSuccess("Entrada de stock registrada exitosamente.");
+        setQuantityIn('');
+        setCostInputValue('');
+        setNote('');
+        loadKardex();
+      } catch (e: any) {
+        const data = e.response?.data;
+        const errorCode = data?.errorCode || data?.code;
+        const message = data?.message;
+
+        if (errorCode === 'invalid_cost_calculation' || message?.includes('Total cost provided does not match')) {
+          toastError("El cálculo de costos es incorrecto. Verifica los montos ingresados.");
+        } else if (errorCode === 'branch_required_for_stock_entry') {
+          toastError("Se requiere especificar una sucursal para la entrada de stock.");
+        } else if (errorCode === 'invalid_stock_entry') {
+          toastError("Debes ingresar una cantidad válida de entrada.");
+        } else if (errorCode === 'access_denied') {
+          toastError("No cuentas con los permisos necesarios para realizar esta operación.");
+        } else if (errorCode === 'resource_not_found') {
+          toastError("La variante del producto o la sucursal seleccionada no fue encontrada.");
+        } else if (errorCode === 'invalid_quantity') {
+          toastError("La cantidad de entrada debe ser mayor a cero.");
+        } else {
+          toastError(message || "Error al registrar la entrada de stock.");
+        }
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -258,7 +350,7 @@ export const StockMovementsPage = () => {
   };
 
   const entryColumns: Column<StockEntryResponse>[] = [
-    { header: 'Fecha', render: (row: StockEntryResponse) => <span className="whitespace-nowrap">{new Date(row.entryDate).toLocaleString()}</span> },
+    { header: 'Fecha', render: (row: StockEntryResponse) => <span className="whitespace-nowrap">{formatDateForUser(row.entryDate)}</span> },
     hasCostPermission && { header: 'Sucursal', render: (row: StockEntryResponse) => <span className="whitespace-nowrap">{row.branchName || '-'}</span> },
     { header: 'Cant. Inicial', render: (row: StockEntryResponse) => <span className="whitespace-nowrap">{row.quantityIn}</span> },
     { header: 'Disponible', render: (row: StockEntryResponse) => <span className="whitespace-nowrap">{row.availableQuantity}</span> },
@@ -291,7 +383,7 @@ export const StockMovementsPage = () => {
   ].filter(Boolean) as Column<StockEntryResponse>[];
 
   const adjustmentColumns: Column<StockAdjustmentResponse>[] = [
-    { header: 'Fecha', render: (row: StockAdjustmentResponse) => <span className="whitespace-nowrap">{new Date(row.date).toLocaleString()}</span> },
+    { header: 'Fecha', render: (row: StockAdjustmentResponse) => <span className="whitespace-nowrap">{formatDateForUser(row.date)}</span> },
     {
       header: 'Tipo',
       render: (row: StockAdjustmentResponse) => {
@@ -355,9 +447,9 @@ export const StockMovementsPage = () => {
         </div>
         {!isEntryCardOpen && !adjustmentTarget && (
           <div className="flex items-center gap-2 w-full sm:w-auto">
-            <BtnCreate 
-              label="Registrar Entrada" 
-              onClick={() => setIsEntryCardOpen(true)} 
+            <BtnCreate
+              label="Registrar Entrada"
+              onClick={() => setIsEntryCardOpen(true)}
               responsive={true}
               className="w-full sm:w-auto"
             />
@@ -384,12 +476,12 @@ export const StockMovementsPage = () => {
                 <>
                   <div className="flex justify-between items-start mb-2">
                     <h2 className="text-xl font-bold text-primary">Ajuste Manual Stock</h2>
-                    <button onClick={() => setAdjustmentTarget(null)} className="btn btn-ghost btn-xs btn-circle"><X size={16}/></button>
+                    <button onClick={() => setAdjustmentTarget(null)} className="btn btn-ghost btn-xs btn-circle"><X size={16} /></button>
                   </div>
                   <div className="text-sm text-base-content/60 mb-6 space-y-1">
                     <p>Producto: <strong>{productData.productName}</strong></p>
                     <p>Variante: <strong>{scannedVariant.variantName}</strong></p>
-                    <p>Fecha Stock: <strong>{new Date(adjustmentTarget.entryDate).toLocaleString()}</strong></p>
+                    <p>Fecha Stock: <strong>{formatDateForUser(adjustmentTarget.entryDate)}</strong></p>
                     {isOwner && <p>Sucursal: <strong>{adjustmentTarget.branchName || 'Principal'}</strong></p>}
                     <p>Cant. Inicial: <strong>{adjustmentTarget.quantityIn}</strong></p>
                     <p>Cant. Disponible: <strong>{adjustmentTarget.availableQuantity}</strong></p>
@@ -444,11 +536,11 @@ export const StockMovementsPage = () => {
                       onChange={(e) => setAdjustmentObs(e.target.value)}
                       isRequired
                     />
-                    <BtnSave 
-                      className="w-full mt-4" 
-                      label="Guardar Ajuste" 
-                      onClick={handleSubmitAdjustment} 
-                      isLoading={isSubmittingAdjustment} 
+                    <BtnSave
+                      className="w-full mt-4"
+                      label="Guardar Ajuste"
+                      onClick={handleSubmitAdjustment}
+                      isLoading={isSubmittingAdjustment}
                     />
                   </div>
                 </>
@@ -456,7 +548,7 @@ export const StockMovementsPage = () => {
                 <>
                   <div className="flex justify-between items-start mb-2">
                     <h2 className="text-xl font-bold text-primary">Registrar Entrada</h2>
-                    <button onClick={() => setIsEntryCardOpen(false)} className="btn btn-ghost btn-xs btn-circle"><X size={16}/></button>
+                    <button onClick={() => setIsEntryCardOpen(false)} className="btn btn-ghost btn-xs btn-circle"><X size={16} /></button>
                   </div>
                   <p className="text-sm text-base-content/60 mb-6">
                     Producto: <strong>{productData.productName}</strong><br />
@@ -464,20 +556,109 @@ export const StockMovementsPage = () => {
                   </p>
 
                   <div className="space-y-4">
-                    <ComerziaInput
-                      label="Cantidad a Ingresar"
-                      type="number"
-                      value={quantityIn}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (val === '') {
-                          setQuantityIn('');
-                        } else if (/^\d+$/.test(val)) {
-                          setQuantityIn(Number(val));
-                        }
-                      }}
-                      isRequired
-                    />
+                    {hasDistributePermission ? (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between pb-1 border-b border-base-200">
+                          <label className="text-xs font-bold text-base-content flex items-center gap-1.5">
+                            <Store size={15} className="text-primary" />
+                            Distribución por Sucursales
+                          </label>
+                          <span className="text-xs font-mono text-base-content/70">
+                            Total: <strong className="text-primary font-bold">{totalDistributedQty}</strong> uds
+                          </span>
+                        </div>
+
+                        <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                          {branches.length === 0 ? (
+                            <p className="text-xs text-base-content/50 italic py-2 text-center">
+                              Cargando sucursales disponibles...
+                            </p>
+                          ) : (
+                            branches.map(branch => {
+                              const currentQty = branchQuantities[branch.id];
+                              return (
+                                <div
+                                  key={branch.id}
+                                  className="flex items-center justify-between gap-3 p-2.5 bg-base-200/50 hover:bg-base-200/80 rounded-xl border border-base-200 transition-colors"
+                                >
+                                  <div className="min-w-0 flex-1">
+                                    <span className="font-semibold text-xs text-base-content block truncate">
+                                      {branch.name}
+                                    </span>
+                                    {branch.code && (
+                                      <span className="font-mono text-[10px] text-base-content/50 uppercase">
+                                        Cód: {branch.code}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-1 bg-base-100 border border-base-300 rounded-xl p-0.5 shrink-0 shadow-2xs focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all">
+                                    <button
+                                      type="button"
+                                      title="Disminuir"
+                                      className="btn btn-ghost btn-xs h-7 w-7 min-h-0 p-0 rounded-lg text-base-content/70 hover:text-primary hover:bg-base-200 cursor-pointer flex items-center justify-center"
+                                      onClick={() => {
+                                        const current = typeof currentQty === 'number' ? currentQty : 0;
+                                        setBranchQuantities(prev => ({
+                                          ...prev,
+                                          [branch.id]: Math.max(0, current - 1)
+                                        }));
+                                      }}
+                                    >
+                                      <Minus size={13} strokeWidth={2.5} />
+                                    </button>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      placeholder="0"
+                                      value={currentQty === '' ? '' : currentQty ?? ''}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        if (val === '') {
+                                          setBranchQuantities(prev => ({ ...prev, [branch.id]: '' }));
+                                        } else if (/^\d+$/.test(val)) {
+                                          setBranchQuantities(prev => ({ ...prev, [branch.id]: Number(val) }));
+                                        }
+                                      }}
+                                      className="w-14 sm:w-16 text-center font-bold font-mono text-sm bg-transparent border-0 focus:outline-hidden p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none text-base-content"
+                                    />
+                                    <button
+                                      type="button"
+                                      title="Aumentar"
+                                      className="btn btn-ghost btn-xs h-7 w-7 min-h-0 p-0 rounded-lg text-base-content/70 hover:text-primary hover:bg-base-200 cursor-pointer flex items-center justify-center"
+                                      onClick={() => {
+                                        const current = typeof currentQty === 'number' ? currentQty : 0;
+                                        setBranchQuantities(prev => ({
+                                          ...prev,
+                                          [branch.id]: current + 1
+                                        }));
+                                      }}
+                                    >
+                                      <Plus size={13} strokeWidth={2.5} />
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <ComerziaInput
+                        label="Cantidad a Ingresar"
+                        type="number"
+                        value={quantityIn}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === '') {
+                            setQuantityIn('');
+                          } else if (/^\d+$/.test(val)) {
+                            setQuantityIn(Number(val));
+                          }
+                        }}
+                        isRequired
+                      />
+                    )}
+
                     {hasCostPermission && (
                       <>
                         <ComerziaRadioGroup
@@ -498,14 +679,16 @@ export const StockMovementsPage = () => {
                           onChange={(e) => setCostInputValue(e.target.value ? Number(e.target.value) : '')}
                           isRequired
                         />
-                        
+
                         {costInputValue !== '' && (
                           <div className="text-sm text-base-content/70 bg-primary/10 p-3 rounded-lg flex justify-between items-center border border-primary/20">
                             <span>{costInputType === 'unit' ? 'Costo Total Calculado:' : 'Costo Unitario Calculado:'}</span>
                             <span className="font-bold text-primary text-lg">
-                              {costInputType === 'unit' 
-                                ? (typeof quantityIn === 'number' ? quantityIn * Number(costInputValue) : 0).toFixed(2)
-                                : (typeof quantityIn === 'number' && quantityIn > 0 ? Number(costInputValue) / quantityIn : 0).toFixed(2)
+                              {costInputType === 'unit'
+                                ? ((hasDistributePermission ? totalDistributedQty : (typeof quantityIn === 'number' ? quantityIn : 0)) * Number(costInputValue)).toFixed(2)
+                                : ((hasDistributePermission ? totalDistributedQty : (typeof quantityIn === 'number' ? quantityIn : 0)) > 0
+                                  ? Number(costInputValue) / (hasDistributePermission ? totalDistributedQty : Number(quantityIn))
+                                  : 0).toFixed(2)
                               }
                             </span>
                           </div>
@@ -517,7 +700,7 @@ export const StockMovementsPage = () => {
                       value={note}
                       onChange={(e) => setNote(e.target.value)}
                     />
-                    {hasCostPermission && (
+                    {hasCostPermission && !hasDistributePermission && (
                       <ComerziaSelect
                         label="Sucursal/Tienda (Opcional)"
                         options={branches.map(b => ({ value: b.id, label: b.name }))}
@@ -525,11 +708,11 @@ export const StockMovementsPage = () => {
                         onChange={(e) => setSelectedBranchId(e.target.value)}
                       />
                     )}
-                    <BtnSave 
-                      className="w-full mt-4" 
-                      label="Guardar Entrada" 
-                      onClick={handleSubmitEntry} 
-                      isLoading={isSubmitting} 
+                    <BtnSave
+                      className="w-full mt-4"
+                      label="Guardar Entrada"
+                      onClick={handleSubmitEntry}
+                      isLoading={isSubmitting}
                     />
                   </div>
                 </>
@@ -542,14 +725,14 @@ export const StockMovementsPage = () => {
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold">Historial Kardex</h2>
               <div className="tabs tabs-boxed">
-                <a 
+                <a
                   className={`tab ${activeTab === 'entries' ? 'tab-active' : ''}`}
                   onClick={() => { setActiveTab('entries'); setFilterStockId(null); setPage(0); }}
                 >
                   Entradas
                 </a>
                 {hasCostPermission && (
-                  <a 
+                  <a
                     className={`tab ${activeTab === 'adjustments' ? 'tab-active' : ''}`}
                     onClick={() => { setActiveTab('adjustments'); setPage(0); }}
                   >
@@ -629,14 +812,13 @@ export const StockMovementsPage = () => {
                               setContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, isCentered: false, row: entry });
                             }
                           }}
-                          className={`bg-base-100 p-3.5 rounded-xl border border-base-200 shadow-xs space-y-2 text-xs select-none transition-all ${
-                            hasCostPermission ? 'cursor-pointer hover:border-primary/40 active:scale-[0.99]' : ''
-                          }`}
+                          className={`bg-base-100 p-3.5 rounded-xl border border-base-200 shadow-xs space-y-2 text-xs select-none transition-all ${hasCostPermission ? 'cursor-pointer hover:border-primary/40 active:scale-[0.99]' : ''
+                            }`}
                         >
                           <div className="flex justify-between items-start">
                             <div>
                               <span className="text-[10px] text-base-content/50 block">
-                                {new Date(entry.entryDate).toLocaleDateString()} {new Date(entry.entryDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                {formatDateForUser(entry.entryDate)}
                               </span>
                               {isOwner && entry.branchName && (
                                 <span className="font-semibold text-primary block">{entry.branchName}</span>
@@ -697,7 +879,7 @@ export const StockMovementsPage = () => {
                             <div>
                               <span className="badge badge-sm font-semibold badge-outline">{adjName}</span>
                               <span className="text-[10px] text-base-content/50 block mt-1">
-                                {new Date(adj.date).toLocaleString()}
+                                {formatDateForUser(adj.date)}
                               </span>
                             </div>
                             <span className={`text-base font-black font-mono ${isNegative ? 'text-error' : 'text-success'}`}>

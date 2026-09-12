@@ -155,12 +155,18 @@ export interface StockEntryResponse {
   hasAdjustments?: boolean;
 }
 
+export interface BranchQuantityRequest {
+  branchId: string;
+  quantityIn: number;
+}
+
 export interface CreateStockEntryRequest {
   variantId: string;
-  quantityIn: number;
-  unitCost?: number | null;
-  totalCost?: number | null;
+  quantityIn?: number;
+  unitCost: number;
+  totalCost?: number;
   note?: string;
+  branchDistributions?: BranchQuantityRequest[];
 }
 
 export interface ValuateStockRequest {
