@@ -7,7 +7,7 @@ import { ComerziaTable, type Column, type TablePaginationConfig } from '../../..
 import { BtnCancel } from '../../../components/ui/CrudButtons';
 import { ChangePriceModal } from '../components/ChangePriceModal';
 import { CommercialProductSearchBar } from '../components/CommercialProductSearchBar';
-import { History, TrendingUp, DollarSign, LineChart } from 'lucide-react';
+import { History, TrendingUp, DollarSign, LineChart, Calendar, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { ComerziaBadge } from '../../../components/ui/ComerziaBadge';
 import { ComerziaLineChart } from '../../../components/ui/charts';
@@ -223,14 +223,15 @@ export const PricesPage = () => {
       {productData && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-slide-up">
           {/* COLUMNA IZQUIERDA: Listado Actual o Historial */}
-          <div className="bg-base-100 p-6 rounded-2xl shadow-sm border border-base-200 space-y-6 flex flex-col">
+          <div className="card bg-base-100 p-4 sm:p-6 rounded-2xl shadow-xs border border-base-200 space-y-4 sm:space-y-6 flex flex-col">
             <div className="flex justify-between items-start">
               <div>
-                <h2 className="text-2xl font-bold text-primary">{productData.variantName}</h2>
-                <div className="flex flex-col gap-1 mt-2">
-                  <span className="text-sm font-semibold">{productData.productName}</span>
-                  <span className="text-xs text-base-content/60 font-mono">SKU: {productData.sku} | Barcode: {productData.barCode}</span>
-                </div>
+                <h2 className="text-xl sm:text-2xl font-bold text-base-content leading-tight">
+                  {productData.productName}{' '}
+                  <span className="text-primary font-semibold">
+                    {productData.variantName}
+                  </span>
+                </h2>
               </div>
             </div>
 
@@ -238,8 +239,8 @@ export const PricesPage = () => {
 
             {!selectedPriceType ? (
               <div className="flex-1">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-base sm:text-lg font-bold text-base-content/80">Precios Activos</h3>
+                <div className="flex justify-between items-center mb-3 sm:mb-4">
+                  <h3 className="text-sm sm:text-base font-bold text-base-content/80">Precios Activos</h3>
                 </div>
 
                 {productData.activePrices && productData.activePrices.length > 0 ? (
@@ -275,41 +276,41 @@ export const PricesPage = () => {
                     {/* VISTA MOBILE: CARDS */}
                     <div className="block md:hidden space-y-2.5">
                       {productData.activePrices.map((price) => (
-                        <div
+                        <article
                           key={price.priceTypeId}
                           onClick={() => setContextMenu({ isOpen: true, x: 0, y: 0, isCentered: true, row: price })}
                           onContextMenu={(e) => handleContextMenu(e, price)}
-                          className="bg-base-100 p-3.5 rounded-xl border border-base-200 shadow-xs space-y-2 text-xs select-none cursor-pointer hover:border-primary/40 active:scale-[0.99] transition-all"
+                          className="bg-base-200/50 hover:bg-base-200/80 p-3.5 rounded-2xl border border-base-200 shadow-xs flex flex-col gap-2 text-xs select-none cursor-pointer hover:border-primary/40 active:scale-[0.99] transition-all"
                         >
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <h4 className="font-bold text-sm text-base-content">{price.priceTypeName}</h4>
-                              <span className="text-[10px] text-base-content/50">Factor: {price.priceType?.equivalenceFactor || 1} u.</span>
+                          <div className="flex justify-between items-start gap-2">
+                            <div className="min-w-0">
+                              <h4 className="font-bold text-sm text-base-content truncate">{price.priceTypeName}</h4>
+                              <span className="text-[11px] text-base-content/60 font-medium">Factor: {price.priceType?.equivalenceFactor || 1} u.</span>
                             </div>
-                            <div className="text-right">
+                            <div className="text-right shrink-0">
                               {price.discountPrice != null && price.salePrice != null && price.discountPrice !== price.salePrice && (
-                                <span className="text-[10px] text-error block line-through">
+                                <span className="text-[10px] text-error block line-through font-mono">
                                   {currencyCode} {price.discountPrice.toFixed(2)}
                                 </span>
                               )}
-                              <span className="font-bold font-mono text-base text-success">
+                              <span className="font-bold font-mono text-base sm:text-lg text-success">
                                 {price.salePrice != null ? `${currencyCode} ${price.salePrice.toFixed(2)}` : 'Sin precio'}
                               </span>
                             </div>
                           </div>
 
-                          <div className="flex justify-between items-center pt-1 border-t border-base-200/60 font-mono text-[11px] text-base-content/70">
+                          <div className="flex justify-between items-center pt-1.5 border-t border-base-200/80 font-mono text-[11px] text-base-content/70">
                             <span>Total Presentación:</span>
                             <span className="font-bold text-base-content">
                               {price.salePrice != null ? `${currencyCode} ${(price.salePrice * (price.priceType?.equivalenceFactor || 1)).toFixed(2)}` : '-'}
                             </span>
                           </div>
-                        </div>
+                        </article>
                       ))}
                     </div>
                   </>
                 ) : (
-                  <div className="text-center p-8 text-base-content/50 bg-base-50 rounded-box border border-base-200">
+                  <div className="text-center p-8 text-base-content/50 bg-base-200/40 rounded-2xl border border-base-200 text-xs">
                     Esta variante no tiene precios configurados.
                   </div>
                 )}
@@ -322,8 +323,8 @@ export const PricesPage = () => {
                     onClick={() => setSelectedPriceType(null)}
                     responsive={true}
                   />
-                  <h3 className="text-base sm:text-lg font-bold flex items-center gap-2 truncate">
-                    <History className="h-5 w-5 text-primary shrink-0" />
+                  <h3 className="text-sm sm:text-base font-bold flex items-center gap-2 truncate">
+                    <History className="h-4 w-4 sm:h-5 sm:w-5 text-primary shrink-0" />
                     Historial: {selectedPriceType.priceTypeName}
                   </h3>
                 </div>
@@ -349,25 +350,80 @@ export const PricesPage = () => {
                         Sin cambios históricos registrados.
                       </div>
                     ) : (
-                      historyData.map((h, idx) => (
-                        <div key={idx} className="bg-base-100 p-3 rounded-xl border border-base-200 text-xs space-y-1.5 shadow-xs">
-                          <div className="flex justify-between items-center">
-                            <span className="font-bold font-mono text-sm text-base-content">
-                              {currencyCode} {(h.salePrice || 0).toFixed(2)}
-                            </span>
-                            {h.variationPercentage != null && (
-                              <ComerziaBadge
-                                variant={h.variationPercentage < 0 ? 'error' : h.variationPercentage > 0 ? 'success' : 'neutral'}
-                                label={`${h.variationPercentage > 0 ? '+' : ''}${h.variationPercentage.toFixed(2)}%`}
-                              />
-                            )}
-                          </div>
-                          <div className="flex justify-between text-[10px] text-base-content/50 pt-1 border-t border-base-200/40">
-                            <span>Desde: {new Date(h.validFrom).toLocaleDateString()}</span>
-                            <span>Hasta: {h.validTo ? new Date(h.validTo).toLocaleDateString() : 'Vigente'}</span>
-                          </div>
+                      <>
+                        <div className="space-y-2.5">
+                          {historyData.map((h, idx) => (
+                            <article key={idx} className="bg-base-200/50 hover:bg-base-200/80 p-3.5 rounded-2xl border border-base-200 text-xs flex flex-col gap-2 shadow-xs">
+                              <div className="flex justify-between items-center">
+                                <span className="font-bold font-mono text-sm sm:text-base text-base-content">
+                                  {currencyCode} {(h.salePrice || 0).toFixed(2)}
+                                </span>
+                                {h.variationPercentage != null && (
+                                  <ComerziaBadge
+                                    variant={h.variationPercentage < 0 ? 'error' : h.variationPercentage > 0 ? 'success' : 'neutral'}
+                                    label={`${h.variationPercentage > 0 ? '+' : ''}${h.variationPercentage.toFixed(2)}%`}
+                                  />
+                                )}
+                              </div>
+                              <div className="flex items-center justify-between text-[11px] text-base-content/60 pt-1.5 border-t border-base-200/80">
+                                <span className="flex items-center gap-1">
+                                  <Calendar size={12} className="text-base-content/40 shrink-0" />
+                                  Desde: <strong className="font-medium text-base-content/80">{formatDateForUser(h.validFrom)}</strong>
+                                </span>
+                                <span>
+                                  Hasta: <strong className="font-medium text-base-content/80">{h.validTo ? formatDateForUser(h.validTo) : 'Vigente'}</strong>
+                                </span>
+                              </div>
+                            </article>
+                          ))}
                         </div>
-                      ))
+
+                        {/* Paginación Mobile Historial */}
+                        {totalElements > 0 && Math.ceil(totalElements / size) > 1 && (
+                          <footer className="mt-3 pt-2.5 pb-2.5 px-3 bg-base-200/40 border border-base-200 rounded-xl" data-purpose="mobile-pagination">
+                            <div className="flex items-center justify-between text-[11px] text-base-content/70 mb-2">
+                              <span>Total: {totalElements} registros</span>
+                              <span className="font-semibold text-base-content/80">
+                                Pág. {page + 1} de {Math.ceil(totalElements / size)}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                type="button"
+                                disabled={page === 0 || isLoadingHistory}
+                                onClick={() => setPage(0)}
+                                className="w-7 h-7 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
+                              >
+                                <ChevronsLeft className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                disabled={page === 0 || isLoadingHistory}
+                                onClick={() => setPage(Math.max(0, page - 1))}
+                                className="w-7 h-7 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
+                              >
+                                <ChevronLeft className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                disabled={page >= Math.ceil(totalElements / size) - 1 || isLoadingHistory}
+                                onClick={() => setPage(page + 1)}
+                                className="w-7 h-7 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
+                              >
+                                <ChevronRight className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                disabled={page >= Math.ceil(totalElements / size) - 1 || isLoadingHistory}
+                                onClick={() => setPage(Math.ceil(totalElements / size) - 1)}
+                                className="w-7 h-7 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
+                              >
+                                <ChevronsRight className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </footer>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
@@ -376,7 +432,7 @@ export const PricesPage = () => {
           </div>
 
           {/* COLUMNA DERECHA: Gráfica Analítica */}
-          <div className="bg-base-100 p-6 rounded-2xl shadow-sm border border-base-200 flex flex-col">
+          <div className="card bg-base-100 p-4 sm:p-6 rounded-2xl shadow-xs border border-base-200 flex flex-col">
             {!selectedPriceType ? (
               <div className="flex-1 flex flex-col items-center justify-center text-base-content/40 space-y-4 min-h-[400px]">
                 <div className="bg-base-200 p-6 rounded-full">

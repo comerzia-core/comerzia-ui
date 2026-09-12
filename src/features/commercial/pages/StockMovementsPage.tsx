@@ -15,7 +15,26 @@ import { CommercialProductSearchBar } from '../components/CommercialProductSearc
 import { ComerziaSelect } from '../../../components/ui/ComerziaSelect';
 import { ComerziaContextMenu, ContextMenuItem } from '../../../components/ui/ComerziaContextMenu';
 import { ComerziaRadioGroup } from '../../../components/ui/ComerziaRadioGroup';
-import { Settings2, X, DollarSign, Coins, Banknote, SlidersHorizontal, ClipboardList, ArrowRightLeft, Store, Plus, Minus } from 'lucide-react';
+import { ComerziaBadge } from '../../../components/ui/ComerziaBadge';
+import {
+  Settings2,
+  X,
+  DollarSign,
+  Coins,
+  Banknote,
+  SlidersHorizontal,
+  ClipboardList,
+  ArrowRightLeft,
+  Store,
+  Plus,
+  Minus,
+  Calendar,
+  FileText,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight
+} from 'lucide-react';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { branchService } from '../../organization/services/branchService';
 import type { BranchResponse } from '../../organization/types/branch';
@@ -373,10 +392,12 @@ export const StockMovementsPage = () => {
         const statusObj = typeof row.statusType === 'object' ? row.statusType : null;
         const statusNum = typeof row.statusType === 'number' ? row.statusType : statusObj?.code;
         const statusLabel = statusObj?.label || stockStatusOptions.find(opt => Number(opt.value) === statusNum)?.label || 'Desconocido';
+        const badgeVariant = statusNum === 331 ? 'warning' : statusNum === 332 ? 'success' : 'ghost';
         return (
-          <span className={`badge badge-sm whitespace-nowrap ${statusNum === 331 ? 'badge-warning' : statusNum === 332 ? 'badge-success' : 'badge-ghost'}`}>
-            {statusLabel}
-          </span>
+          <ComerziaBadge
+            label={statusLabel}
+            variant={badgeVariant}
+          />
         );
       }
     }
@@ -450,7 +471,6 @@ export const StockMovementsPage = () => {
             <BtnCreate
               label="Registrar Entrada"
               onClick={() => setIsEntryCardOpen(true)}
-              responsive={true}
               className="w-full sm:w-auto"
             />
           </div>
@@ -720,42 +740,45 @@ export const StockMovementsPage = () => {
             </div>
           )}
 
-          {/* Kardex Tabs */}
-          <div className={`${(isEntryCardOpen || adjustmentTarget) ? 'lg:col-span-2' : 'lg:col-span-3'} bg-base-100 p-6 rounded-2xl shadow-sm border border-base-200`}>
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold">Historial Kardex</h2>
-              <div className="tabs tabs-boxed">
-                <a
-                  className={`tab ${activeTab === 'entries' ? 'tab-active' : ''}`}
-                  onClick={() => { setActiveTab('entries'); setFilterStockId(null); setPage(0); }}
-                >
-                  Entradas
-                </a>
-                {hasCostPermission && (
+          {/* Kardex Tabs and Table/Cards */}
+          <div className={`${(isEntryCardOpen || adjustmentTarget) ? 'lg:col-span-2' : 'lg:col-span-3'} space-y-4 md:space-y-6 md:card md:bg-base-100 md:p-6 md:rounded-2xl md:shadow-xs md:border md:border-base-200`}>
+            {/* Header / Tabs */}
+            <div className="card bg-base-100 p-4 rounded-2xl shadow-xs border border-base-200 md:p-0 md:bg-transparent md:shadow-none md:border-0">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <h2 className="text-lg sm:text-xl font-bold text-base-content">Historial Kardex</h2>
+                <div className="tabs tabs-boxed">
                   <a
-                    className={`tab ${activeTab === 'adjustments' ? 'tab-active' : ''}`}
-                    onClick={() => { setActiveTab('adjustments'); setPage(0); }}
+                    className={`tab ${activeTab === 'entries' ? 'tab-active' : ''}`}
+                    onClick={() => { setActiveTab('entries'); setFilterStockId(null); setPage(0); }}
                   >
-                    Ajustes Manuales
+                    Entradas
                   </a>
-                )}
+                  {hasCostPermission && (
+                    <a
+                      className={`tab ${activeTab === 'adjustments' ? 'tab-active' : ''}`}
+                      onClick={() => { setActiveTab('adjustments'); setPage(0); }}
+                    >
+                      Ajustes Manuales
+                    </a>
+                  )}
+                </div>
               </div>
             </div>
 
             {activeTab === 'adjustments' && filterStockId && (
-              <div className="mb-4 p-3 bg-info/15 border border-info/30 rounded-xl flex items-center justify-between text-xs animate-fade-in">
+              <div className="p-3 bg-info/15 border border-info/30 rounded-2xl flex items-center justify-between text-xs animate-fade-in gap-2">
                 <span className="font-semibold text-info">
                   Mostrando ajustes del lote de stock seleccionado
                 </span>
                 <button
                   type="button"
-                  className="btn btn-ghost btn-xs text-info hover:bg-info/20 cursor-pointer font-bold"
+                  className="btn btn-ghost btn-xs text-info hover:bg-info/20 cursor-pointer font-bold shrink-0"
                   onClick={() => {
                     setFilterStockId(null);
                     setPage(0);
                   }}
                 >
-                  Ver todos los ajustes de la variante
+                  Ver todos los ajustes
                 </button>
               </div>
             )}
@@ -771,14 +794,15 @@ export const StockMovementsPage = () => {
                 onRowContextMenu={(e, row) => {
                   if (activeTab === 'entries' && hasCostPermission) {
                     e.preventDefault();
-                    setContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, row: row as StockEntryResponse });
+                    setContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, isCentered: false, row: row as StockEntryResponse });
                   }
                 }}
+                rowClassName={() => (activeTab === 'entries' && hasCostPermission ? 'hover:!bg-primary/10 transition-colors cursor-pointer' : '')}
               />
             </div>
 
-            {/* VISTA MOBILE: CARDS DE KARDEX */}
-            <div className="block md:hidden space-y-3">
+            {/* VISTA MOBILE: CARDS DE KARDEX (MINIMALISTA) */}
+            <div className="block md:hidden space-y-2.5">
               {isLoadingKardex ? (
                 <div className="py-10 text-center">
                   <span className="loading loading-spinner loading-md text-primary"></span>
@@ -786,20 +810,20 @@ export const StockMovementsPage = () => {
                 </div>
               ) : kardexData.length === 0 ? (
                 <div className="text-center py-8 text-base-content/50 bg-base-200/50 rounded-xl text-xs">
-                  No se registraron movimientos en este historial.
+                  No se encontraron movimientos en este historial.
                 </div>
               ) : (
                 <div className="space-y-2.5">
-                  {kardexData.map((item: any) => {
+                  {kardexData.map((item: any, index: number) => {
                     if (activeTab === 'entries') {
                       const entry = item as StockEntryResponse;
                       const statusObj = typeof entry.statusType === 'object' ? entry.statusType : null;
                       const statusNum = typeof entry.statusType === 'number' ? entry.statusType : statusObj?.code;
-                      const statusName = statusObj?.label || (stockStatusOptions.find(o => Number(o.value) === statusNum)?.label) || 'Activo';
-                      const badgeClass = statusNum === 332 ? 'badge-success' : statusNum === 333 ? 'badge-error' : 'badge-warning';
+                      const statusLabel = statusObj?.label || (stockStatusOptions.find(o => Number(o.value) === statusNum)?.label) || 'Activo';
+                      const badgeVariant = statusNum === 331 ? 'warning' : statusNum === 332 ? 'success' : 'ghost';
 
                       return (
-                        <div
+                        <article
                           key={entry.id}
                           onClick={() => {
                             if (hasCostPermission) {
@@ -812,59 +836,74 @@ export const StockMovementsPage = () => {
                               setContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, isCentered: false, row: entry });
                             }
                           }}
-                          className={`bg-base-100 p-3.5 rounded-xl border border-base-200 shadow-xs space-y-2 text-xs select-none transition-all ${hasCostPermission ? 'cursor-pointer hover:border-primary/40 active:scale-[0.99]' : ''
-                            }`}
+                          className={`bg-base-100 p-3 rounded-2xl border border-base-200 shadow-xs active:scale-[0.99] transition-all flex flex-col gap-2 select-none ${
+                            hasCostPermission ? 'cursor-pointer hover:border-primary/40' : ''
+                          }`}
                         >
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <span className="text-[10px] text-base-content/50 block">
-                                {formatDateForUser(entry.entryDate)}
+                          {/* FILA 1: NUMERACIÓN, CANTIDADES Y ESTADO */}
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="text-xs font-bold text-base-content/40 w-4 text-center shrink-0">
+                                {page * size + index + 1}
                               </span>
-                              {isOwner && entry.branchName && (
-                                <span className="font-semibold text-primary block">{entry.branchName}</span>
-                              )}
+                              <div className="min-w-0">
+                                <span className="text-sm font-bold text-base-content">
+                                  {entry.availableQuantity} <span className="text-xs font-normal text-base-content/50">/ {entry.quantityIn} uds</span>
+                                </span>
+                              </div>
                             </div>
-                            <span className={`badge badge-xs font-semibold ${badgeClass}`}>
-                              {statusName}
-                            </span>
+
+                            <div className="shrink-0">
+                              <ComerziaBadge label={statusLabel} variant={badgeVariant} />
+                            </div>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-2 bg-base-200/40 p-2 rounded-lg">
-                            <div>
-                              <span className="text-base-content/50 block text-[10px]">Cant. Inicial / Disp.</span>
-                              <span className="font-bold text-base-content">
-                                {entry.availableQuantity} <span className="text-base-content/40 font-normal">/ {entry.quantityIn} uds</span>
-                              </span>
-                            </div>
+                          {/* FILA 2: SUCURSAL Y COSTO UNITARIO (SIN TOTAL EN MOBILE) */}
+                          <div className="pl-6 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-base-content/70">
+                            {entry.branchName ? (
+                              <div className="flex items-center gap-1 truncate">
+                                <Store size={12} className="text-primary/70 shrink-0" />
+                                <span className="truncate font-medium">{entry.branchName}</span>
+                              </div>
+                            ) : <span />}
+
                             {hasCostPermission && (
-                              <div className="text-right">
-                                <span className="text-base-content/50 block text-[10px]">Costo Unit.</span>
-                                <span className="font-bold font-mono text-primary">
-                                  {currencyCode} {(entry.unitCost || 0).toFixed(2)}
-                                </span>
+                              <div className="flex items-center gap-1 shrink-0 ml-auto">
+                                <span><strong className="font-mono text-primary">{currencyCode} {(entry.unitCost || 0).toFixed(2)}</strong></span>
                               </div>
                             )}
                           </div>
 
-                          {entry.hasAdjustments && (
-                            <div className="flex justify-between items-center pt-1 border-t border-base-200/60">
-                              <span className="text-[10px] text-warning font-semibold flex items-center gap-1">
-                                <SlidersHorizontal size={12} /> Tiene ajustes manuales
-                              </span>
+                          {/* FILA 3: NOTA U OBSERVACIÓN CORTA (SI EXISTE) */}
+                          {entry.note && (
+                            <div className="pl-6 text-[11px] text-base-content/60 italic truncate">
+                              "{entry.note}"
+                            </div>
+                          )}
+
+                          {/* PIE DE TARJETA: FECHA Y BADGE DE AJUSTES */}
+                          <div className="pl-6 pt-1.5 border-t border-base-200/50 flex items-center justify-between text-[11px] text-base-content/50">
+                            <div className="flex items-center gap-1">
+                              <Calendar size={12} className="text-base-content/40 shrink-0" />
+                              <span>{formatDateForUser(entry.entryDate)}</span>
+                            </div>
+
+                            {entry.hasAdjustments && (
                               <button
                                 type="button"
-                                className="btn btn-ghost btn-xs text-primary font-bold"
-                                onClick={() => {
+                                className="text-[11px] text-info font-semibold hover:underline flex items-center gap-1 cursor-pointer"
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   setFilterStockId(entry.id);
                                   setActiveTab('adjustments');
                                   setPage(0);
                                 }}
                               >
-                                Ver Ajustes
+                                <SlidersHorizontal size={11} /> Ver Ajustes
                               </button>
-                            </div>
-                          )}
-                        </div>
+                            )}
+                          </div>
+                        </article>
                       );
                     } else {
                       const adj = item as StockAdjustmentResponse;
@@ -874,59 +913,134 @@ export const StockMovementsPage = () => {
                       const isNegative = adjCode === 301 || adjCode === 303;
 
                       return (
-                        <div key={adj.id} className="bg-base-100 p-3.5 rounded-xl border border-base-200 shadow-xs space-y-2 text-xs">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <span className="badge badge-sm font-semibold badge-outline">{adjName}</span>
-                              <span className="text-[10px] text-base-content/50 block mt-1">
-                                {formatDateForUser(adj.date)}
+                        <article
+                          key={adj.id}
+                          className="bg-base-100 p-3 rounded-2xl border border-base-200 shadow-xs flex flex-col gap-2 select-none"
+                        >
+                          {/* FILA 1: NUMERACIÓN, TIPO Y CANTIDAD */}
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="text-xs font-bold text-base-content/40 w-4 text-center shrink-0">
+                                {page * size + index + 1}
+                              </span>
+                              <h3 className="text-sm font-semibold text-base-content leading-tight truncate">
+                                {adjName}
+                              </h3>
+                            </div>
+
+                            <div className="shrink-0">
+                              <span className={`badge badge-sm font-bold text-white ${isNegative ? 'badge-error' : 'badge-success'}`}>
+                                {isNegative ? '-' : '+'}{adj.quantity} uds
                               </span>
                             </div>
-                            <span className={`text-base font-black font-mono ${isNegative ? 'text-error' : 'text-success'}`}>
-                              {isNegative ? '-' : '+'}{adj.quantity} uds
-                            </span>
                           </div>
-                          <div className="mt-1">
-                            {adj.observation ? (
-                              <p className="text-base-content/70 italic bg-base-200/40 p-2 rounded-lg text-[11px]">
-                                "{adj.observation}"
-                              </p>
-                            ) : (
-                              <p className="text-base-content/40 italic text-[11px]">
-                                (sin observación)
-                              </p>
+
+                          {/* FILA 2: COSTO UNITARIO Y REPORTE INVENTARIO */}
+                          <div className="pl-6 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-base-content/70">
+                            {adj.inventoryId ? (
+                              <button
+                                type="button"
+                                className="text-xs text-primary font-semibold flex items-center gap-1 hover:underline cursor-pointer"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedInventoryId(adj.inventoryId!);
+                                }}
+                              >
+                                <ClipboardList size={12} className="shrink-0" /> Reporte
+                              </button>
+                            ) : <span />}
+
+                            {hasCostPermission && (adj.unitCost > 0) && (
+                              <div className="flex items-center gap-1 shrink-0 ml-auto">
+                                <Coins size={12} className="text-primary/70 shrink-0" />
+                                <span>Costo: <strong className="font-mono text-primary">{currencyCode} {(adj.unitCost || 0).toFixed(2)}</strong></span>
+                              </div>
                             )}
                           </div>
-                        </div>
+
+                          {/* FILA 3: OBSERVACIÓN (SI EXISTE) */}
+                          {adj.observation && (
+                            <div className="pl-6 text-[11px] text-base-content/60 italic truncate">
+                              "{adj.observation}"
+                            </div>
+                          )}
+
+                          {/* PIE DE TARJETA: FECHA */}
+                          <div className="pl-6 pt-1.5 border-t border-base-200/50 flex items-center text-[11px] text-base-content/50">
+                            <Calendar size={12} className="mr-1 text-base-content/40 shrink-0" />
+                            <span>{formatDateForUser(adj.date)}</span>
+                          </div>
+                        </article>
                       );
                     }
                   })}
                 </div>
               )}
 
-              {/* Paginación Mobile Kardex */}
-              {totalPages > 1 && (
-                <div className="flex justify-between items-center px-1 pt-2">
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline gap-1"
-                    disabled={page === 0 || isLoadingKardex}
-                    onClick={() => setPage(prev => Math.max(0, prev - 1))}
-                  >
-                    Ant.
-                  </button>
-                  <span className="text-xs font-semibold text-base-content/70">
-                    Pág. {page + 1} de {totalPages}
-                  </span>
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline gap-1"
-                    disabled={page >= totalPages - 1 || isLoadingKardex}
-                    onClick={() => setPage(prev => prev + 1)}
-                  >
-                    Sig.
-                  </button>
-                </div>
+              {/* PAGINACIÓN MOBILE */}
+              {totalElements > 0 && (
+                <footer className="mt-4 pt-3 pb-3 px-3 bg-base-100 border border-base-200 rounded-2xl shadow-xs" data-purpose="mobile-pagination">
+                  <div className="flex items-center justify-between text-[11px] sm:text-xs text-base-content/70 mb-3 gap-2">
+                    <div className="flex items-center gap-1.5 whitespace-nowrap shrink-0">
+                      <span>Mostrar</span>
+                      <select
+                        value={size}
+                        onChange={(e) => {
+                          setSize(Number(e.target.value));
+                          setPage(0);
+                        }}
+                        className="select select-bordered select-xs text-[11px] sm:text-xs font-semibold bg-base-100 h-6 min-h-6 px-1.5"
+                      >
+                        <option value={5}>5</option>
+                        <option value={10}>10</option>
+                        <option value={25}>25</option>
+                      </select>
+                      <span className="whitespace-nowrap">de {totalElements} registros</span>
+                    </div>
+                    <span className="font-semibold text-base-content/80 whitespace-nowrap shrink-0">
+                      Página {page + 1} de {Math.max(1, totalPages)}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-center gap-1.5">
+                    <button
+                      type="button"
+                      aria-label="Primera página"
+                      disabled={page === 0 || isLoadingKardex}
+                      onClick={() => setPage(0)}
+                      className="w-8 h-8 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
+                    >
+                      <ChevronsLeft className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Página anterior"
+                      disabled={page === 0 || isLoadingKardex}
+                      onClick={() => setPage(Math.max(0, page - 1))}
+                      className="w-8 h-8 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Página siguiente"
+                      disabled={page >= totalPages - 1 || isLoadingKardex}
+                      onClick={() => setPage(page + 1)}
+                      className="w-8 h-8 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Última página"
+                      disabled={page >= totalPages - 1 || isLoadingKardex}
+                      onClick={() => setPage(totalPages - 1)}
+                      className="w-8 h-8 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
+                    >
+                      <ChevronsRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </footer>
               )}
             </div>
           </div>
