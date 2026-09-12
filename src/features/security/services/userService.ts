@@ -37,8 +37,11 @@ export const userService = {
     return response.data;
   },
 
-  updateUserRoles: async (id: string, roleIds: string[]): Promise<UserResponse> => {
-    const payload: UpdateUserRolesRequest = { roleIds };
+  updateUserRoles: async (id: string, roleIds: string[], branchId?: string | null): Promise<UserResponse> => {
+    const payload: UpdateUserRolesRequest = {
+      roleIds,
+      ...(branchId ? { branchId } : {})
+    };
     const response = await api.put<UserResponse>(`/tenant/users/${id}/roles`, payload);
     return response.data;
   },

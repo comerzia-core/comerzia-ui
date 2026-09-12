@@ -20,6 +20,7 @@ export interface UpdateUserAccessRequest {
 
 export interface UpdateUserRolesRequest {
   roleIds: string[];
+  branchId?: string | null;
 }
 
 export interface ResetPasswordResponse {

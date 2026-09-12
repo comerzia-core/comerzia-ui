@@ -1,9 +1,9 @@
-// src/features/security/components/users/UserRolesModal.tsx
 import { useState, useEffect } from 'react';
 import { UserCog, Loader2 } from 'lucide-react';
 import { ComerziaModal } from '../../../../components/ui/ComerziaModal';
 import { ComerziaSelectableCard } from '../../../../components/ui/ComerziaSelectableCard';
 import { BtnCancel, BtnSave } from '../../../../components/ui/CrudButtons';
+import { DemotionBranchModal } from './DemotionBranchModal';
 import { userService } from '../../services/userService';
 import { useToast } from '../../../../context/ToastContext';
 import type { UserResponse, RoleResponse } from '../../types/user';
@@ -23,6 +23,9 @@ export const UserRolesModal = ({ isOpen, onClose, user, onSuccess }: Props) => {
   const [isLoadingRoles, setIsLoadingRoles] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [shakeKey, setShakeKey] = useState<number>(0);
+
+  // Modal para seleccionar sucursal cuando se retira el rol OWNER
+  const [isDemotionModalOpen, setIsDemotionModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
     if (isOpen && user) {
@@ -71,8 +74,16 @@ export const UserRolesModal = ({ isOpen, onClose, user, onSuccess }: Props) => {
       showToast('Roles de usuario actualizados exitosamente', 'success');
       onSuccess();
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating user roles:', error);
+
+      // Capturamos si el backend requiere asignación de sucursal por degradación de OWNER
+      const backendMessage = error?.response?.data?.message;
+      if (backendMessage === 'BRANCH_REQUIRED_FOR_DEMOTION') {
+        setIsDemotionModalOpen(true);
+        return;
+      }
+
       showToast('Error al actualizar los roles del usuario', 'error');
     } finally {
       setIsSaving(false);
@@ -131,6 +142,20 @@ export const UserRolesModal = ({ isOpen, onClose, user, onSuccess }: Props) => {
           </span>
         )}
       </div>
+
+      {/* MODAL DE ASIGNACIÓN DE SUCURSAL CUANDO SE RETIRA EL ROL OWNER */}
+      <DemotionBranchModal
+        isOpen={isDemotionModalOpen}
+        onClose={() => setIsDemotionModalOpen(false)}
+        user={user}
+        roleIds={selectedRoleIds}
+        onSuccess={() => {
+          setIsDemotionModalOpen(false);
+          onSuccess();
+          onClose();
+        }}
+      />
     </ComerziaModal>
   );
 };
+
