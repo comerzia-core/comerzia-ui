@@ -1,6 +1,7 @@
 // src/features/organization/types/company.ts
 
 export interface TenantSubscriptionResponse {
+  planTypeCode?: number;
   planName: string;
   statusName: string;
   validUntil: string; // ISO String en UTC

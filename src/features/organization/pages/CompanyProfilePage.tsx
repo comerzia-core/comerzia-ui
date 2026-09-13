@@ -221,27 +221,32 @@ export const CompanyProfilePage = () => {
                   <span className="text-sm font-medium text-base-content/70">Estado</span>
                   <span className="font-bold text-success text-sm">{currentSubscription.statusName}</span>
                 </div>
-                <div className="flex justify-between items-center border-b border-base-200/50 pb-2">
-                  <span className="text-sm font-medium text-base-content/70">Válido hasta</span>
-                  <span className="text-sm font-semibold text-base-content">
-                    {formatDateForUser(currentSubscription.validUntil)}
-                  </span>
-                </div>
-                
-                <div className="pt-3 grid grid-cols-3 gap-2 text-center">
-                  <div className="bg-base-100 rounded-box p-2 shadow-sm border border-base-200">
-                    <p className="text-[10px] uppercase font-bold text-base-content/50 mb-1">Sucursales</p>
-                    <p className="font-black text-lg text-base-content">{currentSubscription.maxBranches}</p>
-                  </div>
-                  <div className="bg-base-100 rounded-box p-2 shadow-sm border border-base-200">
-                    <p className="text-[10px] uppercase font-bold text-base-content/50 mb-1">Usuarios</p>
-                    <p className="font-black text-lg text-base-content">{currentSubscription.maxUsers}</p>
-                  </div>
-                  <div className="bg-base-100 rounded-box p-2 shadow-sm border border-base-200">
-                    <p className="text-[10px] uppercase font-bold text-base-content/50 mb-1">Productos</p>
-                    <p className="font-black text-lg text-base-content">{currentSubscription.maxProducts}</p>
-                  </div>
-                </div>
+
+                {currentSubscription.planTypeCode !== 705 && (
+                  <>
+                    <div className="flex justify-between items-center border-b border-base-200/50 pb-2">
+                      <span className="text-sm font-medium text-base-content/70">Válido hasta</span>
+                      <span className="text-sm font-semibold text-base-content">
+                        {formatDateForUser(currentSubscription.validUntil)}
+                      </span>
+                    </div>
+                    
+                    <div className="pt-3 grid grid-cols-3 gap-2 text-center">
+                      <div className="bg-base-100 rounded-box p-2 shadow-sm border border-base-200">
+                        <p className="text-[10px] uppercase font-bold text-base-content/50 mb-1">Sucursales</p>
+                        <p className="font-black text-lg text-base-content">{currentSubscription.maxBranches}</p>
+                      </div>
+                      <div className="bg-base-100 rounded-box p-2 shadow-sm border border-base-200">
+                        <p className="text-[10px] uppercase font-bold text-base-content/50 mb-1">Usuarios</p>
+                        <p className="font-black text-lg text-base-content">{currentSubscription.maxUsers}</p>
+                      </div>
+                      <div className="bg-base-100 rounded-box p-2 shadow-sm border border-base-200">
+                        <p className="text-[10px] uppercase font-bold text-base-content/50 mb-1">Productos</p>
+                        <p className="font-black text-lg text-base-content">{currentSubscription.maxProducts}</p>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -330,7 +335,7 @@ export const CompanyProfilePage = () => {
 
               {/* ACTION BUTTONS */}
               <div className="card-actions justify-end border-t border-base-200 pt-6 mt-auto w-full">
-                <BtnSave onClick={handleSaveSettings} isLoading={isSaving} label="Guardar Cambios" responsive={true} className="w-full sm:w-auto" />
+                <BtnSave onClick={handleSaveSettings} isLoading={isSaving} label="Guardar Cambios" responsive={false} className="w-full sm:w-auto" />
               </div>
 
             </div>
