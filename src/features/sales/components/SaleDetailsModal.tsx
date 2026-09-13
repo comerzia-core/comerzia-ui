@@ -13,7 +13,8 @@ interface Props {
 }
 
 export const SaleDetailsModal = ({ isOpen, onClose, sale }: Props) => {
-  const { userProfile } = useAuthStore();
+  const { userProfile, hasRole } = useAuthStore();
+  const isOwner = hasRole('OWNER');
   const currencyCode = userProfile?.companySettings?.currencyCode || 'USD';
 
   if (!sale) return null;
@@ -75,7 +76,13 @@ export const SaleDetailsModal = ({ isOpen, onClose, sale }: Props) => {
       size="xl"
     >
       <div className="space-y-5 pt-1">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 bg-base-200/50 p-3.5 rounded-xl border border-base-200 text-xs">
+        <div className={`grid grid-cols-2 ${isOwner && sale.branchName ? 'sm:grid-cols-5' : 'sm:grid-cols-4'} gap-2.5 bg-base-200/50 p-3.5 rounded-xl border border-base-200 text-xs`}>
+          {isOwner && sale.branchName && (
+            <div>
+              <span className="text-[10px] text-base-content/50 font-semibold uppercase tracking-wider block">Sucursal</span>
+              <p className="font-bold mt-0.5 text-base-content truncate">{sale.branchName}</p>
+            </div>
+          )}
           <div>
             <span className="text-[10px] text-base-content/50 font-semibold uppercase tracking-wider block">Vendedor</span>
             <p className="font-bold mt-0.5 text-base-content truncate">{sale.employeeUsername || '-'}</p>
@@ -169,7 +176,7 @@ export const SaleDetailsModal = ({ isOpen, onClose, sale }: Props) => {
         </div>
 
         <div className="flex flex-row items-center gap-2 pt-3 border-t border-base-200 w-full sm:justify-end">
-          <BtnCancel onClick={onClose} label="Cerrar" responsive={true} className="w-full sm:w-auto" />
+          <BtnCancel onClick={onClose} label="Cerrar" responsive={false} className="w-full sm:w-auto" />
         </div>
       </div>
     </ComerziaModal>

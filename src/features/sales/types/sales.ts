@@ -52,6 +52,7 @@ export interface SalePaymentResponse {
 export interface SaleResponse {
   id: string;
   saleNumber: string;
+  branchName?: string;
   subtotalAmount: number;
   discountedAmount: number;
   totalAmount: number;
@@ -72,6 +73,12 @@ export interface PageSaleResponse {
   first: boolean;
   last: boolean;
   empty: boolean;
+}
+
+export interface SellerResponse {
+  id: string;
+  username: string;
+  fullName: string;
 }
 
 export interface ReturnDetailRequest {

@@ -5,6 +5,7 @@ import type {
   CreateSaleRequest,
   SaleResponse,
   PageSaleResponse,
+  SellerResponse,
   UpdateSaleRequest,
   CreateReturnRequest,
   ReturnResponse,
@@ -39,15 +40,50 @@ export const salesService = {
     return response.data;
   },
 
-  // --- Ventas (Shift Sales) ---
+  // --- Ventas (Shift Sales & Sales History) ---
   createSale: async (data: CreateSaleRequest, branchId?: string | null): Promise<SaleResponse> => {
     const config = branchId ? { headers: { 'X-Branch-Context': branchId } } : undefined;
     const response = await api.post<SaleResponse>('/tenant/sales', data, config);
     return response.data;
   },
 
-  getMyShiftSales: async (): Promise<SaleResponse[]> => {
-    const response = await api.get<SaleResponse[]>('/tenant/sales');
+  findSales: async (page = 0, size = 10): Promise<PageSaleResponse> => {
+    const response = await api.get<PageSaleResponse>('/tenant/sales', {
+      params: { page, size }
+    });
+    return response.data;
+  },
+
+  searchSales: async (params: {
+    startDate?: string;
+    endDate?: string;
+    sellerUsername?: string;
+    page?: number;
+    size?: number;
+  }): Promise<PageSaleResponse> => {
+    const cleanParams: Record<string, any> = {
+      page: params.page ?? 0,
+      size: params.size ?? 10
+    };
+    if (params.startDate) cleanParams.startDate = params.startDate;
+    if (params.endDate) cleanParams.endDate = params.endDate;
+    if (params.sellerUsername) cleanParams.sellerUsername = params.sellerUsername;
+
+    const response = await api.get<PageSaleResponse>('/tenant/sales/search', {
+      params: cleanParams
+    });
+    return response.data;
+  },
+
+  getSellers: async (): Promise<SellerResponse[]> => {
+    const response = await api.get<SellerResponse[]>('/tenant/sales/sellers');
+    return response.data;
+  },
+
+  getMyShiftSales: async (page = 0, size = 10): Promise<PageSaleResponse> => {
+    const response = await api.get<PageSaleResponse>('/tenant/sales', {
+      params: { page, size }
+    });
     return response.data;
   },
 

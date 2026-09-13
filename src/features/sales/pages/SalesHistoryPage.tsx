@@ -1,44 +1,101 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { salesService } from '../services/salesService';
-import type { SaleResponse, SalesCatalogItem, CustomerProfileResponse } from '../types/sales';
+import type { SaleResponse, SalesCatalogItem, CustomerProfileResponse, SellerResponse } from '../types/sales';
 import { useToast } from '../../../context/ToastContext';
 import { ComerziaTable, type Column, type TablePaginationConfig } from '../../../components/ui/ComerziaTable';
 import { ComerziaBadge } from '../../../components/ui/ComerziaBadge';
 import { ComerziaModal } from '../../../components/ui/ComerziaModal';
 import { ComerziaButton } from '../../../components/ui/ComerziaButton';
+import { ComerziaInput } from '../../../components/ui/ComerziaInput';
+import { ComerziaSelect } from '../../../components/ui/ComerziaSelect';
 import { ComerziaContextMenu, ContextMenuItem } from '../../../components/ui/ComerziaContextMenu';
 import { BtnCancel, BtnSave, BtnDeleteIcon, BtnModalYes } from '../../../components/ui/CrudButtons';
 import { SaleDetailsModal } from '../components/SaleDetailsModal';
 import { RegisterSaleCustomerModal } from '../components/RegisterSaleCustomerModal';
-import { AlertTriangle, Eye, Edit, Trash2, RotateCcw, UserCheck, UserPlus, History, Plus } from 'lucide-react';
+import { formatDateForUser } from '../../../utils/date';
+import {
+  AlertTriangle,
+  Eye,
+  Edit,
+  Trash2,
+  RotateCcw,
+  UserCheck,
+  UserPlus,
+  History,
+  Plus,
+  Search,
+  Calendar,
+  User,
+  Building2,
+  ChevronsLeft,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsRight
+} from 'lucide-react';
 
 export const SalesHistoryPage = () => {
+  const navigate = useNavigate();
   const { userProfile, hasPermission, hasRole } = useAuthStore();
   const { success: toastSuccess, error: toastError, warning: toastWarning } = useToast();
 
   const [sales, setSales] = useState<SaleResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Rol Owner
+  const isOwner = hasRole('OWNER');
+
   // Permisos requeridos
   const canCancel = hasPermission('SAL_SALES_CANCEL') || hasRole('OWNER') || hasRole('ADMIN');
   const canReturn = hasPermission('SAL_RETURNS_MANAGE') || hasRole('OWNER') || hasRole('ADMIN');
   const canManageSales = hasPermission('SAL_SALES_MANAGE') || hasRole('OWNER') || hasRole('ADMIN');
+  
+  // Permisos para búsqueda con filtros (SAL_SALES_READ_ALL y SAL_SELLERS_READ)
+  const hasReadAllPermission = hasPermission('SAL_SALES_READ_ALL') || hasRole('OWNER') || hasRole('ADMIN');
+  const hasSellersPermission = hasPermission('SAL_SELLERS_READ') || hasRole('OWNER') || hasRole('ADMIN');
+  const canFilter = hasReadAllPermission && hasSellersPermission;
 
-  // Paginación en cliente para List<SaleResponse>
+  // Función utilitaria para obtener fecha local actual (YYYY-MM-DD)
+  const getTodayDateString = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Lista de vendedores disponibles para el filtro
+  const [sellers, setSellers] = useState<SellerResponse[]>([]);
+
+  // Estados de Filtro (por defecto la fecha actual en ambos)
+  const [startDate, setStartDate] = useState(getTodayDateString());
+  const [endDate, setEndDate] = useState(getTodayDateString());
+  const [selectedSeller, setSelectedSeller] = useState('');
+  const [appliedFilters, setAppliedFilters] = useState<{
+    startDate?: string;
+    endDate?: string;
+    sellerUsername?: string;
+  } | null>(null);
+
+  // Paginación Server-Side (Spring Boot 0-indexed)
   const [page, setPage] = useState(0);
-  const [size, setSize] = useState(10);
+  const [size, setSize] = useState(5);
+  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   // Estado del Menú Contextual
   const [contextMenu, setContextMenu] = useState<{
     isOpen: boolean;
     x: number;
     y: number;
+    isCentered: boolean;
     sale: SaleResponse | null;
   }>({
     isOpen: false,
     x: 0,
     y: 0,
+    isCentered: false,
     sale: null
   });
 
@@ -62,20 +119,78 @@ export const SalesHistoryPage = () => {
 
   const currency = userProfile?.companySettings?.currencyCode || 'USD';
 
+  // 1. Cargar vendedores si tiene los permisos correspondientes
   useEffect(() => {
-    loadSales();
-  }, []);
+    if (canFilter) {
+      salesService.getSellers()
+        .then(data => setSellers(data || []))
+        .catch(err => console.error('Error loading sellers list:', err));
+    }
+  }, [canFilter]);
 
-  const loadSales = async () => {
+  // 2. Cargar ventas cuando cambian los parámetros de paginación
+  useEffect(() => {
+    loadSales(page, size, appliedFilters);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, size]);
+
+  const loadSales = async (
+    targetPage = page,
+    targetSize = size,
+    activeFilters = appliedFilters
+  ) => {
     setIsLoading(true);
+    const isFiltering = canFilter && activeFilters !== null;
+
     try {
-      const res = await salesService.getMyShiftSales();
-      setSales(res);
-    } catch (e) {
-      toastError("Error al cargar el historial de ventas del turno.");
+      if (isFiltering) {
+        if (activeFilters.startDate && activeFilters.endDate && activeFilters.startDate > activeFilters.endDate) {
+          toastError("La fecha 'Desde' no puede ser posterior a la fecha 'Hasta'.");
+          setIsLoading(false);
+          return;
+        }
+
+        const res = await salesService.searchSales({
+          startDate: activeFilters.startDate || undefined,
+          endDate: activeFilters.endDate || undefined,
+          sellerUsername: activeFilters.sellerUsername || undefined,
+          page: targetPage,
+          size: targetSize
+        });
+
+        setSales(res.content || []);
+        setTotalElements(res.totalElements || 0);
+        setTotalPages(res.totalPages || 0);
+      } else {
+        const res = await salesService.findSales(targetPage, targetSize);
+        setSales(res.content || []);
+        setTotalElements(res.totalElements || 0);
+        setTotalPages(res.totalPages || 0);
+      }
+    } catch (e: any) {
+      console.error('Error loading sales:', e);
+      toastError(e.response?.data?.message || "Error al cargar las ventas.");
+      setSales([]);
+      setTotalElements(0);
+      setTotalPages(0);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleApplyFilters = () => {
+    if (startDate && endDate && startDate > endDate) {
+      toastError("La fecha 'Desde' no puede ser posterior a la fecha 'Hasta'.");
+      return;
+    }
+    const newFilters = {
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
+      sellerUsername: selectedSeller || undefined
+    };
+    setAppliedFilters(newFilters);
+    setPage(0);
+    loadSales(0, size, newFilters);
   };
 
   const getStatusCode = (status: number | { code: number; label: string } | undefined): number => {
@@ -84,18 +199,13 @@ export const SalesHistoryPage = () => {
     return 0;
   };
 
-  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isLongPressRef = useRef(false);
-
   // Ver detalles completos de la venta
   const handleViewDetails = async (sale: SaleResponse) => {
-    // Si la venta ya trae los items cargados, los abrimos directamente
     if (sale.details && sale.details.length > 0) {
       setSelectedSaleDetails(sale);
       return;
     }
 
-    // Si la venta no trae los detalles de los productos, consultamos la venta completa
     if (sale.saleNumber) {
       try {
         const fullSale = await salesService.getSaleByNumber(sale.saleNumber);
@@ -109,42 +219,7 @@ export const SalesHistoryPage = () => {
     }
   };
 
-  // Touch handlers para Long Press en móvil
-  const handleTouchStart = (e: React.TouchEvent, sale: SaleResponse) => {
-    isLongPressRef.current = false;
-    const touch = e.touches[0];
-    const clientX = touch.clientX;
-    const clientY = touch.clientY;
-
-    longPressTimerRef.current = setTimeout(() => {
-      isLongPressRef.current = true;
-      if (typeof navigator !== 'undefined' && navigator.vibrate) {
-        navigator.vibrate(40);
-      }
-      setContextMenu({
-        isOpen: true,
-        x: clientX,
-        y: clientY,
-        sale
-      });
-    }, 500);
-  };
-
-  const handleTouchEnd = () => {
-    if (longPressTimerRef.current) {
-      clearTimeout(longPressTimerRef.current);
-      longPressTimerRef.current = null;
-    }
-  };
-
-  const handleTouchMove = () => {
-    if (longPressTimerRef.current) {
-      clearTimeout(longPressTimerRef.current);
-      longPressTimerRef.current = null;
-    }
-  };
-
-  // Abrir Menú Contextual
+  // Abrir Menú Contextual en PC (Clic Derecho con coordenadas)
   const handleContextMenu = (e: React.MouseEvent, sale: SaleResponse) => {
     e.preventDefault();
     e.stopPropagation();
@@ -152,6 +227,19 @@ export const SalesHistoryPage = () => {
       isOpen: true,
       x: e.clientX,
       y: e.clientY,
+      isCentered: false,
+      sale
+    });
+  };
+
+  // Abrir Menú Contextual en Móvil (Simple Tap centrado en pantalla)
+  const handleMobileCardTap = (e: React.MouseEvent, sale: SaleResponse) => {
+    e.stopPropagation();
+    setContextMenu({
+      isOpen: true,
+      x: 0,
+      y: 0,
+      isCentered: true,
       sale
     });
   };
@@ -164,7 +252,7 @@ export const SalesHistoryPage = () => {
       await salesService.cancelPendingSale(cancelingSaleId);
       toastSuccess("Venta pendiente cancelada y stock liberado correctamente.");
       setCancelingSaleId(null);
-      loadSales();
+      loadSales(page, size);
     } catch (err: any) {
       toastError(err.response?.data?.message || "Error al cancelar la venta.");
     } finally {
@@ -234,7 +322,6 @@ export const SalesHistoryPage = () => {
     }
   };
 
-  // Agregar item buscado a los detalles de edición
   const handleAddEditItem = (catItem: SalesCatalogItem) => {
     const existingIndex = editDetails.findIndex(d => d.productVariantId === catItem.productVariantId);
     if (existingIndex >= 0) {
@@ -312,211 +399,377 @@ export const SalesHistoryPage = () => {
       await salesService.updatePendingSale(editingSale.id, payload as any);
       toastSuccess("Venta pendiente actualizada con éxito.");
       setEditingSale(null);
-      loadSales();
+      loadSales(page, size);
     } catch (err: any) {
       toastError(err.response?.data?.message || "Error al actualizar la venta.");
     }
   };
 
-  // Configuración de Badges de Estado (6 Estados Oficiales)
+  // Badges de Estado (6 Estados Oficiales)
   const renderStatusBadge = (status: number | { code: number; label: string } | undefined) => {
     const code = getStatusCode(status);
+    const label = typeof status === 'object' ? status.label : undefined;
     switch (code) {
       case 601:
-        return <ComerziaBadge variant="warning" label="PENDIENTE" />;
+        return <ComerziaBadge variant="warning" label={label || "PENDIENTE"} />;
       case 602:
-        return <ComerziaBadge variant="success" label="COMPLETADA" />;
+        return <ComerziaBadge variant="success" label={label || "COMPLETADA"} />;
       case 603:
-        return <ComerziaBadge variant="neutral" label="CANCELADA" />;
+        return <ComerziaBadge variant="neutral" label={label || "CANCELADA"} />;
       case 604:
-        return <ComerziaBadge variant="error" label="ANULADA" />;
+        return <ComerziaBadge variant="error" label={label || "ANULADA"} />;
       case 605:
-        return <ComerziaBadge variant="info" label="DEV. PARCIAL" />;
+        return <ComerziaBadge variant="info" label={label || "DEV. PARCIAL"} />;
       case 606:
-        return <ComerziaBadge variant="secondary" label="DEV. TOTAL" />;
+        return <ComerziaBadge variant="secondary" label={label || "DEV. TOTAL"} />;
       default:
-        return <ComerziaBadge variant="neutral" label="DESCONOCIDO" />;
+        return <ComerziaBadge variant="neutral" label={label || "DESCONOCIDO"} />;
     }
   };
 
-  // Definición de Columnas de la Tabla (Sin Columna de Acciones)
+  // Definición de Columnas de la Tabla Desktop
   const columns: Column<SaleResponse>[] = [
     {
       header: 'N° Venta',
-      render: (row) => (
+      render: (row: SaleResponse) => (
         <div className="flex items-center gap-1.5">
-          <span className="font-mono text-sm font-semibold">{row.saleNumber ? `#${row.saleNumber}` : '-'}</span>
+          <span className="font-mono text-sm font-bold text-base-content">
+            {row.saleNumber ? `#${row.saleNumber}` : '-'}
+          </span>
           {row.customer && (
-            <div className="tooltip tooltip-right" data-tip={`Cliente: ${row.customer.fullName || row.customer.firstName}`}>
-              <UserCheck size={16} className="text-primary shrink-0 cursor-pointer" />
-            </div>
+            <UserCheck size={15} className="text-primary shrink-0" />
           )}
         </div>
       )
     },
+    isOwner && {
+      header: 'Sucursal',
+      render: (row: SaleResponse) => (
+        <div className="flex items-center gap-1.5 text-xs text-base-content/80">
+          <Building2 size={13} className="text-primary/70 shrink-0" />
+          <span className="truncate">{row.branchName || '-'}</span>
+        </div>
+      )
+    },
     {
-      header: 'Hora',
-      render: (row) => new Date(row.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })
+      header: 'Fecha y Hora',
+      render: (row: SaleResponse) => (
+        <span className="whitespace-nowrap text-xs text-base-content/80">
+          {formatDateForUser(row.date)}
+        </span>
+      )
+    },
+    {
+      header: 'Vendedor',
+      render: (row: SaleResponse) => (
+        <div className="flex items-center gap-1.5 text-xs text-base-content/80 font-medium">
+          <User size={13} className="text-primary/70 shrink-0" />
+          <span className="truncate">{row.employeeUsername || '-'}</span>
+        </div>
+      )
+    },
+    {
+      header: 'Cliente',
+      render: (row: SaleResponse) => (
+        <span className="text-xs text-base-content/80 truncate max-w-[160px] block">
+          {row.customer?.fullName || row.customer?.firstName || (
+            <span className="text-base-content/40 italic">Consumidor Final</span>
+          )}
+        </span>
+      )
     },
     {
       header: 'Subtotal',
-      render: (row) => `${currency} ${row.subtotalAmount.toFixed(2)}`
+      render: (row: SaleResponse) => (
+        <span className="font-mono text-xs text-base-content/70 whitespace-nowrap">
+          {currency} {row.subtotalAmount.toFixed(2)}
+        </span>
+      )
     },
     {
-      header: 'Descuentos',
-      render: (row) => <span className="text-error">{row.discountedAmount > 0 ? `- ${currency} ${row.discountedAmount.toFixed(2)}` : '0.00'}</span>
+      header: 'Descuento',
+      render: (row: SaleResponse) => (
+        <span className={`font-mono text-xs whitespace-nowrap ${row.discountedAmount > 0 ? 'text-error font-semibold' : 'text-base-content/40'}`}>
+          {row.discountedAmount > 0 ? `-${currency} ${row.discountedAmount.toFixed(2)}` : '0.00'}
+        </span>
+      )
     },
     {
       header: 'Total Cobro',
-      render: (row) => <span className="font-bold text-success">{currency} {row.totalAmount.toFixed(2)}</span>
+      render: (row: SaleResponse) => (
+        <span className="font-mono font-bold text-success text-sm whitespace-nowrap">
+          {currency} {row.totalAmount.toFixed(2)}
+        </span>
+      )
     },
     {
       header: 'Estado',
-      render: (row) => renderStatusBadge(row.saleStatus)
+      render: (row: SaleResponse) => renderStatusBadge(row.saleStatus)
     }
-  ];
-
-  const paginatedSales = sales.slice(page * size, (page + 1) * size);
+  ].filter(Boolean) as Column<SaleResponse>[];
 
   const pagination: TablePaginationConfig = {
     currentPage: page,
     pageSize: size,
-    totalElements: sales.length,
-    totalPages: Math.ceil(sales.length / size) || 1,
-    onPageChange: setPage,
-    onPageSizeChange: setSize
+    totalElements,
+    totalPages,
+    onPageChange: (newPage) => setPage(newPage),
+    onPageSizeChange: (newSize) => {
+      setSize(newSize);
+      setPage(0);
+    }
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Seguimiento de Ventas</h1>
-        <p className="text-base-content/60 mt-1">Historial del cajero activo en el turno de trabajo</p>
+    <div className="space-y-6 w-full animate-fade-in">
+      {/* 1. HEADER DE LA PÁGINA */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-start gap-2.5">
+          <History className="w-6 h-6 sm:w-7 sm:h-7 text-primary shrink-0 mt-0.5" />
+          <div>
+            <h1 className="text-lg sm:text-2xl font-bold text-base-content tracking-tight">
+              Seguimiento de Ventas
+            </h1>
+            <p className="text-xs sm:text-sm text-base-content/70 mt-0.5 leading-relaxed">
+              {canFilter
+                ? 'Historial de ventas de la sucursal con filtros de búsqueda por rango de fechas y vendedor.'
+                : 'Historial de ventas registradas en el turno de trabajo activo.'}
+            </p>
+          </div>
+        </div>
       </div>
 
-      <div className="bg-base-100 p-4 sm:p-6 rounded-2xl border border-base-200 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-          <h2 className="text-base sm:text-lg font-bold flex items-center gap-2">
-            <History className="h-5 w-5 text-primary" />
-            Ventas Generadas
-          </h2>
-          <span className="text-xs text-base-content/50 italic hidden sm:inline">
-            * Haz clic derecho sobre una venta para ver el menú de opciones (Detalles, Cliente, Cancelar o Devolución).
-          </span>
-          <span className="text-xs text-base-content/50 italic sm:hidden">
-            * Mantén presionada una tarjeta para ver el menú de opciones (Detalles, Cliente, Cancelar o Devolución).
+      {/* 2. BARRA DE FILTROS (Solo visible si cuenta con SAL_SALES_READ_ALL y SAL_SELLERS_READ) */}
+      {canFilter && (
+        <div className="card bg-base-100 p-4 rounded-2xl shadow-xs border border-base-200 w-full">
+          <div className="flex flex-col lg:flex-row gap-3 sm:gap-4 items-stretch lg:items-end w-full">
+            {/* Fechas en la misma fila en mobile (grid-cols-2) y flex-1 en desktop */}
+            <div className="grid grid-cols-2 gap-2 sm:gap-4 flex-1">
+              <ComerziaInput
+                label="Fecha Desde"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+              <ComerziaInput
+                label="Fecha Hasta"
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
+            </div>
+            {/* Selector de vendedor */}
+            <div className="w-full lg:w-72 xl:w-80">
+              <ComerziaSelect
+                label="Vendedor"
+                value={selectedSeller}
+                onChange={(e) => setSelectedSeller(e.target.value)}
+                options={[
+                  { value: '', label: 'Todos los vendedores' },
+                  ...sellers.map(s => ({
+                    value: s.username,
+                    label: `${s.fullName}`
+                  }))
+                ]}
+              />
+            </div>
+            {/* Botones de acción */}
+            <div className="flex items-center gap-2 shrink-0">
+              <ComerziaButton
+                variant="primary"
+                label="Filtrar"
+                icon={<Search size={16} />}
+                onClick={handleApplyFilters}
+                className="flex-1 lg:flex-initial"
+                disabled={isLoading}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. LISTADO DE VENTAS: TABLA EN PC Y CARDS EN MOBILE */}
+      <div className="space-y-4 md:space-y-6 md:card md:bg-base-100 md:p-6 md:rounded-2xl md:shadow-xs md:border md:border-base-200 w-full">
+        {/* Header descriptivo en PC */}
+        <div className="hidden md:flex items-center justify-between pb-1">
+          <div className="flex items-center gap-2">
+            <h2 className="text-base sm:text-lg font-bold text-base-content">
+              Registro de Ventas
+            </h2>
+            <span className="badge badge-sm badge-neutral font-bold">
+              {totalElements}
+            </span>
+          </div>
+          <span className="text-xs text-base-content/50 italic">
+            * Clic derecho sobre una fila para acceder al menú de opciones.
           </span>
         </div>
 
         {/* VISTA DESKTOP: TABLA */}
         <div className="hidden md:block">
           <ComerziaTable
-            data={paginatedSales}
+            data={sales}
             columns={columns}
             isLoading={isLoading}
             pagination={pagination}
+            showRowNumbers={true}
             onRowContextMenu={(e, row) => handleContextMenu(e, row)}
+            rowClassName={() => 'hover:!bg-primary/10 transition-colors cursor-pointer'}
           />
         </div>
 
-        {/* VISTA MOBILE: CARDS */}
-        <div className="block md:hidden space-y-3">
+        {/* VISTA MOBILE: CARDS MINIMALISTAS */}
+        <div className="block md:hidden space-y-2.5">
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center p-8 text-base-content/50 gap-2">
+            <div className="py-10 text-center">
               <span className="loading loading-spinner loading-md text-primary"></span>
-              <span className="text-xs">Cargando ventas...</span>
+              <p className="text-xs text-base-content/50 mt-2">Cargando ventas...</p>
             </div>
-          ) : paginatedSales.length === 0 ? (
-            <div className="p-8 text-center text-xs text-base-content/50 bg-base-200/30 rounded-xl">
-              No hay ventas registradas en este turno.
+          ) : sales.length === 0 ? (
+            <div className="p-8 text-center text-xs text-base-content/50 bg-base-100 rounded-2xl border border-base-200 shadow-xs">
+              No se encontraron ventas registradas con los criterios especificados.
             </div>
           ) : (
             <div className="space-y-2.5">
-              {paginatedSales.map((sale) => (
-                <div
+              {sales.map((sale, index) => (
+                <article
                   key={sale.id}
-                  onTouchStart={(e) => handleTouchStart(e, sale)}
-                  onTouchEnd={handleTouchEnd}
-                  onTouchMove={handleTouchMove}
-                  className="bg-base-100 p-3.5 rounded-xl border border-base-200 shadow-sm active:scale-[0.99] transition-transform space-y-2.5 cursor-pointer hover:border-primary/40 select-none"
+                  onClick={(e) => handleMobileCardTap(e, sale)}
+                  className="bg-base-100 p-3.5 rounded-2xl border border-base-200 shadow-xs active:scale-[0.99] transition-all flex flex-col gap-2 select-none cursor-pointer hover:border-primary/40"
                 >
-                  {/* Fila 1: N° Venta, Ícono Cliente y Estado */}
+                  {/* Fila 1: Numeración, N° Venta, Ícono Cliente y Estado */}
                   <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <span className="text-xs font-bold text-base-content/40 w-5 text-center shrink-0">
+                        {page * size + index + 1}
+                      </span>
                       <span className="font-mono text-sm font-bold text-base-content shrink-0">
                         {sale.saleNumber ? `#${sale.saleNumber}` : '-'}
                       </span>
                       {sale.customer && (
-                        <div className="tooltip tooltip-right" data-tip={`Cliente: ${sale.customer.fullName || sale.customer.firstName}`}>
-                          <UserCheck size={16} className="text-primary shrink-0 cursor-pointer" />
-                        </div>
+                        <UserCheck size={15} className="text-primary shrink-0" />
                       )}
                     </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="shrink-0">
                       {renderStatusBadge(sale.saleStatus)}
                     </div>
                   </div>
 
-                  {/* Fila 2: Hora, Subtotal y Total */}
-                  <div className="grid grid-cols-3 gap-2 bg-base-200/40 p-2.5 rounded-lg text-xs">
-                    <div>
-                      <span className="text-base-content/50 block text-[10px]">Hora</span>
-                      <span className="font-medium text-base-content/80 text-[11px]">
-                        {new Date(sale.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}
-                      </span>
+                  {/* Fila 2: Vendedor / Cliente (Izquierda) y Total (Derecha) */}
+                  <div className="pl-7 flex items-center justify-between gap-2 text-xs">
+                    <div className="min-w-0 flex-1 space-y-0.5">
+                      <div className="flex items-center gap-1.5 text-base-content/70 truncate">
+                        <User size={13} className="text-primary/70 shrink-0" />
+                        <span className="truncate font-medium">{sale.employeeUsername || 'Cajero'}</span>
+                      </div>
+                      {sale.customer && (
+                        <div className="flex items-center gap-1.5 text-base-content/60 text-[11px] truncate">
+                          <UserCheck size={12} className="text-primary/70 shrink-0" />
+                          <span className="truncate">{sale.customer.fullName || sale.customer.firstName}</span>
+                        </div>
+                      )}
                     </div>
-                    <div>
-                      <span className="text-base-content/50 block text-[10px]">Subtotal</span>
-                      <span className="font-mono text-base-content/70 text-[11px]">
-                        {currency} {sale.subtotalAmount.toFixed(2)}
-                      </span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-base-content/50 block text-[10px]">Total Cobro</span>
-                      <span className="font-mono font-bold text-success text-xs sm:text-sm">
+                    <div className="shrink-0 text-right">
+                      <span className="font-mono font-bold text-sm text-success">
                         {currency} {sale.totalAmount.toFixed(2)}
                       </span>
                     </div>
                   </div>
-                </div>
-              ))}
 
-              {/* Paginación Mobile */}
-              {sales.length > size && (
-                <div className="flex justify-between items-center pt-2 text-xs text-base-content/60 border-t border-base-200">
-                  <span>{sales.length} ventas</span>
-                  <div className="join">
-                    <button
-                      className="join-item btn btn-xs"
-                      disabled={page === 0}
-                      onClick={() => setPage(p => Math.max(0, p - 1))}
-                    >
-                      «
-                    </button>
-                    <span className="join-item btn btn-xs pointer-events-none">
-                      {page + 1} / {Math.ceil(sales.length / size)}
-                    </span>
-                    <button
-                      className="join-item btn btn-xs"
-                      disabled={(page + 1) * size >= sales.length}
-                      onClick={() => setPage(p => p + 1)}
-                    >
-                      »
-                    </button>
+                  {/* Fila 3: Fecha y Sucursal si es Owner */}
+                  <div className="pl-7 pt-1.5 border-t border-base-200/60 flex items-center justify-between text-[11px] text-base-content/50">
+                    <div className="flex items-center gap-1">
+                      <Calendar size={12} className="text-base-content/40 shrink-0" />
+                      <span>{formatDateForUser(sale.date)}</span>
+                    </div>
+                    {isOwner && sale.branchName && (
+                      <div className="flex items-center gap-1 text-base-content/70 font-medium">
+                        <Building2 size={12} className="text-primary/70 shrink-0" />
+                        <span className="truncate max-w-[130px]">{sale.branchName}</span>
+                      </div>
+                    )}
                   </div>
-                </div>
-              )}
+                </article>
+              ))}
             </div>
+          )}
+
+          {/* PAGINACIÓN MOBILE EN UNA SOLA FILA */}
+          {totalElements > 0 && (
+            <footer className="mt-4 pt-3 pb-3 px-3 bg-base-100 border border-base-200 rounded-2xl shadow-xs" data-purpose="mobile-pagination">
+              <div className="flex items-center justify-between text-[11px] sm:text-xs text-base-content/70 mb-3 gap-2">
+                <div className="flex items-center gap-1.5 whitespace-nowrap shrink-0">
+                  <span>Mostrar</span>
+                  <select
+                    value={size}
+                    onChange={(e) => {
+                      setSize(Number(e.target.value));
+                      setPage(0);
+                    }}
+                    className="select select-bordered select-xs text-[11px] sm:text-xs font-semibold bg-base-100 h-6 min-h-6 px-1.5"
+                  >
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                  </select>
+                  <span className="whitespace-nowrap">de {totalElements} registros</span>
+                </div>
+                <span className="font-semibold text-base-content/80 whitespace-nowrap shrink-0">
+                  Página {page + 1} de {Math.max(1, totalPages)}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-center gap-1.5">
+                <button
+                  type="button"
+                  aria-label="Primera página"
+                  disabled={page === 0 || isLoading}
+                  onClick={() => setPage(0)}
+                  className="w-8 h-8 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
+                >
+                  <ChevronsLeft className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Página anterior"
+                  disabled={page === 0 || isLoading}
+                  onClick={() => setPage(Math.max(0, page - 1))}
+                  className="w-8 h-8 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Página siguiente"
+                  disabled={page >= totalPages - 1 || isLoading}
+                  onClick={() => setPage(page + 1)}
+                  className="w-8 h-8 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Última página"
+                  disabled={page >= totalPages - 1 || isLoading}
+                  onClick={() => setPage(totalPages - 1)}
+                  className="w-8 h-8 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
+                >
+                  <ChevronsRight className="w-4 h-4" />
+                </button>
+              </div>
+            </footer>
           )}
         </div>
       </div>
 
-      {/* MENÚ CONTEXTUAL */}
+      {/* MENÚ CONTEXTUAL (Clic derecho en Desktop / Tap centrado en Móvil) */}
       <ComerziaContextMenu
         isOpen={contextMenu.isOpen}
         x={contextMenu.x}
         y={contextMenu.y}
-        onClose={() => setContextMenu({ ...contextMenu, isOpen: false })}
+        isCentered={contextMenu.isCentered}
+        onClose={() => setContextMenu(prev => ({ ...prev, isOpen: false }))}
       >
         {contextMenu.sale && (
           <>
@@ -581,10 +834,16 @@ export const SalesHistoryPage = () => {
               <ContextMenuItem
                 icon={RotateCcw}
                 label="Procesar Devolución"
-                isExternalLink
+                isExternalLink={!contextMenu.isCentered}
                 onClick={() => {
                   if (contextMenu.sale?.saleNumber) {
-                    window.open(`/sales/returns/${encodeURIComponent(contextMenu.sale.saleNumber)}`, '_blank');
+                    const path = `/sales/returns/${encodeURIComponent(contextMenu.sale.saleNumber)}`;
+                    setContextMenu(prev => ({ ...prev, isOpen: false }));
+                    if (contextMenu.isCentered) {
+                      navigate(path);
+                    } else {
+                      window.open(path, '_blank');
+                    }
                   }
                 }}
               />
@@ -621,7 +880,7 @@ export const SalesHistoryPage = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 bg-base-50 p-4 rounded-xl border border-base-200 text-xs">
+            <div className="grid grid-cols-2 gap-3 bg-base-200/40 p-4 rounded-xl border border-base-200 text-xs">
               <div>
                 <span className="text-base-content/50 block font-medium">Documento de Identidad</span>
                 <span className="font-mono text-sm font-semibold text-base-content">{selectedCustomerDetails.documentNumber || '-'}</span>
@@ -636,11 +895,12 @@ export const SalesHistoryPage = () => {
               </div>
             </div>
 
-            <div className="flex justify-end pt-2">
-              <ComerziaButton
-                variant="ghost"
+            <div className="flex justify-end pt-2 border-t border-base-200">
+              <BtnCancel
                 label="Cerrar"
                 onClick={() => setSelectedCustomerDetails(null)}
+                responsive={true}
+                className="w-full sm:w-auto"
               />
             </div>
           </div>
@@ -655,7 +915,7 @@ export const SalesHistoryPage = () => {
           saleId={assigningCustomerSale.id}
           saleNumber={assigningCustomerSale.saleNumber}
           onSuccess={() => {
-            loadSales();
+            loadSales(page, size);
             setAssigningCustomerSale(null);
           }}
         />
@@ -675,13 +935,15 @@ export const SalesHistoryPage = () => {
           <p className="text-sm text-base-content/60">
             Esta acción abortará la venta pendiente y liberará de inmediato el stock retenido en el inventario.
           </p>
-          <div className="flex justify-end gap-2 mt-6">
-            <BtnCancel onClick={() => setCancelingSaleId(null)} disabled={isCanceling} />
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 mt-6 pt-3 border-t border-base-200">
+            <BtnCancel onClick={() => setCancelingSaleId(null)} disabled={isCanceling} responsive={true} className="w-full sm:w-auto" />
             <BtnModalYes
               label="Sí, Cancelar Venta"
               onClick={handleCancelSale}
               isLoading={isCanceling}
               disabled={isCanceling}
+              responsive={true}
+              className="w-full sm:w-auto"
             />
           </div>
         </div>
@@ -696,7 +958,7 @@ export const SalesHistoryPage = () => {
       >
         <div className="space-y-6">
           {/* BUSCADOR DE AGREGAR PRODUCTOS */}
-          <div className="bg-base-50 p-4 rounded-xl space-y-3">
+          <div className="bg-base-200/40 p-4 rounded-xl space-y-3 border border-base-200">
             <h4 className="font-bold text-sm text-base-content/80 flex items-center gap-2">
               <Plus size={16} className="text-primary" /> Agregar Producto al Pedido
             </h4>
@@ -725,7 +987,7 @@ export const SalesHistoryPage = () => {
               <div className="border border-base-200 bg-base-100 rounded-lg overflow-y-auto max-h-[150px] p-2 space-y-1">
                 {editSearchResults.map(item => (
                   <div key={item.productVariantId} className="flex justify-between items-center text-xs p-1.5 hover:bg-base-200/50 rounded gap-2">
-                    <span className="truncate">{item.variantName} (Stock: {item.stock})</span>
+                    <span className="truncate font-medium">{item.variantName} (Stock: {item.stock})</span>
                     <ComerziaButton
                       variant="create"
                       label="Agregar"
@@ -797,7 +1059,7 @@ export const SalesHistoryPage = () => {
           {/* VISTA MOBILE: CARDS DE ITEMS EN EDICIÓN */}
           <div className="block md:hidden space-y-2.5 max-h-[40vh] overflow-y-auto pr-1">
             {editDetails.map((item) => (
-              <div key={item.productVariantId} className="bg-base-100 p-3 rounded-xl border border-base-200 space-y-2 text-xs shadow-sm">
+              <div key={item.productVariantId} className="bg-base-100 p-3 rounded-xl border border-base-200 space-y-2 text-xs shadow-xs">
                 <div className="flex justify-between items-start gap-2">
                   <span className="font-bold text-sm text-base-content block leading-tight">{item.variantName}</span>
                   <BtnDeleteIcon onClick={() => handleRemoveEditItem(item.productVariantId)} />
@@ -839,7 +1101,7 @@ export const SalesHistoryPage = () => {
           </div>
 
           {/* TOTALES DE EDICIÓN */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 bg-base-50 p-4 rounded-xl font-mono text-xs sm:text-sm">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 bg-base-200/40 p-4 rounded-xl font-mono text-xs sm:text-sm border border-base-200">
             <div>
               <p>Subtotal: {currency} {getEditSubtotal().toFixed(2)}</p>
               <p className="text-error">Descuentos: - {currency} {getEditDiscount().toFixed(2)}</p>
@@ -850,8 +1112,8 @@ export const SalesHistoryPage = () => {
           </div>
 
           <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2 border-t border-base-200">
-            <BtnCancel onClick={() => setEditingSale(null)} className="w-full sm:w-auto" />
-            <BtnSave label="Actualizar Pedido" onClick={handleSaveEditSale} className="w-full sm:w-auto" />
+            <BtnCancel onClick={() => setEditingSale(null)} responsive={true} className="w-full sm:w-auto" />
+            <BtnSave label="Actualizar Pedido" onClick={handleSaveEditSale} responsive={true} className="w-full sm:w-auto" />
           </div>
         </div>
       </ComerziaModal>
