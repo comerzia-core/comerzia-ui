@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ComerziaModal } from '../../../components/ui/ComerziaModal';
 import { ComerziaTable, type Column, type TablePaginationConfig } from '../../../components/ui/ComerziaTable';
 import { commercialService } from '../services/commercialService';
@@ -21,6 +22,7 @@ interface Props {
 }
 
 export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }: Props) => {
+  const navigate = useNavigate();
   const [data, setData] = useState<ProductVariantResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [page, setPage] = useState(0);
@@ -79,6 +81,16 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
       toastError(e.response?.data?.message || "Error al eliminar la variante");
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleNavigate = (path: string) => {
+    setContextMenu(prev => ({ ...prev, isOpen: false }));
+    if (contextMenu.isCentered) {
+      onClose();
+      navigate(path);
+    } else {
+      window.open(path, '_blank');
     }
   };
 
@@ -250,24 +262,22 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
         <ContextMenuItem 
           icon={Search}
           label="Consultar Stock"
-          isExternalLink
+          isExternalLink={!contextMenu.isCentered}
           onClick={() => {
             if (contextMenu.row?.barCode) {
-              window.open(`/commercial/stock-query?barcode=${encodeURIComponent(contextMenu.row.barCode)}`, '_blank');
+              handleNavigate(`/commercial/stock-query?barcode=${encodeURIComponent(contextMenu.row.barCode)}`);
             }
-            setContextMenu({ ...contextMenu, isOpen: false });
           }} 
         />
         {canManageStock && (
           <ContextMenuItem 
             icon={ArrowRightLeft}
             label="Movimientos de Stock"
-            isExternalLink
+            isExternalLink={!contextMenu.isCentered}
             onClick={() => {
               if (contextMenu.row?.barCode) {
-                window.open(`/commercial/stock-movements?barcode=${encodeURIComponent(contextMenu.row.barCode)}`, '_blank');
+                handleNavigate(`/commercial/stock-movements?barcode=${encodeURIComponent(contextMenu.row.barCode)}`);
               }
-              setContextMenu({ ...contextMenu, isOpen: false });
             }} 
           />
         )}
@@ -275,12 +285,11 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
           <ContextMenuItem 
             icon={History}
             label="Histórico de Precios"
-            isExternalLink
+            isExternalLink={!contextMenu.isCentered}
             onClick={() => {
               if (contextMenu.row?.barCode) {
-                window.open(`/commercial/prices?barcode=${encodeURIComponent(contextMenu.row.barCode)}`, '_blank');
+                handleNavigate(`/commercial/prices?barcode=${encodeURIComponent(contextMenu.row.barCode)}`);
               }
-              setContextMenu({ ...contextMenu, isOpen: false });
             }} 
           />
         )}

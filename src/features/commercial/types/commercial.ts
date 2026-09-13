@@ -155,6 +155,26 @@ export interface StockEntryResponse {
   hasAdjustments?: boolean;
 }
 
+export interface PendingCostEntryResponse {
+  id: string;
+  variantId: string;
+  productName: string;
+  variantName: string;
+  sku: string;
+  barCode: string;
+  imageUrl?: string;
+  quantityIn: number;
+  availableQuantity: number;
+  reservedQuantity: number;
+  unitCost: number;
+  totalCost: number;
+  entryDate: string;
+  note?: string;
+  statusType?: { code: number; label: string } | number;
+  branchName?: string;
+  hasAdjustments?: boolean;
+}
+
 export interface BranchQuantityRequest {
   branchId: string;
   quantityIn: number;
@@ -240,6 +260,14 @@ export interface PageProductResponse {
 
 export interface PageStockEntryResponse {
   content: StockEntryResponse[];
+  totalElements: number;
+  totalPages: number;
+  size: number;
+  number: number;
+}
+
+export interface PagePendingCostEntryResponse {
+  content: PendingCostEntryResponse[];
   totalElements: number;
   totalPages: number;
   size: number;

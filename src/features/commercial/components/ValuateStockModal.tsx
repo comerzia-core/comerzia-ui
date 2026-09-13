@@ -6,14 +6,14 @@ import { BtnSave, BtnCancel } from '../../../components/ui/CrudButtons';
 import { useToast } from '../../../context/ToastContext';
 import { Coins, Banknote } from 'lucide-react';
 import { commercialService } from '../services/commercialService';
-import type { StockEntryResponse } from '../types/commercial';
+import type { StockEntryResponse, PendingCostEntryResponse } from '../types/commercial';
 import { formatDateForUser } from '../../../utils/date';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  stockEntry: StockEntryResponse | null;
+  stockEntry: StockEntryResponse | PendingCostEntryResponse | null;
 }
 
 export const ValuateStockModal = ({ isOpen, onClose, onSuccess, stockEntry }: Props) => {
@@ -65,9 +65,23 @@ export const ValuateStockModal = ({ isOpen, onClose, onSuccess, stockEntry }: Pr
   return (
     <ComerziaModal isOpen={isOpen} onClose={onClose} title="Valorizar Stock Pendiente">
       <div className="space-y-4">
-        <div className="bg-base-200 p-4 rounded-lg text-sm text-base-content/80 mb-4">
-          <p>Cantidad Ingresada: <strong className="text-base-content">{qty}</strong></p>
-          <p>Fecha de Ingreso: <strong>{formatDateForUser(stockEntry.entryDate)}</strong></p>
+        <div className="bg-base-200 p-4 rounded-xl text-sm text-base-content/80 mb-4 space-y-1">
+          {'productName' in stockEntry && (stockEntry as PendingCostEntryResponse).productName && (
+            <p className="text-xs text-base-content/70">
+              Producto: <strong className="text-base-content font-bold">{(stockEntry as PendingCostEntryResponse).productName} {(stockEntry as PendingCostEntryResponse).variantName ? `- ${(stockEntry as PendingCostEntryResponse).variantName}` : ''}</strong>
+            </p>
+          )}
+          {stockEntry.branchName && (
+            <p className="text-xs text-base-content/70">
+              Sucursal: <strong className="text-base-content font-semibold">{stockEntry.branchName}</strong>
+            </p>
+          )}
+          <p className="text-xs text-base-content/70">
+            Cantidad Ingresada: <strong className="text-base-content font-bold">{qty}</strong> uds
+          </p>
+          <p className="text-xs text-base-content/70">
+            Fecha de Ingreso: <strong className="text-base-content">{formatDateForUser(stockEntry.entryDate)}</strong>
+          </p>
         </div>
         
         <ComerziaRadioGroup

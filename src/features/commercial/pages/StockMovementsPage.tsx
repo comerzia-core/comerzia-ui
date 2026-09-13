@@ -4,7 +4,8 @@ import { commercialService } from '../services/commercialService';
 import type {
   ScannerProductResponse,
   StockEntryResponse,
-  StockAdjustmentResponse
+  StockAdjustmentResponse,
+  PendingCostEntryResponse
 } from '../types/commercial';
 import { useToast } from '../../../context/ToastContext';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
@@ -29,11 +30,12 @@ import {
   Plus,
   Minus,
   Calendar,
-  FileText,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
-  ChevronsRight
+  ChevronsRight,
+  Package,
+  ArrowLeft
 } from 'lucide-react';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { branchService } from '../../organization/services/branchService';
@@ -43,6 +45,7 @@ import { useLoadDictionaries } from '../../../hooks/useLoadDictionaries';
 import { ValuateStockModal } from '../components/ValuateStockModal';
 import { InventoryReportModal } from '../components/InventoryReportModal';
 import { formatDateForUser } from '../../../utils/date';
+import { getThumbnailUrl } from '../../../utils/image';
 
 const CurrencyCell = ({ amount, currencyCode = 'USD' }: { amount: number, currencyCode?: string }) => {
   const safeAmount = Number(amount) || 0;
@@ -123,6 +126,15 @@ export const StockMovementsPage = () => {
   const [totalElements, setTotalElements] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
+  // Pending Cost Entries State (Entradas con Costo Pendiente a primera vista)
+  const [pendingCostData, setPendingCostData] = useState<PendingCostEntryResponse[]>([]);
+  const [isLoadingPendingCost, setIsLoadingPendingCost] = useState(false);
+  const [pendingCostPage, setPendingCostPage] = useState(0);
+  const [pendingCostSize, setPendingCostSize] = useState(5);
+  const [pendingCostTotalElements, setPendingCostTotalElements] = useState(0);
+  const [pendingCostTotalPages, setPendingCostTotalPages] = useState(0);
+  const [selectedPendingCostEntry, setSelectedPendingCostEntry] = useState<PendingCostEntryResponse | null>(null);
+
   // Adjustment Form State
   const [isEntryCardOpen, setIsEntryCardOpen] = useState(true);
   const [adjustmentTarget, setAdjustmentTarget] = useState<StockEntryResponse | null>(null);
@@ -131,7 +143,13 @@ export const StockMovementsPage = () => {
   const [adjustmentObs, setAdjustmentObs] = useState('');
   const [isSubmittingAdjustment, setIsSubmittingAdjustment] = useState(false);
 
-  const [contextMenu, setContextMenu] = useState<{ isOpen: boolean; x: number; y: number; isCentered?: boolean; row: StockEntryResponse | null }>({
+  const [contextMenu, setContextMenu] = useState<{
+    isOpen: boolean;
+    x: number;
+    y: number;
+    isCentered?: boolean;
+    row: StockEntryResponse | PendingCostEntryResponse | null;
+  }>({
     isOpen: false,
     x: 0,
     y: 0,
@@ -157,6 +175,28 @@ export const StockMovementsPage = () => {
       branchService.getBranches(0, 100, true).then(res => setBranches(res.content || []));
     }
   }, [hasCostPermission, hasDistributePermission]);
+
+  const loadPendingCostEntries = async (targetPage = pendingCostPage, targetSize = pendingCostSize) => {
+    if (!hasCostPermission) return;
+    setIsLoadingPendingCost(true);
+    try {
+      const res = await commercialService.getPendingCostEntries(targetPage, targetSize);
+      setPendingCostData(res.content || []);
+      setPendingCostTotalElements(res.totalElements || 0);
+      setPendingCostTotalPages(res.totalPages || 0);
+    } catch (e) {
+      console.error('Error loading pending cost entries:', e);
+      setPendingCostData([]);
+    } finally {
+      setIsLoadingPendingCost(false);
+    }
+  };
+
+  useEffect(() => {
+    if (hasCostPermission) {
+      loadPendingCostEntries(pendingCostPage, pendingCostSize);
+    }
+  }, [hasCostPermission, pendingCostPage, pendingCostSize]);
 
   const scannedVariant = productData?.scannedVariant;
 
@@ -439,6 +479,79 @@ export const StockMovementsPage = () => {
     }
   ].filter(Boolean) as Column<StockAdjustmentResponse>[];
 
+  const pendingCostColumns: Column<PendingCostEntryResponse>[] = [
+    {
+      header: 'Producto / Variante',
+      render: (row: PendingCostEntryResponse) => (
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-base-200/80 border border-base-300 overflow-hidden shrink-0 flex items-center justify-center">
+            {row.imageUrl ? (
+              <img
+                src={getThumbnailUrl(row.imageUrl, 80)}
+                alt={row.productName}
+                loading="lazy"
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLElement).style.display = 'none';
+                }}
+              />
+            ) : (
+              <Package className="w-4 h-4 text-base-content/40" />
+            )}
+          </div>
+          <div className="min-w-0">
+            <span className="font-bold text-sm text-base-content block truncate">
+              {row.productName}
+            </span>
+            <span className="text-xs text-base-content/60 block truncate">
+              {row.variantName}
+            </span>
+          </div>
+        </div>
+      )
+    },
+    {
+      header: 'Fecha',
+      render: (row: PendingCostEntryResponse) => <span className="whitespace-nowrap">{formatDateForUser(row.entryDate)}</span>
+    },
+    {
+      header: 'Sucursal',
+      render: (row: PendingCostEntryResponse) => <span className="whitespace-nowrap">{row.branchName || '-'}</span>
+    },
+    {
+      header: 'Cantidad',
+      render: (row: PendingCostEntryResponse) => (
+        <span className="whitespace-nowrap font-medium font-mono">
+          {row.quantityIn} uds
+        </span>
+      )
+    },
+    {
+      header: 'Nota',
+      render: (row: PendingCostEntryResponse) => (
+        <span className="truncate max-w-xs block text-xs text-base-content/70 italic">
+          {row.note || '-'}
+        </span>
+      )
+    },
+    {
+      header: 'Estado',
+      render: () => <ComerziaBadge label="Pendiente de Costo" variant="warning" />
+    }
+  ];
+
+  const pendingCostPagination: TablePaginationConfig = {
+    currentPage: pendingCostPage,
+    pageSize: pendingCostSize,
+    totalElements: pendingCostTotalElements,
+    totalPages: pendingCostTotalPages,
+    onPageChange: setPendingCostPage,
+    onPageSizeChange: (newSize) => {
+      setPendingCostSize(newSize);
+      setPendingCostPage(0);
+    }
+  };
+
   const pagination: TablePaginationConfig = {
     currentPage: page,
     pageSize: size,
@@ -487,8 +600,28 @@ export const StockMovementsPage = () => {
         />
       </div>
 
-      {scannedVariant && productData && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-slide-up">
+      {/* 3. CONTENIDO: PRODUCTO ESCANEADO O LISTADO INICIAL (PENDIENTES DE COSTO) */}
+      {scannedVariant && productData ? (
+        <div className="space-y-4 animate-slide-up">
+          {/* Botón Volver a Pendientes cuando se ha buscado un producto */}
+          {hasCostPermission && (
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => {
+                  setProductData(null);
+                  setFilterStockId(null);
+                  loadPendingCostEntries();
+                }}
+                className="btn btn-ghost btn-xs gap-1.5 text-base-content/70 hover:text-primary cursor-pointer -ml-1"
+              >
+                <ArrowLeft size={14} />
+                <span className="font-semibold text-xs">Volver a Entradas con Costo Pendiente</span>
+              </button>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Formulario Lateral */}
           {(isEntryCardOpen || adjustmentTarget) && (
             <div className="lg:col-span-1 bg-base-100 p-6 rounded-2xl shadow-sm border border-base-200 relative">
@@ -1045,6 +1178,190 @@ export const StockMovementsPage = () => {
             </div>
           </div>
         </div>
+      </div>
+      ) : (
+        /* VISTA PRINCIPAL A PRIMERA VISTA (CUANDO NO HAY PRODUCTO ESCANEADO) */
+        <div className="animate-fade-in">
+          {hasCostPermission ? (
+            <div className="space-y-4 md:space-y-6 md:card md:bg-base-100 md:p-6 md:rounded-2xl md:shadow-xs md:border md:border-base-200">
+              {/* VISTA DESKTOP: TABLA PENDIENTES DE COSTO */}
+              <div className="hidden md:block">
+                <ComerziaTable
+                  data={pendingCostData}
+                  columns={pendingCostColumns}
+                  isLoading={isLoadingPendingCost}
+                  pagination={pendingCostPagination}
+                  showRowNumbers={true}
+                  onRowContextMenu={(e, row) => {
+                    e.preventDefault();
+                    setContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, isCentered: false, row });
+                  }}
+                  rowClassName={() => 'hover:!bg-warning/10 transition-colors cursor-pointer'}
+                />
+              </div>
+
+              {/* VISTA MOBILE: CARDS DE PENDIENTES DE COSTO (MINIMALISTAS) */}
+              <div className="block md:hidden space-y-2.5">
+                {isLoadingPendingCost ? (
+                  <div className="py-10 text-center">
+                    <span className="loading loading-spinner loading-md text-warning"></span>
+                    <p className="text-xs text-base-content/50 mt-2">Cargando entradas pendientes...</p>
+                  </div>
+                ) : pendingCostData.length === 0 ? (
+                  <div className="text-center py-10 text-base-content/50 bg-base-100 p-6 rounded-2xl border border-base-200 text-xs">
+                    <DollarSign className="w-8 h-8 mx-auto mb-2 text-success opacity-80" />
+                    <p className="font-semibold text-sm text-base-content">¡Al día!</p>
+                    <p className="mt-1">No hay entradas de stock pendientes de valorización.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2.5">
+                    {pendingCostData.map((entry, index) => (
+                      <article
+                        key={entry.id}
+                        onClick={() => {
+                          setContextMenu({ isOpen: true, x: 0, y: 0, isCentered: true, row: entry });
+                        }}
+                        onContextMenu={(e) => {
+                          e.preventDefault();
+                          setContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, isCentered: false, row: entry });
+                        }}
+                        className="bg-base-100 p-3.5 rounded-2xl border border-base-200 shadow-xs active:scale-[0.99] transition-all flex flex-col gap-2 select-none cursor-pointer hover:border-warning/40"
+                      >
+                        {/* FILA 1: NUMERACIÓN, PRODUCTO + VARIANTE Y BADGE */}
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                            <span className="text-xs font-bold text-base-content/40 w-4 text-center shrink-0 mt-0.5">
+                              {pendingCostPage * pendingCostSize + index + 1}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <h3 className="text-sm font-bold text-base-content leading-snug truncate">
+                                {entry.productName}
+                              </h3>
+                              {entry.variantName && (
+                                <p className="text-xs font-semibold text-primary truncate mt-0.5">
+                                  {entry.variantName}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="shrink-0">
+                            <ComerziaBadge label="Pendiente" variant="warning" />
+                          </div>
+                        </div>
+
+                        {/* FILA 2: SUCURSAL Y CANTIDAD */}
+                        <div className="pl-6 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-base-content/70">
+                          {entry.branchName ? (
+                            <div className="flex items-center gap-1 truncate">
+                              <Store size={12} className="text-primary/70 shrink-0" />
+                              <span className="truncate font-medium">{entry.branchName}</span>
+                            </div>
+                          ) : <span />}
+
+                          <div className="flex items-center gap-1 shrink-0 ml-auto font-mono text-xs">
+                            <span>Cantidad: <strong className="font-bold text-base-content">{entry.quantityIn}</strong> uds</span>
+                          </div>
+                        </div>
+
+                        {/* FILA 3: NOTA U OBSERVACIÓN CORTA (SI EXISTE) */}
+                        {entry.note && (
+                          <div className="pl-6 text-[11px] text-base-content/60 italic truncate">
+                            "{entry.note}"
+                          </div>
+                        )}
+
+                        {/* PIE DE TARJETA: FECHA */}
+                        <div className="pl-6 pt-1.5 border-t border-base-200/50 flex items-center text-[11px] text-base-content/50">
+                          <Calendar size={12} className="mr-1 text-base-content/40 shrink-0" />
+                          <span>{formatDateForUser(entry.entryDate)}</span>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                )}
+
+                {/* PAGINACIÓN MOBILE PENDIENTES DE COSTO */}
+                {pendingCostTotalElements > 0 && (
+                  <footer className="mt-4 pt-3 pb-3 px-3 bg-base-100 border border-base-200 rounded-2xl shadow-xs" data-purpose="mobile-pagination">
+                    <div className="flex items-center justify-between text-[11px] sm:text-xs text-base-content/70 mb-3 gap-2">
+                      <div className="flex items-center gap-1.5 whitespace-nowrap shrink-0">
+                        <span>Mostrar</span>
+                        <select
+                          value={pendingCostSize}
+                          onChange={(e) => {
+                            setPendingCostSize(Number(e.target.value));
+                            setPendingCostPage(0);
+                          }}
+                          className="select select-bordered select-xs text-[11px] sm:text-xs font-semibold bg-base-100 h-6 min-h-6 px-1.5"
+                        >
+                          <option value={5}>5</option>
+                          <option value={10}>10</option>
+                          <option value={25}>25</option>
+                        </select>
+                        <span className="whitespace-nowrap">de {pendingCostTotalElements} pendientes</span>
+                      </div>
+                      <span className="font-semibold text-base-content/80 whitespace-nowrap shrink-0">
+                        Página {pendingCostPage + 1} de {Math.max(1, pendingCostTotalPages)}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-center gap-1.5">
+                      <button
+                        type="button"
+                        aria-label="Primera página"
+                        disabled={pendingCostPage === 0 || isLoadingPendingCost}
+                        onClick={() => setPendingCostPage(0)}
+                        className="w-8 h-8 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
+                      >
+                        <ChevronsLeft className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Página anterior"
+                        disabled={pendingCostPage === 0 || isLoadingPendingCost}
+                        onClick={() => setPendingCostPage(Math.max(0, pendingCostPage - 1))}
+                        className="w-8 h-8 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Página siguiente"
+                        disabled={pendingCostPage >= pendingCostTotalPages - 1 || isLoadingPendingCost}
+                        onClick={() => setPendingCostPage(pendingCostPage + 1)}
+                        className="w-8 h-8 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Última página"
+                        disabled={pendingCostPage >= pendingCostTotalPages - 1 || isLoadingPendingCost}
+                        onClick={() => setPendingCostPage(pendingCostTotalPages - 1)}
+                        className="w-8 h-8 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
+                      >
+                        <ChevronsRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </footer>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="card bg-base-100 p-8 rounded-2xl shadow-xs border border-base-200 text-center space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto">
+                <ArrowRightLeft className="w-6 h-6" />
+              </div>
+              <h3 className="text-base font-bold text-base-content">
+                Consulta de Movimientos y Kardex
+              </h3>
+              <p className="text-xs sm:text-sm text-base-content/60 max-w-md mx-auto">
+                Utiliza el buscador superior o escanea un código de barras para registrar entradas de stock o consultar el historial de movimientos de cualquier producto.
+              </p>
+            </div>
+          )}
+        </div>
       )}
 
       <ComerziaContextMenu
@@ -1055,59 +1372,105 @@ export const StockMovementsPage = () => {
         onClose={() => setContextMenu(prev => ({ ...prev, isOpen: false }))}
       >
         {(() => {
-          const statusObj = typeof contextMenu.row?.statusType === 'object' ? contextMenu.row?.statusType : null;
-          const statusNum = typeof contextMenu.row?.statusType === 'number' ? contextMenu.row?.statusType : statusObj?.code;
+          if (!contextMenu.row) return null;
+
+          // Si es una fila de entrada pendiente de costo
+          if ('productName' in contextMenu.row) {
+            const pendingEntry = contextMenu.row as PendingCostEntryResponse;
+            return (
+              <>
+                <ContextMenuItem
+                  icon={DollarSign}
+                  label="Valorizar Stock"
+                  onClick={() => {
+                    setSelectedPendingCostEntry(pendingEntry);
+                    setIsValuateModalOpen(true);
+                    setContextMenu(prev => ({ ...prev, isOpen: false }));
+                  }}
+                />
+                <ContextMenuItem
+                  icon={ArrowRightLeft}
+                  label="Ver Kardex / Movimientos"
+                  onClick={() => {
+                    const code = pendingEntry.barCode || pendingEntry.sku;
+                    setContextMenu(prev => ({ ...prev, isOpen: false }));
+                    if (code) {
+                      executeScan(code);
+                    }
+                  }}
+                />
+              </>
+            );
+          }
+
+          // Si es una fila estándar de entrada en el Kardex
+          const entry = contextMenu.row as StockEntryResponse;
+          const statusObj = typeof entry.statusType === 'object' ? entry.statusType : null;
+          const statusNum = typeof entry.statusType === 'number' ? entry.statusType : statusObj?.code;
           const isActiveStock = statusNum === 332;
-          const isDisabled = !isActiveStock || contextMenu.row?.availableQuantity === 0;
+          const isDisabled = !isActiveStock || entry.availableQuantity === 0;
 
           return (
-            <ContextMenuItem
-              icon={Settings2}
-              label="Crear Ajuste Manual"
-              disabled={isDisabled}
-              onClick={() => {
-                if (isDisabled) return;
-                setAdjustmentTarget(contextMenu.row as StockEntryResponse);
-                setAdjustmentQty('');
-                setAdjustmentType('');
-                setAdjustmentObs('');
-                setContextMenu(prev => ({ ...prev, isOpen: false }));
-              }}
-            />
+            <>
+              <ContextMenuItem
+                icon={Settings2}
+                label="Crear Ajuste Manual"
+                disabled={isDisabled}
+                onClick={() => {
+                  if (isDisabled) return;
+                  setAdjustmentTarget(entry);
+                  setAdjustmentQty('');
+                  setAdjustmentType('');
+                  setAdjustmentObs('');
+                  setContextMenu(prev => ({ ...prev, isOpen: false }));
+                }}
+              />
+              {entry.hasAdjustments && (
+                <ContextMenuItem
+                  icon={SlidersHorizontal}
+                  label="Ver Ajustes"
+                  onClick={() => {
+                    const stockId = entry.id;
+                    setContextMenu(prev => ({ ...prev, isOpen: false }));
+                    if (stockId) {
+                      setFilterStockId(stockId);
+                      setActiveTab('adjustments');
+                      setPage(0);
+                    }
+                  }}
+                />
+              )}
+              {hasCostPermission && statusNum === 331 && (
+                <ContextMenuItem
+                  icon={DollarSign}
+                  label="Valorizar Stock"
+                  onClick={() => {
+                    setSelectedPendingCostEntry(null);
+                    setIsValuateModalOpen(true);
+                    setContextMenu(prev => ({ ...prev, isOpen: false }));
+                  }}
+                />
+              )}
+            </>
           );
         })()}
-        {contextMenu.row?.hasAdjustments && (
-          <ContextMenuItem
-            icon={SlidersHorizontal}
-            label="Ver Ajustes"
-            onClick={() => {
-              const stockId = contextMenu.row?.id;
-              setContextMenu(prev => ({ ...prev, isOpen: false }));
-              if (stockId) {
-                setFilterStockId(stockId);
-                setActiveTab('adjustments');
-                setPage(0);
-              }
-            }}
-          />
-        )}
-        {hasCostPermission && (typeof contextMenu.row?.statusType === 'number' ? contextMenu.row?.statusType === 331 : contextMenu.row?.statusType?.code === 331) && (
-          <ContextMenuItem
-            icon={DollarSign}
-            label="Valorizar Stock"
-            onClick={() => {
-              setIsValuateModalOpen(true);
-              setContextMenu(prev => ({ ...prev, isOpen: false }));
-            }}
-          />
-        )}
       </ComerziaContextMenu>
 
       <ValuateStockModal
         isOpen={isValuateModalOpen}
-        onClose={() => setIsValuateModalOpen(false)}
-        onSuccess={() => loadKardex()}
-        stockEntry={contextMenu.row}
+        onClose={() => {
+          setIsValuateModalOpen(false);
+          setSelectedPendingCostEntry(null);
+        }}
+        onSuccess={() => {
+          if (scannedVariant) {
+            loadKardex();
+          }
+          if (hasCostPermission) {
+            loadPendingCostEntries();
+          }
+        }}
+        stockEntry={selectedPendingCostEntry || contextMenu.row}
       />
 
       <InventoryReportModal

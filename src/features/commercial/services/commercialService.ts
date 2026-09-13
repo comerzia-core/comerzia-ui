@@ -12,6 +12,7 @@ import type {
   AddProductsToFamilyRequest,
   ScannerProductResponse,
   PageStockEntryResponse,
+  PagePendingCostEntryResponse,
   CreateStockEntryRequest,
   PageStockAdjustmentResponse,
   CreateInventoryRequest,
@@ -185,6 +186,12 @@ export const commercialService = {
 
   valuateStockEntry: async (stockId: string, data: ValuateStockRequest): Promise<void> => {
     await api.patch(`/tenant/stock/entries/${stockId}/cost`, data);
+  },
+
+  getPendingCostEntries: async (page = 0, size = 10): Promise<PagePendingCostEntryResponse> => {
+    const params = new URLSearchParams({ page: String(page), size: String(size) });
+    const response = await api.get(`/tenant/stock/entries/pending-cost?${params.toString()}`);
+    return response.data;
   },
 
   // Stock Adjustments

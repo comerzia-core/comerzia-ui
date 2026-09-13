@@ -304,3 +304,24 @@ export const BtnUpdatePrices = ({ label = "Actualizar Precios", responsive = tru
         {...props} 
     />
 );
+
+// 21. BOTÓN VALORIZAR STOCK (Warning + Dinero)
+export const BtnValuate = ({ label = "Valorizar", responsive = true, ...props }: BaseBtnProps) => (
+    <ComerziaButton 
+        variant="warning" 
+        label={label} 
+        icon={<DollarSign size={16} />} 
+        responsive={responsive}
+        {...props} 
+    />
+);
+
+export const BtnValuateIcon = (props: BaseBtnProps) => (
+    <ComerziaButton 
+        variant="warning" 
+        isIconOnly 
+        icon={<DollarSign size={16} />} 
+        tooltip="Valorizar Stock"
+        {...props} 
+    />
+);
