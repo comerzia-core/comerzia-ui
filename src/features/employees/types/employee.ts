@@ -4,8 +4,8 @@ export interface PersonDetails {
   firstName: string;
   paternalSurname?: string;
   maternalSurname?: string;
-  documentType: number;
-  documentNumber: string;
+  documentType?: number;
+  documentNumber?: string;
   extension?: number;
   phoneNumber?: string;
   email?: string;
@@ -13,40 +13,41 @@ export interface PersonDetails {
 
 export interface ContractDetails {
   branchId?: string | null;
-  employmentStartDate: string; // ISO format date (YYYY-MM-DD) or UTC string
-  paymentFrequency: number; // 'MONTHLY' | 'BIWEEKLY' | 'WEEKLY'
+  employmentStartDate?: string | null;
+  employmentEndDate?: string | null;
+  paymentFrequency?: number;
   baseSalary?: number;
+}
+
+export interface EmployeeUserDetailsRequest {
+  roleIds: string[];
 }
 
 export interface CreateEmployeeRequest {
   person: PersonDetails;
   contract: ContractDetails;
+  user?: EmployeeUserDetailsRequest;
 }
 
 export interface UpdateEmployeeRequest {
-  firstName: string;
-  paternalSurname?: string;
-  maternalSurname?: string;
-  documentType: number;
-  documentNumber: string;
-  documentExtension?: number;
-  phoneNumber?: string;
-  email?: string;
+  person: PersonDetails;
+  contract: ContractDetails;
+}
+
+export interface UpdateEmployeeRolesRequest {
+  roleIds: string[];
   branchId?: string | null;
-  employmentStartDate: string;
-  employmentEndDate?: string | null;
-  baseSalary?: number;
-  paymentFrequency: number;
 }
 
 export interface EmployeeSummaryResponse {
   id: string;
   fullName: string;
-  documentNumber: string;
-  branchName: string;
-  roleNames: string[];
-  userEnabled: boolean;
-  requiresPasswordChange: boolean;
+  documentNumber?: string;
+  branchName?: string;
+  roleIds?: string[];
+  roleNames?: string[];
+  userEnabled?: boolean;
+  requiresPasswordChange?: boolean;
 }
 
 export interface DictionaryResponse {

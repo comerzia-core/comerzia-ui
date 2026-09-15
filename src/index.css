@@ -342,6 +342,19 @@
     color-scheme: dark;
   }
 
+  /* Solid options and picker for Select to avoid any transparency issues */
+  select option,
+  select::picker(select) {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  [data-theme="dark"] select option,
+  [data-theme="dark"] select::picker(select) {
+    background-color: #1e293b !important;
+    color: #f8fafc !important;
+  }
+
   /* Dark Theme Contrast - Solid & High Contrast (Never Transparent) */
   [data-theme="dark"] .input:not(.checkbox):not(.radio):not(.toggle):not(.range),
   [data-theme="dark"] .select,
@@ -368,11 +381,11 @@
     box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.3) !important;
   }
 
-  /* Error states */
+  /* Error states - Solid background to prevent see-through dropdowns */
   .input-error, .select-error, .textarea-error,
   .input.border-error, .select.border-error, .textarea.border-error {
     border-color: #ef4444 !important;
-    background-color: rgba(239, 68, 68, 0.08) !important;
+    background-color: #fef2f2 !important; /* solid red-50 */
   }
 
   [data-theme="dark"] .input-error, 
@@ -382,6 +395,6 @@
   [data-theme="dark"] .select.border-error, 
   [data-theme="dark"] .textarea.border-error {
     border-color: #ef4444 !important;
-    background-color: rgba(239, 68, 68, 0.18) !important;
+    background-color: #2c1a1d !important; /* solid dark red */
   }
 }

@@ -6,6 +6,7 @@ import {
   Pencil,
   Trash2,
   Eye,
+  UserCog,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
@@ -27,6 +28,7 @@ interface Props {
   onViewDetails: (employee: EmployeeSummaryResponse) => void;
   onEdit: (employee: EmployeeSummaryResponse) => void;
   onDelete: (employee: EmployeeSummaryResponse) => void;
+  onModifyRoles?: (employee: EmployeeSummaryResponse) => void;
 }
 
 export const EmployeeTable = ({
@@ -38,7 +40,8 @@ export const EmployeeTable = ({
   onPageSizeChange,
   onViewDetails,
   onEdit,
-  onDelete
+  onDelete,
+  onModifyRoles
 }: Props) => {
   // Estado para el menú contextual (desktop: clic derecho con coords; mobile: centrado en pantalla)
   const [contextMenu, setContextMenu] = useState<{
@@ -318,6 +321,15 @@ export const EmployeeTable = ({
                 if (contextMenu.employee) onViewDetails(contextMenu.employee);
               }}
             />
+            {onModifyRoles && (
+              <ContextMenuItem
+                icon={UserCog}
+                label="Modificar roles"
+                onClick={() => {
+                  if (contextMenu.employee) onModifyRoles(contextMenu.employee);
+                }}
+              />
+            )}
             <ContextMenuItem
               icon={Pencil}
               label="Editar empleado"

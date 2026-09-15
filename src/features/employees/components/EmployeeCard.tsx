@@ -76,7 +76,7 @@ export const EmployeeCard = ({ employee, index, onClick, onContextMenu }: Props)
             </h3>
             <div className="flex items-center gap-1.5 mt-1 text-sm text-base-content/60">
               <IdCard size={14} />
-              <span>{employee.documentNumber}</span>
+              <span>{employee.documentNumber || 'Sin documento'}</span>
             </div>
           </div>
         </div>
@@ -90,7 +90,7 @@ export const EmployeeCard = ({ employee, index, onClick, onContextMenu }: Props)
           <div className="flex items-start gap-2 text-sm">
             <Users size={16} className="text-base-content/40 mt-0.5 shrink-0" />
             <div className="flex flex-wrap gap-1">
-              {employee.roleNames.length > 0 ? (
+              {employee.roleNames && employee.roleNames.length > 0 ? (
                 employee.roleNames.map((role, idx) => (
                   <span key={idx} className="bg-base-200 text-xs px-2 py-0.5 rounded-full text-base-content/70">
                     {role}

@@ -5,6 +5,7 @@ import type {
   EmployeeSummaryResponse,
   CreateEmployeeRequest,
   UpdateEmployeeRequest,
+  UpdateEmployeeRolesRequest,
   EmployeeCreatedResponse,
   RoleResponse,
   EmployeeDetailResponse
@@ -40,6 +41,15 @@ export const employeeService = {
 
   delete: async (id: string): Promise<void> => {
     await api.delete(`/tenant/employees/${id}`);
+  },
+
+  updateRoles: async (id: string, roleIds: string[], branchId?: string | null): Promise<EmployeeDetailResponse> => {
+    const payload: UpdateEmployeeRolesRequest = {
+      roleIds,
+      branchId: branchId || null
+    };
+    const response = await api.put<EmployeeDetailResponse>(`/tenant/employees/${id}/roles`, payload);
+    return response.data;
   },
 
   getRoles: async (): Promise<RoleResponse[]> => {

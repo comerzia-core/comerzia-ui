@@ -12,6 +12,7 @@ import { useToast } from '../../../context/ToastContext';
 import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
 import { EmployeeCredentialsModal } from '../components/EmployeeCredentialsModal';
+import { EmployeeRolesModal } from '../components/EmployeeRolesModal';
 
 type EmployeeActionType = 'DELETE' | null;
 
@@ -28,6 +29,10 @@ export const EmployeePage = () => {
 
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedDetailId, setSelectedDetailId] = useState<string | null>(null);
+
+  // Modal para modificar roles
+  const [isRolesModalOpen, setIsRolesModalOpen] = useState(false);
+  const [rolesEmployee, setRolesEmployee] = useState<EmployeeSummaryResponse | null>(null);
 
   // Estado de Acciones Administrativas con Modal de Confirmación
   const [pendingAction, setPendingAction] = useState<EmployeeActionType>(null);
@@ -73,6 +78,11 @@ export const EmployeePage = () => {
   const handleEdit = (employee: EmployeeSummaryResponse) => {
     setSelectedEmployee(employee);
     setIsModalOpen(true);
+  };
+
+  const handleModifyRoles = (employee: EmployeeSummaryResponse) => {
+    setRolesEmployee(employee);
+    setIsRolesModalOpen(true);
   };
 
   const handleViewDetails = (employee: EmployeeSummaryResponse) => {
@@ -194,6 +204,7 @@ export const EmployeePage = () => {
             onViewDetails={handleViewDetails}
             onEdit={handleEdit}
             onDelete={handleDeleteRequest}
+            onModifyRoles={handleModifyRoles}
           />
         </div>
       </div>
@@ -230,6 +241,17 @@ export const EmployeePage = () => {
           data={credentialsData}
         />
       )}
+
+      {/* MODAL MODIFICAR ROLES DEL EMPLEADO */}
+      <EmployeeRolesModal
+        isOpen={isRolesModalOpen}
+        onClose={() => {
+          setIsRolesModalOpen(false);
+          setRolesEmployee(null);
+        }}
+        employee={rolesEmployee}
+        onSuccess={() => loadData(page, pageSize)}
+      />
 
       {/* MODAL DE CONFIRMACIÓN DE ELIMINACIÓN */}
       <ConfirmationModal

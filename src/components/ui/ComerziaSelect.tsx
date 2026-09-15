@@ -46,7 +46,7 @@ export const ComerziaSelect = forwardRef<HTMLSelectElement, Props>(({
                     border-base-300 hover:border-base-content/40
                     focus:border-primary focus:ring-2 focus:ring-primary/20 focus:bg-base-100
                     shadow-2xs
-                    ${error ? "!border-error !ring-error/20 bg-error/5" : ""} 
+                    ${error ? "!border-error !ring-error/20 !bg-red-50 dark:!bg-red-950/40" : ""} 
                     ${className}
                 `} 
                 disabled={isLoading}
@@ -54,12 +54,12 @@ export const ComerziaSelect = forwardRef<HTMLSelectElement, Props>(({
                 {...props} 
             >
                 {/* Opción Placeholder neutral (value vacío) */}
-                <option disabled={isLoading || !enableDefaultOption} value="">
+                <option disabled={isLoading || !enableDefaultOption} value="" className="bg-base-100 text-base-content/60">
                     {isLoading ? "Cargando..." : placeholder}
                 </option>
                 
                 {!isLoading && options.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
+                    <option key={opt.value} value={opt.value} className="bg-base-100 text-base-content">
                         {opt.label}
                     </option>
                 ))}
