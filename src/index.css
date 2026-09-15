@@ -325,7 +325,7 @@
     box-shadow: 0 0 0 3px rgba(67, 42, 213, 0.2) !important;
   }
 
-  /* Native Options & Select Color Scheme (Restores native OS hover effect) */
+  /* Native Options & Select Color Scheme (Restores native OS hover effect & prevents mobile OS dark mode override) */
   :root, [data-theme="light"] {
     color-scheme: light;
   }
@@ -334,11 +334,13 @@
     color-scheme: dark;
   }
 
-  select {
+  input, select, textarea {
     color-scheme: light;
   }
 
-  [data-theme="dark"] select {
+  [data-theme="dark"] input,
+  [data-theme="dark"] select,
+  [data-theme="dark"] textarea {
     color-scheme: dark;
   }
 

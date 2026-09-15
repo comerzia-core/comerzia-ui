@@ -265,7 +265,7 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
             )}
 
             {isOpen && !disabled && (
-                <div className="absolute z-50 w-full mt-1 bg-base-100 dark:bg-slate-800 rounded-xl shadow-2xl border border-base-200 dark:border-slate-700 max-h-80 overflow-y-auto overscroll-contain top-full">
+                <div className="absolute z-50 w-full mt-1 bg-base-100 rounded-xl shadow-2xl border border-base-200 max-h-80 overflow-y-auto overscroll-contain top-full">
                     <ul className="menu menu-sm p-2 w-full">
                         {filteredOptions.length > 0 ? (
                             filteredOptions.map((opt) => (
