@@ -52,6 +52,7 @@ export interface SalePaymentResponse {
 export interface SaleResponse {
   id: string;
   saleNumber: string;
+  branchId?: string;
   branchName?: string;
   subtotalAmount: number;
   discountedAmount: number;
@@ -88,6 +89,8 @@ export interface ReturnDetailRequest {
 
 export interface CreateReturnRequest {
   reason: string;
+  targetShiftId?: string;
+  returnPaymentType: number;
   returnDetails: ReturnDetailRequest[];
 }
 

@@ -83,6 +83,13 @@ export const posService = {
     return response.data;
   },
 
+  getActiveShiftsByBranch: async (branchId: string): Promise<ShiftSummaryResponse[]> => {
+    const response = await api.get<ShiftSummaryResponse[]>('/tenant/shifts/active-by-branch', {
+      params: { branchId }
+    });
+    return response.data;
+  },
+
   getShiftsByCashRegister: async (registerId: string, page: number, size: number, sort: string[] = []): Promise<PageShiftResponse> => {
     const params = new URLSearchParams();
     params.append('page', page.toString());

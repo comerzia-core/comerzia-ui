@@ -1,10 +1,15 @@
 import { useEffect, useState } from 'react';
-import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { salesService } from '../services/salesService';
+import { posService } from '../../pos/services/posService';
 import type { SaleResponse, SaleDetailResponse } from '../types/sales';
+import type { ShiftSummaryResponse } from '../../pos/types/pos';
 import { useToast } from '../../../context/ToastContext';
+import { useLoadDictionaries } from '../../../hooks/useLoadDictionaries';
+import { DICTIONARIES } from '../../../config/dictionaries';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
+import { ComerziaSelect } from '../../../components/ui/ComerziaSelect';
 import { ComerziaModal } from '../../../components/ui/ComerziaModal';
 import { ComerziaButton } from '../../../components/ui/ComerziaButton';
 import { BtnCancel, BtnModalYes } from '../../../components/ui/CrudButtons';
@@ -18,16 +23,23 @@ import {
   ShoppingBag, 
   UserCheck, 
   RotateCcw,
-  ArrowLeft
+  Minus,
+  Plus,
+  Clock,
+  Wallet
 } from 'lucide-react';
 
 export const ReturnsPage = () => {
   const { saleNumber: routeSaleNumber } = useParams<{ saleNumber?: string }>();
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
 
   const { userProfile } = useAuthStore();
   const { success: toastSuccess, error: toastError, warning: toastWarning } = useToast();
+
+  const { options: dictOptions } = useLoadDictionaries([
+    DICTIONARIES.PAYMENT_TYPE
+  ]);
+  const paymentTypeOptions = dictOptions[DICTIONARIES.PAYMENT_TYPE] || [];
 
   const [saleNumberInput, setSaleNumberInput] = useState('');
   const [activeSale, setActiveSale] = useState<SaleResponse | null>(null);
@@ -36,13 +48,28 @@ export const ReturnsPage = () => {
 
   // Formulario de Devolución
   const [reason, setReason] = useState('');
+  const [returnPaymentType, setReturnPaymentType] = useState<string>('');
   const [returnQtys, setReturnQtys] = useState<Record<string, number>>({}); // saleDetailId -> quantityToReturn
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [shakeKey, setShakeKey] = useState(0);
 
+  // Turno destino (cuando el turno original está cerrado)
+  const [requiresTargetShift, setRequiresTargetShift] = useState(false);
+  const [activeShifts, setActiveShifts] = useState<ShiftSummaryResponse[]>([]);
+  const [selectedShiftId, setSelectedShiftId] = useState<string>('');
+  const [isLoadingShifts, setIsLoadingShifts] = useState(false);
+  const [shiftErrorMessage, setShiftErrorMessage] = useState<string | null>(null);
+
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   const currency = userProfile?.companySettings?.currencyCode || 'USD';
+
+  // Inicializar tipo de pago por defecto cuando cargan los diccionarios
+  useEffect(() => {
+    if (paymentTypeOptions.length > 0 && !returnPaymentType) {
+      setReturnPaymentType(String(paymentTypeOptions[0].value));
+    }
+  }, [paymentTypeOptions, returnPaymentType]);
 
   // Si hay un saleNumber en la URL o query param al montar, buscarlo directamente
   useEffect(() => {
@@ -63,10 +90,30 @@ export const ReturnsPage = () => {
   const getMaxReturnQty = (detail: SaleDetailResponse): number => {
     const factor = detail.equivalenceFactor || 1;
     const purchasedReceipt = detail.receiptQuantity ?? detail.unitQuantity ?? 1;
-    // returnedQuantity ahora viene del backend en unidades físicas totales
     const returnedPhysical = detail.returnedQuantity ?? 0;
     const returnedReceipt = factor > 0 ? returnedPhysical / factor : 0;
     return Math.max(0, purchasedReceipt - returnedReceipt);
+  };
+
+  // Cargar turnos activos de la sucursal de la venta
+  const loadBranchActiveShifts = async (branchId: string) => {
+    setIsLoadingShifts(true);
+    setShiftErrorMessage(null);
+    try {
+      const shifts = await posService.getActiveShiftsByBranch(branchId);
+      setActiveShifts(shifts);
+      if (shifts && shifts.length > 0) {
+        setSelectedShiftId(shifts[0].id);
+      } else {
+        setSelectedShiftId('');
+        setShiftErrorMessage("No existen turnos de caja abiertos en la sucursal de esta venta. Para registrar la salida de dinero y completar la devolución, debe abrir un nuevo turno o reabrir uno existente desde el módulo POS.");
+      }
+    } catch (err: any) {
+      console.error("Error al obtener turnos activos por sucursal:", err);
+      setShiftErrorMessage(err.response?.data?.message || "No se pudieron obtener los turnos de caja activos de la sucursal.");
+    } finally {
+      setIsLoadingShifts(false);
+    }
   };
 
   // Buscar Venta por N° de Venta usando /tenant/sales/number/{saleNumber}
@@ -80,6 +127,10 @@ export const ReturnsPage = () => {
     setReason('');
     setReturnQtys({});
     setShakeKey(0);
+    setRequiresTargetShift(false);
+    setActiveShifts([]);
+    setSelectedShiftId('');
+    setShiftErrorMessage(null);
 
     try {
       const sale = await salesService.getSaleByNumber(term);
@@ -89,14 +140,14 @@ export const ReturnsPage = () => {
       if (statusCode === 601) {
         setStatusNotice({
           title: "Venta Pendiente de Pago",
-          message: "Esta venta aún no ha sido cobrada (estado PENDIENTE). No se pueden procesar devoluciones sobre ventas pendientes. Si deseas modificarla o cancelarla, hazlo desde la Terminal o Historial de Ventas.",
+          message: "Esta venta aún no ha sido cobrada (estado PENDIENTE). No se pueden procesar devoluciones sobre ventas pendientes. Si deseas cancelarla, hazlo desde el Historial de Ventas.",
           type: "warning"
         });
         setActiveSale(sale);
       } else if (statusCode === 603) {
         setStatusNotice({
           title: "Venta Cancelada",
-          message: "Esta venta fue CANCELADA antes de su pago. El inventario ya fue liberado previamente y no registra movimientos de caja.",
+          message: "Esta venta fue CANCELADA antes de su pago. El inventario fue liberado previamente y no registra movimientos de caja.",
           type: "error"
         });
         setActiveSale(sale);
@@ -110,7 +161,7 @@ export const ReturnsPage = () => {
       } else if (statusCode === 606) {
         setStatusNotice({
           title: "Venta con Devolución Total",
-          message: "Esta venta ya fue devuelta en su totalidad (100% de los productos reingresados a inventario). No quedan ítems disponibles para devolver.",
+          message: "Esta venta ya fue devuelta en su totalidad (100% de los productos reingresados). No quedan ítems disponibles para devolver.",
           type: "info"
         });
         setActiveSale(sale);
@@ -200,6 +251,12 @@ export const ReturnsPage = () => {
       return;
     }
 
+    if (requiresTargetShift && !selectedShiftId) {
+      setShakeKey(prev => prev + 1);
+      toastError("Debes seleccionar un turno de caja activo para procesar la devolución.");
+      return;
+    }
+
     const returnDetails = Object.entries(returnQtys)
       .filter(([_, qty]) => qty > 0)
       .map(([detailId, qty]) => ({
@@ -212,11 +269,15 @@ export const ReturnsPage = () => {
       return;
     }
 
+    const paymentTypeNum = Number(returnPaymentType) || (paymentTypeOptions[0]?.value ? Number(paymentTypeOptions[0].value) : 701);
+
     setIsSubmitting(true);
     try {
       const payload = {
         reason: reason.trim(),
-        returnDetails
+        returnPaymentType: paymentTypeNum,
+        returnDetails,
+        ...(selectedShiftId ? { targetShiftId: selectedShiftId } : {})
       };
 
       await salesService.processReturn(activeSale.id, payload);
@@ -228,7 +289,29 @@ export const ReturnsPage = () => {
         fetchSaleByNumber(activeSale.saleNumber);
       }
     } catch (err: any) {
-      toastError(err.response?.data?.message || "Ocurrió un error al procesar la devolución.");
+      const status = err.response?.status;
+      const errorMsg = err.response?.data?.message || "";
+      const isShiftClosed = status === 409 || (status === 400 && (
+        errorMsg.includes("targetShiftId") ||
+        errorMsg.toLowerCase().includes("shift") ||
+        errorMsg.toLowerCase().includes("turno") ||
+        errorMsg.toLowerCase().includes("closed")
+      ));
+
+      // Si el turno original está cerrado y aún no habíamos pedido targetShiftId
+      if (isShiftClosed && !selectedShiftId) {
+        setRequiresTargetShift(true);
+        setShowConfirmModal(false);
+        toastWarning("El turno original de la venta está cerrado. Selecciona a continuación en qué turno activo registrar la devolución.");
+        if (activeSale.branchId) {
+          loadBranchActiveShifts(activeSale.branchId);
+        } else {
+          setShiftErrorMessage("La venta no contiene el ID de sucursal requerido para buscar turnos activos.");
+        }
+        return;
+      }
+
+      toastError(errorMsg || "Ocurrió un error al procesar la devolución.");
     } finally {
       setIsSubmitting(false);
     }
@@ -238,38 +321,33 @@ export const ReturnsPage = () => {
   const hasItemsToReturn = refundBreakdown.totalReceiptItems > 0;
   const isReturnable = activeSale && (getStatusCode(activeSale.saleStatus) === 602 || getStatusCode(activeSale.saleStatus) === 605);
 
+  const selectedPaymentLabel = paymentTypeOptions.find(opt => String(opt.value) === String(returnPaymentType))?.label || 'Efectivo';
+  const selectedShiftObj = activeShifts.find(s => s.id === selectedShiftId);
+
   return (
-    <div className="space-y-6 w-full animate-fade-in">
-      {/* Header Principal */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="space-y-5 w-full animate-fade-in">
+      {/* Header Principal Minimalista */}
+      <div className="flex items-start gap-2.5">
+        <RotateCcw className="w-6 h-6 sm:w-7 sm:h-7 text-primary shrink-0 mt-0.5" />
         <div>
-          <div className="flex items-center gap-2">
-            <button 
-              onClick={() => navigate('/sales/history')} 
-              className="btn btn-ghost btn-sm btn-circle text-base-content/60 hover:text-base-content"
-              title="Volver al Historial de Ventas"
-            >
-              <ArrowLeft size={18} />
-            </button>
-            <h1 className="text-3xl font-bold tracking-tight text-base-content">
-              Procesar Devoluciones de Venta
-            </h1>
-          </div>
-          <p className="text-base-content/60 mt-1 ml-9">
-            Reintegro de productos al inventario por lotes físicos y salida contable de dinero en caja
+          <h1 className="text-lg sm:text-2xl font-bold text-base-content tracking-tight">
+            Devoluciones de Venta
+          </h1>
+          <p className="text-xs sm:text-sm text-base-content/60 mt-0.5">
+            Reintegro de productos al inventario y gestión contable de reembolsos
           </p>
         </div>
       </div>
 
       {/* Buscador de Venta por N° */}
-      <div className="bg-base-100 p-5 rounded-2xl border border-base-200 shadow-sm">
-        <form onSubmit={handleSearchSubmit} className="flex flex-col sm:flex-row gap-3 items-center">
-          <div className="relative flex-1 w-full">
-            <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base-content/40" />
+      <div className="card bg-base-100 p-3 sm:p-4 rounded-2xl shadow-xs border border-base-200">
+        <form onSubmit={handleSearchSubmit} className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center">
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-base-content/40 pointer-events-none" />
             <input
               type="text"
-              placeholder="Introduce el N° de Venta (ej. VEN-000001, 10001)..."
-              className="input input-bordered w-full pl-10 bg-base-50 focus:bg-base-100 focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm font-mono"
+              placeholder="Buscar por N° de venta (ej. VEN-000001)..."
+              className="input input-sm sm:input-md input-bordered w-full pl-9 pr-8 font-mono text-sm bg-base-100 border-base-300 focus:border-primary"
               value={saleNumberInput}
               onChange={(e) => setSaleNumberInput(e.target.value)}
             />
@@ -277,7 +355,8 @@ export const ReturnsPage = () => {
               <button
                 type="button"
                 onClick={() => { setSaleNumberInput(''); setActiveSale(null); setStatusNotice(null); }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-base-content/40 hover:text-base-content"
+                className="btn btn-ghost btn-xs btn-circle absolute right-2 top-1/2 -translate-y-1/2 text-base-content/40 hover:text-base-content"
+                title="Limpiar"
               >
                 ✕
               </button>
@@ -286,45 +365,44 @@ export const ReturnsPage = () => {
           <ComerziaButton
             type="submit"
             variant="primary"
-            label="Buscar Venta"
-            icon={<Search size={16} />}
+            label="Buscar"
+            icon={<Search size={15} />}
             disabled={isLoadingSale || !saleNumberInput.trim()}
             isLoading={isLoadingSale}
-            className="w-full sm:w-auto text-white font-bold"
+            className="btn-sm sm:btn-md shrink-0 font-semibold"
           />
         </form>
       </div>
 
       {/* Alerta / Notificación de Estado No Retornable */}
       {statusNotice && (
-        <div className={`p-4 rounded-2xl border flex gap-3 text-xs items-start animate-slide-up ${
+        <div className={`p-3.5 sm:p-4 rounded-xl border flex gap-3 text-xs items-start animate-fade-in ${
           statusNotice.type === 'error' ? 'bg-error/10 border-error/20 text-error' :
           statusNotice.type === 'warning' ? 'bg-warning/10 border-warning/20 text-warning' :
           'bg-info/10 border-info/20 text-info'
         }`}>
-          <AlertTriangle size={20} className="shrink-0 mt-0.5" />
-          <div className="space-y-1">
-            <h4 className="font-bold text-sm">{statusNotice.title}</h4>
-            <p className="leading-relaxed">{statusNotice.message}</p>
+          <AlertTriangle size={18} className="shrink-0 mt-0.5" />
+          <div className="space-y-0.5">
+            <h4 className="font-bold text-xs sm:text-sm">{statusNotice.title}</h4>
+            <p className="leading-relaxed opacity-90">{statusNotice.message}</p>
           </div>
         </div>
       )}
 
-      {/* Contenido Principal de Devolución a Ancho Completo */}
+      {/* Contenido Principal de Devolución */}
       {activeSale && (
-        <div className="space-y-6 animate-slide-up">
-          {/* Ficha Resumen de la Venta */}
-          <div className="bg-base-100 p-5 rounded-2xl border border-base-200 shadow-sm flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-            <div className="flex items-center gap-4 flex-wrap">
-              <div className="p-3 bg-primary/10 text-primary rounded-xl shrink-0">
-                <Receipt size={24} />
+        <div className="space-y-5 animate-fade-in">
+          {/* Ficha Resumen de la Venta (Minimalista) */}
+          <div className="card bg-base-100 p-4 rounded-2xl border border-base-200 shadow-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-primary/10 text-primary rounded-xl shrink-0">
+                <Receipt size={20} />
               </div>
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-semibold text-base-content/50 uppercase tracking-wider">Venta</span>
-                  <h3 className="text-lg font-black font-mono text-primary">
+                  <span className="font-bold font-mono text-base text-base-content">
                     #{activeSale.saleNumber || activeSale.id}
-                  </h3>
+                  </span>
                   <span className={`badge badge-sm font-semibold ${
                     getStatusCode(activeSale.saleStatus) === 602 ? 'badge-success text-white' :
                     getStatusCode(activeSale.saleStatus) === 605 ? 'badge-secondary text-white' :
@@ -334,78 +412,81 @@ export const ReturnsPage = () => {
                      getStatusCode(activeSale.saleStatus) === 605 ? 'Dev. Parcial' :
                      getStatusCode(activeSale.saleStatus) === 606 ? 'Dev. Total' : 'Pendiente'}
                   </span>
+                  {activeSale.branchName && (
+                    <span className="badge badge-sm badge-outline font-medium text-xs">
+                      {activeSale.branchName}
+                    </span>
+                  )}
                 </div>
-                <div className="flex items-center gap-4 text-xs text-base-content/60 mt-1 flex-wrap">
+                <div className="flex items-center gap-3 text-xs text-base-content/60 mt-1 flex-wrap">
                   <span className="flex items-center gap-1">
-                    <Calendar size={13} /> {new Date(activeSale.date).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                    <Calendar size={12} /> {new Date(activeSale.date).toLocaleDateString([], { dateStyle: 'short' })}
                   </span>
                   <span className="flex items-center gap-1">
-                    <User size={13} /> Cajero: <strong className="text-base-content font-bold">{activeSale.employeeUsername}</strong>
+                    <User size={12} /> {activeSale.employeeUsername}
                   </span>
                   {activeSale.customer && (
-                    <span className="flex items-center gap-1 text-primary">
-                      <UserCheck size={13} /> Cliente: <strong>{activeSale.customer.fullName || activeSale.customer.firstName}</strong>
+                    <span className="flex items-center gap-1 text-primary font-medium">
+                      <UserCheck size={12} /> {activeSale.customer.fullName || activeSale.customer.firstName}
                     </span>
                   )}
                 </div>
               </div>
             </div>
 
-            <div className="bg-base-200/50 px-4 py-2.5 rounded-xl border border-base-200 flex items-center gap-4 shrink-0">
-              <div className="text-right">
-                <span className="text-[11px] text-base-content/50 font-semibold uppercase block">Monto Original Venta</span>
-                <span className="text-base font-extrabold font-mono text-base-content">
-                  {currency} {(activeSale.totalAmount || 0).toFixed(2)}
-                </span>
-              </div>
+            <div className="sm:text-right border-t sm:border-t-0 pt-2 sm:pt-0 w-full sm:w-auto flex sm:flex-col justify-between sm:justify-center items-center sm:items-end">
+              <span className="text-[11px] text-base-content/50 uppercase font-medium">Total Facturado</span>
+              <span className="text-base sm:text-lg font-bold font-mono text-base-content">
+                {currency} {(activeSale.totalAmount || 0).toFixed(2)}
+              </span>
             </div>
           </div>
 
-          {/* Grid de 2 Columnas Aprovechando Todo el Ancho */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* Columna Izquierda: Tabla de Productos (8 de 12 columnas) */}
-            <div className="lg:col-span-8 bg-base-100 p-6 rounded-2xl border border-base-200 shadow-sm space-y-4">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-base-200/60 pb-4">
+          {/* Grid de 2 Columnas (Productos + Resumen) */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+            {/* Columna Izquierda: Listado de Productos (8 cols) */}
+            <div className="lg:col-span-8 card bg-base-100 p-4 sm:p-5 rounded-2xl border border-base-200 shadow-xs space-y-4">
+              <div className="flex items-center justify-between gap-2 pb-3 border-b border-base-200/60">
                 <div>
-                  <h3 className="text-lg font-bold text-base-content flex items-center gap-2">
-                    <FileText className="text-primary h-5 w-5" />
-                    Ítems Facturados en la Venta
-                  </h3>
+                  <h2 className="font-bold text-sm sm:text-base text-base-content flex items-center gap-2">
+                    <FileText className="text-primary w-4 h-4" />
+                    Ítems Facturados
+                  </h2>
                   <p className="text-xs text-base-content/60 mt-0.5">
-                    Indica la cantidad a devolver por cada presentación respetando los factores y precios de compra.
+                    Indica la cantidad a devolver por producto
                   </p>
                 </div>
 
                 {isReturnable && (
-                  <ComerziaButton
-                    variant="primary"
-                    label="Devolver Todo Disponible"
-                    icon={<RotateCcw size={14} />}
-                    className="btn-xs shrink-0 font-bold"
+                  <button
+                    type="button"
                     onClick={handleSelectAllToReturn}
-                  />
+                    className="btn btn-ghost btn-xs text-primary hover:bg-primary/10 gap-1 font-semibold"
+                    title="Devolver todo lo disponible"
+                  >
+                    <RotateCcw size={12} />
+                    Devolver Todo
+                  </button>
                 )}
               </div>
 
-              {/* VISTA DESKTOP: TABLA */}
-              <div className="hidden md:block overflow-x-auto border border-base-200 rounded-xl">
-                <table className="table table-compact w-full text-xs">
+              {/* VISTA DESKTOP: TABLA MINIMALISTA */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="table table-sm w-full text-xs">
                   <thead>
-                    <tr className="bg-base-200/60 text-base-content font-bold">
-                      <th>Producto / Presentación</th>
+                    <tr className="border-b border-base-200 text-base-content/70 font-semibold text-[11px] uppercase">
+                      <th>Producto</th>
                       <th className="text-center">Comprado</th>
-                      <th className="text-right">Precio / Desc. Unit.</th>
-                      <th className="text-center w-40">Cant. a Devolver</th>
-                      <th className="text-right">Reembolso Neto</th>
+                      <th className="text-right">Precio Unit.</th>
+                      <th className="text-center w-44">Cant. a Devolver</th>
+                      <th className="text-right">Reembolso</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="divide-y divide-base-200/60">
                     {(activeSale.details || []).map((d: SaleDetailResponse) => {
                       const factor = d.equivalenceFactor || 1;
                       const purchasedQty = d.receiptQuantity ?? d.unitQuantity ?? 1;
-                      const totalPurchasedPhysical = purchasedQty * factor;
 
-                      // returnedQuantity viene en unidades físicas totales desde el backend
                       const totalReturnedPhysical = d.returnedQuantity ?? 0;
                       const alreadyReturnedReceipt = factor > 0 ? totalReturnedPhysical / factor : 0;
 
@@ -413,77 +494,71 @@ export const ReturnsPage = () => {
                       const currentReturnQty = returnQtys[d.id] || 0;
                       const currentReturnPhysical = currentReturnQty * factor;
 
-                      // Cálculos de línea y unitarios
                       const lineSuggested = d.lineTotalSuggested ?? (d.receiptUnitPrice ? d.receiptUnitPrice * purchasedQty : 0);
                       const lineDiscount = d.lineTotalDiscount ?? (d.unitDiscountAmount ? d.unitDiscountAmount * purchasedQty : 0);
                       const lineFinal = d.lineTotalFinal ?? (lineSuggested - lineDiscount);
 
-                      const unitSuggested = purchasedQty > 0 ? lineSuggested / purchasedQty : (d.receiptUnitPrice ?? 0);
-                      const unitDiscount = purchasedQty > 0 ? lineDiscount / purchasedQty : 0;
-                      const unitFinal = purchasedQty > 0 ? lineFinal / purchasedQty : (unitSuggested - unitDiscount);
-
+                      const unitFinal = purchasedQty > 0 ? lineFinal / purchasedQty : (d.receiptUnitPrice ?? 0);
                       const lineFinalRefund = unitFinal * currentReturnQty;
 
                       return (
-                        <tr key={`desktop-return-${d.id}`} className="hover:bg-base-50 transition-colors">
+                        <tr key={`desktop-return-${d.id}`} className="hover:bg-base-200/30 transition-colors">
                           <td>
-                            <div className="space-y-1">
-                              <div>
-                                <span className="font-bold block text-sm text-base-content leading-tight">
-                                  {d.productName || 'Producto'}
+                            <div className="space-y-0.5 max-w-[220px]">
+                              <span className="font-semibold text-xs text-base-content block truncate" title={d.productName}>
+                                {d.productName || 'Producto'}
+                              </span>
+                              {d.variantName && (
+                                <span className="text-[11px] text-base-content/60 block truncate">
+                                  {d.variantName}
                                 </span>
-                                {d.variantName && (
-                                  <span className="text-xs text-base-content/70 font-medium block">
-                                    {d.variantName}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-1.5 flex-wrap">
+                              )}
+                              <div className="flex items-center gap-1 flex-wrap">
                                 {d.measureUnitName && (
-                                  <span className="badge badge-ghost badge-xs font-medium">
+                                  <span className="badge badge-ghost badge-xs text-[10px] py-0 font-medium">
                                     {d.measureUnitName}
                                   </span>
                                 )}
                                 {factor > 1 && (
-                                  <span className="badge badge-info badge-xs text-white font-bold">
-                                    Factor x{factor}
+                                  <span className="badge badge-info badge-xs text-white text-[10px] py-0 font-bold">
+                                    x{factor}
                                   </span>
                                 )}
                               </div>
                             </div>
                           </td>
-                          <td className="text-center">
-                            <div className="font-semibold text-base-content whitespace-nowrap">
-                              {purchasedQty} {d.measureUnitName || ''} {factor > 1 && <span className="text-[11px] text-base-content/60 font-medium">({totalPurchasedPhysical} u)</span>}
-                            </div>
+                          <td className="text-center font-mono">
+                            <span className="font-medium text-base-content">
+                              {purchasedQty} {d.measureUnitName || ''}
+                            </span>
                             {totalReturnedPhysical > 0 && (
-                              <div className="badge badge-warning badge-xs mt-1 font-semibold whitespace-nowrap">
-                                {alreadyReturnedReceipt} devueltos {factor > 1 ? `(${totalReturnedPhysical} u)` : ''}
-                              </div>
+                              <span className="block text-[10px] text-warning font-semibold">
+                                ({alreadyReturnedReceipt} ya devueltos)
+                              </span>
                             )}
                           </td>
                           <td className="text-right font-mono">
-                            <div className="text-base-content/80 font-medium">
-                              {currency} {unitSuggested.toFixed(2)}
-                            </div>
-                            {unitDiscount > 0 && (
-                              <div className="text-[11px] text-error font-semibold">
-                                -{currency} {unitDiscount.toFixed(2)} desc.
-                              </div>
-                            )}
-                            <div className="text-xs font-bold text-primary">
-                              Neto: {currency} {unitFinal.toFixed(2)}
-                            </div>
+                            <span className="font-medium text-base-content">
+                              {currency} {unitFinal.toFixed(2)}
+                            </span>
                           </td>
                           <td className="text-center">
                             {isReturnable && maxQty > 0 ? (
                               <div className="flex flex-col items-center gap-1">
-                                <div className="flex items-center justify-center gap-1.5">
+                                <div className="flex items-center justify-center gap-1">
+                                  <button
+                                    type="button"
+                                    disabled={currentReturnQty <= 0}
+                                    onClick={() => setReturnQtys({ ...returnQtys, [d.id]: Math.max(0, currentReturnQty - 1) })}
+                                    className="btn btn-ghost btn-xs btn-square h-6 w-6 min-h-0 text-base-content/60 hover:text-base-content border border-base-300 disabled:opacity-30"
+                                  >
+                                    <Minus size={11} />
+                                  </button>
                                   <input
                                     type="number"
                                     min="0"
                                     max={maxQty}
-                                    className="input input-bordered input-xs w-16 text-center font-bold font-mono"
+                                    className="input input-bordered input-xs w-12 text-center font-bold font-mono h-6 px-1"
                                     value={currentReturnQty}
                                     onWheel={(e) => (e.target as HTMLElement).blur()}
                                     onChange={(e) => {
@@ -491,36 +566,39 @@ export const ReturnsPage = () => {
                                       setReturnQtys({ ...returnQtys, [d.id]: val });
                                     }}
                                   />
-                                  <span className="text-base-content/50 text-[11px] font-semibold">/ {maxQty}</span>
                                   <button
                                     type="button"
-                                    className="btn btn-ghost btn-xs text-[10px] text-primary px-1 hover:underline cursor-pointer"
-                                    onClick={() => setReturnQtys({ ...returnQtys, [d.id]: maxQty })}
-                                    title={`Devolver todo lo disponible (${maxQty} ${d.measureUnitName || 'u.'})`}
+                                    disabled={currentReturnQty >= maxQty}
+                                    onClick={() => setReturnQtys({ ...returnQtys, [d.id]: Math.min(maxQty, currentReturnQty + 1) })}
+                                    className="btn btn-ghost btn-xs btn-square h-6 w-6 min-h-0 text-base-content/60 hover:text-base-content border border-base-300 disabled:opacity-30"
                                   >
-                                    Máx
+                                    <Plus size={11} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="btn btn-ghost btn-xs text-[10px] text-primary px-1 hover:underline ml-0.5"
+                                    onClick={() => setReturnQtys({ ...returnQtys, [d.id]: maxQty })}
+                                    title={`Máximo (${maxQty})`}
+                                  >
+                                    /{maxQty}
                                   </button>
                                 </div>
                                 {factor > 1 && currentReturnQty > 0 && (
-                                  <span className="text-[10px] text-primary font-bold">
-                                    ({currentReturnPhysical} unidades)
+                                  <span className="text-[10px] text-primary font-medium">
+                                    ({currentReturnPhysical} u. físicas)
                                   </span>
                                 )}
                               </div>
                             ) : (
-                              <span className="badge badge-neutral badge-xs font-semibold">
-                                {maxQty === 0 ? '100% Devuelto' : 'No disponible'}
+                              <span className="badge badge-ghost badge-xs text-base-content/50">
+                                {maxQty === 0 ? 'Devuelto' : 'No disponible'}
                               </span>
                             )}
                           </td>
-                          <td className="text-right font-mono font-bold">
-                            {lineFinalRefund > 0 ? (
-                              <span className="text-error font-extrabold text-sm">
-                                -{currency} {lineFinalRefund.toFixed(2)}
-                              </span>
-                            ) : (
-                              <span className="text-base-content/40">0.00</span>
-                            )}
+                          <td className="text-right font-mono">
+                            <span className={`font-semibold ${lineFinalRefund > 0 ? 'text-error font-bold' : 'text-base-content/30'}`}>
+                              {lineFinalRefund > 0 ? `-${currency} ${lineFinalRefund.toFixed(2)}` : '0.00'}
+                            </span>
                           </td>
                         </tr>
                       );
@@ -529,187 +607,166 @@ export const ReturnsPage = () => {
                 </table>
               </div>
 
-              {/* VISTA MOBILE: CARDS */}
-              <div className="block md:hidden space-y-3">
+              {/* VISTA MOBILE: CARDS MINIMALISTAS */}
+              <div className="block md:hidden space-y-2.5">
                 {(activeSale.details || []).map((d: SaleDetailResponse) => {
                   const factor = d.equivalenceFactor || 1;
                   const purchasedQty = d.receiptQuantity ?? d.unitQuantity ?? 1;
-                  const totalPurchasedPhysical = purchasedQty * factor;
+
                   const totalReturnedPhysical = d.returnedQuantity ?? 0;
                   const alreadyReturnedReceipt = factor > 0 ? totalReturnedPhysical / factor : 0;
                   const maxQty = getMaxReturnQty(d);
                   const currentReturnQty = returnQtys[d.id] || 0;
-                  const currentReturnPhysical = currentReturnQty * factor;
 
                   const lineSuggested = d.lineTotalSuggested ?? (d.receiptUnitPrice ? d.receiptUnitPrice * purchasedQty : 0);
                   const lineDiscount = d.lineTotalDiscount ?? (d.unitDiscountAmount ? d.unitDiscountAmount * purchasedQty : 0);
                   const lineFinal = d.lineTotalFinal ?? (lineSuggested - lineDiscount);
 
-                  const unitSuggested = purchasedQty > 0 ? lineSuggested / purchasedQty : (d.receiptUnitPrice ?? 0);
-                  const unitDiscount = purchasedQty > 0 ? lineDiscount / purchasedQty : 0;
-                  const unitFinal = purchasedQty > 0 ? lineFinal / purchasedQty : (unitSuggested - unitDiscount);
-
+                  const unitFinal = purchasedQty > 0 ? lineFinal / purchasedQty : (d.receiptUnitPrice ?? 0);
                   const lineFinalRefund = unitFinal * currentReturnQty;
 
                   return (
-                    <div key={`mobile-return-${d.id}`} className="bg-base-100 p-4 rounded-xl border border-base-200 shadow-sm space-y-3">
-                      {/* Cabecera de la Card */}
-                      <div className="flex items-start justify-between gap-2">
+                    <div key={`mobile-return-${d.id}`} className="p-3 rounded-xl bg-base-100 border border-base-200 shadow-xs space-y-2.5">
+                      <div className="flex justify-between items-start gap-2">
                         <div className="min-w-0 flex-1">
-                          <h4 className="font-bold text-sm text-base-content leading-tight">
+                          <span className="font-semibold text-xs text-base-content block truncate">
                             {d.productName || 'Producto'}
-                          </h4>
+                          </span>
                           {d.variantName && (
-                            <p className="text-xs text-base-content/70 font-medium mt-0.5">
+                            <span className="text-[11px] text-base-content/60 block truncate">
                               {d.variantName}
-                            </p>
-                          )}
-                          <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                            {d.measureUnitName && (
-                              <span className="badge badge-ghost badge-xs font-medium">
-                                {d.measureUnitName}
-                              </span>
-                            )}
-                            {factor > 1 && (
-                              <span className="badge badge-info badge-xs text-white font-bold">
-                                Factor x{factor}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <span className="text-[10px] text-base-content/50 uppercase font-semibold block">Reembolso</span>
-                          {lineFinalRefund > 0 ? (
-                            <span className="text-error font-extrabold text-sm font-mono">
-                              -{currency} {lineFinalRefund.toFixed(2)}
                             </span>
-                          ) : (
-                            <span className="text-base-content/40 text-xs font-mono">0.00</span>
                           )}
-                        </div>
-                      </div>
-
-                      {/* Datos de Compra y Precio */}
-                      <div className="grid grid-cols-2 gap-2 bg-base-200/40 p-2.5 rounded-lg text-xs">
-                        <div>
-                          <span className="text-base-content/50 block text-[10px]">Comprado</span>
-                          <span className="font-semibold text-base-content">
-                            {purchasedQty} {d.measureUnitName || ''} {factor > 1 && `(${totalPurchasedPhysical} u)`}
-                          </span>
+                          <div className="flex items-center gap-1.5 text-[11px] text-base-content/60 mt-0.5">
+                            <span>Comprado: {purchasedQty} {d.measureUnitName || 'u'}</span>
+                            <span>&bull;</span>
+                            <span className="font-mono">{currency} {unitFinal.toFixed(2)}</span>
+                          </div>
                           {totalReturnedPhysical > 0 && (
-                            <span className="badge badge-warning badge-xs block mt-1 font-semibold truncate">
-                              {alreadyReturnedReceipt} devueltos
+                            <span className="text-[10px] text-warning font-semibold block mt-0.5">
+                              {alreadyReturnedReceipt} devueltos anteriormente
                             </span>
                           )}
                         </div>
-                        <div className="text-right">
-                          <span className="text-base-content/50 block text-[10px]">Precio Unit. Neto</span>
-                          <span className="font-bold font-mono text-primary text-xs">
-                            {currency} {unitFinal.toFixed(2)}
+                        <div className="text-right shrink-0 font-mono">
+                          <span className={`text-xs font-bold ${lineFinalRefund > 0 ? 'text-error' : 'text-base-content/40'}`}>
+                            {lineFinalRefund > 0 ? `-${currency} ${lineFinalRefund.toFixed(2)}` : '0.00'}
                           </span>
-                          {unitDiscount > 0 && (
-                            <span className="text-[10px] text-error block">
-                              -{currency} {unitDiscount.toFixed(2)} desc.
-                            </span>
-                          )}
                         </div>
                       </div>
 
-                      {/* Control de Cantidad a Devolver */}
-                      <div className="flex items-center justify-between pt-1 border-t border-base-200/60">
-                        <span className="text-xs font-bold text-base-content">Cant. a Devolver:</span>
-                        {isReturnable && maxQty > 0 ? (
-                          <div className="flex flex-col items-end gap-0.5">
-                            <div className="flex items-center gap-1.5">
-                              <input
-                                type="number"
-                                min="0"
-                                max={maxQty}
-                                className="input input-bordered input-sm w-16 text-center font-bold font-mono rounded-lg"
-                                value={currentReturnQty}
-                                onWheel={(e) => (e.target as HTMLElement).blur()}
-                                onChange={(e) => {
-                                  const val = Math.max(0, Math.min(maxQty, parseInt(e.target.value) || 0));
-                                  setReturnQtys({ ...returnQtys, [d.id]: val });
-                                }}
-                              />
-                              <span className="text-base-content/50 text-xs font-semibold">/ {maxQty}</span>
-                              <button
-                                type="button"
-                                className="btn btn-outline btn-primary btn-xs font-bold"
-                                onClick={() => setReturnQtys({ ...returnQtys, [d.id]: maxQty })}
-                                title={`Devolver todo (${maxQty} ${d.measureUnitName || 'u.'})`}
-                              >
-                                Máx
-                              </button>
-                            </div>
-                            {factor > 1 && currentReturnQty > 0 && (
-                              <span className="text-[10px] text-primary font-bold">
-                                ({currentReturnPhysical} unidades)
-                              </span>
-                            )}
+                      {isReturnable && maxQty > 0 ? (
+                        <div className="flex items-center justify-between pt-2 border-t border-base-200/60">
+                          <span className="text-xs text-base-content/70 font-medium">Devolver:</span>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              disabled={currentReturnQty <= 0}
+                              onClick={() => setReturnQtys({ ...returnQtys, [d.id]: Math.max(0, currentReturnQty - 1) })}
+                              className="btn btn-ghost btn-xs btn-square h-7 w-7 min-h-0 text-base-content/60 border border-base-300 disabled:opacity-30"
+                            >
+                              <Minus size={12} />
+                            </button>
+                            <input
+                              type="number"
+                              min="0"
+                              max={maxQty}
+                              className="input input-bordered input-xs w-12 text-center font-bold font-mono h-7 px-1"
+                              value={currentReturnQty}
+                              onWheel={(e) => (e.target as HTMLElement).blur()}
+                              onChange={(e) => {
+                                const val = Math.max(0, Math.min(maxQty, parseInt(e.target.value) || 0));
+                                setReturnQtys({ ...returnQtys, [d.id]: val });
+                              }}
+                            />
+                            <button
+                              type="button"
+                              disabled={currentReturnQty >= maxQty}
+                              onClick={() => setReturnQtys({ ...returnQtys, [d.id]: Math.min(maxQty, currentReturnQty + 1) })}
+                              className="btn btn-ghost btn-xs btn-square h-7 w-7 min-h-0 text-base-content/60 border border-base-300 disabled:opacity-30"
+                            >
+                              <Plus size={12} />
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-xs text-primary font-bold px-1.5 h-7 min-h-0 hover:bg-primary/10"
+                              onClick={() => setReturnQtys({ ...returnQtys, [d.id]: maxQty })}
+                            >
+                              Máx ({maxQty})
+                            </button>
                           </div>
-                        ) : (
-                          <span className="badge badge-neutral badge-xs font-semibold">
-                            {maxQty === 0 ? '100% Devuelto' : 'No disponible'}
-                          </span>
-                        )}
-                      </div>
+                        </div>
+                      ) : (
+                        <div className="text-right text-[11px] text-base-content/40 italic pt-1 border-t border-base-200/60">
+                          {maxQty === 0 ? 'Totalmente devuelto' : 'No disponible'}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
               </div>
             </div>
 
-            {/* Columna Derecha: Resumen de Reembolso y Confirmación (4 de 12 columnas) */}
-            <div className="lg:col-span-4 space-y-6">
-              <div className="bg-base-100 p-6 rounded-2xl border border-base-200 shadow-sm space-y-5">
-                <h3 className="text-lg font-bold text-base-content flex items-center gap-2">
-                  <ShoppingBag size={20} className="text-secondary" />
+            {/* Columna Derecha: Resumen de Reembolso Minimalista (4 cols) */}
+            <div className="lg:col-span-4">
+              <div className="card bg-base-100 p-4 sm:p-5 rounded-2xl border border-base-200 shadow-xs space-y-4 lg:sticky lg:top-4">
+                <h3 className="font-bold text-sm sm:text-base text-base-content flex items-center gap-2 pb-2.5 border-b border-base-200/60">
+                  <ShoppingBag size={18} className="text-primary" />
                   Resumen de Reembolso
                 </h3>
 
                 {/* Desglose Numérico */}
-                <div className="bg-base-200/50 p-4 rounded-xl border border-base-200 space-y-2.5 text-xs">
-                  <div className="flex justify-between items-center text-base-content/70">
-                    <span>Ítems seleccionados a devolver:</span>
-                    <div className="text-right">
-                      <strong className="text-base-content block">{refundBreakdown.totalReceiptItems} productos</strong>
+                <div className="space-y-2 text-xs">
+                  <div className="flex justify-between text-base-content/70">
+                    <span>Ítems a devolver:</span>
+                    <span className="font-semibold text-base-content">
+                      {refundBreakdown.totalReceiptItems} unidades
                       {refundBreakdown.totalPhysicalItems !== refundBreakdown.totalReceiptItems && (
-                        <span className="text-[11px] text-primary font-bold">
-                          ({refundBreakdown.totalPhysicalItems} unidades)
+                        <span className="text-[10px] text-primary ml-1">
+                          ({refundBreakdown.totalPhysicalItems} físicas)
                         </span>
                       )}
-                    </div>
+                    </span>
                   </div>
 
                   {refundBreakdown.discountRefund > 0 && (
                     <>
-                      <div className="flex justify-between items-center text-base-content/70">
-                        <span>Subtotal de lista reembolsado:</span>
-                        <span className="font-mono font-medium">{currency} {refundBreakdown.subtotalRefund.toFixed(2)}</span>
+                      <div className="flex justify-between text-base-content/70">
+                        <span>Subtotal de lista:</span>
+                        <span className="font-mono">{currency} {refundBreakdown.subtotalRefund.toFixed(2)}</span>
                       </div>
-                      <div className="flex justify-between items-center text-error font-medium">
-                        <span>Descuentos deducidos del reembolso:</span>
-                        <span className="font-mono font-bold">-{currency} {refundBreakdown.discountRefund.toFixed(2)}</span>
+                      <div className="flex justify-between text-error font-medium">
+                        <span>Descuento deducido:</span>
+                        <span className="font-mono">-{currency} {refundBreakdown.discountRefund.toFixed(2)}</span>
                       </div>
                     </>
                   )}
 
-                  <div className="flex justify-between items-center pt-3 border-t border-base-200/60 font-mono text-sm">
-                    <span className="font-bold text-base-content">Total Neto a Reembolsar:</span>
-                    <span className="text-xl font-black text-error">
-                      - {currency} {refundBreakdown.totalRefund.toFixed(2)}
+                  <div className="flex justify-between items-baseline pt-2.5 border-t border-base-200/60">
+                    <span className="font-semibold text-xs sm:text-sm text-base-content">Total Reembolso:</span>
+                    <span className="text-lg sm:text-xl font-black font-mono text-error">
+                      -{currency} {refundBreakdown.totalRefund.toFixed(2)}
                     </span>
                   </div>
                 </div>
 
-                {/* Motivo de Devolución */}
+                {/* Formulario y Botón de Acción */}
                 {isReturnable && (
-                  <div className="space-y-4">
+                  <div className="space-y-3 pt-2">
+                    {/* Método de Pago / Reembolso */}
+                    <ComerziaSelect
+                      label="Método de Reembolso"
+                      value={returnPaymentType}
+                      onChange={(e) => setReturnPaymentType(e.target.value)}
+                      options={paymentTypeOptions}
+                      isRequired
+                      error={!returnPaymentType && shakeKey > 0 ? "Seleccione un método" : ""}
+                    />
+
+                    {/* Motivo de Devolución */}
                     <ComerziaInput
                       label="Motivo de la Devolución"
-                      placeholder="Ej. Producto defectuoso, error en pedido del cliente..."
+                      placeholder="Ej. Producto defectuoso, error en pedido..."
                       value={reason}
                       onChange={(e) => setReason(e.target.value)}
                       isRequired
@@ -717,21 +774,93 @@ export const ReturnsPage = () => {
                       error={!reason.trim() && shakeKey > 0 ? "El motivo es obligatorio" : ""}
                     />
 
-                    {/* Advertencia Legal / Contable */}
-                    <div className="bg-error/10 border border-error/20 p-4 rounded-xl flex gap-3 text-xs text-error">
-                      <AlertTriangle size={18} className="shrink-0 mt-0.5" />
-                      <div>
-                        <span className="font-bold">ADVERTENCIA:</span> Esta acción reingresará el stock seleccionado a los lotes físicos originales y registrará la salida del dinero de la caja registradora activa.
+                    {/* Sección Inline: Turno Destino para Caja (cuando el turno original está cerrado) */}
+                    {requiresTargetShift && (
+                      <div className="p-3.5 rounded-xl bg-base-200/50 border border-base-300 space-y-2.5 animate-fade-in">
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="font-bold text-xs text-base-content flex items-center gap-1.5">
+                            <Clock size={14} className="text-primary" />
+                            Turno para Imputar Reembolso
+                          </span>
+                          {activeSale.branchName && (
+                            <span className="badge badge-sm badge-ghost text-[10px] font-medium truncate max-w-[120px]">
+                              {activeSale.branchName}
+                            </span>
+                          )}
+                        </div>
+
+                        {isLoadingShifts ? (
+                          <div className="flex items-center justify-center py-4 text-xs text-base-content/60 gap-2">
+                            <span className="loading loading-spinner loading-xs text-primary"></span>
+                            Buscando turnos activos...
+                          </div>
+                        ) : shiftErrorMessage ? (
+                          <div className="p-2.5 rounded-lg bg-warning/10 border border-warning/20 text-warning-content text-xs flex items-start gap-2">
+                            <AlertTriangle size={15} className="shrink-0 mt-0.5 text-warning" />
+                            <p className="leading-snug text-[11px]">{shiftErrorMessage}</p>
+                          </div>
+                        ) : activeShifts.length > 0 ? (
+                          <div className="space-y-1.5 max-h-48 overflow-y-auto pr-0.5">
+                            {activeShifts.map((shift) => {
+                              const isSelected = selectedShiftId === shift.id;
+                              return (
+                                <div
+                                  key={shift.id}
+                                  onClick={() => setSelectedShiftId(shift.id)}
+                                  className={`p-2.5 rounded-xl border text-xs cursor-pointer transition-all flex items-center justify-between gap-2 ${
+                                    isSelected
+                                      ? 'bg-primary/10 border-primary shadow-xs font-semibold'
+                                      : 'bg-base-100 border-base-200 hover:border-base-300'
+                                  }`}
+                                >
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span className="font-bold text-base-content">{shift.cashName}</span>
+                                      <span className="text-[10px] text-base-content/60">({shift.employeeName})</span>
+                                    </div>
+                                    <span className="text-[10px] text-base-content/60 block mt-0.5">
+                                      Abierto: {new Date(shift.openedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                  </div>
+                                  <input
+                                    type="radio"
+                                    name="targetShift"
+                                    checked={isSelected}
+                                    onChange={() => setSelectedShiftId(shift.id)}
+                                    className="radio radio-primary radio-xs shrink-0"
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="p-2.5 rounded-lg bg-warning/10 border border-warning/20 text-warning-content text-xs flex items-start gap-2">
+                            <AlertTriangle size={15} className="shrink-0 mt-0.5 text-warning" />
+                            <p className="leading-snug text-[11px]">
+                              No hay turnos de caja abiertos en esta sucursal. Debe abrir un turno en el módulo POS para registrar el reembolso.
+                            </p>
+                          </div>
+                        )}
                       </div>
+                    )}
+
+                    <div className="flex items-start gap-2 p-2.5 bg-warning/10 rounded-xl text-[11px] text-warning-content border border-warning/20">
+                      <AlertTriangle size={14} className="text-warning shrink-0 mt-0.5" />
+                      <span>Reintegra el stock al inventario y genera un egreso contable en caja.</span>
                     </div>
 
                     <ComerziaButton
                       variant="delete"
-                      label="Confirmar Devolución"
+                      label="Procesar Devolución"
                       fullWidth
-                      disabled={!hasItemsToReturn || !reason.trim() || isSubmitting}
+                      disabled={
+                        !hasItemsToReturn || 
+                        !reason.trim() || 
+                        isSubmitting ||
+                        (requiresTargetShift && (!selectedShiftId || Boolean(shiftErrorMessage)))
+                      }
                       onClick={() => setShowConfirmModal(true)}
-                      className="text-white font-bold py-3 shadow-md shadow-error/20"
+                      className="font-bold py-2.5"
                     />
                   </div>
                 )}
@@ -741,27 +870,54 @@ export const ReturnsPage = () => {
         </div>
       )}
 
-      {/* Modal Confirmación Final */}
+      {/* Modal Confirmación Final Minimalista */}
       <ComerziaModal
         isOpen={showConfirmModal}
         onClose={() => setShowConfirmModal(false)}
-        title="Confirmación de Devolución"
+        title="Confirmar Devolución"
       >
-        <div className="space-y-4">
-          <div className="flex items-center gap-3 text-error">
-            <AlertTriangle size={32} />
+        <div className="space-y-3 pt-1">
+          <div className="flex items-center gap-2.5 text-error">
+            <AlertTriangle size={24} />
             <div>
-              <p className="font-semibold text-lg">¿Procesar esta devolución?</p>
-              <p className="text-xs text-base-content/60">Venta #{activeSale?.saleNumber}</p>
+              <p className="font-bold text-base">¿Procesar esta devolución?</p>
+              <p className="text-xs text-base-content/60 font-mono">Venta #{activeSale?.saleNumber}</p>
             </div>
           </div>
-          <p className="text-sm text-base-content/70 leading-relaxed">
-            Se reintegrarán <strong>{refundBreakdown.totalReceiptItems} presentaciones</strong> {refundBreakdown.totalPhysicalItems !== refundBreakdown.totalReceiptItems ? `(${refundBreakdown.totalPhysicalItems} unidades físicas)` : ''} al inventario y se realizará una salida de caja de <strong className="text-error">{currency} {refundBreakdown.totalRefund.toFixed(2)}</strong>.
+
+          <div className="p-3 bg-base-200/50 rounded-xl space-y-1.5 text-xs">
+            <div className="flex justify-between">
+              <span className="text-base-content/60">Método de Reembolso:</span>
+              <span className="font-semibold text-base-content flex items-center gap-1">
+                <Wallet size={12} className="text-primary" /> {selectedPaymentLabel}
+              </span>
+            </div>
+            {selectedShiftObj && (
+              <div className="flex justify-between">
+                <span className="text-base-content/60">Turno de Caja:</span>
+                <span className="font-semibold text-base-content">
+                  {selectedShiftObj.cashName} ({selectedShiftObj.employeeName})
+                </span>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <span className="text-base-content/60">Motivo:</span>
+              <span className="font-medium text-base-content italic truncate max-w-[200px]">{reason}</span>
+            </div>
+          </div>
+
+          <p className="text-xs sm:text-sm text-base-content/70 leading-relaxed">
+            Se reintegrarán <strong>{refundBreakdown.totalReceiptItems} presentaciones</strong> {refundBreakdown.totalPhysicalItems !== refundBreakdown.totalReceiptItems ? `(${refundBreakdown.totalPhysicalItems} unidades físicas)` : ''} al inventario y se realizará una salida de caja de <strong className="text-error font-mono">{currency} {refundBreakdown.totalRefund.toFixed(2)}</strong>.
           </p>
-          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 mt-6">
-            <BtnCancel onClick={() => setShowConfirmModal(false)} disabled={isSubmitting} className="w-full sm:w-auto" />
+
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-3 border-t border-base-200">
+            <BtnCancel 
+              onClick={() => setShowConfirmModal(false)} 
+              disabled={isSubmitting} 
+              responsive={false}
+              className="w-full sm:w-auto" />
             <BtnModalYes
-              label="Sí, Procesar Devolución"
+              label="Sí, Procesar"
               onClick={handleSubmitReturn}
               isLoading={isSubmitting}
               disabled={isSubmitting}
@@ -773,3 +929,4 @@ export const ReturnsPage = () => {
     </div>
   );
 };
+
