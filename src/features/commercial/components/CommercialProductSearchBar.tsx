@@ -7,6 +7,8 @@ import { BarcodeScannerModal } from '../../../components/ui/BarcodeScannerModal'
 
 interface CommercialProductSearchBarProps {
   onSearchBarcode: (barcode: string) => void;
+  onSelectSuggestion?: (suggestion: SalesCatalogSuggestionResponse) => void;
+  branchId?: string | null;
   isLoading?: boolean;
   placeholder?: string;
   shakeKey?: number;
@@ -16,6 +18,8 @@ interface CommercialProductSearchBarProps {
 
 export const CommercialProductSearchBar = ({
   onSearchBarcode,
+  onSelectSuggestion,
+  branchId,
   isLoading = false,
   placeholder = 'Buscar por nombre, SKU o escanear código...',
   shakeKey = 0,
@@ -67,7 +71,7 @@ export const CommercialProductSearchBar = ({
       abortControllerRef.current = controller;
 
       try {
-        const results = await salesService.getSuggestions(trimmed, controller.signal);
+        const results = await salesService.getSuggestions(trimmed, controller.signal, branchId);
         if (!controller.signal.aborted) {
           setSuggestions(results);
           setIsOpen(results.length > 0);
@@ -85,13 +89,17 @@ export const CommercialProductSearchBar = ({
 
     const debounceTimer = setTimeout(fetchSuggestions, 300);
     return () => clearTimeout(debounceTimer);
-  }, [term]);
+  }, [term, branchId]);
 
   const handleSelectSuggestion = (sug: SalesCatalogSuggestionResponse) => {
     setIsOpen(false);
     setTerm('');
-    if (sug.barCode) {
+    if (onSelectSuggestion) {
+      onSelectSuggestion(sug);
+    } else if (sug.barCode) {
       onSearchBarcode(sug.barCode);
+    } else {
+      onSearchBarcode(sug.variantId);
     }
   };
 

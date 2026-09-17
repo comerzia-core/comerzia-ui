@@ -283,12 +283,13 @@ export const SalesHistoryPage = () => {
     setIsSearchingCatalog(true);
     try {
       const term = editCatalogSearch.trim();
+      const branchCtx = editingSale?.branchId;
       let productResponse;
       try {
-        productResponse = await salesService.getProductDetailsBySku(term);
+        productResponse = await salesService.getProductDetailsBySku(term, branchCtx);
       } catch {
         try {
-          productResponse = await salesService.getProductDetailsByBarcode(term);
+          productResponse = await salesService.getProductDetailsByBarcode(term, branchCtx);
         } catch {
           productResponse = null;
         }

@@ -1,114 +1,129 @@
 import { create } from 'zustand';
 import type { SalesCatalogItem } from '../types/sales';
-import { useAuthStore } from '../../../stores/useAuthStore';
 
 export interface CartItem extends SalesCatalogItem {
   quantity: number;
-  discountAmount: number; // Descuento unitario ingresado por el vendedor
+  discountAmount: number; // Descuento unitario aplicado por pieza base
 }
 
-interface CartState {
+interface CartStore {
   items: CartItem[];
-  customerId: string | null;
-  customerName: string | null;
   branchId: string | null;
 
-  addItem: (item: SalesCatalogItem, quantity?: number, discountAmount?: number) => { success: boolean; message?: string };
+  // Acciones
+  setBranchId: (branchId: string | null) => void;
+  addItem: (product: SalesCatalogItem, quantity?: number, discountAmount?: number) => { success: boolean; message?: string };
   removeItem: (productVariantId: string) => void;
   updateQuantity: (productVariantId: string, quantity: number) => { success: boolean; message?: string };
   updateDiscount: (productVariantId: string, discountAmount: number) => { success: boolean; message?: string };
   updateTotalDiscount: (productVariantId: string, totalDiscountAmount: number) => { success: boolean; message?: string };
   updatePriceType: (productVariantId: string, priceTypeId: string) => { success: boolean; message?: string };
-  setCustomer: (customerId: string | null, customerName: string | null) => void;
-  setBranchId: (branchId: string | null) => void;
   clearCart: () => void;
 
-  // Selectores útiles
+  // Selectores y Cálculos
+  getItemCount: () => number;
   getSubtotal: () => number;
   getDiscountedAmount: () => number;
   getTotal: () => number;
 }
 
-export const useCartStore = create<CartState>((set, get) => ({
+export const useCartStore = create<CartStore>((set, get) => ({
   items: [],
-  customerId: null,
-  customerName: null,
   branchId: null,
 
-  addItem: (item, quantity = 1, discountAmount = 0) => {
-    const { items } = get();
-    const existing = items.find((i) => i.productVariantId === item.productVariantId);
-    const initialQty = quantity ?? 1;
-    const factor = item.equivalenceFactor || 1;
+  setBranchId: (branchId: string | null) => set({ branchId }),
 
-    if (existing) {
-      const newQty = existing.quantity + initialQty;
-      if (newQty * factor > item.stock) {
+  addItem: (product: SalesCatalogItem, quantity = 1, discountAmount = 0) => {
+    const { items } = get();
+    const factor = product.equivalenceFactor || 1;
+    const existingIndex = items.findIndex(
+      (item) => item.productVariantId === product.productVariantId && item.priceTypeId === product.priceTypeId
+    );
+
+    // Validación de descuento máximo unitario permitido
+    const maxDiscount = (product.discountPrice != null && product.discountPrice < product.salePrice)
+      ? Number((product.salePrice - product.discountPrice).toFixed(2))
+      : 0;
+
+    let validDiscount = discountAmount;
+    if (validDiscount > maxDiscount) {
+      validDiscount = maxDiscount;
+    }
+    if (validDiscount < 0) {
+      validDiscount = 0;
+    }
+
+    if (existingIndex > -1) {
+      const currentItem = items[existingIndex];
+      const newQuantity = currentItem.quantity + quantity;
+      const totalUnits = newQuantity * factor;
+
+      if (totalUnits > product.stock) {
         return {
           success: false,
-          message: item.stock <= 0
-            ? 'No hay suficiente stock para el producto seleccionado.'
-            : `Stock insuficiente. Disponible: ${item.stock} unidades.`
+          message: `Stock insuficiente. Disponible: ${product.stock} unidades.`
         };
       }
-      set({
-        items: items.map((i) =>
-          i.productVariantId === item.productVariantId ? { ...i, quantity: newQty, discountAmount } : i
-        )
-      });
-      return { success: true };
-    } else {
-      if (initialQty * factor > item.stock) {
-        return {
-          success: false,
-          message: item.stock <= 0
-            ? 'No hay suficiente stock para el producto seleccionado.'
-            : `Stock insuficiente. Disponible: ${item.stock} unidades.`
-        };
-      }
-      set({
-        items: [...items, { ...item, quantity: initialQty, discountAmount }]
-      });
+
+      const updatedItems = [...items];
+      updatedItems[existingIndex] = {
+        ...currentItem,
+        quantity: newQuantity,
+        stock: product.stock,
+        discountAmount: validDiscount
+      };
+
+      set({ items: updatedItems });
       return { success: true };
     }
+
+    const totalUnits = quantity * factor;
+    if (totalUnits > product.stock) {
+      return {
+        success: false,
+        message: `Stock insuficiente. Disponible: ${product.stock} unidades.`
+      };
+    }
+
+    set({
+      items: [
+        ...items,
+        {
+          ...product,
+          quantity,
+          discountAmount: validDiscount
+        }
+      ]
+    });
+
+    return { success: true };
   },
 
-  removeItem: (productVariantId) => {
+  removeItem: (productVariantId: string) => {
     set({
-      items: get().items.filter((i) => i.productVariantId !== productVariantId)
+      items: get().items.filter((item) => item.productVariantId !== productVariantId)
     });
   },
 
-  updateQuantity: (productVariantId, quantity) => {
+  updateQuantity: (productVariantId: string, quantity: number) => {
     const { items } = get();
     const item = items.find((i) => i.productVariantId === productVariantId);
-    if (!item) return { success: false, message: 'Producto no encontrado' };
+    if (!item) return { success: false, message: 'Producto no encontrado en el carrito.' };
 
-    const factor = item.equivalenceFactor || 1;
-    const maxPackages = Math.floor(item.stock / factor);
-
-    // 1. Validar cantidad mínima
-    if (quantity < 1) {
+    if (quantity <= 0) {
       set({
-        items: items.map((i) =>
-          i.productVariantId === productVariantId ? { ...i, quantity: 1 } : i
-        )
+        items: items.filter((i) => i.productVariantId !== productVariantId)
       });
-      return { success: false, message: 'La cantidad mínima es 1.' };
+      return { success: true };
     }
 
-    // 2. Validar límite de stock total en unidades físicas (cantidad * factor)
-    if (quantity * factor > item.stock) {
-      const adjustedQty = maxPackages > 0 ? maxPackages : 1;
-      set({
-        items: items.map((i) =>
-          i.productVariantId === productVariantId ? { ...i, quantity: adjustedQty } : i
-        )
-      });
+    const factor = item.equivalenceFactor || 1;
+    const totalUnits = quantity * factor;
+
+    if (totalUnits > item.stock) {
       return {
         success: false,
-        message: `Stock insuficiente. Disponible: ${item.stock} unidades.`
-        // message: `Stock insuficiente. Disponible: ${item.stock} unidades. El máximo para ${item.priceTypeName || 'esta unidad'} (factor ${factor}) es ${adjustedQty} (${adjustedQty * factor} unidades).` 
+        message: `Stock insuficiente. Máximo disponible: ${Math.floor(item.stock / factor)} paquetes (${item.stock} unidades).`
       };
     }
 
@@ -117,126 +132,151 @@ export const useCartStore = create<CartState>((set, get) => ({
         i.productVariantId === productVariantId ? { ...i, quantity } : i
       )
     });
+
     return { success: true };
   },
 
-  updateDiscount: (productVariantId, discountAmount) => {
+  updateDiscount: (productVariantId: string, discountAmount: number) => {
     const { items } = get();
     const item = items.find((i) => i.productVariantId === productVariantId);
-    if (!item) return { success: false, message: 'Producto no encontrado' };
+    if (!item) return { success: false, message: 'Producto no encontrado.' };
 
-    // Si discountPrice es igual a salePrice, no se permiten descuentos
-    if (item.discountPrice === item.salePrice) {
+    // Límite de descuento: solo si discountPrice != null y discountPrice < salePrice
+    const maxDiscount = (item.discountPrice != null && item.discountPrice < item.salePrice)
+      ? Number((item.salePrice - item.discountPrice).toFixed(2))
+      : 0;
+
+    if (maxDiscount <= 0) {
       set({
         items: items.map((i) =>
           i.productVariantId === productVariantId ? { ...i, discountAmount: 0 } : i
         )
       });
-      return { success: false, message: 'Este producto no admite descuentos manuales.' };
+      return { success: false, message: 'Este tipo de precio no admite descuentos manuales.' };
     }
 
-    const cleanDiscount = Number(Number(discountAmount).toFixed(2));
-    const maxDiscount = Number((item.salePrice - item.discountPrice).toFixed(2));
-    const currency = useAuthStore.getState().userProfile?.companySettings?.currencyCode || 'USD';
+    let validDiscount = discountAmount;
+    let warningMsg: string | undefined;
 
-    if (cleanDiscount > maxDiscount) {
-      set({
-        items: items.map((i) =>
-          i.productVariantId === productVariantId ? { ...i, discountAmount: maxDiscount } : i
-        )
-      });
-      return {
-        success: false,
-        message: `El descuento supera el límite autorizado. Máximo permitido: ${currency} ${maxDiscount.toFixed(2)}`
-      };
-    }
-
-    if (cleanDiscount < 0) {
-      return { success: false, message: 'El descuento no puede ser negativo.' };
+    if (validDiscount < 0) {
+      validDiscount = 0;
+    } else if (validDiscount > maxDiscount) {
+      validDiscount = maxDiscount;
+      warningMsg = `El descuento máximo permitido por unidad es ${maxDiscount.toFixed(2)}.`;
     }
 
     set({
       items: items.map((i) =>
-        i.productVariantId === productVariantId ? { ...i, discountAmount: cleanDiscount } : i
+        i.productVariantId === productVariantId ? { ...i, discountAmount: validDiscount } : i
       )
     });
-    return { success: true };
+
+    return { success: true, message: warningMsg };
   },
 
-  updateTotalDiscount: (productVariantId, totalDiscountAmount) => {
-    const { items, updateDiscount } = get();
-    const item = items.find((i) => i.productVariantId === productVariantId);
-    if (!item) return { success: false, message: 'Producto no encontrado' };
-
-    const totalUnits = item.quantity * (item.equivalenceFactor || 1);
-    if (totalUnits === 0) {
-      return { success: false, message: 'La cantidad debe ser mayor a 0 para aplicar descuento total' };
-    }
-
-    const cleanTotalDiscount = Number(Number(totalDiscountAmount).toFixed(2));
-    const unitDiscount = Number((cleanTotalDiscount / totalUnits).toFixed(2));
-    return updateDiscount(productVariantId, unitDiscount);
-  },
-
-  updatePriceType: (productVariantId, priceTypeId) => {
+  updateTotalDiscount: (productVariantId: string, totalDiscountAmount: number) => {
     const { items } = get();
     const item = items.find((i) => i.productVariantId === productVariantId);
-    if (!item) return { success: false, message: 'Producto no encontrado' };
+    if (!item) return { success: false, message: 'Producto no encontrado.' };
 
-    const newPrice = item.activePrices.find(p => p.priceTypeId === priceTypeId);
-    if (!newPrice) return { success: false, message: 'Tipo de precio no válido' };
+    const factor = item.equivalenceFactor || 1;
+    const totalUnits = item.quantity * factor;
+
+    const maxDiscountUnit = (item.discountPrice != null && item.discountPrice < item.salePrice)
+      ? Number((item.salePrice - item.discountPrice).toFixed(2))
+      : 0;
+
+    if (maxDiscountUnit <= 0) {
+      set({
+        items: items.map((i) =>
+          i.productVariantId === productVariantId ? { ...i, discountAmount: 0 } : i
+        )
+      });
+      return { success: false, message: 'Este tipo de precio no admite descuentos manuales.' };
+    }
+
+    const maxTotalDiscount = Number((maxDiscountUnit * totalUnits).toFixed(2));
+    let validTotal = totalDiscountAmount;
+    let warningMsg: string | undefined;
+
+    if (validTotal < 0) {
+      validTotal = 0;
+    } else if (validTotal > maxTotalDiscount) {
+      validTotal = maxTotalDiscount;
+      warningMsg = `El descuento total máximo permitido es ${maxTotalDiscount.toFixed(2)}.`;
+    }
+
+    const unitDiscount = totalUnits > 0 ? validTotal / totalUnits : 0;
+
+    set({
+      items: items.map((i) =>
+        i.productVariantId === productVariantId ? { ...i, discountAmount: unitDiscount } : i
+      )
+    });
+
+    return { success: true, message: warningMsg };
+  },
+
+  updatePriceType: (productVariantId: string, priceTypeId: string) => {
+    const { items } = get();
+    const item = items.find((i) => i.productVariantId === productVariantId);
+    if (!item) return { success: false, message: 'Producto no encontrado.' };
+
+    const newPrice = item.activePrices.find((p) => p.priceTypeId === priceTypeId);
+    if (!newPrice) return { success: false, message: 'Tipo de precio no disponible.' };
 
     const newFactor = newPrice.equivalenceFactor || 1;
-
     if (newFactor > item.stock) {
       return {
         success: false,
-        message: `No se puede seleccionar ${newPrice.priceTypeName} porque su factor (${newFactor}) excede el stock disponible (${item.stock} unidades).`
+        message: `Stock insuficiente para esta presentación (${newFactor} unids requeridas, ${item.stock} disponibles).`
       };
     }
 
+    // Al cambiar la presentación o tipo de precio, reseteamos la cantidad a 1 y el descuento a 0
     set({
       items: items.map((i) =>
         i.productVariantId === productVariantId
           ? {
-            ...i,
-            priceTypeId: newPrice.priceTypeId,
-            priceTypeName: newPrice.priceTypeName,
-            salePrice: newPrice.salePrice,
-            discountPrice: newPrice.discountPrice,
-            equivalenceFactor: newFactor,
-            quantity: 1,
-            discountAmount: 0
-          }
+              ...i,
+              priceTypeId: newPrice.priceTypeId,
+              priceTypeName: newPrice.priceTypeName,
+              salePrice: newPrice.salePrice,
+              discountPrice: newPrice.discountPrice ?? null,
+              equivalenceFactor: newFactor,
+              quantity: 1,
+              discountAmount: 0
+            }
           : i
       )
     });
+
     return { success: true };
   },
 
-  setCustomer: (customerId, customerName) => {
-    set({ customerId, customerName });
-  },
+  clearCart: () => set({ items: [] }),
 
-  setBranchId: (branchId) => {
-    set({ branchId });
-  },
-
-  clearCart: () => {
-    set({ items: [], customerId: null, customerName: null });
+  getItemCount: () => {
+    return get().items.reduce((total, item) => total + item.quantity, 0);
   },
 
   getSubtotal: () => {
-    return get().items.reduce((acc, i) => acc + i.salePrice * i.quantity * (i.equivalenceFactor || 1), 0);
+    return get().items.reduce((total, item) => {
+      const factor = item.equivalenceFactor || 1;
+      return total + item.salePrice * item.quantity * factor;
+    }, 0);
   },
 
   getDiscountedAmount: () => {
-    return get().items.reduce((acc, i) => acc + i.discountAmount * i.quantity * (i.equivalenceFactor || 1), 0);
+    return get().items.reduce((total, item) => {
+      const factor = item.equivalenceFactor || 1;
+      return total + item.discountAmount * item.quantity * factor;
+    }, 0);
   },
 
   getTotal: () => {
     const subtotal = get().getSubtotal();
     const discount = get().getDiscountedAmount();
-    return subtotal - discount;
+    return Math.max(0, subtotal - discount);
   }
 }));

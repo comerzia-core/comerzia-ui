@@ -17,26 +17,43 @@ import type {
 } from '../types/sales';
 
 export const salesService = {
-  getSuggestions: async (term: string, signal?: AbortSignal): Promise<SalesCatalogSuggestionResponse[]> => {
+  getSuggestions: async (term: string, signal?: AbortSignal, branchId?: string | null): Promise<SalesCatalogSuggestionResponse[]> => {
+    const headers: Record<string, string> = {};
+    if (branchId) {
+      headers['X-Branch-Context'] = branchId;
+    }
     const response = await api.get<SalesCatalogSuggestionResponse[]>('/tenant/sales-catalog/suggestions', {
       params: { q: term },
+      headers,
       signal
     });
     return response.data;
   },
 
-  getProductDetailsById: async (variantId: string): Promise<SalesProductResponse> => {
-    const response = await api.get<SalesProductResponse>(`/tenant/sales-catalog/variants/${variantId}`);
+  getProductDetailsById: async (variantId: string, branchId?: string | null): Promise<SalesProductResponse> => {
+    const headers: Record<string, string> = {};
+    if (branchId) {
+      headers['X-Branch-Context'] = branchId;
+    }
+    const response = await api.get<SalesProductResponse>(`/tenant/sales-catalog/variants/${variantId}`, { headers });
     return response.data;
   },
 
-  getProductDetailsByBarcode: async (barcode: string): Promise<SalesProductResponse> => {
-    const response = await api.get<SalesProductResponse>(`/tenant/sales-catalog/barcodes/${barcode}`);
+  getProductDetailsByBarcode: async (barcode: string, branchId?: string | null): Promise<SalesProductResponse> => {
+    const headers: Record<string, string> = {};
+    if (branchId) {
+      headers['X-Branch-Context'] = branchId;
+    }
+    const response = await api.get<SalesProductResponse>(`/tenant/sales-catalog/barcodes/${encodeURIComponent(barcode)}`, { headers });
     return response.data;
   },
 
-  getProductDetailsBySku: async (sku: string): Promise<SalesProductResponse> => {
-    const response = await api.get<SalesProductResponse>(`/tenant/sales-catalog/skus/${sku}`);
+  getProductDetailsBySku: async (sku: string, branchId?: string | null): Promise<SalesProductResponse> => {
+    const headers: Record<string, string> = {};
+    if (branchId) {
+      headers['X-Branch-Context'] = branchId;
+    }
+    const response = await api.get<SalesProductResponse>(`/tenant/sales-catalog/skus/${encodeURIComponent(sku)}`, { headers });
     return response.data;
   },
 

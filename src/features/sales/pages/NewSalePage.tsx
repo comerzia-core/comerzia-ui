@@ -3,7 +3,7 @@ import { useAuthStore } from '../../../stores/useAuthStore';
 import { salesService } from '../services/salesService';
 import { branchService } from '../../organization/services/branchService';
 import { useCartStore } from '../store/useCartStore';
-import type { SalesCatalogItem, SalesProductResponse } from '../types/sales';
+import type { SalesCatalogItem, SalesProductResponse, SalesCatalogSuggestionResponse } from '../types/sales';
 import { useToast } from '../../../context/ToastContext';
 import { CommercialProductSearchBar } from '../../commercial/components/CommercialProductSearchBar';
 import { ComerziaButton } from '../../../components/ui/ComerziaButton';
@@ -114,7 +114,9 @@ const ProductDiscountControl = ({
 
   const factor = item.equivalenceFactor || 1;
   const totalUnits = item.quantity * factor;
-  const maxUnitDiscount = Math.max(0, item.salePrice - item.discountPrice);
+  const maxUnitDiscount = (item.discountPrice != null && item.discountPrice < item.salePrice)
+    ? Math.max(0, item.salePrice - item.discountPrice)
+    : 0;
   const maxTotalDiscount = maxUnitDiscount * totalUnits;
   const currentTotalDiscount = item.discountAmount * totalUnits;
 
@@ -176,14 +178,14 @@ const ProductDiscountControl = ({
 
   if (compact) {
     return (
-      <div className="flex flex-col items-end gap-1 min-w-[125px]">
-        {/* Toggle segmented button */}
-        <div className="inline-flex p-0.5 rounded-md bg-base-200 border border-base-300">
+      <div className="flex items-center gap-1.5 justify-end min-w-[155px]">
+        {/* Columna 1: Tabs Verticales ("x Unid." y "Total") */}
+        <div className="inline-flex flex-col p-0.5 rounded-md bg-base-200 border border-base-300 shrink-0">
           <button
             type="button"
             onClick={() => handleModeChange('UNIT')}
-            className={`px-1.5 py-0.5 text-[10px] font-bold rounded transition-all ${
-              mode === 'UNIT' ? 'bg-base-100 text-info shadow-xs' : 'text-base-content/50 hover:text-base-content'
+            className={`px-1.5 py-0.5 text-[9px] font-bold rounded transition-all whitespace-nowrap ${
+              mode === 'UNIT' ? 'bg-base-100 text-error shadow-xs' : 'text-base-content/50 hover:text-base-content'
             }`}
             title="Descuento por Unidad"
           >
@@ -192,8 +194,8 @@ const ProductDiscountControl = ({
           <button
             type="button"
             onClick={() => handleModeChange('TOTAL')}
-            className={`px-1.5 py-0.5 text-[10px] font-bold rounded transition-all ${
-              mode === 'TOTAL' ? 'bg-base-100 text-info shadow-xs' : 'text-base-content/50 hover:text-base-content'
+            className={`px-1.5 py-0.5 text-[9px] font-bold rounded transition-all whitespace-nowrap ${
+              mode === 'TOTAL' ? 'bg-base-100 text-error shadow-xs' : 'text-base-content/50 hover:text-base-content'
             }`}
             title="Descuento sobre Total"
           >
@@ -201,111 +203,114 @@ const ProductDiscountControl = ({
           </button>
         </div>
 
-        {/* Input container with currency prefix & clean padding */}
-        <div className="relative w-28">
-          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-base-content/40 select-none pointer-events-none">
-            {currency}
+        {/* Columna 2: Input y Máximo debajo */}
+        <div className="flex flex-col items-end gap-0.5">
+          <div className="relative w-24">
+            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-base-content/40 select-none pointer-events-none">
+              {currency}
+            </span>
+            <input
+              type="number"
+              min="0"
+              max={currentMax}
+              step="0.01"
+              placeholder="0.00"
+              value={val}
+              disabled={item.quantity === 0}
+              onWheel={(e) => (e.target as HTMLInputElement).blur()}
+              onChange={(e) => setVal(e.target.value)}
+              onBlur={handleCommit}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  (e.target as HTMLInputElement).blur();
+                }
+              }}
+              className="input input-bordered input-xs w-full pl-6 pr-2 text-right font-mono font-bold text-error rounded focus:border-error focus:ring-1 focus:ring-error/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
+          </div>
+          <span className="text-[9px] text-base-content/40 font-mono whitespace-nowrap">
+            Máx: {currentMax.toFixed(2)}
           </span>
-          <input
-            type="number"
-            min="0"
-            max={currentMax}
-            step="0.01"
-            placeholder="0.00"
-            value={val}
-            disabled={item.quantity === 0}
-            onWheel={(e) => (e.target as HTMLInputElement).blur()}
-            onChange={(e) => setVal(e.target.value)}
-            onBlur={handleCommit}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                (e.target as HTMLInputElement).blur();
-              }
-            }}
-            className="input input-bordered input-xs w-full pl-8 pr-2.5 text-right font-mono font-bold text-info rounded focus:border-info focus:ring-1 focus:ring-info/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-          />
         </div>
-        <span className="text-[9px] text-base-content/40 font-mono">
-          Máx: {currentMax.toFixed(2)}
-        </span>
       </div>
     );
   }
 
   return (
-    <div className="space-y-3">
-      {/* Switcher Header */}
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-semibold text-base-content/70">Modo de descuento:</span>
-        <div className="inline-flex p-0.5 rounded-lg bg-base-300/60 border border-base-300">
-          <button
-            type="button"
-            onClick={() => handleModeChange('UNIT')}
-            className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${
-              mode === 'UNIT'
-                ? 'bg-base-100 text-info shadow-xs'
-                : 'text-base-content/60 hover:text-base-content'
-            }`}
-          >
-            Por Unidad
-          </button>
-          <button
-            type="button"
-            onClick={() => handleModeChange('TOTAL')}
-            className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${
-              mode === 'TOTAL'
-                ? 'bg-base-100 text-info shadow-xs'
-                : 'text-base-content/60 hover:text-base-content'
-            }`}
-          >
-            Por Total
-          </button>
-        </div>
+    <div className="flex items-center gap-2.5">
+      {/* Columna 1: Tabs Verticales ("Por Unidad" y "Por Total") */}
+      <div className="inline-flex flex-col p-0.5 rounded-lg bg-base-300/70 border border-base-300 shrink-0">
+        <button
+          type="button"
+          onClick={() => handleModeChange('UNIT')}
+          className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition-all whitespace-nowrap text-left ${
+            mode === 'UNIT'
+              ? 'bg-base-100 text-error shadow-xs'
+              : 'text-base-content/60 hover:text-base-content'
+          }`}
+        >
+          Por Unidad
+        </button>
+        <button
+          type="button"
+          onClick={() => handleModeChange('TOTAL')}
+          className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition-all whitespace-nowrap text-left ${
+            mode === 'TOTAL'
+              ? 'bg-base-100 text-error shadow-xs'
+              : 'text-base-content/60 hover:text-base-content'
+          }`}
+        >
+          Por Total
+        </button>
       </div>
 
-      {/* Input row */}
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-base-content/40 select-none pointer-events-none">
-            {currency}
+      {/* Columna 2: Fila superior (Input + X) y Fila inferior (Máx. permitido) */}
+      <div className="flex-1 min-w-0 flex flex-col gap-1">
+        <div className="flex items-center gap-1.5">
+          {/* Input del Monto */}
+          <div className="relative flex-1 min-w-0">
+            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-base-content/40 select-none pointer-events-none">
+              {currency}
+            </span>
+            <input
+              type="number"
+              min="0"
+              max={currentMax}
+              step="0.01"
+              placeholder="0.00"
+              value={val}
+              disabled={item.quantity === 0}
+              onWheel={(e) => (e.target as HTMLInputElement).blur()}
+              onChange={(e) => setVal(e.target.value)}
+              onBlur={handleCommit}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  (e.target as HTMLInputElement).blur();
+                }
+              }}
+              className="input input-bordered input-sm w-full pl-8 pr-2.5 text-right font-mono font-bold text-error rounded-xl focus:border-error focus:ring-1 focus:ring-error/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
+          </div>
+
+          {/* Botón X para limpiar */}
+          {item.discountAmount > 0 && (
+            <button
+              type="button"
+              onClick={handleClear}
+              className="btn btn-sm btn-ghost text-error hover:bg-error/10 px-1.5 h-8 min-h-0 rounded-lg shrink-0 flex items-center justify-center transition-colors"
+              title="Quitar descuento"
+            >
+              <X size={16} className="stroke-[2.5]" />
+            </button>
+          )}
+        </div>
+
+        {/* Texto de Límite Máximo Permitido */}
+        <div className="flex justify-end text-[10px] text-base-content/50 px-0.5">
+          <span className="font-mono font-medium">
+            Máx. permitido: {currency} {currentMax.toFixed(2)}
           </span>
-          <input
-            type="number"
-            min="0"
-            max={currentMax}
-            step="0.01"
-            placeholder="0.00"
-            value={val}
-            disabled={item.quantity === 0}
-            onWheel={(e) => (e.target as HTMLInputElement).blur()}
-            onChange={(e) => setVal(e.target.value)}
-            onBlur={handleCommit}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                (e.target as HTMLInputElement).blur();
-              }
-            }}
-            className="input input-bordered input-sm w-full pl-12 pr-3 text-right font-mono font-bold text-info rounded-xl focus:border-info focus:ring-1 focus:ring-info/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-          />
         </div>
-        {item.discountAmount > 0 && (
-          <button
-            type="button"
-            onClick={handleClear}
-            className="btn btn-sm btn-ghost text-error hover:bg-error/10 px-2 rounded-xl"
-            title="Quitar descuento"
-          >
-            <X size={16} />
-          </button>
-        )}
-      </div>
-
-      {/* Helper text */}
-      <div className="flex items-center justify-between text-[11px] text-base-content/50 px-0.5">
-        <span>{mode === 'UNIT' ? 'Descuento unitario' : 'Descuento total'}</span>
-        <span className="font-mono font-medium">
-          Máx. permitido: {currency} {currentMax.toFixed(2)}
-        </span>
       </div>
     </div>
   );
@@ -403,10 +408,39 @@ export const NewSalePage = () => {
     }
   };
 
+  const handleSelectSuggestion = async (sug: SalesCatalogSuggestionResponse) => {
+    const branchCtx = hasSwitchBranchPerm && selectedBranchId ? selectedBranchId : undefined;
+    try {
+      const productResponse = await salesService.getProductDetailsById(sug.variantId, branchCtx);
+      if (productResponse) {
+        handleProductSelect(productResponse);
+      } else {
+        toastError('No se pudo cargar la información del producto.');
+      }
+    } catch (err: any) {
+      toastError('No se pudo cargar la información del producto seleccionado.');
+    }
+  };
+
   const handleScanBarcode = async (scannedCode: string) => {
     if (!scannedCode.trim()) return;
+    const branchCtx = hasSwitchBranchPerm && selectedBranchId ? selectedBranchId : undefined;
     try {
-      const productResponse = await salesService.getProductDetailsByBarcode(scannedCode.trim());
+      let productResponse: SalesProductResponse | null = null;
+      try {
+        productResponse = await salesService.getProductDetailsByBarcode(scannedCode.trim(), branchCtx);
+      } catch {
+        try {
+          productResponse = await salesService.getProductDetailsBySku(scannedCode.trim(), branchCtx);
+        } catch {
+          try {
+            productResponse = await salesService.getProductDetailsById(scannedCode.trim(), branchCtx);
+          } catch {
+            productResponse = null;
+          }
+        }
+      }
+
       if (productResponse) {
         handleProductSelect(productResponse);
       } else {
@@ -508,55 +542,62 @@ export const NewSalePage = () => {
         {/* Tarjeta de Búsqueda */}
         {/* Componente Buscador Optimizado (Nombre, SKU, Barcode, Cámara) */}
         <div className="bg-base-100 p-4 sm:p-5 rounded-2xl border border-base-200 shadow-sm">
-          <CommercialProductSearchBar 
+          <CommercialProductSearchBar
             onSearchBarcode={handleScanBarcode}
+            onSelectSuggestion={handleSelectSuggestion}
+            branchId={hasSwitchBranchPerm && selectedBranchId ? selectedBranchId : undefined}
             placeholder="Buscar producto por nombre, SKU o escanear..."
           />
         </div>
 
-        {/* Tabla de Productos Seleccionados (Desktop) y Cards (Mobile) */}
-        <div className="bg-base-100 rounded-2xl border border-base-200 shadow-sm overflow-hidden">
-          <div className="p-3.5 sm:p-4 border-b border-base-200 flex items-center justify-between">
-            <span className="font-bold text-xs sm:text-sm uppercase tracking-wide text-base-content flex items-center gap-2">
-              <ShoppingCart size={16} className="text-primary shrink-0" /> Productos en Pedido ({items.length})
-            </span>
-            {items.length > 0 && (
-              <ComerziaButton
-                variant="delete"
-                label="Vaciar Carrito"
-                icon={<Trash2 size={14} />}
-                className="btn-xs px-2 sm:px-3 min-w-0"
-                responsive={true}
-                tooltip="Vaciar Carrito"
-                onClick={clearCart}
-              />
-            )}
+        {/* LISTADO DE PRODUCTOS: MOBILE (Cards independientes) & DESKTOP (Tabla en contenedor) */}
+        {items.length === 0 ? (
+          <div className="bg-base-100 rounded-2xl border border-base-200 shadow-sm p-8 sm:p-12 flex flex-col items-center justify-center text-center text-base-content/40 space-y-3">
+            <ShoppingCart size={44} className="stroke-1 text-base-content/20" />
+            <p className="text-sm font-medium">El carrito está vacío</p>
+            <p className="text-xs text-base-content/40 max-w-xs">
+              Utiliza el buscador superior para agregar productos al pedido actual.
+            </p>
           </div>
+        ) : (
+          <>
+            {/* VISTA MOBILE: Cards Independientes en el flujo de la página */}
+            <div className="block md:hidden space-y-3">
+              {/* Cabecera Mobile */}
+              <div className="flex items-center justify-between px-1">
+                <span className="font-bold text-xs uppercase tracking-wide text-base-content flex items-center gap-1.5">
+                  <ShoppingCart size={15} className="text-primary shrink-0" /> Productos en Pedido ({items.length})
+                </span>
+                <button
+                  type="button"
+                  onClick={clearCart}
+                  className="btn btn-ghost btn-xs text-error hover:bg-error/10 gap-1 font-semibold"
+                  title="Vaciar Carrito"
+                >
+                  <Trash2 size={13} />
+                  Vaciar
+                </button>
+              </div>
 
-          {items.length === 0 ? (
-            <div className="flex flex-col items-center justify-center p-8 sm:p-12 text-center text-base-content/40 space-y-3">
-              <ShoppingCart size={44} className="stroke-1 text-base-content/20" />
-              <p className="text-sm font-medium">El carrito está vacío</p>
-              <p className="text-xs text-base-content/40 max-w-xs">
-                Utiliza el buscador superior para agregar productos al pedido actual.
-              </p>
-            </div>
-          ) : (
-            <>
-              {/* VISTA MOBILE: CARDS RESPONSIVAS */}
-              <div className="block md:hidden divide-y divide-base-200">
+              {/* Listado de Cards de Productos */}
+              <div className="space-y-3">
                 {items.map((item, idx) => {
                   const factor = item.equivalenceFactor || 1;
                   const totalUnits = item.quantity * factor;
-                  const maxDiscount = item.salePrice - item.discountPrice;
-                  const hasDiscountLimit = item.discountPrice < item.salePrice && maxDiscount > 0;
+                  const maxDiscount = (item.discountPrice != null && item.discountPrice < item.salePrice)
+                    ? item.salePrice - item.discountPrice
+                    : 0;
+                  const hasDiscountLimit = maxDiscount > 0;
                   const totalDiscount = item.discountAmount * totalUnits;
                   const subtotal = item.salePrice * totalUnits;
                   const finalTotal = subtotal - totalDiscount;
                   const isExpanded = !!expandedItems[item.productVariantId];
 
                   return (
-                    <div key={`mobile-${item.productVariantId}-${item.priceTypeId}`} className="p-3 space-y-2 bg-base-100">
+                    <div
+                      key={`mobile-${item.productVariantId}-${item.priceTypeId}`}
+                      className="p-3.5 space-y-2.5 bg-base-100 rounded-2xl border border-base-200 shadow-sm"
+                    >
                       {/* Cabecera de la Card: #, Nombre + Variante en una sola línea y botón X rojo */}
                       <div className="flex items-center justify-between gap-2 min-w-0">
                         <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
@@ -631,24 +672,23 @@ export const NewSalePage = () => {
                           <button
                             type="button"
                             onClick={() => setExpandedItems(prev => ({ ...prev, [item.productVariantId]: !prev[item.productVariantId] }))}
-                            className={`btn btn-ghost btn-xs gap-1 pl-0 h-5 min-h-0 hover:bg-transparent ${
-                              item.discountAmount > 0 ? 'text-info font-bold' : 'text-base-content/60 font-medium'
-                            }`}
+                            className={`btn btn-ghost btn-xs gap-1 pl-0 h-5 min-h-0 hover:bg-transparent text-error ${item.discountAmount > 0 ? 'font-bold' : 'font-semibold text-error/80 hover:text-error'
+                              }`}
                           >
-                            <Tag size={12} className={item.discountAmount > 0 ? 'text-info' : 'text-base-content/40'} />
-                            <span className="text-[11px]">
+                            <Tag size={12} className="text-error shrink-0" />
+                            <span className="text-[11px] text-error">
                               {item.discountAmount > 0
                                 ? `Desc: -${currency} ${totalDiscount.toFixed(2)}`
                                 : (isExpanded ? 'Cerrar descuento' : '+ Agregar descuento')}
                             </span>
-                            {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                            {isExpanded ? <ChevronUp size={12} className="text-error" /> : <ChevronDown size={12} className="text-error" />}
                           </button>
                         </div>
                       )}
 
-                      {/* Acordeón Desplegable de Descuento (Solo si tiene límite y está expandido) */}
+                      {/* Acordeón Desplegable de Descuento (Contraste notorio y profundidad) */}
                       {hasDiscountLimit && isExpanded && (
-                        <div className="bg-base-200/50 rounded-xl p-2.5 border border-base-200 text-xs mt-1">
+                        <div className="bg-base-200/90 dark:bg-base-300/80 rounded-xl p-3 border border-base-300 shadow-inner text-xs mt-1.5 ring-1 ring-error/20 transition-all">
                           <ProductDiscountControl
                             item={item}
                             currency={currency}
@@ -662,9 +702,26 @@ export const NewSalePage = () => {
                   );
                 })}
               </div>
+            </div>
 
-              {/* VISTA DESKTOP: TABLA COMPLETA */}
-              <div className="hidden md:block overflow-x-auto">
+            {/* VISTA DESKTOP: Tabla completa en contenedor con cabecera */}
+            <div className="hidden md:block bg-base-100 rounded-2xl border border-base-200 shadow-sm overflow-hidden">
+              <div className="p-3.5 sm:p-4 border-b border-base-200 flex items-center justify-between">
+                <span className="font-bold text-xs sm:text-sm uppercase tracking-wide text-base-content flex items-center gap-2">
+                  <ShoppingCart size={16} className="text-primary shrink-0" /> Productos en Pedido ({items.length})
+                </span>
+                <ComerziaButton
+                  variant="delete"
+                  label="Vaciar Carrito"
+                  icon={<Trash2 size={14} />}
+                  className="btn-xs px-2 sm:px-3 min-w-0"
+                  responsive={true}
+                  tooltip="Vaciar Carrito"
+                  onClick={clearCart}
+                />
+              </div>
+
+              <div className="overflow-x-auto">
                 <table className="table table-sm w-full">
                   <thead>
                     <tr className="bg-base-200/50 border-b border-base-200 text-xs font-semibold uppercase">
@@ -674,7 +731,7 @@ export const NewSalePage = () => {
                       <th className="text-center w-36">Cantidad</th>
                       <th className="text-right">Precio Unit.</th>
                       <th className="text-right">Subtotal</th>
-                      <th className="text-right text-info font-bold">Descuento</th>
+                      <th className="text-right text-error font-bold">Descuento</th>
                       <th className="text-right bg-primary/5 font-bold text-primary">Importe Final</th>
                       <th className="w-10"></th>
                     </tr>
@@ -683,8 +740,10 @@ export const NewSalePage = () => {
                     {items.map((item, idx) => {
                       const factor = item.equivalenceFactor || 1;
                       const totalUnits = item.quantity * factor;
-                      const maxDiscount = item.salePrice - item.discountPrice;
-                      const hasDiscountLimit = item.discountPrice < item.salePrice && maxDiscount > 0;
+                      const maxDiscount = (item.discountPrice != null && item.discountPrice < item.salePrice)
+                        ? item.salePrice - item.discountPrice
+                        : 0;
+                      const hasDiscountLimit = maxDiscount > 0;
                       const totalDiscount = item.discountAmount * totalUnits;
                       const subtotal = item.salePrice * totalUnits;
                       const finalTotal = subtotal - totalDiscount;
@@ -767,42 +826,42 @@ export const NewSalePage = () => {
                   </tbody>
                 </table>
               </div>
-            </>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Resumen del Pedido en la Parte Inferior (Minimalista) */}
+      <div className="bg-base-100 p-4 sm:p-6 rounded-2xl border border-base-200 shadow-sm flex flex-col md:flex-row items-stretch md:items-end justify-between gap-6">
+        <div className="flex flex-col gap-1">
+          <h2 className="font-bold text-base-content text-sm uppercase tracking-wide">
+            Total del Pedido
+          </h2>
+          <div className="flex items-baseline gap-2">
+            <span className="text-4xl sm:text-5xl font-mono font-black text-primary tracking-tight">
+              {currency} {getTotal().toFixed(2)}
+            </span>
+            <span className="text-sm font-medium text-base-content/50 uppercase tracking-wide">Final</span>
+          </div>
+          {(getDiscountedAmount() > 0 || getSubtotal() > 0) && (
+            <div className="flex items-center gap-3 text-xs sm:text-sm mt-2 font-medium">
+              <span className="text-base-content/60">Subtotal: <span className="font-mono text-base-content">{currency} {getSubtotal().toFixed(2)}</span></span>
+              {getDiscountedAmount() > 0 && (
+                <span className="text-error">Descuento: <span className="font-mono">-{currency} {getDiscountedAmount().toFixed(2)}</span></span>
+              )}
+            </div>
           )}
         </div>
 
-        {/* Resumen del Pedido en la Parte Inferior (Minimalista) */}
-        <div className="bg-base-100 p-4 sm:p-6 rounded-2xl border border-base-200 shadow-sm flex flex-col md:flex-row items-stretch md:items-end justify-between gap-6">
-          <div className="flex flex-col gap-1">
-            <h2 className="font-bold text-base-content text-sm uppercase tracking-wide">
-              Total del Pedido
-            </h2>
-            <div className="flex items-baseline gap-2">
-              <span className="text-4xl sm:text-5xl font-mono font-black text-primary tracking-tight">
-                {currency} {getTotal().toFixed(2)}
-              </span>
-              <span className="text-sm font-medium text-base-content/50 uppercase tracking-wide">Final</span>
-            </div>
-            {(getDiscountedAmount() > 0 || getSubtotal() > 0) && (
-              <div className="flex items-center gap-3 text-xs sm:text-sm mt-2 font-medium">
-                <span className="text-base-content/60">Subtotal: <span className="font-mono text-base-content">{currency} {getSubtotal().toFixed(2)}</span></span>
-                {getDiscountedAmount() > 0 && (
-                  <span className="text-error">Descuento: <span className="font-mono">-{currency} {getDiscountedAmount().toFixed(2)}</span></span>
-                )}
-              </div>
-            )}
-          </div>
-
-          <div className="flex flex-col justify-end w-full md:w-auto shrink-0">
-            <ComerziaButton
-              variant="primary"
-              label="Enviar a Caja"
-              icon={<ArrowRight size={24} />}
-              className="shadow-xl shadow-primary/20 text-base sm:text-lg font-bold py-4 px-8 w-full md:w-auto h-auto rounded-2xl"
-              disabled={items.length === 0}
-              onClick={handleSendToRegister}
-            />
-          </div>
+        <div className="flex flex-col justify-end w-full md:w-auto shrink-0">
+          <ComerziaButton
+            variant="primary"
+            label="Enviar a Caja"
+            icon={<ArrowRight size={24} />}
+            className="shadow-xl shadow-primary/20 text-base sm:text-lg font-bold py-4 px-8 w-full md:w-auto h-auto rounded-2xl"
+            disabled={items.length === 0}
+            onClick={handleSendToRegister}
+          />
         </div>
       </div>
 
