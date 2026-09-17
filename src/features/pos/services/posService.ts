@@ -10,7 +10,7 @@ import type {
   ShiftSummaryResponse,
   OpenShiftRequest,
   CloseShiftRequest,
-  ShiftDetailResponse,
+  ShiftCompleteReportResponse,
   MovementResponse,
   PageMovementResponse,
   CreateMovementRequest,
@@ -101,8 +101,8 @@ export const posService = {
     return response.data;
   },
 
-  getShiftDetails: async (shiftId: string): Promise<ShiftDetailResponse[]> => {
-    const response = await api.get<ShiftDetailResponse[]>(`/tenant/cash-registers/shifts/${shiftId}/details`);
+  getShiftDetails: async (shiftId: string): Promise<ShiftCompleteReportResponse> => {
+    const response = await api.get<ShiftCompleteReportResponse>(`/tenant/cash-registers/shifts/${shiftId}/details`);
     return response.data;
   },
 

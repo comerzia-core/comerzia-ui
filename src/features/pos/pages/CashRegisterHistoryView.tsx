@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useLocation } from 'react-router-dom';
 import { posService } from '../services/posService';
 import type { CashRegisterResponse, ShiftResponse } from '../types/pos';
 import { ComerziaTable, type Column, type TablePaginationConfig } from '../../../components/ui/ComerziaTable';
 import { useToast } from '../../../context/ToastContext';
 import { BtnDetails, BtnReopen } from '../../../components/ui/CrudButtons';
 import { ShiftDetailsModal } from '../components/ShiftDetailsModal';
-import { useAuthStore } from '../../../stores/useAuthStore';
 import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
 import { formatDateForUser } from '../../../utils/date';
 import { History } from 'lucide-react';
@@ -18,13 +17,13 @@ interface Props {
 export const CashRegisterHistoryView = ({ register: propRegister }: Props) => {
   const { registerId } = useParams<{ registerId: string }>();
 
-  const { userProfile } = useAuthStore();
-  const currency = userProfile?.companySettings?.currencyCode || '$';
-  
   const { error: toastError, success: toastSuccess } = useToast();
   
-  const [register, setRegister] = useState<CashRegisterResponse | null>(propRegister || null);
-  const [isRegisterLoading, setIsRegisterLoading] = useState<boolean>(!propRegister);
+  const location = useLocation();
+  const stateRegister = location.state?.register as CashRegisterResponse | undefined;
+  const initialRegister = propRegister || stateRegister || null;
+
+  const register = initialRegister;
 
   const [shifts, setShifts] = useState<ShiftResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -36,31 +35,12 @@ export const CashRegisterHistoryView = ({ register: propRegister }: Props) => {
   const [selectedShiftId, setSelectedShiftId] = useState<string | null>(null);
   const [shiftToReopen, setShiftToReopen] = useState<string | null>(null);
 
-  // Cargar datos de la caja si se entra directamente por URL
+  // Cargar datos de la caja si se entra directamente por URL y no hay state
   useEffect(() => {
-    if (propRegister) {
-      setRegister(propRegister);
-      setIsRegisterLoading(false);
-      return;
+    if (!register && registerId) {
+      toastError('No se encontró información de la caja en sesión. Por favor, ingrese desde el listado de cajas.');
     }
-
-    if (registerId) {
-      loadRegisterInfo(registerId);
-    }
-  }, [registerId, propRegister]);
-
-  const loadRegisterInfo = async (id: string) => {
-    setIsRegisterLoading(true);
-    try {
-      const data = await posService.getCashRegisterById(id);
-      setRegister(data);
-    } catch (err) {
-      console.error('Error loading cash register:', err);
-      toastError('No se pudo cargar la información de la caja registradora.');
-    } finally {
-      setIsRegisterLoading(false);
-    }
-  };
+  }, [registerId, register]);
 
   const targetRegisterId = register?.id || registerId;
 
@@ -109,9 +89,9 @@ export const CashRegisterHistoryView = ({ register: propRegister }: Props) => {
   };
 
   const columns: Column<ShiftResponse>[] = [
+    { header: 'Cajero', accessorKey: 'cashierName' },
     { header: 'Apertura', render: row => formatDateForUser(row.openedAt) },
     { header: 'Cierre', render: row => row.closedAt ? formatDateForUser(row.closedAt) : 'En curso' },
-    { header: 'Monto Inicial', render: row => `${currency} ${row.initialAmount.toFixed(2)}` },
     { header: 'Estado', render: row => row.statusType.label },
     { 
       header: 'Acciones', 
@@ -131,14 +111,6 @@ export const CashRegisterHistoryView = ({ register: propRegister }: Props) => {
       )
     }
   ];
-
-  if (isRegisterLoading) {
-    return (
-      <div className="flex justify-center py-16">
-        <span className="loading loading-spinner loading-lg text-primary"></span>
-      </div>
-    );
-  }
 
   if (!register) {
     return (
@@ -195,10 +167,10 @@ export const CashRegisterHistoryView = ({ register: propRegister }: Props) => {
               <div key={shift.id} className="bg-base-100 p-3.5 rounded-xl border border-base-200 shadow-xs space-y-2 text-xs">
                 <div className="flex justify-between items-start">
                   <div>
-                    <span className="font-bold text-sm text-base-content block font-mono">
-                      Inicial: {currency} {shift.initialAmount.toFixed(2)}
+                    <span className="font-bold text-sm text-base-content block">
+                      {shift.cashierName || 'Cajero no asignado'}
                     </span>
-                    <span className="text-[10px] text-base-content/50 block mt-0.5">
+                    <span className="text-[10px] text-base-content/50 block mt-1">
                       Apertura: {formatDateForUser(shift.openedAt)}
                     </span>
                     <span className="text-[10px] text-base-content/50 block">

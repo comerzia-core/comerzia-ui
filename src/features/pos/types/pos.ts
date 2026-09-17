@@ -64,12 +64,9 @@ export interface ShiftResponse {
   id: string;
   openedAt: string;
   closedAt: string | null;
-  initialAmount: number;
   observation: string | null;
   statusType: DictionaryResponse;
-  cashRegisterId: string;
-  openedById: string;
-  closedById: string | null;
+  cashierName: string;
 }
 
 export interface PageShiftResponse {
@@ -123,13 +120,29 @@ export interface CloseShiftRequest {
   observation?: string;
 }
 
-export interface ShiftDetailResponse {
-  id: string;
+export interface ShiftPaymentReport {
   paymentType: DictionaryResponse;
+  salesAmount: number;
+  returnsAmount: number;
   expectedAmount: number;
   countedAmount: number;
   differenceAmount: number;
+}
+
+export interface ShiftCompleteReportResponse {
   shiftId: string;
+  cashRegisterName: string;
+  branchName: string;
+  cashierName: string;
+  closedByName: string | null;
+  openedAt: string;
+  closedAt: string | null;
+  statusType: DictionaryResponse;
+  observation: string | null;
+  initialAmount: number;
+  totalInflows: number;
+  totalOutflows: number;
+  paymentReports: ShiftPaymentReport[];
 }
 
 // Movimientos

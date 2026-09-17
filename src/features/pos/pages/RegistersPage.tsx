@@ -223,7 +223,7 @@ export const RegistersPage = () => {
               label="Ver Historial"
               onClick={() => {
                 if (contextMenu.register) {
-                  navigate(`/pos/registers/${contextMenu.register.id}/history`);
+                  navigate(`/pos/registers/${contextMenu.register.id}/history`, { state: { register: contextMenu.register } });
                 }
               }}
             />
