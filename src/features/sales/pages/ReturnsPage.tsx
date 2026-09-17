@@ -8,6 +8,7 @@ import type { ShiftSummaryResponse } from '../../pos/types/pos';
 import { useToast } from '../../../context/ToastContext';
 import { useLoadDictionaries } from '../../../hooks/useLoadDictionaries';
 import { DICTIONARIES } from '../../../config/dictionaries';
+import { formatDateForUser } from '../../../utils/date';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
 import { ComerziaSelect } from '../../../components/ui/ComerziaSelect';
 import { ComerziaModal } from '../../../components/ui/ComerziaModal';
@@ -110,7 +111,16 @@ export const ReturnsPage = () => {
       }
     } catch (err: any) {
       console.error("Error al obtener turnos activos por sucursal:", err);
-      setShiftErrorMessage(err.response?.data?.message || "No se pudieron obtener los turnos de caja activos de la sucursal.");
+      const data = err.response?.data;
+      const errorCode = data?.errorCode || data?.code;
+      const rawMsg = data?.message;
+      let msg = "No se pudieron obtener los turnos de caja activos de la sucursal.";
+      if (errorCode === 'resource_not_found' || rawMsg?.toLowerCase().includes('not found')) {
+        msg = "No se encontró la sucursal para consultar los turnos de caja.";
+      } else if (rawMsg) {
+        msg = rawMsg;
+      }
+      setShiftErrorMessage(msg);
     } finally {
       setIsLoadingShifts(false);
     }
@@ -183,7 +193,23 @@ export const ReturnsPage = () => {
       }
     } catch (err: any) {
       console.error("Error al buscar venta por número:", err);
-      const msg = err.response?.data?.message || `No se encontró la venta con el número "${term}".`;
+      const data = err.response?.data;
+      const errorCode = data?.errorCode || data?.code;
+      const rawMsg = data?.message || '';
+
+      let msg = `No se encontró la venta con el número "${term}".`;
+      if (
+        errorCode === 'resource_not_found' ||
+        rawMsg.toLowerCase().includes('not found') ||
+        rawMsg.toLowerCase().includes('sale was not found')
+      ) {
+        msg = `No se encontró ninguna venta registrada con el número "${term}".`;
+      } else if (errorCode === 'access_denied') {
+        msg = "No cuentas con los permisos necesarios para consultar esta venta.";
+      } else if (rawMsg) {
+        msg = rawMsg;
+      }
+
       toastError(msg);
       setActiveSale(null);
       setStatusNotice(null);
@@ -289,13 +315,16 @@ export const ReturnsPage = () => {
         fetchSaleByNumber(activeSale.saleNumber);
       }
     } catch (err: any) {
+      const data = err.response?.data;
       const status = err.response?.status;
-      const errorMsg = err.response?.data?.message || "";
-      const isShiftClosed = status === 409 || (status === 400 && (
-        errorMsg.includes("targetShiftId") ||
-        errorMsg.toLowerCase().includes("shift") ||
-        errorMsg.toLowerCase().includes("turno") ||
-        errorMsg.toLowerCase().includes("closed")
+      const errorCode = data?.errorCode || data?.code;
+      const rawMsg = data?.message || '';
+
+      const isShiftClosed = status === 409 || errorCode === 'shift_closed' || errorCode === 'shift_not_open' || (status === 400 && (
+        rawMsg.includes("targetShiftId") ||
+        rawMsg.toLowerCase().includes("shift") ||
+        rawMsg.toLowerCase().includes("turno") ||
+        rawMsg.toLowerCase().includes("closed")
       ));
 
       // Si el turno original está cerrado y aún no habíamos pedido targetShiftId
@@ -311,7 +340,22 @@ export const ReturnsPage = () => {
         return;
       }
 
-      toastError(errorMsg || "Ocurrió un error al procesar la devolución.");
+      let errorDisplay = "Ocurrió un error al procesar la devolución.";
+      if (errorCode === 'resource_not_found' || rawMsg.toLowerCase().includes('not found')) {
+        errorDisplay = "No se encontró la venta, turno o producto especificado para la devolución.";
+      } else if (errorCode === 'invalid_quantity' || rawMsg.toLowerCase().includes('quantity')) {
+        errorDisplay = "La cantidad a devolver no es válida o excede lo disponible.";
+      } else if (errorCode === 'shift_branch_mismatch') {
+        errorDisplay = "El turno seleccionado no pertenece a la sucursal de la venta.";
+      } else if (errorCode === 'sale_not_returnable') {
+        errorDisplay = "El estado actual de la venta no permite procesar devoluciones.";
+      } else if (errorCode === 'access_denied') {
+        errorDisplay = "No cuentas con los permisos necesarios para procesar devoluciones.";
+      } else if (rawMsg) {
+        errorDisplay = rawMsg;
+      }
+
+      toastError(errorDisplay);
     } finally {
       setIsSubmitting(false);
     }
@@ -420,7 +464,7 @@ export const ReturnsPage = () => {
                 </div>
                 <div className="flex items-center gap-3 text-xs text-base-content/60 mt-1 flex-wrap">
                   <span className="flex items-center gap-1">
-                    <Calendar size={12} /> {new Date(activeSale.date).toLocaleDateString([], { dateStyle: 'short' })}
+                    <Calendar size={12} /> {formatDateForUser(activeSale.date)}
                   </span>
                   <span className="flex items-center gap-1">
                     <User size={12} /> {activeSale.employeeUsername}
@@ -504,15 +548,17 @@ export const ReturnsPage = () => {
                       return (
                         <tr key={`desktop-return-${d.id}`} className="hover:bg-base-200/30 transition-colors">
                           <td>
-                            <div className="space-y-0.5 max-w-[220px]">
-                              <span className="font-semibold text-xs text-base-content block truncate" title={d.productName}>
-                                {d.productName || 'Producto'}
-                              </span>
-                              {d.variantName && (
-                                <span className="text-[11px] text-base-content/60 block truncate">
-                                  {d.variantName}
+                            <div className="space-y-0.5 max-w-[260px]">
+                              <div className="flex items-baseline gap-1.5 flex-wrap" title={`${d.productName || 'Producto'}${d.variantName ? ` - ${d.variantName}` : ''}`}>
+                                <span className="font-semibold text-xs text-base-content">
+                                  {d.productName || 'Producto'}
                                 </span>
-                              )}
+                                {d.variantName && (
+                                  <span className="text-[11px] text-base-content/70 font-medium">
+                                    - {d.variantName}
+                                  </span>
+                                )}
+                              </div>
                               <div className="flex items-center gap-1 flex-wrap">
                                 {d.measureUnitName && (
                                   <span className="badge badge-ghost badge-xs text-[10px] py-0 font-medium">
@@ -629,14 +675,16 @@ export const ReturnsPage = () => {
                     <div key={`mobile-return-${d.id}`} className="p-3 rounded-xl bg-base-100 border border-base-200 shadow-xs space-y-2.5">
                       <div className="flex justify-between items-start gap-2">
                         <div className="min-w-0 flex-1">
-                          <span className="font-semibold text-xs text-base-content block truncate">
-                            {d.productName || 'Producto'}
-                          </span>
-                          {d.variantName && (
-                            <span className="text-[11px] text-base-content/60 block truncate">
-                              {d.variantName}
+                          <div className="flex items-baseline gap-1 flex-wrap">
+                            <span className="font-semibold text-xs text-base-content">
+                              {d.productName || 'Producto'}
                             </span>
-                          )}
+                            {d.variantName && (
+                              <span className="text-[11px] text-base-content/70 font-medium">
+                                - {d.variantName}
+                              </span>
+                            )}
+                          </div>
                           <div className="flex items-center gap-1.5 text-[11px] text-base-content/60 mt-0.5">
                             <span>Comprado: {purchasedQty} {d.measureUnitName || 'u'}</span>
                             <span>&bull;</span>
@@ -819,7 +867,7 @@ export const ReturnsPage = () => {
                                       <span className="text-[10px] text-base-content/60">({shift.employeeName})</span>
                                     </div>
                                     <span className="text-[10px] text-base-content/60 block mt-0.5">
-                                      Abierto: {new Date(shift.openedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                      Abierto: {formatDateForUser(shift.openedAt)}
                                     </span>
                                   </div>
                                   <input
@@ -929,4 +977,5 @@ export const ReturnsPage = () => {
     </div>
   );
 };
+
 
