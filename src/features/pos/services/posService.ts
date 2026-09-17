@@ -11,6 +11,7 @@ import type {
   OpenShiftRequest,
   CloseShiftRequest,
   ShiftCompleteReportResponse,
+  PageShiftSalePaymentReportResponse,
   MovementResponse,
   PageMovementResponse,
   CreateMovementRequest,
@@ -103,6 +104,25 @@ export const posService = {
 
   getShiftDetails: async (shiftId: string): Promise<ShiftCompleteReportResponse> => {
     const response = await api.get<ShiftCompleteReportResponse>(`/tenant/cash-registers/shifts/${shiftId}/details`);
+    return response.data;
+  },
+
+  getShiftSales: async (
+    shiftId: string,
+    page: number = 0,
+    size: number = 10,
+    sort: string[] = []
+  ): Promise<PageShiftSalePaymentReportResponse> => {
+    const params = new URLSearchParams();
+    params.append('page', page.toString());
+    params.append('size', size.toString());
+    if (sort && sort.length > 0) {
+      sort.forEach(s => params.append('sort', s));
+    }
+    const response = await api.get<PageShiftSalePaymentReportResponse>(
+      `/tenant/cash-registers/shifts/${shiftId}/sales`,
+      { params }
+    );
     return response.data;
   },
 

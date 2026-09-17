@@ -23,6 +23,8 @@ export const STATUS_COLOR_MAP: Record<number, BadgeVariant> = {
     302: "success", // Paid
     303: "error",   // Voided
 
-    // --- ESTADOS DE PROVEEDORES (Tu código original) ---
-    // Si tienes códigos para PENDING, CONFIRMED, etc., los agregas aquí.
+    // --- ESTADOS DE TURNOS (POS Shift Status) ---
+    1: "success", // OPEN (Abierta)
+    2: "neutral", // CLOSED (Cerrada)
+    3: "warning", // CLOSED_WITH_DIFFERENCE (Con Descuadre)
 };

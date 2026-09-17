@@ -129,6 +129,14 @@ export interface ShiftPaymentReport {
   differenceAmount: number;
 }
 
+export interface ShiftMovementReportResponse {
+  date: string;
+  amount: number;
+  movementType: DictionaryResponse;
+  paymentType: DictionaryResponse;
+  observation: string | null;
+}
+
 export interface ShiftCompleteReportResponse {
   shiftId: string;
   cashRegisterName: string;
@@ -143,6 +151,30 @@ export interface ShiftCompleteReportResponse {
   totalInflows: number;
   totalOutflows: number;
   paymentReports: ShiftPaymentReport[];
+  movements: ShiftMovementReportResponse[];
+}
+
+export interface ShiftSalePaymentReportResponse {
+  saleNumber: string;
+  date: string;
+  paymentType: DictionaryResponse;
+  amount: number;
+  changeAmount: number;
+  sellerName: string;
+}
+
+export interface PageShiftSalePaymentReportResponse {
+  content: ShiftSalePaymentReportResponse[];
+  pageable: PageableObject;
+  last: boolean;
+  totalPages: number;
+  totalElements: number;
+  size: number;
+  number: number;
+  sort: SortObject;
+  first: boolean;
+  numberOfElements: number;
+  empty: boolean;
 }
 
 // Movimientos
