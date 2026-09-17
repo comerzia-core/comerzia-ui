@@ -60,8 +60,8 @@ export const ComerziaInput = forwardRef<HTMLInputElement, Props>(({
             focus:border-primary focus:ring-2 focus:ring-primary/20 focus:bg-base-100
             shadow-2xs
             ${error ? "!border-error !ring-error/20 bg-error/5" : ""} 
-            ${icon ? "pl-10" : ""} 
-            ${rightAction ? "pr-10" : ""}
+            ${icon ? "pl-11" : "pl-4"} 
+            ${rightAction ? "pr-11" : "pr-4"}
             ${className}
           `}
           onChange={handleChange}

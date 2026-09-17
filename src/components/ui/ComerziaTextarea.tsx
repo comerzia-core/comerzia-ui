@@ -36,7 +36,7 @@ export const ComerziaTextarea = forwardRef<HTMLTextAreaElement, Props>(
                     ref={ref}
                     className={`
                         textarea textarea-bordered 
-                        w-full h-24 
+                        w-full h-24 px-4 py-3
                         bg-base-100 text-base-content
                         border-base-300 hover:border-base-content/40
                         focus:border-primary focus:ring-2 focus:ring-primary/20 focus:bg-base-100

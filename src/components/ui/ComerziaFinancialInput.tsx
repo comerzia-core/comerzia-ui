@@ -41,7 +41,7 @@ export const TravesiaFinancialInput = forwardRef<HTMLInputElement, Props>(
                     <input
                         ref={ref}
                         type="number"
-                        className={`input input-bordered w-full pl-3 font-mono ${error ? 'input-error' : ''} ${className}`}
+                        className={`input input-bordered w-full ${prefix ? 'pl-11' : 'pl-4'} ${suffix ? 'pr-11' : 'pr-4'} font-mono ${error ? 'input-error' : ''} ${className}`}
                         value={value === 0 ? '' : value} // Muestra vacío si es 0 para mejor UX al escribir
                         onChange={(e) => {
                             // ✅ Convertimos el evento a número limpio

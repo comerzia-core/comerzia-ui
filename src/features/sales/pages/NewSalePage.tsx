@@ -62,7 +62,7 @@ const QuantityControl = ({ item, updateQuantity, toastWarning }: QuantityControl
           min={1}
           step={1}
           max={maxPackages > 0 ? maxPackages : 1}
-          className="input input-bordered input-xs w-10 sm:w-12 font-mono text-xs font-bold text-center px-0.5 rounded-lg [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          className="input input-bordered input-xs w-12 sm:w-14 font-mono text-xs font-bold text-center px-2 rounded-lg [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           value={val}
           onWheel={(e) => (e.target as HTMLInputElement).blur()}
           onChange={(e) => setVal(e.target.value)}
@@ -178,9 +178,9 @@ const ProductDiscountControl = ({
 
   if (compact) {
     return (
-      <div className="flex items-center gap-1.5 justify-end min-w-[155px]">
-        {/* Columna 1: Tabs Verticales ("x Unid." y "Total") */}
-        <div className="inline-flex flex-col p-0.5 rounded-md bg-base-200 border border-base-300 shrink-0">
+      <div className="flex items-center gap-1.5 justify-end min-w-[150px]">
+        {/* Columna 1: Tabs Horizontales ("X Unid." y "Total") */}
+        <div className="inline-flex flex-row p-0.5 rounded-md bg-base-200 border border-base-300 shrink-0">
           <button
             type="button"
             onClick={() => handleModeChange('UNIT')}
@@ -189,7 +189,7 @@ const ProductDiscountControl = ({
             }`}
             title="Descuento por Unidad"
           >
-            x Unid.
+            X Unid.
           </button>
           <button
             type="button"
@@ -205,7 +205,7 @@ const ProductDiscountControl = ({
 
         {/* Columna 2: Input y Máximo debajo */}
         <div className="flex flex-col items-end gap-0.5">
-          <div className="relative w-24">
+          <div className="relative w-20">
             <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-base-content/40 select-none pointer-events-none">
               {currency}
             </span>
@@ -225,7 +225,7 @@ const ProductDiscountControl = ({
                   (e.target as HTMLInputElement).blur();
                 }
               }}
-              className="input input-bordered input-xs w-full pl-6 pr-2 text-right font-mono font-bold text-error rounded focus:border-error focus:ring-1 focus:ring-error/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              className="input input-bordered input-xs w-full pl-6 pr-5 text-right font-mono font-bold text-error rounded focus:border-error focus:ring-1 focus:ring-error/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
           </div>
           <span className="text-[9px] text-base-content/40 font-mono whitespace-nowrap">
@@ -288,7 +288,7 @@ const ProductDiscountControl = ({
                   (e.target as HTMLInputElement).blur();
                 }
               }}
-              className="input input-bordered input-sm w-full pl-8 pr-2.5 text-right font-mono font-bold text-error rounded-xl focus:border-error focus:ring-1 focus:ring-error/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              className="input input-bordered input-sm w-full pl-8 pr-4 text-right font-mono font-bold text-error rounded-xl focus:border-error focus:ring-1 focus:ring-error/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
           </div>
 
@@ -521,7 +521,7 @@ export const NewSalePage = () => {
                 Sucursal de Origen
               </span>
               <select
-                className="select select-bordered select-sm w-full bg-base-100 font-bold text-xs sm:text-sm text-base-content truncate pr-8 focus:border-primary focus:outline-none"
+                className="select select-bordered select-sm w-full bg-base-100 font-bold text-xs sm:text-sm text-base-content truncate pl-3 pr-8 focus:border-primary focus:outline-none"
                 value={selectedBranchId}
                 onChange={(e) => handleBranchChange(e.target.value)}
               >
@@ -626,7 +626,7 @@ export const NewSalePage = () => {
                         {/* 1. Presentación (Tipo de Precio) */}
                         <div className="w-full min-w-0">
                           <select
-                            className="select select-bordered select-xs w-full font-bold text-xs text-base-content rounded-lg px-2 truncate"
+                            className="select select-bordered select-xs w-full font-bold text-xs text-base-content rounded-lg px-3 truncate"
                             value={item.priceTypeId}
                             onChange={(e) => {
                               const res = updatePriceType(item.productVariantId, e.target.value);
@@ -688,7 +688,7 @@ export const NewSalePage = () => {
 
                       {/* Acordeón Desplegable de Descuento (Contraste notorio y profundidad) */}
                       {hasDiscountLimit && isExpanded && (
-                        <div className="bg-base-200/90 dark:bg-base-300/80 rounded-xl p-3 border border-base-300 shadow-inner text-xs mt-1.5 ring-1 ring-error/20 transition-all">
+                        <div className="bg-base-200/90 dark:bg-base-300/80 rounded-xl p-3 border border-error shadow-sm text-xs mt-1.5 transition-all">
                           <ProductDiscountControl
                             item={item}
                             currency={currency}
@@ -759,7 +759,7 @@ export const NewSalePage = () => {
                           </td>
                           <td>
                             <select
-                              className="select select-bordered select-xs w-full max-w-[120px]"
+                              className="select select-bordered select-xs w-full max-w-[120px] px-3"
                               value={item.priceTypeId}
                               onChange={(e) => {
                                 const res = updatePriceType(item.productVariantId, e.target.value);
@@ -795,14 +795,42 @@ export const NewSalePage = () => {
                           </td>
                           <td className="text-right">
                             {hasDiscountLimit ? (
-                              <ProductDiscountControl
-                                item={item}
-                                currency={currency}
-                                updateDiscount={updateDiscount}
-                                updateTotalDiscount={updateTotalDiscount}
-                                toastWarning={toastWarning}
-                                compact={true}
-                              />
+                              <div className="flex flex-col items-end gap-1">
+                                {!expandedItems[item.productVariantId] ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => setExpandedItems(prev => ({ ...prev, [item.productVariantId]: true }))}
+                                    className={`btn btn-ghost btn-xs gap-1 pl-0 h-5 min-h-0 hover:bg-transparent text-error ${item.discountAmount > 0 ? 'font-bold' : 'font-semibold text-error/80 hover:text-error'}`}
+                                  >
+                                    <Tag size={12} className="text-error shrink-0" />
+                                    <span className="text-[11px] text-error whitespace-nowrap">
+                                      {item.discountAmount > 0
+                                        ? `Desc: -${currency} ${totalDiscount.toFixed(2)}`
+                                        : '+ Agregar descuento'}
+                                    </span>
+                                    <ChevronDown size={12} className="text-error" />
+                                  </button>
+                                ) : (
+                                  <div className="bg-base-200/90 dark:bg-base-300/80 rounded-xl p-2 border border-error shadow-sm text-xs flex flex-col items-end gap-1 relative">
+                                    <button 
+                                      type="button" 
+                                      className="btn btn-ghost btn-xs min-h-0 h-5 w-5 p-0 rounded-full text-base-content/40 hover:text-error absolute -top-2 -right-2 bg-base-100 border border-base-300 shadow-xs" 
+                                      onClick={() => setExpandedItems(prev => ({ ...prev, [item.productVariantId]: false }))}
+                                      title="Cerrar opciones de descuento"
+                                    >
+                                      <X size={12}/>
+                                    </button>
+                                    <ProductDiscountControl
+                                      item={item}
+                                      currency={currency}
+                                      updateDiscount={updateDiscount}
+                                      updateTotalDiscount={updateTotalDiscount}
+                                      toastWarning={toastWarning}
+                                      compact={true}
+                                    />
+                                  </div>
+                                )}
+                              </div>
                             ) : (
                               <span className="text-xs text-base-content/30 font-mono">-</span>
                             )}

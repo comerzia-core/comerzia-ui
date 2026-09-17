@@ -204,7 +204,7 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
                     ref={inputRef}
                     type="text"
                     className={`
-                        input input-bordered w-full transition-all duration-200 pr-16 uppercase
+                        input input-bordered w-full transition-all duration-200 pr-16 pl-4 uppercase
                         bg-base-100 text-base-content
                         border-base-300 hover:border-base-content/40
                         focus:border-primary focus:ring-2 focus:ring-primary/20 focus:bg-base-100
