@@ -200,23 +200,8 @@ export const SalesHistoryPage = () => {
   };
 
   // Ver detalles completos de la venta
-  const handleViewDetails = async (sale: SaleResponse) => {
-    if (sale.details && sale.details.length > 0) {
-      setSelectedSaleDetails(sale);
-      return;
-    }
-
-    if (sale.saleNumber) {
-      try {
-        const fullSale = await salesService.getSaleByNumber(sale.saleNumber);
-        setSelectedSaleDetails(fullSale);
-      } catch (err) {
-        console.error('Error recuperando detalle de venta:', err);
-        setSelectedSaleDetails(sale);
-      }
-    } else {
-      setSelectedSaleDetails(sale);
-    }
+  const handleViewDetails = (sale: SaleResponse) => {
+    setSelectedSaleDetails(sale);
   };
 
   // Abrir Menú Contextual en PC (Clic Derecho con coordenadas)
@@ -261,16 +246,25 @@ export const SalesHistoryPage = () => {
   };
 
   // Iniciar edición de venta pendiente (601)
-  const startEditSale = (sale: SaleResponse) => {
+  const startEditSale = async (sale: SaleResponse) => {
     setEditingSale(sale);
-    setEditDetails((sale.details || []).map(d => ({
+    let details = sale.details;
+    if (!details || details.length === 0) {
+      try {
+        details = await salesService.getSaleDetails(sale.id);
+      } catch (err) {
+        console.error('Error recuperando detalle de venta para editar:', err);
+        details = [];
+      }
+    }
+    setEditDetails((details || []).map(d => ({
       productVariantId: d.productVariantId,
-      priceTypeId: d.priceTypeId,
+      priceTypeId: (d as any).priceTypeId,
       variantName: d.variantName || d.productName || 'Producto',
-      quantity: d.receiptQuantity ?? d.unitQuantity ?? 1,
-      salePrice: d.receiptUnitPrice ?? d.unitSalePrice ?? 0,
-      discountAmount: d.lineTotalDiscount ?? d.unitDiscountAmount ?? 0,
-      stock: (d.receiptQuantity ?? d.unitQuantity ?? 1) + 50,
+      quantity: d.receiptQuantity ?? 1,
+      salePrice: d.receiptUnitPrice ?? 0,
+      discountAmount: d.lineTotalDiscount ?? 0,
+      stock: (d.receiptQuantity ?? 1) + 50,
       discountPrice: 0
     })));
     setEditCatalogSearch('');
@@ -465,7 +459,7 @@ export const SalesHistoryPage = () => {
       render: (row: SaleResponse) => (
         <div className="flex items-center gap-1.5 text-xs text-base-content/80 font-medium">
           <User size={13} className="text-primary/70 shrink-0" />
-          <span className="truncate">{row.employeeUsername || '-'}</span>
+          <span className="truncate">{row.employeeName || '-'}</span>
         </div>
       )
     },
@@ -661,7 +655,7 @@ export const SalesHistoryPage = () => {
                     <div className="min-w-0 flex-1 space-y-0.5">
                       <div className="flex items-center gap-1.5 text-base-content/70 truncate">
                         <User size={13} className="text-primary/70 shrink-0" />
-                        <span className="truncate font-medium">{sale.employeeUsername || 'Cajero'}</span>
+                        <span className="truncate font-medium">{sale.employeeName || 'Cajero'}</span>
                       </div>
                       {sale.customer && (
                         <div className="flex items-center gap-1.5 text-base-content/60 text-[11px] truncate">

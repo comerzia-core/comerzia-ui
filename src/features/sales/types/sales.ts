@@ -63,37 +63,37 @@ export interface UpdateSaleRequest {
 }
 
 export interface SaleDetailResponse {
-  id: string;
-  productVariantId: string;
+  id: string; // ID Ofuscado del detalle
+  productVariantId: string; // ID Ofuscado de la variante
   productName: string;
   variantName?: string;
-  sku?: string;
-  priceTypeId?: string;
-  priceTypeName?: string;
+  
+  // Receipt Context
   measureUnitName?: string;
-  unitQuantity?: number;
-  receiptQuantity?: number;
-  unitPrice?: number;
-  unitSalePrice?: number;
-  receiptUnitPrice?: number;
-  unitFinalPrice?: number;
-  lineDiscountAmount?: number;
-  unitDiscountAmount?: number;
-  lineTotalDiscount?: number;
-  lineTotalSuggested?: number;
-  lineTotalFinal?: number;
-  subtotalAmount?: number;
-  totalAmount?: number;
   equivalenceFactor?: number;
+  receiptQuantity?: number;
+  receiptUnitPrice?: number;
+  
+  // Physical & Return Context
+  physicalQuantity?: number;
   returnedQuantity?: number;
+  physicalUnitFinalPrice?: number;
+
+  // Totals
+  lineTotalSuggested?: number;
+  lineTotalDiscount?: number;
+  lineTotalFinal?: number;
 }
 
 export interface SalePaymentResponse {
   id: string;
   paymentType: number;
-  amountPaid: number;
+  amount?: number;
+  amountPaid?: number;
   changeAmount?: number;
-  createdAt: string;
+  date?: string;
+  createdAt?: string;
+  employeeUsername?: string;
 }
 
 export interface CustomerProfileResponse {
@@ -127,7 +127,7 @@ export interface SaleResponse {
   discountedAmount: number;
   sellerUsername?: string;
   sellerFullName?: string;
-  employeeUsername?: string;
+  employeeName?: string;
   branchName?: string;
   branchId?: string;
   customerId?: string;
@@ -137,7 +137,7 @@ export interface SaleResponse {
   notes?: string;
   createdAt?: string;
   updatedAt?: string;
-  details: SaleDetailResponse[];
+  details?: SaleDetailResponse[];
   payments?: SalePaymentResponse[];
 }
 

@@ -4,6 +4,7 @@ import type {
   SalesProductResponse,
   CreateSaleRequest,
   SaleResponse,
+  SaleDetailResponse,
   PageSaleResponse,
   SellerResponse,
   UpdateSaleRequest,
@@ -111,6 +112,11 @@ export const salesService = {
 
   getSaleByNumber: async (saleNumber: string): Promise<SaleResponse> => {
     const response = await api.get<SaleResponse>(`/tenant/sales/number/${encodeURIComponent(saleNumber)}`);
+    return response.data;
+  },
+
+  getSaleDetails: async (saleId: string): Promise<SaleDetailResponse[]> => {
+    const response = await api.get<SaleDetailResponse[]>(`/tenant/sales/${saleId}/details`);
     return response.data;
   },
 

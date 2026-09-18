@@ -298,7 +298,7 @@ export const TerminalPage = () => {
                       <User size={13} className="text-primary/70 shrink-0" /> Vendedor:
                     </span>
                     <strong className="text-base-content font-semibold truncate max-w-[150px]">
-                      {sale.employeeUsername || 'No asignado'}
+                      {sale.employeeName || 'No asignado'}
                     </strong>
                   </div>
 
@@ -322,14 +322,16 @@ export const TerminalPage = () => {
                     </span>
                   </div>
 
-                  <div className="flex justify-between items-center text-base-content/70">
-                    <span className="flex items-center gap-1.5 text-base-content/60">
-                      <ShoppingBag size={13} className="text-info shrink-0" /> Items:
-                    </span>
-                    <strong className="text-base-content">
-                      {sale.details?.length || 0} {sale.details?.length === 1 ? 'producto' : 'productos'}
-                    </strong>
-                  </div>
+                  {sale.details && sale.details.length > 0 && (
+                    <div className="flex justify-between items-center text-base-content/70">
+                      <span className="flex items-center gap-1.5 text-base-content/60">
+                        <ShoppingBag size={13} className="text-info shrink-0" /> Items:
+                      </span>
+                      <strong className="text-base-content">
+                        {sale.details.length} {sale.details.length === 1 ? 'producto' : 'productos'}
+                      </strong>
+                    </div>
+                  )}
 
                   {sale.discountedAmount > 0 && (
                     <div className="flex justify-between items-center text-error pt-0.5">

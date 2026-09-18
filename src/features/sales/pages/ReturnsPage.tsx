@@ -90,7 +90,7 @@ export const ReturnsPage = () => {
   // Helper para obtener la cantidad máxima disponible para devolver (en unidades de recibo/presentación)
   const getMaxReturnQty = (detail: SaleDetailResponse): number => {
     const factor = detail.equivalenceFactor || 1;
-    const purchasedReceipt = detail.receiptQuantity ?? detail.unitQuantity ?? 1;
+    const purchasedReceipt = detail.receiptQuantity ?? 1;
     const returnedPhysical = detail.returnedQuantity ?? 0;
     const returnedReceipt = factor > 0 ? returnedPhysical / factor : 0;
     return Math.max(0, purchasedReceipt - returnedReceipt);
@@ -144,7 +144,14 @@ export const ReturnsPage = () => {
 
     try {
       const sale = await salesService.getSaleByNumber(term);
-      const statusCode = getStatusCode(sale.saleStatus);
+      let details: SaleDetailResponse[] = [];
+      try {
+        details = await salesService.getSaleDetails(sale.id);
+      } catch (e) {
+        console.error("Error al obtener detalles de la venta:", e);
+      }
+      const fullSale: SaleResponse = { ...sale, details };
+      const statusCode = getStatusCode(fullSale.saleStatus);
 
       // Validar si el estado permite devolución (602 COMPLETED o 605 PARTIALLY_REFUNDED)
       if (statusCode === 601) {
@@ -153,33 +160,33 @@ export const ReturnsPage = () => {
           message: "Esta venta aún no ha sido cobrada (estado PENDIENTE). No se pueden procesar devoluciones sobre ventas pendientes. Si deseas cancelarla, hazlo desde el Historial de Ventas.",
           type: "warning"
         });
-        setActiveSale(sale);
+        setActiveSale(fullSale);
       } else if (statusCode === 603) {
         setStatusNotice({
           title: "Venta Cancelada",
           message: "Esta venta fue CANCELADA antes de su pago. El inventario fue liberado previamente y no registra movimientos de caja.",
           type: "error"
         });
-        setActiveSale(sale);
+        setActiveSale(fullSale);
       } else if (statusCode === 604) {
         setStatusNotice({
           title: "Venta Anulada",
           message: "Esta venta fue ANULADA por rollback completo. No se pueden procesar devoluciones sobre una venta ya anulada.",
           type: "error"
         });
-        setActiveSale(sale);
+        setActiveSale(fullSale);
       } else if (statusCode === 606) {
         setStatusNotice({
           title: "Venta con Devolución Total",
           message: "Esta venta ya fue devuelta en su totalidad (100% de los productos reingresados). No quedan ítems disponibles para devolver.",
           type: "info"
         });
-        setActiveSale(sale);
+        setActiveSale(fullSale);
       } else if (statusCode === 602 || statusCode === 605) {
-        setActiveSale(sale);
+        setActiveSale(fullSale);
         // Inicializar cantidades de devolución en 0
         const initialQtys: Record<string, number> = {};
-        (sale.details || []).forEach((d: SaleDetailResponse) => {
+        (fullSale.details || []).forEach((d: SaleDetailResponse) => {
           initialQtys[d.id] = 0;
         });
         setReturnQtys(initialQtys);
@@ -189,7 +196,7 @@ export const ReturnsPage = () => {
           message: "El estado actual de la venta no permite procesar devoluciones.",
           type: "warning"
         });
-        setActiveSale(sale);
+        setActiveSale(fullSale);
       }
     } catch (err: any) {
       console.error("Error al buscar venta por número:", err);
@@ -250,9 +257,9 @@ export const ReturnsPage = () => {
         totalReceiptItems += qtyToReturn;
         totalPhysicalItems += qtyToReturn * factor;
 
-        const totalPurchasedQty = d.receiptQuantity ?? d.unitQuantity ?? 1;
+        const totalPurchasedQty = d.receiptQuantity ?? 1;
         const lineSuggested = d.lineTotalSuggested ?? (d.receiptUnitPrice ? d.receiptUnitPrice * totalPurchasedQty : 0);
-        const lineDiscount = d.lineTotalDiscount ?? (d.unitDiscountAmount ? d.unitDiscountAmount * totalPurchasedQty : 0);
+        const lineDiscount = d.lineTotalDiscount ?? 0;
         const lineFinal = d.lineTotalFinal ?? (lineSuggested - lineDiscount);
 
         const unitSuggested = totalPurchasedQty > 0 ? lineSuggested / totalPurchasedQty : (d.receiptUnitPrice ?? 0);
@@ -467,7 +474,7 @@ export const ReturnsPage = () => {
                     <Calendar size={12} /> {formatDateForUser(activeSale.date)}
                   </span>
                   <span className="flex items-center gap-1">
-                    <User size={12} /> {activeSale.employeeUsername}
+                    <User size={12} /> {activeSale.employeeName || '-'}
                   </span>
                   {activeSale.customer && (
                     <span className="flex items-center gap-1 text-primary font-medium">
@@ -529,7 +536,7 @@ export const ReturnsPage = () => {
                   <tbody className="divide-y divide-base-200/60">
                     {(activeSale.details || []).map((d: SaleDetailResponse) => {
                       const factor = d.equivalenceFactor || 1;
-                      const purchasedQty = d.receiptQuantity ?? d.unitQuantity ?? 1;
+                      const purchasedQty = d.receiptQuantity ?? 1;
 
                       const totalReturnedPhysical = d.returnedQuantity ?? 0;
                       const alreadyReturnedReceipt = factor > 0 ? totalReturnedPhysical / factor : 0;
@@ -539,7 +546,7 @@ export const ReturnsPage = () => {
                       const currentReturnPhysical = currentReturnQty * factor;
 
                       const lineSuggested = d.lineTotalSuggested ?? (d.receiptUnitPrice ? d.receiptUnitPrice * purchasedQty : 0);
-                      const lineDiscount = d.lineTotalDiscount ?? (d.unitDiscountAmount ? d.unitDiscountAmount * purchasedQty : 0);
+                      const lineDiscount = d.lineTotalDiscount ?? 0;
                       const lineFinal = d.lineTotalFinal ?? (lineSuggested - lineDiscount);
 
                       const unitFinal = purchasedQty > 0 ? lineFinal / purchasedQty : (d.receiptUnitPrice ?? 0);
@@ -657,7 +664,7 @@ export const ReturnsPage = () => {
               <div className="block md:hidden space-y-2.5">
                 {(activeSale.details || []).map((d: SaleDetailResponse) => {
                   const factor = d.equivalenceFactor || 1;
-                  const purchasedQty = d.receiptQuantity ?? d.unitQuantity ?? 1;
+                  const purchasedQty = d.receiptQuantity ?? 1;
 
                   const totalReturnedPhysical = d.returnedQuantity ?? 0;
                   const alreadyReturnedReceipt = factor > 0 ? totalReturnedPhysical / factor : 0;
@@ -665,7 +672,7 @@ export const ReturnsPage = () => {
                   const currentReturnQty = returnQtys[d.id] || 0;
 
                   const lineSuggested = d.lineTotalSuggested ?? (d.receiptUnitPrice ? d.receiptUnitPrice * purchasedQty : 0);
-                  const lineDiscount = d.lineTotalDiscount ?? (d.unitDiscountAmount ? d.unitDiscountAmount * purchasedQty : 0);
+                  const lineDiscount = d.lineTotalDiscount ?? 0;
                   const lineFinal = d.lineTotalFinal ?? (lineSuggested - lineDiscount);
 
                   const unitFinal = purchasedQty > 0 ? lineFinal / purchasedQty : (d.receiptUnitPrice ?? 0);

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, Package, ScanBarcode, Barcode } from 'lucide-react';
+import { Search, Package, ScanBarcode } from 'lucide-react';
 import { salesService } from '../../sales/services/salesService';
 import type { SalesCatalogSuggestionResponse } from '../../sales/types/sales';
 import { getThumbnailUrl } from '../../../utils/image';
