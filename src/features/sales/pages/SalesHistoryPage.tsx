@@ -15,6 +15,8 @@ import { BtnCancel, BtnSave, BtnDeleteIcon, BtnModalYes } from '../../../compone
 import { SaleDetailsModal } from '../components/SaleDetailsModal';
 import { RegisterSaleCustomerModal } from '../components/RegisterSaleCustomerModal';
 import { formatDateForUser } from '../../../utils/date';
+import { useLoadDictionaries } from '../../../hooks/useLoadDictionaries';
+import { DICTIONARIES } from '../../../config/dictionaries';
 import {
   AlertTriangle,
   Eye,
@@ -39,6 +41,18 @@ export const SalesHistoryPage = () => {
   const navigate = useNavigate();
   const { userProfile, hasPermission, hasRole } = useAuthStore();
   const { success: toastSuccess, error: toastError, warning: toastWarning } = useToast();
+
+  const { options: dictOptions } = useLoadDictionaries([DICTIONARIES.PAYMENT_TYPE]);
+  const paymentTypeOptions = dictOptions[DICTIONARIES.PAYMENT_TYPE] || [];
+
+  const getPaymentTypeLabel = (type: number): string => {
+    const found = paymentTypeOptions.find(opt => String(opt.value) === String(type));
+    if (found) return found.label;
+    if (type === 701) return 'Efectivo';
+    if (type === 702) return 'Transferencia / QR';
+    if (type === 703) return 'Tarjeta Débito / Crédito';
+    return `Método (${type})`;
+  };
 
   const [sales, setSales] = useState<SaleResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -498,6 +512,26 @@ export const SalesHistoryPage = () => {
       )
     },
     {
+      header: 'Tipo de Pago',
+      render: (row: SaleResponse) => {
+        if (!row.payments || row.payments.length === 0) {
+          return <span className="text-base-content/30 text-xs">-</span>;
+        }
+        return (
+          <div className="flex items-center gap-1 flex-wrap">
+            {row.payments.map((p, idx) => (
+              <span
+                key={p.id || idx}
+                className="badge badge-sm badge-ghost bg-base-200/80 border border-base-300 text-base-content/80 text-[11px] font-semibold whitespace-nowrap"
+              >
+                {getPaymentTypeLabel(p.paymentType)}
+              </span>
+            ))}
+          </div>
+        );
+      }
+    },
+    {
       header: 'Estado',
       render: (row: SaleResponse) => renderStatusBadge(row.saleStatus)
     }
@@ -650,7 +684,7 @@ export const SalesHistoryPage = () => {
                     </div>
                   </div>
 
-                  {/* Fila 2: Vendedor / Cliente (Izquierda) y Total (Derecha) */}
+                  {/* Fila 2: Vendedor / Cliente (Izquierda) y Total + Tipo de Pago (Derecha) */}
                   <div className="pl-7 flex items-center justify-between gap-2 text-xs">
                     <div className="min-w-0 flex-1 space-y-0.5">
                       <div className="flex items-center gap-1.5 text-base-content/70 truncate">
@@ -664,8 +698,20 @@ export const SalesHistoryPage = () => {
                         </div>
                       )}
                     </div>
-                    <div className="shrink-0 text-right">
-                      <span className="font-mono font-bold text-sm text-success">
+                    <div className="shrink-0 flex items-center gap-1.5 text-right">
+                      {sale.payments && sale.payments.length > 0 && (
+                        <div className="flex items-center gap-1 flex-wrap justify-end">
+                          {sale.payments.map((p, idx) => (
+                            <span
+                              key={p.id || idx}
+                              className="badge badge-xs badge-ghost bg-base-200/80 border border-base-300 text-base-content/70 text-[10px] font-semibold whitespace-nowrap px-1.5 py-0.5"
+                            >
+                              {getPaymentTypeLabel(p.paymentType)}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      <span className="font-mono font-bold text-sm text-success shrink-0">
                         {currency} {sale.totalAmount.toFixed(2)}
                       </span>
                     </div>
