@@ -72,10 +72,11 @@ export const AuditDetailsModal = ({ isOpen, onClose, log }: Props) => {
       }
       actions={modalActions}
       size="lg"
+      variant="view"
     >
       <div className="space-y-5 pt-2">
         {/* RESUMEN DE REGISTRO */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-4 bg-base-200/50 rounded-2xl border border-base-200">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-4 bg-base-100 rounded-2xl border border-base-300 shadow-sm">
           <div className="space-y-1">
             <span className="text-xs text-base-content/60 flex items-center gap-1 font-medium">
               <User className="w-3.5 h-3.5 text-primary" />
@@ -118,7 +119,7 @@ export const AuditDetailsModal = ({ isOpen, onClose, log }: Props) => {
 
         {/* AGENTE DE NAVEGADOR */}
         {log.userAgent && (
-          <div className="p-3 bg-base-200/30 rounded-xl border border-base-200 flex items-start gap-2 text-xs text-base-content/70">
+          <div className="p-3 bg-base-100 rounded-xl border border-base-300 shadow-sm flex items-start gap-2 text-xs text-base-content/70">
             <Laptop className="w-4 h-4 text-primary shrink-0 mt-0.5" />
             <div>
               <span className="font-semibold text-base-content block">Navegador / Dispositivo:</span>

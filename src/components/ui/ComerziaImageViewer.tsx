@@ -30,7 +30,8 @@ export const ComerziaImageViewer = ({ isOpen, onClose, imageUrl, title, altText 
       isOpen={isOpen}
       onClose={onClose}
       title={title}
-      size="md"
+      size="lg"
+      variant="view"
     >
       <div className="flex flex-col items-center justify-center min-h-[300px] bg-base-200/30 rounded-xl overflow-hidden relative border border-base-200">
         

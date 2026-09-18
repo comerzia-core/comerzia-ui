@@ -58,6 +58,7 @@ export const InventoryReportModal = ({ isOpen, onClose, inventoryId }: Props) =>
       onClose={onClose}
       title="Reporte de Inventario"
       size="lg"
+      variant="view"
       actions={
         <div className="flex flex-row justify-end w-full">
           <BtnCancel onClick={onClose} label="Cerrar" responsive={true} className="w-full sm:w-auto" />
@@ -71,7 +72,7 @@ export const InventoryReportModal = ({ isOpen, onClose, inventoryId }: Props) =>
       ) : inventory ? (
         <div className="space-y-6 pt-2">
           {/* Header Card */}
-          <div className="bg-base-200/50 p-4 rounded-2xl border border-base-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div className="bg-base-100 shadow-sm p-4 rounded-2xl border border-base-300 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div className="flex items-center gap-3">
               <div className="p-3 bg-primary/10 text-primary rounded-xl shrink-0">
                 <ClipboardList size={24} />
@@ -88,7 +89,7 @@ export const InventoryReportModal = ({ isOpen, onClose, inventoryId }: Props) =>
 
           {/* Details Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-            <div className="p-4 bg-base-100 rounded-xl border border-base-200 space-y-2">
+            <div className="p-4 bg-base-100 rounded-xl border border-base-300 shadow-sm space-y-2">
               <div className="flex items-center gap-2 text-base-content/60 font-semibold text-xs uppercase tracking-wider">
                 <Calendar size={16} className="text-primary" /> Fechas de Registro
               </div>
@@ -106,7 +107,7 @@ export const InventoryReportModal = ({ isOpen, onClose, inventoryId }: Props) =>
               )}
             </div>
 
-            <div className="p-4 bg-base-100 rounded-xl border border-base-200 space-y-2">
+            <div className="p-4 bg-base-100 rounded-xl border border-base-300 shadow-sm space-y-2">
               <div className="flex items-center gap-2 text-base-content/60 font-semibold text-xs uppercase tracking-wider">
                 <User size={16} className="text-primary" /> Responsables
               </div>
@@ -127,7 +128,7 @@ export const InventoryReportModal = ({ isOpen, onClose, inventoryId }: Props) =>
           {(inventory.staffNotes || inventory.adminNotes) && (
             <div className="space-y-3">
               {inventory.staffNotes && (
-                <div className="p-4 bg-base-100 rounded-xl border border-base-200 space-y-1">
+                <div className="p-4 bg-base-100 rounded-xl border border-base-300 shadow-sm space-y-1">
                   <div className="flex items-center gap-2 text-base-content/70 font-semibold text-xs">
                     <FileText size={16} className="text-info" /> Notas del Personal
                   </div>
@@ -135,7 +136,7 @@ export const InventoryReportModal = ({ isOpen, onClose, inventoryId }: Props) =>
                 </div>
               )}
               {inventory.adminNotes && (
-                <div className="p-4 bg-base-100 rounded-xl border border-base-200 space-y-1">
+                <div className="p-4 bg-base-100 rounded-xl border border-base-300 shadow-sm space-y-1">
                   <div className="flex items-center gap-2 text-base-content/70 font-semibold text-xs">
                     <FileText size={16} className="text-success" /> Notas de Administración
                   </div>
@@ -151,7 +152,7 @@ export const InventoryReportModal = ({ isOpen, onClose, inventoryId }: Props) =>
               <div className="flex items-center gap-2 text-base-content/70 font-semibold text-xs">
                 <ImageIcon size={16} className="text-primary" /> Evidencia Fotográfica
               </div>
-              <div className="rounded-xl overflow-hidden border border-base-200 max-h-64 flex justify-center bg-base-200/30">
+              <div className="rounded-xl overflow-hidden border border-base-300 shadow-sm max-h-64 flex justify-center bg-base-100">
                 <img src={inventory.imageUrl} alt="Evidencia de inventario" className="object-contain max-h-64" />
               </div>
             </div>

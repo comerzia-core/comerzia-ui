@@ -47,6 +47,7 @@ export const EmployeeDetailModal = ({ isOpen, onClose, employeeId }: Props) => {
       onClose={onClose} 
       title="Ficha del Personal" 
       size="lg"
+      variant="view"
       actions={
         <div className="flex gap-2 w-full justify-end">
           <BtnCancel onClick={onClose} label="Cerrar" responsive={true} className="w-full sm:w-auto" />
@@ -80,7 +81,7 @@ export const EmployeeDetailModal = ({ isOpen, onClose, employeeId }: Props) => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Personales */}
-            <div className="bg-base-200/50 p-4 rounded-xl space-y-3">
+            <div className="bg-base-100 shadow-sm border border-base-300 p-4 rounded-xl space-y-3">
               <h3 className="font-bold flex items-center gap-2 text-base-content border-b border-base-300 pb-2">
                 <UserCircle size={18} className="text-primary" /> Datos Personales
               </h3>
@@ -111,7 +112,7 @@ export const EmployeeDetailModal = ({ isOpen, onClose, employeeId }: Props) => {
             </div>
 
             {/* Contrato */}
-            <div className="bg-base-200/50 p-4 rounded-xl space-y-3">
+            <div className="bg-base-100 shadow-sm border border-base-300 p-4 rounded-xl space-y-3">
               <h3 className="font-bold flex items-center gap-2 text-base-content border-b border-base-300 pb-2">
                 <Briefcase size={18} className="text-primary" /> Contrato y Roles
               </h3>

@@ -275,9 +275,9 @@ export const CatalogPage = () => {
       </div>
 
       {/* CONTENEDOR DE TABLA DE PRODUCTOS */}
-      <div className="card bg-base-100 p-4 sm:p-6 rounded-2xl shadow-xs border border-base-200">
-        <div className="mb-4">
-          <h2 className="text-lg font-bold text-base-content">Listado de Productos</h2>
+      <div className="md:bg-base-100 md:p-6 md:rounded-2xl md:shadow-sm md:border md:border-base-200">
+        <div className="mb-3 md:mb-4 px-1 md:px-0">
+          <h2 className="text-sm md:text-lg font-bold text-base-content/70 md:text-base-content uppercase md:capitalize tracking-wider md:tracking-normal">Listado de Productos</h2>
         </div>
 
         <ProductTable

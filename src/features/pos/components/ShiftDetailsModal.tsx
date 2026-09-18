@@ -223,8 +223,9 @@ export const ShiftDetailsModal = ({ isOpen, onClose, shiftId }: Props) => {
     <ComerziaModal
       isOpen={isOpen}
       onClose={onClose}
-      title="Reporte Completo del Turno"
+      title={`Reporte de Turno Caja ${report?.cashRegisterName || ''}`}
       size="xl"
+      variant="view"
       actions={
         <div className="flex flex-row justify-end w-full">
           <BtnCancel label="Cerrar" onClick={onClose} responsive={false} className="w-full sm:w-auto" />
@@ -241,7 +242,7 @@ export const ShiftDetailsModal = ({ isOpen, onClose, shiftId }: Props) => {
           {/* SECCIÓN 1: CONTEXTO GENERAL Y ESTADO */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Contexto */}
-            <div className="bg-base-200/50 p-4 rounded-2xl border border-base-200 space-y-3">
+            <div className="bg-base-100 p-4 rounded-2xl border border-base-300 shadow-sm space-y-3">
               <h3 className="font-bold text-sm text-base-content/70 uppercase tracking-wider">Contexto del Turno</h3>
               <div className="space-y-2 text-sm">
                 <div className="flex items-center gap-2">
@@ -270,7 +271,7 @@ export const ShiftDetailsModal = ({ isOpen, onClose, shiftId }: Props) => {
             </div>
 
             {/* Tiempos y Estado */}
-            <div className="bg-base-200/50 p-4 rounded-2xl border border-base-200 space-y-3">
+            <div className="bg-base-100 p-4 rounded-2xl border border-base-300 shadow-sm space-y-3">
               <div className="flex justify-between items-center">
                 <h3 className="font-bold text-sm text-base-content/70 uppercase tracking-wider">Estado y Tiempos</h3>
                 <StatusBadge
@@ -294,7 +295,7 @@ export const ShiftDetailsModal = ({ isOpen, onClose, shiftId }: Props) => {
                 {report.observation && (
                   <div className="mt-2 pt-2 border-t border-base-300">
                     <span className="block text-xs font-semibold text-base-content/60 mb-1">Observaciones de Cierre:</span>
-                    <p className="text-sm italic text-base-content/80 bg-base-100 p-2 rounded-lg border border-base-200">
+                    <p className="text-sm italic text-base-content/80 bg-base-200/50 p-2 rounded-lg border border-base-300">
                       "{report.observation}"
                     </p>
                   </div>
@@ -305,15 +306,15 @@ export const ShiftDetailsModal = ({ isOpen, onClose, shiftId }: Props) => {
 
           {/* SECCIÓN 2: TOTALES GLOBALES */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="bg-primary/5 border border-primary/10 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
+            <div className="bg-base-100 shadow-sm border border-primary/20 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
               <span className="text-xs font-bold text-primary/70 uppercase tracking-wider mb-1">Monto Inicial</span>
               <span className="text-xl sm:text-2xl font-bold text-primary font-mono">{currency} {report.initialAmount.toFixed(2)}</span>
             </div>
-            <div className="bg-success/5 border border-success/10 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
+            <div className="bg-base-100 shadow-sm border border-success/20 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
               <span className="text-xs font-bold text-success/70 uppercase tracking-wider mb-1">Total Ingresos</span>
               <span className="text-xl sm:text-2xl font-bold text-success font-mono">{currency} {report.totalInflows.toFixed(2)}</span>
             </div>
-            <div className="bg-error/5 border border-error/10 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
+            <div className="bg-base-100 shadow-sm border border-error/20 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
               <span className="text-xs font-bold text-error/70 uppercase tracking-wider mb-1">Total Egresos</span>
               <span className="text-xl sm:text-2xl font-bold text-error font-mono">{currency} {report.totalOutflows.toFixed(2)}</span>
             </div>
@@ -341,7 +342,7 @@ export const ShiftDetailsModal = ({ isOpen, onClose, shiftId }: Props) => {
                   {report.paymentReports.map((p, idx) => {
                     const isDiff = p.differenceAmount !== 0;
                     return (
-                      <div key={idx} className="bg-base-100 p-3.5 rounded-xl border border-base-200 shadow-xs space-y-2 text-xs">
+                      <div key={idx} className="bg-base-100 p-4 rounded-2xl border border-base-300 shadow-md space-y-3 text-xs hover:border-primary/30 transition-colors">
                         <div className="flex justify-between items-center font-bold pb-1 border-b border-base-200/50">
                           <span className="text-sm">{p.paymentType.label}</span>
                           <span className={`text-sm ${isDiff ? (p.differenceAmount > 0 ? 'text-success' : 'text-error') : 'text-base-content'}`}>
@@ -435,7 +436,7 @@ export const ShiftDetailsModal = ({ isOpen, onClose, shiftId }: Props) => {
                     movementsData.map((m) => {
                       const isOutflow = m.movementType.code === 2 || m.movementType.label.toLowerCase().includes('egreso');
                       return (
-                        <div key={m.id} className="bg-base-100 p-3 rounded-xl border border-base-200 shadow-xs space-y-1 text-xs">
+                        <div key={m.id} className="bg-base-100 p-4 rounded-2xl border border-base-300 shadow-md space-y-2 text-xs hover:border-primary/30 transition-colors">
                           <div className="flex justify-between items-start">
                             <div className="space-y-0.5">
                               <div className="flex items-center gap-1.5">
@@ -491,29 +492,16 @@ export const ShiftDetailsModal = ({ isOpen, onClose, shiftId }: Props) => {
                         salesDataList.map((sale) => {
                           const netAmount = sale.amount - (sale.changeAmount || 0);
                           return (
-                            <div key={sale.id} className="bg-base-100 p-3.5 rounded-xl border border-base-200 shadow-xs space-y-1.5 text-xs">
-                              <div className="flex justify-between items-start pb-1 border-b border-base-200/50">
-                                <span className="font-bold text-primary font-mono text-sm">{sale.saleNumber}</span>
-                                <div className="flex flex-col items-end">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="badge badge-xs badge-ghost font-medium">
-                                      {sale.paymentType?.label || '-'}
-                                    </span>
-                                    <span className="font-bold font-mono text-success text-sm">
-                                      {currency} {netAmount.toFixed(2)}
-                                    </span>
-                                  </div>
-                                  {sale.changeAmount > 0 && (
-                                    <span className="text-[10px] text-base-content/50 font-mono">
-                                      Cambio: {currency} {sale.changeAmount.toFixed(2)}
-                                    </span>
-                                  )}
-                                </div>
+                            <div key={sale.id} className="bg-base-100 p-3 rounded-xl border border-base-300 shadow-md flex flex-col gap-1.5 hover:border-primary/30 transition-colors">
+                              <div className="flex justify-between items-center">
+                                <span className="font-bold font-mono text-base-content">{formatTimeForUser(sale.date)}</span>
+                                <span className="font-bold font-mono text-success text-base">
+                                  {currency} {netAmount.toFixed(2)}
+                                </span>
                               </div>
-
-                              <div className="flex justify-between items-center text-[11px] text-base-content/70 pt-0.5">
-                                <span className="font-medium text-base-content/60">{formatTimeForUser(sale.date)}</span>
-                                <span className="font-medium text-base-content truncate max-w-[160px]">{sale.sellerName || '-'}</span>
+                              <div className="flex justify-between items-center text-xs">
+                                <span className="text-base-content/50 truncate max-w-[180px]">Vendedor: {sale.sellerName || 'Sistema'}</span>
+                                <span className="badge badge-sm badge-primary badge-outline font-semibold">{sale.paymentType?.label || '-'}</span>
                               </div>
                             </div>
                           );

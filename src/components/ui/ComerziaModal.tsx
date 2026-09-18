@@ -9,9 +9,10 @@ interface Props {
     actions?: ReactNode;
     size?: "sm" | "md" | "lg" | "xl";
     closeOnOutsideClick?: boolean;
+    variant?: "form" | "view";
 }
 
-export const ComerziaModal = ({ isOpen, onClose, title, children, actions, size = "md", closeOnOutsideClick = false }: Props) => {
+export const ComerziaModal = ({ isOpen, onClose, title, children, actions, size = "md", closeOnOutsideClick = false, variant = "form" }: Props) => {
     
     // 1. MANEJO DE TECLA ESC (Manual, ya que quitamos el dialog nativo)
     useEffect(() => {
@@ -32,6 +33,14 @@ export const ComerziaModal = ({ isOpen, onClose, title, children, actions, size 
         xl: "max-w-6xl",
     };
 
+    // Clases de background según variante
+    const bgClasses = variant === 'view' 
+        ? '!bg-base-200 dark:!bg-base-300' 
+        : '!bg-base-100 dark:!bg-base-100'; // Form mantiene fondo blanco.
+        
+    const headerBorderClass = variant === 'view' ? 'border-base-300' : 'border-base-200';
+    const footerBorderClass = variant === 'view' ? 'border-base-300/50' : 'border-base-200';
+
     // Si no está abierto, no renderizamos nada (para limpiar el DOM)
     if (!isOpen) return null;
 
@@ -47,13 +56,13 @@ export const ComerziaModal = ({ isOpen, onClose, title, children, actions, size 
         >
             
             <div 
-                className={`modal-box ${sizeClasses[size]} p-0 overflow-hidden bg-base-100 shadow-2xl relative`}
+                className={`modal-box ${sizeClasses[size]} p-0 overflow-hidden ${bgClasses} shadow-2xl relative border ${footerBorderClass}`}
                 role="dialog"
                 aria-modal="true"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="bg-base-200 px-6 py-4 flex justify-between items-center border-b border-base-300">
+                <div className={`bg-base-200 px-6 py-4 flex justify-between items-center border-b ${headerBorderClass}`}>
                     <div className="font-bold text-lg text-base-content flex items-center gap-2">
                         {title}
                     </div>
@@ -73,7 +82,7 @@ export const ComerziaModal = ({ isOpen, onClose, title, children, actions, size 
 
                 {/* Footer */}
                 {actions && (
-                    <div className="modal-action bg-base-100 px-6 py-4 mt-0 border-t border-base-200 flex justify-end gap-2">
+                    <div className={`modal-action ${bgClasses} px-6 py-4 mt-0 border-t ${footerBorderClass} flex justify-end gap-2`}>
                         {actions}
                     </div>
                 )}

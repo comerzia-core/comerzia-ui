@@ -565,7 +565,7 @@ export const StockMovementsPage = () => {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in max-w-7xl mx-auto mt-2 sm:mt-6 px-2 sm:px-0">
+    <div className="space-y-6 animate-fade-in w-full">
       {/* 1. HEADER DE LA PÁGINA */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-start gap-2.5">

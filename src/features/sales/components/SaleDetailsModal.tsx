@@ -74,9 +74,10 @@ export const SaleDetailsModal = ({ isOpen, onClose, sale }: Props) => {
       onClose={onClose}
       title={`Detalle de Venta ${sale.saleNumber ? `#${sale.saleNumber}` : ''}`}
       size="xl"
+      variant="view"
     >
       <div className="space-y-5 pt-1">
-        <div className={`grid grid-cols-2 ${isOwner && sale.branchName ? 'sm:grid-cols-5' : 'sm:grid-cols-4'} gap-2.5 bg-base-200/50 p-3.5 rounded-xl border border-base-200 text-xs`}>
+        <div className={`grid grid-cols-2 ${isOwner && sale.branchName ? 'sm:grid-cols-5' : 'sm:grid-cols-4'} gap-2.5 bg-base-100 shadow-sm p-3.5 rounded-xl border border-base-300 text-xs`}>
           {isOwner && sale.branchName && (
             <div>
               <span className="text-[10px] text-base-content/50 font-semibold uppercase tracking-wider block">Sucursal</span>
