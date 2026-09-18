@@ -23,6 +23,7 @@ export interface SalesCatalogSuggestionResponse {
   label: string;
   barCode?: string;
   imageUrl?: string;
+  description?: string;
 }
 
 export interface SalesCatalogItem {

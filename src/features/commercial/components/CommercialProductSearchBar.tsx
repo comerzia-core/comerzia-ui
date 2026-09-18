@@ -53,10 +53,9 @@ export const CommercialProductSearchBar = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Búsqueda predictiva con debounce
   useEffect(() => {
     const trimmed = term.trim();
-    if (trimmed.length < 2) {
+    if (trimmed.length < 4) {
       setSuggestions([]);
       setIsOpen(false);
       return;
@@ -178,7 +177,7 @@ export const CommercialProductSearchBar = ({
                   className="w-full text-left p-2.5 sm:p-3 rounded-xl transition-all duration-150 hover:bg-primary/10 hover:border-primary/20 border border-transparent flex items-center gap-3 sm:gap-3.5 group min-h-[44px]"
                 >
                   {/* Thumbnail de la Variante */}
-                  <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-lg bg-base-200/80 border border-base-300 overflow-hidden shrink-0 flex items-center justify-center relative">
+                  <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-lg bg-base-200/80 border border-base-300 overflow-hidden shrink-0 flex items-center justify-center relative">
                     {sug.imageUrl ? (
                       <img
                         src={getThumbnailUrl(sug.imageUrl, 120)}
@@ -194,14 +193,14 @@ export const CommercialProductSearchBar = ({
                     )}
                   </div>
 
-                  {/* Detalle: Nombre y Código de Barras */}
-                  <div className="min-w-0 flex-1">
-                    <span className="font-bold text-xs sm:text-sm text-base-content group-hover:text-primary transition-colors block truncate leading-snug">
+                  {/* Detalle: Nombre y Descripción */}
+                  <div className="min-w-0 flex-1 flex flex-col justify-center">
+                    <span className="font-bold text-base sm:text-lg text-base-content group-hover:text-primary transition-colors block break-words leading-tight">
                       {sug.label}
                     </span>
-                    {sug.barCode && (
-                      <span className="font-mono text-[11px] text-base-content/60 inline-flex items-center gap-1 mt-0.5 whitespace-nowrap">
-                        <Barcode size={12} className="text-primary/70 shrink-0" /> {sug.barCode}
+                    {sug.description && (
+                      <span className="text-xs sm:text-sm text-base-content/70 truncate mt-0.5">
+                        {sug.description}
                       </span>
                     )}
                   </div>

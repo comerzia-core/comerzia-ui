@@ -28,7 +28,7 @@ export const ComerziaProductSearch = ({ onProductSelect, onError }: ComerziaProd
   }, []);
 
   useEffect(() => {
-    if (term.trim().length < 3) {
+    if (term.trim().length < 4) {
       setSuggestions([]);
       setIsOpen(false);
       return;
@@ -101,7 +101,7 @@ export const ComerziaProductSearch = ({ onProductSelect, onError }: ComerziaProd
                   className="w-full text-left p-2.5 sm:p-3 rounded-2xl transition-all duration-200 hover:bg-primary/10 hover:shadow-xs border border-transparent hover:border-primary/20 flex items-center gap-3 sm:gap-4 group"
                 >
                   {/* Thumbnail del Producto con Optimización Cloudinary */}
-                  <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-base-200/70 border border-base-300/80 overflow-hidden shrink-0 flex items-center justify-center relative">
+                  <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-base-200/70 border border-base-300/80 overflow-hidden shrink-0 flex items-center justify-center relative">
                     {sug.imageUrl ? (
                       <img
                         src={getThumbnailUrl(sug.imageUrl, 120)}
@@ -118,10 +118,15 @@ export const ComerziaProductSearch = ({ onProductSelect, onError }: ComerziaProd
                   </div>
 
                   {/* Nombre y detalles de la variante */}
-                  <div className="min-w-0 flex-1">
-                    <span className="font-bold text-sm sm:text-base text-base-content group-hover:text-primary transition-colors block break-words leading-snug">
+                  <div className="min-w-0 flex-1 flex flex-col justify-center">
+                    <span className="font-bold text-base sm:text-lg text-base-content group-hover:text-primary transition-colors block break-words leading-tight">
                       {sug.label}
                     </span>
+                    {sug.description && (
+                      <span className="text-xs sm:text-sm text-base-content/70 truncate mt-0.5">
+                        {sug.description}
+                      </span>
+                    )}
                   </div>
                 </button>
               </li>
