@@ -141,6 +141,15 @@ export interface ScannerProductResponse {
   otherVariants: ScannerSiblingVariantResponse[];
 }
 
+export interface ProductVariantIdentityResponse {
+  variantId: string;
+  productId: string;
+  productName: string;
+  variantName: string;
+  sku: string;
+  imageUrl?: string;
+}
+
 export interface StockEntryResponse {
   id: string;
   quantityIn: number;

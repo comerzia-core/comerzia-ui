@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { commercialService } from '../services/commercialService';
 import type {
-  ScannerProductResponse,
+  ProductVariantIdentityResponse,
   StockEntryResponse,
   StockAdjustmentResponse,
   PendingCostEntryResponse
@@ -82,7 +82,7 @@ const CurrencyCell = ({ amount, currencyCode = 'USD' }: { amount: number, curren
 
 export const StockMovementsPage = () => {
   const [searchParams] = useSearchParams();
-  const [productData, setProductData] = useState<ScannerProductResponse | null>(null);
+  const [productData, setProductData] = useState<ProductVariantIdentityResponse | null>(null);
   const [isLoadingScan, setIsLoadingScan] = useState(false);
   const [shakeKey, setShakeKey] = useState(0);
   const { error: toastError, success: toastSuccess } = useToast();
@@ -198,13 +198,13 @@ export const StockMovementsPage = () => {
     }
   }, [hasCostPermission, pendingCostPage, pendingCostSize]);
 
-  const scannedVariant = productData?.scannedVariant;
+  const scannedVariant = productData ? { variantId: productData.variantId, variantName: productData.variantName } : undefined;
 
   useEffect(() => {
     if (scannedVariant) {
       loadKardex();
     }
-  }, [scannedVariant, activeTab, page, size, filterStockId]);
+  }, [productData?.variantId, activeTab, page, size, filterStockId]);
 
   const loadKardex = async () => {
     if (!scannedVariant) return;
@@ -245,14 +245,14 @@ export const StockMovementsPage = () => {
     setNote('');
     setFilterStockId(null);
     try {
-      const res = await commercialService.scanBarcode(codeToScan.trim());
+      const res = await commercialService.identifyVariant(codeToScan.trim());
       setProductData(res);
     } catch (err: any) {
       const status = err.response?.status;
       const errorCode = err.response?.data?.errorCode;
 
-      if (status === 404 || errorCode === 'not_found') {
-        toastError("No se encontró ningún producto con este código de barras.");
+      if (status === 404 || errorCode === 'not_found' || errorCode === 'resource_not_found') {
+        toastError("No se encontró ningún producto con este código de barras o identificador.");
       } else {
         toastError(err.response?.data?.message || 'Error al conectar con el servidor.');
       }

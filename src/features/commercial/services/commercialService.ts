@@ -11,6 +11,7 @@ import type {
   CreateFamilyGroupRequest,
   AddProductsToFamilyRequest,
   ScannerProductResponse,
+  ProductVariantIdentityResponse,
   PageStockEntryResponse,
   PagePendingCostEntryResponse,
   CreateStockEntryRequest,
@@ -166,6 +167,18 @@ export const commercialService = {
   // Scanner
   scanBarcode: async (barcode: string): Promise<ScannerProductResponse> => {
     const response = await api.get(`/tenant/scanner/${barcode}`);
+    return response.data;
+  },
+
+  identifyVariant: async (term: string): Promise<ProductVariantIdentityResponse> => {
+    const isUUID = term.length === 36 && term.includes('-');
+    const params = new URLSearchParams();
+    if (isUUID) {
+      params.append('id', term);
+    } else {
+      params.append('barcode', term);
+    }
+    const response = await api.get(`/tenant/product-variants/identify?${params.toString()}`);
     return response.data;
   },
 
