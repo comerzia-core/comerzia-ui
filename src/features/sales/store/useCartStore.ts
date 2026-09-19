@@ -18,6 +18,7 @@ interface CartStore {
   updateDiscount: (productVariantId: string, discountAmount: number) => { success: boolean; message?: string };
   updateTotalDiscount: (productVariantId: string, totalDiscountAmount: number) => { success: boolean; message?: string };
   updatePriceType: (productVariantId: string, priceTypeId: string) => { success: boolean; message?: string };
+  setItems: (items: CartItem[]) => void;
   clearCart: () => void;
 
   // Selectores y Cálculos
@@ -253,6 +254,8 @@ export const useCartStore = create<CartStore>((set, get) => ({
 
     return { success: true };
   },
+
+  setItems: (items: CartItem[]) => set({ items }),
 
   clearCart: () => set({ items: [] }),
 

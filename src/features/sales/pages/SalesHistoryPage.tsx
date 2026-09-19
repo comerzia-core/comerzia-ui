@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { salesService } from '../services/salesService';
-import type { SaleResponse, SalesCatalogItem, CustomerProfileResponse, SellerResponse } from '../types/sales';
+import type { SaleResponse, CustomerProfileResponse, SellerResponse } from '../types/sales';
 import { useToast } from '../../../context/ToastContext';
 import { ComerziaTable, type Column, type TablePaginationConfig } from '../../../components/ui/ComerziaTable';
 import { ComerziaBadge } from '../../../components/ui/ComerziaBadge';
@@ -11,7 +11,7 @@ import { ComerziaButton } from '../../../components/ui/ComerziaButton';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
 import { ComerziaSelect } from '../../../components/ui/ComerziaSelect';
 import { ComerziaContextMenu, ContextMenuItem } from '../../../components/ui/ComerziaContextMenu';
-import { BtnCancel, BtnSave, BtnDeleteIcon, BtnModalYes } from '../../../components/ui/CrudButtons';
+import { BtnCancel, BtnModalYes } from '../../../components/ui/CrudButtons';
 import { SaleDetailsModal } from '../components/SaleDetailsModal';
 import { RegisterSaleCustomerModal } from '../components/RegisterSaleCustomerModal';
 import { formatDateForUser } from '../../../utils/date';
@@ -26,7 +26,6 @@ import {
   UserCheck,
   UserPlus,
   History,
-  Plus,
   Search,
   Calendar,
   User,
@@ -40,7 +39,7 @@ import {
 export const SalesHistoryPage = () => {
   const navigate = useNavigate();
   const { userProfile, hasPermission, hasRole } = useAuthStore();
-  const { success: toastSuccess, error: toastError, warning: toastWarning } = useToast();
+  const { success: toastSuccess, error: toastError } = useToast();
 
   const { options: dictOptions } = useLoadDictionaries([DICTIONARIES.PAYMENT_TYPE]);
   const paymentTypeOptions = dictOptions[DICTIONARIES.PAYMENT_TYPE] || [];
@@ -119,13 +118,6 @@ export const SalesHistoryPage = () => {
   // Modal de Detalles del Cliente y Asignación de Cliente
   const [selectedCustomerDetails, setSelectedCustomerDetails] = useState<CustomerProfileResponse | null>(null);
   const [assigningCustomerSale, setAssigningCustomerSale] = useState<SaleResponse | null>(null);
-
-  // Estados de Edición de Venta
-  const [editingSale, setEditingSale] = useState<SaleResponse | null>(null);
-  const [editDetails, setEditDetails] = useState<any[]>([]);
-  const [editCatalogSearch, setEditCatalogSearch] = useState('');
-  const [editSearchResults, setEditSearchResults] = useState<SalesCatalogItem[]>([]);
-  const [isSearchingCatalog, setIsSearchingCatalog] = useState(false);
 
   // Estados de Cancelación
   const [cancelingSaleId, setCancelingSaleId] = useState<string | null>(null);
@@ -256,161 +248,6 @@ export const SalesHistoryPage = () => {
       toastError(err.response?.data?.message || "Error al cancelar la venta.");
     } finally {
       setIsCanceling(false);
-    }
-  };
-
-  // Iniciar edición de venta pendiente (601)
-  const startEditSale = async (sale: SaleResponse) => {
-    setEditingSale(sale);
-    let details = sale.details;
-    if (!details || details.length === 0) {
-      try {
-        details = await salesService.getSaleDetails(sale.id);
-      } catch (err) {
-        console.error('Error recuperando detalle de venta para editar:', err);
-        details = [];
-      }
-    }
-    setEditDetails((details || []).map(d => ({
-      productVariantId: d.productVariantId,
-      priceTypeId: (d as any).priceTypeId,
-      variantName: d.variantName || d.productName || 'Producto',
-      quantity: d.receiptQuantity ?? 1,
-      salePrice: d.receiptUnitPrice ?? 0,
-      discountAmount: d.lineTotalDiscount ?? 0,
-      stock: (d.receiptQuantity ?? 1) + 50,
-      discountPrice: 0
-    })));
-    setEditCatalogSearch('');
-    setEditSearchResults([]);
-  };
-
-  // Buscar catálogo para agregar items a la venta editada
-  const handleCatalogSearch = async () => {
-    if (!editCatalogSearch.trim()) return;
-    setIsSearchingCatalog(true);
-    try {
-      const term = editCatalogSearch.trim();
-      const branchCtx = editingSale?.branchId;
-      let productResponse;
-      try {
-        productResponse = await salesService.getProductDetailsBySku(term, branchCtx);
-      } catch {
-        try {
-          productResponse = await salesService.getProductDetailsByBarcode(term, branchCtx);
-        } catch {
-          productResponse = null;
-        }
-      }
-
-      if (productResponse && productResponse.activePrices && productResponse.activePrices.length > 0) {
-        const defaultPrice = productResponse.activePrices[0];
-        const item: SalesCatalogItem = {
-          productVariantId: productResponse.variantId,
-          productName: productResponse.name,
-          variantName: productResponse.nameVariant || productResponse.name,
-          sku: productResponse.sku,
-          barCode: term,
-          stock: productResponse.availableStock || 0,
-          salePrice: defaultPrice.salePrice,
-          discountPrice: defaultPrice.discountPrice,
-          priceTypeId: defaultPrice.priceTypeId,
-          priceTypeName: defaultPrice.priceTypeName,
-          equivalenceFactor: defaultPrice.equivalenceFactor || 1,
-          activePrices: productResponse.activePrices
-        };
-        setEditSearchResults([item]);
-      } else {
-        setEditSearchResults([]);
-        toastWarning("No se encontró ningún producto con ese SKU o Código de barras.");
-      }
-    } catch {
-      toastError("Error al buscar en catálogo.");
-    } finally {
-      setIsSearchingCatalog(false);
-    }
-  };
-
-  const handleAddEditItem = (catItem: SalesCatalogItem) => {
-    const existingIndex = editDetails.findIndex(d => d.productVariantId === catItem.productVariantId);
-    if (existingIndex >= 0) {
-      toastWarning("El producto ya se encuentra en el pedido.");
-      return;
-    }
-
-    setEditDetails([...editDetails, {
-      productVariantId: catItem.productVariantId,
-      priceTypeId: catItem.priceTypeId,
-      variantName: catItem.variantName || catItem.productName,
-      quantity: 1,
-      salePrice: catItem.salePrice,
-      discountAmount: 0,
-      stock: catItem.stock,
-      discountPrice: catItem.discountPrice
-    }]);
-
-    setEditCatalogSearch('');
-    setEditSearchResults([]);
-  };
-
-  const handleRemoveEditItem = (productVariantId: string) => {
-    setEditDetails(editDetails.filter(d => d.productVariantId !== productVariantId));
-  };
-
-  const handleUpdateEditItemQty = (productVariantId: string, quantity: number) => {
-    setEditDetails(editDetails.map(d => {
-      if (d.productVariantId === productVariantId) {
-        if (quantity > d.stock) {
-          toastWarning(`Cantidad supera el stock disponible (${d.stock}). Capped.`);
-          return { ...d, quantity: d.stock };
-        }
-        return { ...d, quantity: Math.max(1, quantity) };
-      }
-      return d;
-    }));
-  };
-
-  const handleUpdateEditItemDiscount = (productVariantId: string, discount: number) => {
-    setEditDetails(editDetails.map(d => {
-      if (d.productVariantId === productVariantId) {
-        const maxDiscount = d.salePrice - d.discountPrice;
-        if (discount > maxDiscount) {
-          toastWarning(`Límite de descuento excedido. Ajustado a ${currency} ${maxDiscount.toFixed(2)}.`);
-          return { ...d, discountAmount: maxDiscount };
-        }
-        return { ...d, discountAmount: Math.max(0, discount) };
-      }
-      return d;
-    }));
-  };
-
-  const getEditSubtotal = () => editDetails.reduce((acc, d) => acc + d.salePrice * d.quantity, 0);
-  const getEditDiscount = () => editDetails.reduce((acc, d) => acc + d.discountAmount * d.quantity, 0);
-  const getEditTotal = () => getEditSubtotal() - getEditDiscount();
-
-  const handleSaveEditSale = async () => {
-    if (!editingSale) return;
-    if (editDetails.length === 0) {
-      toastWarning("La venta debe contener al menos un producto.");
-      return;
-    }
-    try {
-      const payload = {
-        expectedTotalAmount: getEditTotal(),
-        details: editDetails.map(d => ({
-          productVariantId: d.productVariantId,
-          priceTypeId: d.priceTypeId,
-          receiptQuantity: d.quantity,
-          lineDiscountAmount: d.discountAmount
-        }))
-      };
-
-      await salesService.updatePendingSale(editingSale.id, payload as any);
-      toastSuccess("Venta pendiente actualizada con éxito.");
-      setEditingSale(null);
-      loadSales(page, size);
-    } catch (err: any) {
-      toastError(err.response?.data?.message || "Error al actualizar la venta.");
     }
   };
 
@@ -855,7 +692,7 @@ export const SalesHistoryPage = () => {
                 icon={Edit}
                 label="Editar Venta Pendiente"
                 onClick={() => {
-                  if (contextMenu.sale) startEditSale(contextMenu.sale);
+                  if (contextMenu.sale) { navigate('/sales/new', { state: { editSale: contextMenu.sale } }); }
                 }}
               />
             )}
@@ -990,174 +827,6 @@ export const SalesHistoryPage = () => {
         </div>
       </ComerziaModal>
 
-      {/* MODAL EDITAR VENTA PENDIENTE (601 PENDING) */}
-      <ComerziaModal
-        isOpen={!!editingSale}
-        onClose={() => setEditingSale(null)}
-        title="Modificar Pedido Pendiente de Pago"
-        size="xl"
-      >
-        <div className="space-y-6">
-          {/* BUSCADOR DE AGREGAR PRODUCTOS */}
-          <div className="bg-base-200/40 p-4 rounded-xl space-y-3 border border-base-200">
-            <h4 className="font-bold text-sm text-base-content/80 flex items-center gap-2">
-              <Plus size={16} className="text-primary" /> Agregar Producto al Pedido
-            </h4>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <input
-                type="text"
-                placeholder="Buscar por SKU o Barcode..."
-                className="input input-bordered input-sm flex-1 text-xs sm:text-sm"
-                value={editCatalogSearch}
-                onChange={(e) => setEditCatalogSearch(e.target.value)}
-              />
-              <ComerziaButton
-                variant="primary"
-                label="Buscar"
-                className="btn-sm w-full sm:w-auto"
-                onClick={handleCatalogSearch}
-                isLoading={isSearchingCatalog}
-                disabled={isSearchingCatalog}
-              />
-            </div>
-
-            {/* Resultados rápidos de edición */}
-            {isSearchingCatalog ? (
-              <span className="loading loading-spinner loading-sm text-primary block mx-auto"></span>
-            ) : editSearchResults.length > 0 ? (
-              <div className="border border-base-200 bg-base-100 rounded-lg overflow-y-auto max-h-[150px] p-2 space-y-1">
-                {editSearchResults.map(item => (
-                  <div key={item.productVariantId} className="flex justify-between items-center text-xs p-1.5 hover:bg-base-200/50 rounded gap-2">
-                    <span className="truncate font-medium">{item.variantName} (Stock: {item.stock})</span>
-                    <ComerziaButton
-                      variant="create"
-                      label="Agregar"
-                      className="btn-xs shrink-0"
-                      onClick={() => handleAddEditItem(item)}
-                    />
-                  </div>
-                ))}
-              </div>
-            ) : null}
-          </div>
-
-          {/* VISTA DESKTOP: LISTADO DE ITEMS */}
-          <div className="hidden md:block overflow-x-auto border border-base-200 rounded-xl">
-            <table className="table table-compact w-full text-xs">
-              <thead>
-                <tr className="bg-base-200/60 font-bold">
-                  <th>Producto</th>
-                  <th className="w-24 text-center">Cantidad</th>
-                  <th>Precio Venta</th>
-                  <th className="w-28 text-center">Descuento</th>
-                  <th>Total Línea</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {editDetails.map((item) => (
-                  <tr key={item.productVariantId}>
-                    <td>
-                      <div>
-                        <span className="font-bold block text-sm">{item.variantName}</span>
-                      </div>
-                    </td>
-                    <td className="text-center">
-                      <input
-                        type="number"
-                        min="1"
-                        max={item.stock}
-                        className="input input-bordered input-xs w-16 text-center font-bold font-mono"
-                        value={item.quantity}
-                        onChange={(e) => handleUpdateEditItemQty(item.productVariantId, parseInt(e.target.value) || 1)}
-                      />
-                    </td>
-                    <td className="font-mono">{currency} {item.salePrice.toFixed(2)}</td>
-                    <td className="text-center">
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        className="input input-bordered input-xs w-24 text-center font-mono"
-                        value={item.discountAmount}
-                        onChange={(e) => handleUpdateEditItemDiscount(item.productVariantId, parseFloat(e.target.value) || 0)}
-                      />
-                    </td>
-                    <td className="font-mono font-semibold text-primary">
-                      {currency} {((item.salePrice - item.discountAmount) * item.quantity).toFixed(2)}
-                    </td>
-                    <td>
-                      <BtnDeleteIcon
-                        onClick={() => handleRemoveEditItem(item.productVariantId)}
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* VISTA MOBILE: CARDS DE ITEMS EN EDICIÓN */}
-          <div className="block md:hidden space-y-2.5 max-h-[40vh] overflow-y-auto pr-1">
-            {editDetails.map((item) => (
-              <div key={item.productVariantId} className="bg-base-100 p-3 rounded-xl border border-base-200 space-y-2 text-xs shadow-xs">
-                <div className="flex justify-between items-start gap-2">
-                  <span className="font-bold text-sm text-base-content block leading-tight">{item.variantName}</span>
-                  <BtnDeleteIcon onClick={() => handleRemoveEditItem(item.productVariantId)} />
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 bg-base-200/40 p-2 rounded-lg">
-                  <div>
-                    <span className="text-base-content/50 block text-[10px]">Cantidad (Stock: {item.stock})</span>
-                    <input
-                      type="number"
-                      min="1"
-                      max={item.stock}
-                      className="input input-bordered input-xs w-20 text-center font-bold font-mono mt-0.5"
-                      value={item.quantity}
-                      onChange={(e) => handleUpdateEditItemQty(item.productVariantId, parseInt(e.target.value) || 1)}
-                    />
-                  </div>
-                  <div className="text-right">
-                    <span className="text-base-content/50 block text-[10px]">Descuento Unit.</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      className="input input-bordered input-xs w-24 text-right font-mono mt-0.5"
-                      value={item.discountAmount}
-                      onChange={(e) => handleUpdateEditItemDiscount(item.productVariantId, parseFloat(e.target.value) || 0)}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-between items-center pt-1 border-t border-base-200/60 font-mono">
-                  <span className="text-base-content/60 text-[11px]">Precio: {currency} {item.salePrice.toFixed(2)}</span>
-                  <span className="font-bold text-primary text-sm">
-                    Total: {currency} {((item.salePrice - item.discountAmount) * item.quantity).toFixed(2)}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* TOTALES DE EDICIÓN */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 bg-base-200/40 p-4 rounded-xl font-mono text-xs sm:text-sm border border-base-200">
-            <div>
-              <p>Subtotal: {currency} {getEditSubtotal().toFixed(2)}</p>
-              <p className="text-error">Descuentos: - {currency} {getEditDiscount().toFixed(2)}</p>
-            </div>
-            <p className="text-lg sm:text-xl font-bold text-success">
-              Total: {currency} {getEditTotal().toFixed(2)}
-            </p>
-          </div>
-
-          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2 border-t border-base-200">
-            <BtnCancel onClick={() => setEditingSale(null)} responsive={true} className="w-full sm:w-auto" />
-            <BtnSave label="Actualizar Pedido" onClick={handleSaveEditSale} responsive={true} className="w-full sm:w-auto" />
-          </div>
-        </div>
-      </ComerziaModal>
     </div>
   );
 };

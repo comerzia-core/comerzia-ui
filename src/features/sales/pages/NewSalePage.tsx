@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { salesService } from '../services/salesService';
 import { branchService } from '../../organization/services/branchService';
 import { useCartStore } from '../store/useCartStore';
-import type { SalesCatalogItem, SalesProductResponse, SalesCatalogSuggestionResponse } from '../types/sales';
+import type { SalesCatalogItem, SalesProductResponse, SalesCatalogSuggestionResponse, SaleResponse } from '../types/sales';
 import { useToast } from '../../../context/ToastContext';
 import { CommercialProductSearchBar } from '../../commercial/components/CommercialProductSearchBar';
 import { ComerziaButton } from '../../../components/ui/ComerziaButton';
@@ -317,6 +318,10 @@ const ProductDiscountControl = ({
 };
 
 export const NewSalePage = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const editSale = location.state?.editSale as SaleResponse | undefined;
+
   const { hasPermission, userProfile } = useAuthStore();
   const hasSwitchBranchPerm = hasPermission('SWITCH_BRANCH');
 
@@ -344,6 +349,52 @@ export const NewSalePage = () => {
   const initView = async () => {
     setIsLoadingInit(true);
     setInitError(null);
+    
+    if (editSale) {
+      setSelectedBranchId(editSale.branchId || '');
+      setCartBranchId(editSale.branchId || null);
+      try {
+        const details = await salesService.getSaleDetails(editSale.id);
+        const newCartItems: CartItem[] = [];
+        
+        for (const d of details) {
+          let productResponse = null;
+          try {
+            productResponse = await salesService.getProductDetailsById(d.productVariantId, editSale.branchId);
+          } catch (err) {
+            console.error("Error loading product detail", err);
+          }
+          
+          if (productResponse && productResponse.activePrices && productResponse.activePrices.length > 0) {
+            const activePrice = productResponse.activePrices.find((p: any) => p.priceTypeId === (d as any).priceTypeId) || productResponse.activePrices[0];
+            const factor = activePrice.equivalenceFactor || 1;
+            
+            newCartItems.push({
+              productVariantId: d.productVariantId,
+              productName: d.productName,
+              variantName: d.variantName || d.productName,
+              sku: productResponse.sku,
+              barCode: '',
+              stock: productResponse.availableStock,
+              priceTypeId: activePrice.priceTypeId,
+              priceTypeName: activePrice.priceTypeName,
+              salePrice: activePrice.salePrice,
+              discountPrice: activePrice.discountPrice,
+              equivalenceFactor: factor,
+              activePrices: productResponse.activePrices,
+              quantity: d.receiptQuantity || 1,
+              discountAmount: (d.lineTotalDiscount || 0) / (d.receiptQuantity || 1) / factor
+            });
+          }
+        }
+        useCartStore.getState().setItems(newCartItems);
+      } catch (err) {
+        setInitError('Error al cargar los detalles de la venta a editar.');
+      }
+      setIsLoadingInit(false);
+      return;
+    }
+
     try {
       if (hasSwitchBranchPerm) {
         const branchPage = await branchService.getBranches(0, 100, true);
@@ -460,22 +511,28 @@ export const NewSalePage = () => {
     }
 
     try {
-      await salesService.createSale(
-        {
-          expectedTotalAmount: getTotal(),
-          details: items.map(i => ({
-            productVariantId: i.productVariantId,
-            priceTypeId: i.priceTypeId,
-            receiptQuantity: i.quantity,
-            lineDiscountAmount: i.discountAmount
-          }))
-        },
-        hasSwitchBranchPerm && selectedBranchId ? selectedBranchId : null
-      );
-      toastSuccess('¡Venta registrada con éxito y enviada a Caja!');
-      clearCart();
+      const payload = {
+        expectedTotalAmount: getTotal(),
+        details: items.map(i => ({
+          productVariantId: i.productVariantId,
+          priceTypeId: i.priceTypeId,
+          receiptQuantity: i.quantity,
+          lineDiscountAmount: i.discountAmount
+        }))
+      };
+
+      if (editSale) {
+        await salesService.updatePendingSale(editSale.id, payload as any);
+        toastSuccess('Venta pendiente actualizada con éxito.');
+        clearCart();
+        navigate('/sales/history');
+      } else {
+        await salesService.createSale(payload, hasSwitchBranchPerm && selectedBranchId ? selectedBranchId : null);
+        toastSuccess('¡Venta registrada con éxito y enviada a Caja!');
+        clearCart();
+      }
     } catch (err: any) {
-      const msg = err?.response?.data?.message || 'Error al enviar la venta a Caja';
+      const msg = err?.response?.data?.message || (editSale ? 'Error al actualizar la venta' : 'Error al enviar la venta a Caja');
       toastError(msg);
     }
   };
@@ -503,10 +560,10 @@ export const NewSalePage = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-base-100 p-4 sm:p-6 rounded-2xl border border-base-200 shadow-sm">
         <div className="min-w-0">
           <h1 className="text-xl sm:text-2xl font-bold text-base-content flex items-center gap-2">
-            <ShoppingCart className="text-primary shrink-0" size={26} /> Nueva Venta (Registro)
+            <ShoppingCart className="text-primary shrink-0" size={26} /> {editSale ? `Editar Venta ${editSale.saleNumber || ''}` : 'Nueva Venta (Registro)'}
           </h1>
           <p className="text-xs sm:text-sm text-base-content/60 mt-1">
-            Busca y selecciona productos para armar el pedido antes de enviar a caja.
+            {editSale ? 'Modifica los productos y cantidades de la venta.' : 'Busca y selecciona productos para armar el pedido antes de enviar a caja.'}
           </p>
         </div>
 
@@ -524,6 +581,7 @@ export const NewSalePage = () => {
                 className="select select-bordered select-sm w-full bg-base-100 font-bold text-xs sm:text-sm text-base-content truncate pl-3 pr-8 focus:border-primary focus:outline-none"
                 value={selectedBranchId}
                 onChange={(e) => handleBranchChange(e.target.value)}
+                disabled={!!editSale}
               >
                 {branches.map((b) => (
                   <option key={b.id} value={b.id} title={b.name}>
@@ -884,7 +942,7 @@ export const NewSalePage = () => {
         <div className="flex flex-col justify-end w-full md:w-auto shrink-0">
           <ComerziaButton
             variant="primary"
-            label="Enviar a Caja"
+            label={editSale ? 'Actualizar Venta' : 'Enviar a Caja'}
             icon={<ArrowRight size={24} />}
             className="shadow-xl shadow-primary/20 text-base sm:text-lg font-bold py-4 px-8 w-full md:w-auto h-auto rounded-2xl"
             disabled={items.length === 0}
