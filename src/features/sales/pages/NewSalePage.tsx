@@ -9,7 +9,7 @@ import { useToast } from '../../../context/ToastContext';
 import { CommercialProductSearchBar } from '../../commercial/components/CommercialProductSearchBar';
 import { ComerziaButton } from '../../../components/ui/ComerziaButton';
 import type { CartItem } from '../store/useCartStore';
-import { AlertCircle, ArrowRight, ShoppingCart, Store, ChevronDown, ChevronUp, Trash2, Tag, X, Receipt } from 'lucide-react';
+import { AlertCircle, ArrowRight, ShoppingCart, Store, ChevronDown, ChevronUp, Trash2, Tag, X, Monitor } from 'lucide-react';
 
 interface QuantityControlProps {
   item: CartItem;
@@ -627,22 +627,24 @@ export const NewSalePage = () => {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
           {/* Botón Ir a Terminal de Cobro (POS) */}
           {canAccessPosTerminal && (
             <ComerziaButton
               variant="ghost"
               label="Terminal de Cobro"
-              icon={<Receipt size={18} className="text-primary" />}
-              className="btn-sm font-semibold rounded-xl border border-base-300 hover:border-primary hover:bg-primary/10 transition-all text-xs sm:text-sm"
+              responsive={true}
+              tooltip="Terminal de Cobro"
+              icon={<Monitor size={18} className="text-primary" />}
+              className="btn-sm font-semibold rounded-xl border border-base-300 hover:border-primary hover:bg-primary/10 transition-all text-xs sm:text-sm px-3 sm:px-4 min-w-0 shrink-0 h-11 sm:h-auto"
               onClick={() => navigate('/pos/terminal')}
             />
           )}
 
           {/* Selector de Sucursal */}
           {hasSwitchBranchPerm && branches.length > 0 && (
-            <div className="flex items-center gap-3 bg-base-200/50 p-2 sm:p-2.5 rounded-xl border border-base-300 w-full sm:w-auto max-w-full sm:max-w-xs shrink-0">
-              <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0">
+            <div className="flex items-center gap-2 sm:gap-3 bg-base-200/50 p-1.5 sm:p-2.5 rounded-xl border border-base-300 flex-1 sm:flex-initial sm:w-auto max-w-full sm:max-w-xs shrink-0">
+              <div className="p-1.5 sm:p-2 rounded-lg bg-primary/10 text-primary shrink-0">
                 <Store size={18} />
               </div>
               <div className="flex flex-col min-w-0 flex-1">
@@ -650,7 +652,7 @@ export const NewSalePage = () => {
                   Sucursal de Origen
                 </span>
                 <select
-                  className="select select-bordered select-sm w-full bg-base-100 font-bold text-xs sm:text-sm text-base-content truncate pl-3 pr-8 focus:border-primary focus:outline-none"
+                  className="select select-bordered select-xs sm:select-sm w-full bg-base-100 font-bold text-xs sm:text-sm text-base-content truncate pl-2 sm:pl-3 pr-6 sm:pr-8 focus:border-primary focus:outline-none"
                   value={selectedBranchId}
                   onChange={(e) => handleBranchChange(e.target.value)}
                   disabled={!!editSale}
@@ -677,7 +679,7 @@ export const NewSalePage = () => {
             onSearchBarcode={handleScanBarcode}
             onSelectSuggestion={handleSelectSuggestion}
             branchId={hasSwitchBranchPerm && selectedBranchId ? selectedBranchId : undefined}
-            placeholder="Buscar producto por nombre, SKU o escanear..."
+            placeholder="Buscar producto por nombre o escanear..."
           />
         </div>
 

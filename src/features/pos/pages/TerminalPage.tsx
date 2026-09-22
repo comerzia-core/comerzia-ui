@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../../../stores/useAuthStore';
-import { formatDateForUser } from '../../../utils/date';
+import { formatDateForUser, formatTimeForUser } from '../../../utils/date';
 import { useToast } from '../../../context/ToastContext';
 import { PaySaleModal } from '../../sales/components/PaySaleModal';
 import { RegisterSaleCustomerModal } from '../../sales/components/RegisterSaleCustomerModal';
@@ -219,7 +219,7 @@ export const TerminalPage = () => {
             <div className="min-w-0">
               <p className="text-base-content/50 text-[11px] font-semibold uppercase tracking-wider truncate">Apertura</p>
               <h3 className="text-sm sm:text-base font-bold text-base-content truncate">
-                {summary.openedAt ? formatDateForUser(summary.openedAt) : '--:--'}
+                {summary.openedAt ? formatTimeForUser(summary.openedAt) : '--:--'}
               </h3>
             </div>
           </div>
