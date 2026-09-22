@@ -6,6 +6,7 @@ import { ProtectedRoute } from "./ProtectedRoute";
 import { UnderConstruction } from "../features/errors/pages/UnderConstructionPage";
 // Importamos la nueva página
 import { useTheme } from "../hooks/useTheme";
+import { useDynamicBranding } from "../hooks/useDynamicBranding";
 import { NotFoundPage } from "../features/errors/pages/NotFoundPage";
 import { PermissionGuard } from "./PermissionGuard";
 import { CompaniesPage } from "../features/saas/pages/CompaniesPage";
@@ -39,6 +40,7 @@ import { ReturnsPage } from "../features/sales/pages/ReturnsPage";
 
 export const AppRouter = () => {
   useTheme();
+  useDynamicBranding();
 
   return (
     <BrowserRouter>

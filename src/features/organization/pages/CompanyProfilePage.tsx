@@ -8,6 +8,7 @@ import { formatDateForUser } from '../../../utils/date';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
 import { ComerziaSingleImageUploader, type SingleImageValue } from '../../../components/ui/ComerziaSingleImageUploader';
 import { BtnSave } from '../../../components/ui/CrudButtons';
+import { useAuthStore } from '../../../stores/useAuthStore';
 import type { TenantCompanyProfileResponse, UpdateCompanySettingsRequest } from '../types/company';
 
 export const CompanyProfilePage = () => {
@@ -126,8 +127,11 @@ export const CompanyProfilePage = () => {
       });
       showToast('Configuración actualizada exitosamente', 'success');
       
-      // Recargamos el perfil para mantener la UI sincronizada con la Base de Datos
-      await loadProfile();
+      // Recargamos el perfil local y global para mantener la UI y el branding sincronizados
+      await Promise.all([
+        loadProfile(),
+        useAuthStore.getState().fetchUserProfile()
+      ]);
     } catch (error) {
       console.error('Error updating settings:', error);
       showToast('Ocurrió un error al actualizar la configuración', 'error');
