@@ -9,7 +9,7 @@ import { useToast } from '../../../context/ToastContext';
 import { CommercialProductSearchBar } from '../../commercial/components/CommercialProductSearchBar';
 import { ComerziaButton } from '../../../components/ui/ComerziaButton';
 import type { CartItem } from '../store/useCartStore';
-import { AlertCircle, ArrowRight, ShoppingCart, Store, ChevronDown, ChevronUp, Trash2, Tag, X } from 'lucide-react';
+import { AlertCircle, ArrowRight, ShoppingCart, Store, ChevronDown, ChevronUp, Trash2, Tag, X, Receipt } from 'lucide-react';
 
 interface QuantityControlProps {
   item: CartItem;
@@ -322,8 +322,13 @@ export const NewSalePage = () => {
   const navigate = useNavigate();
   const editSale = location.state?.editSale as SaleResponse | undefined;
 
-  const { hasPermission, userProfile } = useAuthStore();
+  const { hasPermission, hasRole, userProfile } = useAuthStore();
   const hasSwitchBranchPerm = hasPermission('SWITCH_BRANCH');
+  const roles = userProfile?.roles || [];
+  const isCashier = hasRole('CASHIER') || roles.includes('CASHIER');
+  const isSeller = hasRole('SELLER') || roles.includes('SELLER');
+  const isOwnerOrManager = hasRole('OWNER') || roles.includes('OWNER') || hasRole('BRANCH_MANAGER') || roles.includes('BRANCH_MANAGER');
+  const canAccessPosTerminal = (isCashier && isSeller) || isOwnerOrManager || isCashier;
 
   const { success: toastSuccess, error: toastError, warning: toastWarning } = useToast();
 
@@ -504,9 +509,64 @@ export const NewSalePage = () => {
 
 
 
+  const mapSaleError = (err: any, isEditMode: boolean): string => {
+    const status = err?.response?.status;
+    const rawMsg = err?.response?.data?.message || err?.message || '';
+    const lowerMsg = typeof rawMsg === 'string' ? rawMsg.toLowerCase() : '';
+
+    // Mapeo por mensaje específico del backend (en inglés o español)
+    if (lowerMsg.includes('discount limit') || lowerMsg.includes('descuento')) {
+      return 'El descuento ingresado supera el límite máximo permitido.';
+    }
+    if (lowerMsg.includes('insufficient stock') || lowerMsg.includes('stock insuficiente')) {
+      return 'Stock insuficiente para uno o varios productos seleccionados.';
+    }
+    if (lowerMsg.includes('checksum mismatch') || lowerMsg.includes('checksum')) {
+      return 'Discrepancia en el cálculo del total de la venta.';
+    }
+    if (lowerMsg.includes('no open cash register') || lowerMsg.includes('turnos de caja') || (lowerMsg.includes('shift') && lowerMsg.includes('open'))) {
+      return 'No hay turnos de caja abiertos en esta sucursal.';
+    }
+    if (lowerMsg.includes('not in pending') || lowerMsg.includes('not pending')) {
+      return 'La venta ya no se encuentra en estado Pendiente.';
+    }
+    if (lowerMsg.includes('variant') && lowerMsg.includes('not found')) {
+      return 'Una de las variantes de producto seleccionadas ya no existe.';
+    }
+    if (lowerMsg.includes('pricetype') && lowerMsg.includes('not found')) {
+      return 'El tipo de precio seleccionado no fue encontrado.';
+    }
+    if (lowerMsg.includes('sale not found') || (lowerMsg.includes('sale') && lowerMsg.includes('not found'))) {
+      return 'La venta especificada no fue encontrada.';
+    }
+
+    // Mapeo por Código HTTP según especificación de TenantSaleApiDoc
+    if (status === 400) {
+      return 'Datos inválidos: verifique que las cantidades no excedan el stock disponible y que los descuentos no superen el límite.';
+    }
+    if (status === 403) {
+      return 'No tienes permisos para realizar esta operación.';
+    }
+    if (status === 404) {
+      return isEditMode
+        ? 'No se encontró la venta, el producto o el tipo de precio a actualizar.'
+        : 'Producto, variante o tipo de precio no encontrado.';
+    }
+    if (status === 409) {
+      return isEditMode
+        ? 'La venta no se puede actualizar porque ya no se encuentra en estado Pendiente.'
+        : 'No hay turnos de caja abiertos en esta sucursal para recibir la venta.';
+    }
+    if (status === 500) {
+      return 'Ocurrió un error en el servidor al procesar la venta. Por favor, inténtelo de nuevo.';
+    }
+
+    return rawMsg || (isEditMode ? 'Error al actualizar la venta pendiente.' : 'Error al enviar la venta a Caja.');
+  };
+
   const handleSendToRegister = async () => {
     if (items.length === 0) {
-      toastError('El carrito está vacío');
+      toastError('El carrito está vacío. Agregue al menos un producto.');
       return;
     }
 
@@ -532,7 +592,7 @@ export const NewSalePage = () => {
         clearCart();
       }
     } catch (err: any) {
-      const msg = err?.response?.data?.message || (editSale ? 'Error al actualizar la venta' : 'Error al enviar la venta a Caja');
+      const msg = mapSaleError(err, !!editSale);
       toastError(msg);
     }
   };
@@ -567,31 +627,44 @@ export const NewSalePage = () => {
           </p>
         </div>
 
-        {/* Selector de Sucursal */}
-        {hasSwitchBranchPerm && branches.length > 0 && (
-          <div className="flex items-center gap-3 bg-base-200/50 p-2 sm:p-2.5 rounded-xl border border-base-300 w-full sm:w-auto max-w-full sm:max-w-xs shrink-0">
-            <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0">
-              <Store size={18} />
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Botón Ir a Terminal de Cobro (POS) */}
+          {canAccessPosTerminal && (
+            <ComerziaButton
+              variant="ghost"
+              label="Terminal de Cobro"
+              icon={<Receipt size={18} className="text-primary" />}
+              className="btn-sm font-semibold rounded-xl border border-base-300 hover:border-primary hover:bg-primary/10 transition-all text-xs sm:text-sm"
+              onClick={() => navigate('/pos/terminal')}
+            />
+          )}
+
+          {/* Selector de Sucursal */}
+          {hasSwitchBranchPerm && branches.length > 0 && (
+            <div className="flex items-center gap-3 bg-base-200/50 p-2 sm:p-2.5 rounded-xl border border-base-300 w-full sm:w-auto max-w-full sm:max-w-xs shrink-0">
+              <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0">
+                <Store size={18} />
+              </div>
+              <div className="flex flex-col min-w-0 flex-1">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-base-content/60 truncate">
+                  Sucursal de Origen
+                </span>
+                <select
+                  className="select select-bordered select-sm w-full bg-base-100 font-bold text-xs sm:text-sm text-base-content truncate pl-3 pr-8 focus:border-primary focus:outline-none"
+                  value={selectedBranchId}
+                  onChange={(e) => handleBranchChange(e.target.value)}
+                  disabled={!!editSale}
+                >
+                  {branches.map((b) => (
+                    <option key={b.id} value={b.id} title={b.name}>
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
-            <div className="flex flex-col min-w-0 flex-1">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-base-content/60 truncate">
-                Sucursal de Origen
-              </span>
-              <select
-                className="select select-bordered select-sm w-full bg-base-100 font-bold text-xs sm:text-sm text-base-content truncate pl-3 pr-8 focus:border-primary focus:outline-none"
-                value={selectedBranchId}
-                onChange={(e) => handleBranchChange(e.target.value)}
-                disabled={!!editSale}
-              >
-                {branches.map((b) => (
-                  <option key={b.id} value={b.id} title={b.name}>
-                    {b.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Búsqueda de Productos y Tabla de Carrito (Ancho Completo) */}
