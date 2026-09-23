@@ -2,9 +2,8 @@ import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { salesService } from '../services/salesService';
-import { branchService } from '../../organization/services/branchService';
 import { useCartStore } from '../store/useCartStore';
-import type { SalesCatalogItem, SalesProductResponse, SalesCatalogSuggestionResponse, SaleResponse } from '../types/sales';
+import type { SalesCatalogItem, SalesProductResponse, SalesCatalogSuggestionResponse, SaleResponse, SaleBranchResponse } from '../types/sales';
 import { useToast } from '../../../context/ToastContext';
 import { CommercialProductSearchBar } from '../../commercial/components/CommercialProductSearchBar';
 import { ComerziaButton } from '../../../components/ui/ComerziaButton';
@@ -332,7 +331,7 @@ export const NewSalePage = () => {
 
   const { success: toastSuccess, error: toastError, warning: toastWarning } = useToast();
 
-  const [branches, setBranches] = useState<any[]>([]);
+  const [branches, setBranches] = useState<SaleBranchResponse[]>([]);
   const [selectedBranchId, setSelectedBranchId] = useState<string>('');
   const [isLoadingInit, setIsLoadingInit] = useState(true);
   const [initError, setInitError] = useState<string | null>(null);
@@ -358,6 +357,12 @@ export const NewSalePage = () => {
     if (editSale) {
       setSelectedBranchId(editSale.branchId || '');
       setCartBranchId(editSale.branchId || null);
+      if (hasSwitchBranchPerm) {
+        try {
+          const branchList = await salesService.getBranches();
+          setBranches(branchList || []);
+        } catch (_) {}
+      }
       try {
         const details = await salesService.getSaleDetails(editSale.id);
         const newCartItems: CartItem[] = [];
@@ -402,13 +407,13 @@ export const NewSalePage = () => {
 
     try {
       if (hasSwitchBranchPerm) {
-        const branchPage = await branchService.getBranches(0, 100, true);
-        const branchList = branchPage.content || [];
-        setBranches(branchList);
-        if (branchList.length > 0) {
-          const firstBranchId = branchList[0].id;
-          setSelectedBranchId(firstBranchId);
-          setCartBranchId(firstBranchId);
+        const branchList = await salesService.getBranches();
+        setBranches(branchList || []);
+        if (branchList && branchList.length > 0) {
+          const currentBranch = branchList.find((b) => b.isCurrent);
+          const defaultBranchId = currentBranch ? currentBranch.id : branchList[0].id;
+          setSelectedBranchId(defaultBranchId);
+          setCartBranchId(defaultBranchId);
         } else {
           setInitError('No se encontraron sucursales activas.');
         }

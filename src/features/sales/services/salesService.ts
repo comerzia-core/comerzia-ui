@@ -14,10 +14,16 @@ import type {
   CustomerProfileResponse,
   CreateCustomerRequest,
   UpdateCustomerRequest,
-  ProcessPaymentRequest
+  ProcessPaymentRequest,
+  SaleBranchResponse
 } from '../types/sales';
 
 export const salesService = {
+  getBranches: async (): Promise<SaleBranchResponse[]> => {
+    const response = await api.get<SaleBranchResponse[]>('/tenant/sales/branches');
+    return response.data;
+  },
+
   getSuggestions: async (term: string, signal?: AbortSignal, branchId?: string | null): Promise<SalesCatalogSuggestionResponse[]> => {
     const headers: Record<string, string> = {};
     if (branchId) {

@@ -249,3 +249,10 @@ export interface PageCustomerProfileResponse {
   last?: boolean;
   empty?: boolean;
 }
+
+export interface SaleBranchResponse {
+  id: string;
+  name: string;
+  isCurrent: boolean;
+}
+
