@@ -48,7 +48,7 @@ export const StockQueryPage = () => {
   const scannedVariant = productData?.scannedVariant;
 
   return (
-    <div className="space-y-6 animate-fade-in max-w-5xl mx-auto mt-2 sm:mt-6 px-2 sm:px-0">
+    <div className="space-y-6 w-full animate-fade-in">
       {/* 1. HEADER DE LA PÁGINA */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-start gap-2.5">
@@ -142,12 +142,12 @@ export const StockQueryPage = () => {
             {/* Stock por Sucursal */}
             <div className="card bg-base-100 p-4 sm:p-6 rounded-2xl shadow-xs border border-base-200 flex flex-col justify-between">
               <div>
-                <div className="flex items-center justify-between pb-3 mb-3 sm:mb-4 border-b border-base-200/70">
-                  <h3 className="text-sm sm:text-base font-bold flex items-center gap-2 text-base-content">
-                    <Store className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-                    Disponibilidad en Tiendas
+                <div className="flex items-center justify-between pb-3 mb-3 sm:mb-4 border-b border-base-200/70 gap-2">
+                  <h3 className="text-sm sm:text-base font-bold flex items-center gap-2 text-base-content min-w-0">
+                    <Store className="h-4 w-4 sm:h-5 sm:w-5 text-primary shrink-0" />
+                    <span className="truncate">Disponibilidad en Tiendas</span>
                   </h3>
-                  <span className="badge badge-primary font-bold text-xs sm:text-sm px-2.5 py-1">
+                  <span className="badge badge-primary font-bold text-xs sm:text-sm px-2.5 py-1 whitespace-nowrap shrink-0">
                     Total: {scannedVariant.totalAvailableStock} uds
                   </span>
                 </div>
@@ -206,31 +206,59 @@ export const StockQueryPage = () => {
                     No hay precios activos configurados.
                   </p>
                 ) : (
-                  scannedVariant.activePrices.map((price, idx) => (
-                    <div
-                      key={`${price.priceTypeId}-${idx}`}
-                      className="bg-base-200/50 hover:bg-base-200/80 border border-base-200 p-3 sm:p-3.5 rounded-xl flex justify-between items-center transition-all"
-                    >
-                      <div className="min-w-0">
-                        <h4 className="font-bold text-xs sm:text-sm text-base-content truncate">
-                          {price.priceTypeName}
-                        </h4>
-                        <p className="text-[11px] sm:text-xs text-base-content/50 mt-0.5">
-                          {price.equivalenceFactor} Unidades
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0 ml-2">
-                        {price.discountPrice != null && price.discountPrice !== price.salePrice && (
-                          <div className="text-xs sm:text-sm font-medium text-error font-mono px-2 py-0.5 bg-error/10 rounded-md">
-                            {currencyCode} {price.discountPrice.toFixed(2)}
+                  [...scannedVariant.activePrices]
+                    .sort((a, b) => (a.equivalenceFactor || 1) - (b.equivalenceFactor || 1))
+                    .map((price, idx) => {
+                      const factor = price.equivalenceFactor || 1;
+                      const salePrice = Number(price.salePrice) || 0;
+                      const discountPrice = Number(price.discountPrice) || 0;
+                      const hasDiscount = discountPrice > 0 && discountPrice < salePrice;
+                      const totalSale = salePrice * factor;
+                      const totalDiscount = discountPrice * factor;
+
+                      return (
+                        <div
+                          key={`${price.priceTypeId}-${idx}`}
+                          className="bg-base-200/50 hover:bg-base-200/80 border border-base-200 p-3 sm:p-3.5 rounded-xl flex flex-col gap-1.5 transition-all"
+                        >
+                          <div className="flex justify-between items-center gap-2">
+                            <div className="min-w-0">
+                              <h4 className="font-bold text-sm sm:text-base text-base-content truncate">
+                                {price.priceTypeName}
+                              </h4>
+                            </div>
+                            <div className="flex items-baseline gap-2 shrink-0">
+                              <span className="text-sm sm:text-base font-bold text-base-content font-mono">
+                                {currencyCode} {salePrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </span>
+                              {hasDiscount && (
+                                <span className="text-sm sm:text-base font-bold text-error font-mono">
+                                  {currencyCode} {discountPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
+                              )}
+                            </div>
                           </div>
-                        )}
-                        <div className="text-base sm:text-xl font-bold text-success font-mono">
-                          {currencyCode} {price.salePrice.toFixed(2)}
+
+                          <div className="pt-1.5 border-t border-base-200 flex items-center justify-between text-xs text-base-content/70">
+                            <span className="font-medium text-base-content/60">
+                              x{factor} {factor === 1 ? 'unidad' : 'unidades'}
+                            </span>
+                            {factor > 1 && (
+                              <div className="text-[11px] font-medium font-mono flex items-center gap-1.5">
+                                <span className="text-base-content font-bold">
+                                  {currencyCode} {totalSale.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
+                                {hasDiscount && (
+                                  <span className="text-error font-bold">
+                                    {currencyCode} {totalDiscount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                  ))
+                      );
+                    })
                 )}
               </div>
             </div>
