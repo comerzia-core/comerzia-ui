@@ -712,7 +712,7 @@ export const BulkUploadModal = ({ isOpen, onClose, onSuccess }: Props) => {
 
             {/* Paginación Estandarizada Comerzia */}
             {totalPages > 1 && (
-              <footer className="mt-4 pt-3 pb-3 px-3 bg-base-200/60 border border-base-300 rounded-2xl shadow-xs">
+              <footer className="mt-4 py-3 px-4 bg-base-100 border border-base-300 rounded-2xl shadow-sm">
                 <div className="flex flex-col sm:flex-row items-center justify-between text-xs text-base-content/70 gap-2.5">
                   <span className="font-semibold text-base-content/80 whitespace-nowrap">
                     Página {currentPage + 1} de {Math.max(1, totalPages)} ({totalPending} pendientes)
@@ -725,7 +725,7 @@ export const BulkUploadModal = ({ isOpen, onClose, onSuccess }: Props) => {
                       aria-label="Primera página"
                       disabled={currentPage === 0 || isLoadingPending}
                       onClick={() => loadPendingEnrichment(0)}
-                      className="w-8 h-8 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
+                      className="w-8 h-8 rounded-lg border border-base-300 bg-base-200/70 hover:bg-base-300 text-base-content flex items-center justify-center disabled:opacity-30 disabled:hover:bg-base-200/70 transition-all active:scale-95"
                       title="Primera página"
                     >
                       <ChevronsLeft size={16} />
@@ -735,7 +735,7 @@ export const BulkUploadModal = ({ isOpen, onClose, onSuccess }: Props) => {
                       aria-label="Página anterior"
                       disabled={currentPage === 0 || isLoadingPending}
                       onClick={() => loadPendingEnrichment(Math.max(0, currentPage - 1))}
-                      className="w-8 h-8 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
+                      className="w-8 h-8 rounded-lg border border-base-300 bg-base-200/70 hover:bg-base-300 text-base-content flex items-center justify-center disabled:opacity-30 disabled:hover:bg-base-200/70 transition-all active:scale-95"
                       title="Página anterior"
                     >
                       <ChevronLeft size={16} />
@@ -745,7 +745,7 @@ export const BulkUploadModal = ({ isOpen, onClose, onSuccess }: Props) => {
                       aria-label="Página siguiente"
                       disabled={currentPage >= totalPages - 1 || isLoadingPending}
                       onClick={() => loadPendingEnrichment(currentPage + 1)}
-                      className="w-8 h-8 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
+                      className="w-8 h-8 rounded-lg border border-base-300 bg-base-200/70 hover:bg-base-300 text-base-content flex items-center justify-center disabled:opacity-30 disabled:hover:bg-base-200/70 transition-all active:scale-95"
                       title="Página siguiente"
                     >
                       <ChevronRight size={16} />
@@ -755,7 +755,7 @@ export const BulkUploadModal = ({ isOpen, onClose, onSuccess }: Props) => {
                       aria-label="Última página"
                       disabled={currentPage >= totalPages - 1 || isLoadingPending}
                       onClick={() => loadPendingEnrichment(totalPages - 1)}
-                      className="w-8 h-8 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
+                      className="w-8 h-8 rounded-lg border border-base-300 bg-base-200/70 hover:bg-base-300 text-base-content flex items-center justify-center disabled:opacity-30 disabled:hover:bg-base-200/70 transition-all active:scale-95"
                       title="Última página"
                     >
                       <ChevronsRight size={16} />
