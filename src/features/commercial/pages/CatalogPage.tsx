@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { commercialService } from '../services/commercialService';
 import { ComerziaCreatableSelect } from '../../../components/ui/ComerziaCreatableSelect';
+import { ComerziaInput } from '../../../components/ui/ComerziaInput';
 import type { CategoryResponse, SegmentResponse, BrandResponse } from '../types/commercial';
 import { ProductTable } from '../components/ProductTable';
 import { BtnCreate } from '../../../components/ui/CrudButtons';
@@ -9,13 +10,16 @@ import { CreateFullProductModal } from '../components/CreateFullProductModal';
 import { BulkUploadModal } from '../components/BulkUploadModal';
 import { useToast } from '../../../context/ToastContext';
 import { useAuthStore } from '../../../stores/useAuthStore';
-import { Filter, ChevronDown, FileSpreadsheet } from 'lucide-react';
+import { Filter, ChevronDown, FileSpreadsheet, Search, X } from 'lucide-react';
 
 export const CatalogPage = () => {
   const { error: toastError, success: toastSuccess } = useToast();
   const { hasPermission } = useAuthStore();
   const canManage = hasPermission('COM_CATALOG_MANAGE');
   const canBulkUpload = hasPermission('COM_BULK_UPLOAD');
+
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
 
   const [categories, setCategories] = useState<CategoryResponse[]>([]);
   const [segments, setSegments] = useState<SegmentResponse[]>([]);
@@ -33,6 +37,14 @@ export const CatalogPage = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  // Debounce para la búsqueda por texto (300ms)
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
 
   useEffect(() => {
     loadCategories();
@@ -97,7 +109,9 @@ export const CatalogPage = () => {
     }
   };
 
-  const hasActiveFilters = Boolean(selectedCategoryId || selectedSegmentId || selectedBrandId);
+  const hasActiveFilters = Boolean(
+    selectedCategoryId || selectedSegmentId || selectedBrandId || (debouncedSearch.trim().length >= 3)
+  );
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -154,9 +168,33 @@ export const CatalogPage = () => {
         </div>
 
         {showFilters && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-base-200/60 mt-3 animate-fade-in">
-            <ComerziaCreatableSelect
-              label="1. Categoría"
+          <div className="space-y-4 pt-4 border-t border-base-200/60 mt-3 animate-fade-in">
+            {/* Buscador de Texto (q >= 3 caracteres) */}
+            <div className="w-full">
+              <ComerziaInput
+                icon={<Search size={18} />}
+                placeholder="Buscar por nombre, variante o palabra clave..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                rightAction={
+                  searchTerm ? (
+                    <button
+                      type="button"
+                      onClick={() => setSearchTerm('')}
+                      className="btn btn-ghost btn-xs btn-circle text-base-content/50 hover:text-base-content"
+                      title="Limpiar búsqueda"
+                    >
+                      <X size={15} />
+                    </button>
+                  ) : undefined
+                }
+              />
+            </div>
+
+            {/* Selects Jerárquicos en Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <ComerziaCreatableSelect
+                label="1. Categoría"
               entityName="Categoría"
               canManage={canManage}
               options={categories.map(c => ({ value: c.id, label: c.name, status: c.status }))}
@@ -283,6 +321,7 @@ export const CatalogPage = () => {
               disabled={!selectedSegmentId}
               isLoading={isLoadingBrands}
             />
+            </div>
           </div>
         )}
       </div>
@@ -294,6 +333,7 @@ export const CatalogPage = () => {
         </div>
 
         <ProductTable
+          searchTerm={debouncedSearch}
           categoryId={selectedCategoryId}
           segmentId={selectedSegmentId}
           brandId={selectedBrandId}

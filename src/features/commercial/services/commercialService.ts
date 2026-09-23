@@ -103,8 +103,9 @@ export const commercialService = {
     await api.delete(`/tenant/brands/${id}`);
   },
 
-  getProducts: async (filters: { categoryId?: string; segmentId?: string; brandId?: string; page?: number; size?: number; activeOnly?: boolean } = {}): Promise<PageProductResponse> => {
+  getProducts: async (filters: { q?: string; categoryId?: string; segmentId?: string; brandId?: string; page?: number; size?: number; activeOnly?: boolean } = {}): Promise<PageProductResponse> => {
     const params = new URLSearchParams();
+    if (filters.q && filters.q.trim()) params.append('q', filters.q.trim());
     if (filters.categoryId) params.append('categoryId', filters.categoryId);
     if (filters.segmentId) params.append('segmentId', filters.segmentId);
     if (filters.brandId) params.append('brandId', filters.brandId);

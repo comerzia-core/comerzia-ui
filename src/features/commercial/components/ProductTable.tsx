@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 
 interface Props {
+  searchTerm?: string;
   categoryId?: string;
   segmentId?: string;
   brandId?: string;
@@ -28,6 +29,7 @@ interface Props {
 }
 
 export const ProductTable = ({ 
+  searchTerm,
   categoryId, 
   segmentId, 
   brandId, 
@@ -89,20 +91,24 @@ export const ProductTable = ({
     });
   };
 
-  // Reset page to 0 when filters change
+  // Reset page to 0 when filters or search change
   useEffect(() => {
     setPage(0);
-  }, [categoryId, segmentId, brandId]);
+  }, [categoryId, segmentId, brandId, searchTerm]);
 
   useEffect(() => {
     loadData();
-  }, [categoryId, segmentId, brandId, page, size, refreshKey, canManage]);
+  }, [categoryId, segmentId, brandId, searchTerm, page, size, refreshKey, canManage]);
 
   const loadData = async () => {
     setIsLoading(true);
     try {
       const activeOnly = canManage ? false : undefined;
+      const cleanSearch = searchTerm?.trim();
+      const q = cleanSearch && cleanSearch.length >= 3 ? cleanSearch : undefined;
+
       const res = await commercialService.getProducts({
+        q,
         categoryId: categoryId || undefined,
         segmentId: segmentId || undefined,
         brandId: brandId || undefined,
@@ -142,9 +148,17 @@ export const ProductTable = ({
       header: 'Nombre', 
       accessorKey: 'name',
       render: (row) => (
-        <span className="font-semibold text-sm text-base-content block">
-          {row.name}
-        </span>
+        <div>
+          <span className="font-semibold text-sm text-base-content block">
+            {row.name}
+          </span>
+          {row.brand?.name && (
+            <span className="text-[11px] text-base-content/50 block">
+              {row.brand.name}
+              {row.brand.segment?.name ? ` · ${row.brand.segment.name}` : ''}
+            </span>
+          )}
+        </div>
       )
     },
     { 
@@ -228,6 +242,12 @@ export const ProductTable = ({
                       <h3 className="text-sm font-semibold text-base-content leading-tight truncate">
                         {product.name}
                       </h3>
+                      {product.brand?.name && (
+                        <span className="text-[11px] text-primary font-medium block truncate mt-0.5">
+                          {product.brand.name}
+                          {product.brand.segment?.name ? ` · ${product.brand.segment.name}` : ''}
+                        </span>
+                      )}
                       <p className="text-xs text-base-content/60 line-clamp-1 mt-0.5">
                         {product.description || <span className="text-xs text-base-content/40 italic">(sin descripción)</span>}
                       </p>
