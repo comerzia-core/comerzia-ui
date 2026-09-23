@@ -29,6 +29,10 @@ export const UserRolesModal = ({ isOpen, onClose, user, onSuccess }: Props) => {
 
   useEffect(() => {
     if (isOpen && user) {
+      // Inicializar con roleIds si ya existen en el objeto user
+      if (user.roleIds && Array.isArray(user.roleIds)) {
+        setSelectedRoleIds(user.roleIds);
+      }
       loadRoles();
     }
   }, [isOpen, user]);
@@ -39,12 +43,15 @@ export const UserRolesModal = ({ isOpen, onClose, user, onSuccess }: Props) => {
       const allRoles = await userService.getAllRoles();
       setRoles(allRoles);
 
-      // Preseleccionar IDs de roles que coinciden por nombre o id
-      const initialSelectedIds = allRoles
-        .filter(r => user?.roles?.includes(r.displayName) || user?.roles?.includes(r.id))
-        .map(r => r.id);
-
-      setSelectedRoleIds(initialSelectedIds);
+      // Si el usuario ya trae sus roleIds, los usamos directamente; de lo contrario, fallback por coincidencia
+      if (user?.roleIds && Array.isArray(user.roleIds) && user.roleIds.length > 0) {
+        setSelectedRoleIds(user.roleIds);
+      } else {
+        const initialSelectedIds = allRoles
+          .filter(r => user?.roles?.includes(r.displayName) || user?.roles?.includes(r.name) || user?.roles?.includes(r.id))
+          .map(r => r.id);
+        setSelectedRoleIds(initialSelectedIds);
+      }
     } catch (error) {
       console.error('Error loading system roles:', error);
       showToast('Error al cargar la lista de roles del sistema', 'error');

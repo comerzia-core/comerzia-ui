@@ -11,6 +11,7 @@ export interface UserResponse {
   lastLoginAt: string | null;
   deactivatedAt: string | null;
   roles: string[];
+  roleIds: string[];
 }
 
 export interface UpdateUserAccessRequest {
