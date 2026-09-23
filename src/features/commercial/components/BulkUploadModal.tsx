@@ -73,7 +73,7 @@ export const BulkUploadModal = ({ isOpen, onClose, onSuccess }: Props) => {
   const loadPendingEnrichment = async (page = 0) => {
     setIsLoadingPending(true);
     try {
-      const res = await commercialService.getPendingEnrichment(page, 10);
+      const res = await commercialService.getPendingEnrichment(page, 5);
       setPendingList(res.content || []);
       setTotalPending(res.totalElements || 0);
       setTotalPages(res.totalPages || 0);
