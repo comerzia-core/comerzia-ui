@@ -173,23 +173,23 @@ export const ComerziaImageUploader = ({ images, onChange, error, shakeKey }: Pro
                     </p>
 
                     {/* BOTONES DIRECTOS: TOMAR FOTO O SUBIR DE GALERÍA */}
-                    <div className="flex items-center gap-2 w-full max-w-xs justify-center">
+                    <div className="flex items-center gap-2 w-full max-w-sm justify-center">
                         <button
                             type="button"
                             onClick={openCamera}
-                            className="btn btn-xs sm:btn-sm btn-comerzia-primary text-white border-none flex-1 gap-1.5 shadow-sm font-semibold hover:brightness-110 active:scale-95 transition-all"
+                            className="btn btn-sm bg-primary hover:bg-primary/90 text-primary-content border-none flex-1 gap-1.5 shadow-sm font-bold min-h-[38px] active:scale-95 transition-all"
                         >
-                            <Camera size={15} />
-                            <span>Tomar Foto</span>
+                            <Camera size={17} />
+                            <span className="text-xs sm:text-sm">Tomar Foto</span>
                         </button>
 
                         <button
                             type="button"
                             onClick={openGallery}
-                            className="btn btn-xs sm:btn-sm btn-outline flex-1 gap-1.5 font-semibold hover:bg-base-200 active:scale-95 transition-all"
+                            className="btn btn-sm bg-base-200 hover:bg-base-300 text-base-content border-base-300 flex-1 gap-1.5 font-semibold min-h-[38px] active:scale-95 transition-all"
                         >
-                            <Upload size={15} />
-                            <span>Galería</span>
+                            <Upload size={16} />
+                            <span className="text-xs sm:text-sm">Galería</span>
                         </button>
                     </div>
                 </div>

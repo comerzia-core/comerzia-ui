@@ -359,3 +359,37 @@ export interface ChangePriceRequest {
   discountPrice?: number;
   variantId: string;
 }
+
+// Bulk Upload & Enrichment Types
+export interface BulkProductUploadRequest {
+  autoGenerateInternalBarcodes: boolean;
+}
+
+export interface BulkUploadSummaryResponse {
+  totalProductsCreated: number;
+  totalVariantsCreated: number;
+  missingBarcodesCount: number;
+  missingImagesCount: number;
+}
+
+export interface ProductVariantEnrichmentResponse {
+  id: string;
+  productId: string;
+  productName: string;
+  variantName: string;
+  sku: string;
+  barCode: string | null;
+  imageUrl: string | null;
+  isInternalBarcode: boolean;
+  missingBarcode: boolean;
+  missingImage: boolean;
+}
+
+export interface PageProductVariantEnrichmentResponse {
+  content: ProductVariantEnrichmentResponse[];
+  totalElements: number;
+  totalPages: number;
+  size: number;
+  number: number;
+}
+

@@ -4,15 +4,18 @@ import { ComerziaCreatableSelect } from '../../../components/ui/ComerziaCreatabl
 import type { CategoryResponse, SegmentResponse, BrandResponse } from '../types/commercial';
 import { ProductTable } from '../components/ProductTable';
 import { BtnCreate } from '../../../components/ui/CrudButtons';
+import { ComerziaButton } from '../../../components/ui/ComerziaButton';
 import { CreateFullProductModal } from '../components/CreateFullProductModal';
+import { BulkUploadModal } from '../components/BulkUploadModal';
 import { useToast } from '../../../context/ToastContext';
 import { useAuthStore } from '../../../stores/useAuthStore';
-import { Filter, ChevronDown } from 'lucide-react';
+import { Filter, ChevronDown, FileSpreadsheet } from 'lucide-react';
 
 export const CatalogPage = () => {
   const { error: toastError, success: toastSuccess } = useToast();
   const { hasPermission } = useAuthStore();
   const canManage = hasPermission('COM_CATALOG_MANAGE');
+  const canBulkUpload = hasPermission('COM_BULK_UPLOAD');
 
   const [categories, setCategories] = useState<CategoryResponse[]>([]);
   const [segments, setSegments] = useState<SegmentResponse[]>([]);
@@ -28,6 +31,7 @@ export const CatalogPage = () => {
 
   const [showFilters, setShowFilters] = useState(true);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
@@ -103,11 +107,20 @@ export const CatalogPage = () => {
           <h1 className="text-2xl sm:text-3xl font-bold text-base-content tracking-tight">Catálogo de Productos</h1>
           <p className="text-xs sm:text-sm text-base-content/60 mt-0.5">Administración de catálogo y productos</p>
         </div>
-        <div className="flex gap-2 w-full sm:w-auto">
+        <div className="flex flex-wrap sm:flex-nowrap gap-2 w-full sm:w-auto">
+          {canBulkUpload && (
+            <ComerziaButton
+              variant="secondary"
+              label="Carga Masiva"
+              icon={<FileSpreadsheet size={18} />}
+              onClick={() => setIsBulkModalOpen(true)}
+              className="flex-1 sm:flex-initial"
+            />
+          )}
           <BtnCreate
             label="Nuevo Producto"
             onClick={() => setIsCreateModalOpen(true)}
-            className="w-full sm:w-auto"
+            className="flex-1 sm:flex-initial"
           />
         </div>
       </div>
@@ -296,6 +309,15 @@ export const CatalogPage = () => {
         initialBrandId={selectedBrandId}
         onSuccess={() => {
           setRefreshKey(prev => prev + 1);
+        }}
+      />
+
+      <BulkUploadModal
+        isOpen={isBulkModalOpen}
+        onClose={() => setIsBulkModalOpen(false)}
+        onSuccess={() => {
+          setRefreshKey(prev => prev + 1);
+          loadCategories();
         }}
       />
     </div>

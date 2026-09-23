@@ -30,7 +30,10 @@ import type {
   ValuateStockRequest,
   VariantWithPricesResponse,
   SalePriceResponse,
-  InventoryResponse
+  InventoryResponse,
+  BulkProductUploadRequest,
+  BulkUploadSummaryResponse,
+  PageProductVariantEnrichmentResponse
 } from '../types/commercial';
 
 export const commercialService = {
@@ -293,5 +296,26 @@ export const commercialService = {
 
   approveInventory: async (id: string, data: ApproveInventoryRequest): Promise<void> => {
     await api.post(`/tenant/inventories/${id}/approve`, data);
+  },
+
+  // Bulk Upload & Enrichment
+  uploadProductsBulk: async (file: File, config: BulkProductUploadRequest): Promise<BulkUploadSummaryResponse> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const configBlob = new Blob([JSON.stringify(config)], { type: 'application/json' });
+    formData.append('config', configBlob);
+
+    const response = await api.post('/tenant/catalog/bulk-upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+    return response.data;
+  },
+
+  getPendingEnrichment: async (page = 0, size = 20): Promise<PageProductVariantEnrichmentResponse> => {
+    const params = new URLSearchParams({ page: String(page), size: String(size) });
+    const response = await api.get(`/tenant/catalog/bulk-upload/pending-enrichment?${params.toString()}`);
+    return response.data;
   }
 };

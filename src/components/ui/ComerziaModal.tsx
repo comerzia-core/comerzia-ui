@@ -38,6 +38,7 @@ export const ComerziaModal = ({ isOpen, onClose, title, children, actions, size 
         ? '!bg-base-200 dark:!bg-base-300' 
         : '!bg-base-100 dark:!bg-base-100'; // Form mantiene fondo blanco.
         
+    const headerBgClass = variant === 'view' ? 'bg-base-100 dark:bg-base-100' : 'bg-base-200';
     const headerBorderClass = variant === 'view' ? 'border-base-300' : 'border-base-200';
     const footerBorderClass = variant === 'view' ? 'border-base-300/50' : 'border-base-200';
 
@@ -62,7 +63,7 @@ export const ComerziaModal = ({ isOpen, onClose, title, children, actions, size 
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className={`bg-base-200 px-6 py-4 flex justify-between items-center border-b ${headerBorderClass}`}>
+                <div className={`${headerBgClass} px-6 py-4 flex justify-between items-center border-b ${headerBorderClass}`}>
                     <div className="font-bold text-lg text-base-content flex items-center gap-2">
                         {title}
                     </div>
