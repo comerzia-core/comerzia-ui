@@ -254,19 +254,15 @@ export const ProductTable = ({
                     </div>
                   </div>
 
-                  <div className="shrink-0">
+                  <div className="shrink-0 flex items-center gap-1.5">
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-neutral text-neutral-content tracking-wider uppercase whitespace-nowrap">
+                      {product.variantName || 'Variante Simple'}
+                    </span>
                     <ComerziaBadge
                       label={product.status ? 'Activo' : 'Inactivo'}
                       variant={product.status ? 'success' : 'error'}
                     />
                   </div>
-                </div>
-
-                {/* FILA INFERIOR: TIPO DE VARIANTE */}
-                <div className="pl-[26px] flex items-center justify-between text-xs text-base-content/70">
-                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-neutral text-neutral-content tracking-wider uppercase">
-                    {product.variantName || 'Variante Simple'}
-                  </span>
                 </div>
               </article>
             ))}

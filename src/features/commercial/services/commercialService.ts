@@ -33,7 +33,8 @@ import type {
   InventoryResponse,
   BulkProductUploadRequest,
   BulkUploadSummaryResponse,
-  PageProductVariantEnrichmentResponse
+  PageProductVariantEnrichmentResponse,
+  SyncVariantPricesRequest
 } from '../types/commercial';
 
 export const commercialService = {
@@ -262,6 +263,11 @@ export const commercialService = {
   getPriceTypes: async (): Promise<PriceTypeResponse[]> => {
     // Endpoints dynamic for price-types as requested by user
     const response = await api.get('/tenant/price-types');
+    return response.data;
+  },
+
+  syncVariantPrices: async (variantId: string, data: SyncVariantPricesRequest): Promise<SalePriceResponse[]> => {
+    const response = await api.put<SalePriceResponse[]>(`/tenant/sale-prices/variant/${variantId}`, data);
     return response.data;
   },
 

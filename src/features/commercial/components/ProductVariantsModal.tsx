@@ -12,7 +12,7 @@ import { ComerziaImageViewer } from '../../../components/ui/ComerziaImageViewer'
 import { BtnCreate } from '../../../components/ui/CrudButtons';
 import { useToast } from '../../../context/ToastContext';
 import { ComerziaContextMenu, ContextMenuItem } from '../../../components/ui/ComerziaContextMenu';
-import { Edit, Trash2, DollarSign, Search, ArrowRightLeft, History, Eye } from 'lucide-react';
+import { Edit, Trash2, DollarSign, Search, ArrowRightLeft, History, Eye, Barcode } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
@@ -150,6 +150,7 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
         onClose={onClose}
         title={`Variantes de ${productName}`}
         size="xl"
+        variant="view"
       >
         <div className="mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
           {canManage && (
@@ -179,7 +180,7 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
               <span className="loading loading-spinner loading-md text-primary"></span>
             </div>
           ) : data.length === 0 ? (
-            <div className="text-center py-6 text-base-content/50 bg-base-200/50 rounded-xl text-xs">
+            <div className="text-center py-6 text-base-content/50 bg-base-100 rounded-2xl border border-base-200 text-xs">
               No hay variantes registradas para este producto.
             </div>
           ) : (
@@ -194,11 +195,11 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
                     e.preventDefault();
                     setContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, isCentered: false, row: variant });
                   }}
-                  className="bg-base-100 p-3.5 rounded-xl border border-base-200 shadow-xs space-y-2 text-xs select-none cursor-pointer hover:border-primary/40 active:scale-[0.99] transition-all"
+                  className="bg-base-100 p-3.5 rounded-2xl border border-base-200 shadow-xs space-y-2 text-xs select-none cursor-pointer hover:border-primary/40 active:scale-[0.99] transition-all"
                 >
-                  <div className="flex items-start gap-3">
+                  <div className="flex items-center gap-3">
                     <div 
-                      className="w-12 h-12 rounded-lg bg-base-200 overflow-hidden border border-base-300 shrink-0"
+                      className="w-14 h-14 rounded-xl bg-base-200 overflow-hidden border border-base-300 shrink-0"
                       onClick={(e) => {
                         if (variant.imageUrl) {
                           e.stopPropagation();
@@ -213,20 +214,28 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
                       {variant.imageUrl ? (
                         <img src={variant.imageUrl} alt={variant.name} className="w-full h-full object-cover" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-base-content/30 text-[9px]">Sin img</div>
+                        <div className="w-full h-full flex items-center justify-center text-base-content/30 text-[10px]">Sin img</div>
                       )}
                     </div>
 
-                    <div className="flex-1 min-w-0">
-                      <div className="flex justify-between items-start gap-1">
-                        <h4 className="font-bold text-sm text-base-content truncate">{variant.name}</h4>
+                    <div className="flex-1 min-w-0 flex flex-col justify-center">
+                      <div className="flex justify-between items-start gap-1.5">
+                        <h4 className="font-bold text-sm sm:text-base text-base-content leading-tight">
+                          {variant.name}
+                        </h4>
                         <span className={`badge badge-xs shrink-0 font-semibold ${variant.status ? 'badge-success' : 'badge-error'}`}>
                           {variant.status ? 'Activo' : 'Inactivo'}
                         </span>
                       </div>
-                      <p className="text-[11px] text-base-content/60 font-mono mt-0.5">
-                        SKU: {variant.sku} | Barcode: {variant.barCode}
-                      </p>
+
+                      {variant.barCode ? (
+                        <div className="flex items-center gap-1.5 text-xs text-base-content/70 font-mono mt-1">
+                          <Barcode size={15} className="text-base-content/80 shrink-0" />
+                          <span className="font-bold tracking-wider">{variant.barCode}</span>
+                        </div>
+                      ) : (
+                        <span className="text-[11px] text-base-content/40 italic mt-1">(sin código de barras)</span>
+                      )}
                     </div>
                   </div>
                 </div>

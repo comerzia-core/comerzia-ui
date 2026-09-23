@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { ComerziaModal } from '../../../components/ui/ComerziaModal';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
-import { BtnCancel, BtnSave, BtnUpdatePrices } from '../../../components/ui/CrudButtons';
+import { BtnCancel, BtnSave, BtnUpdatePrices, BtnCreate } from '../../../components/ui/CrudButtons';
 import { commercialService } from '../services/commercialService';
 import type { SalePriceResponse, PriceTypeResponse } from '../types/commercial';
 import { useToast } from '../../../context/ToastContext';
 import { useAuthStore } from '../../../stores/useAuthStore';
-import { BadgePercent, X, Plus, DollarSign, Tag } from 'lucide-react';
+import { BadgePercent, X, Plus, Coins, Tag } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
@@ -142,53 +142,51 @@ export const VariantPricesModal = ({ isOpen, onClose, variantId, variantName }: 
   };
 
   const handleSubmit = async () => {
-    // Validations
+    // Validaciones exhaustivas por cada tipo de precio seleccionado
     for (const item of editPrices) {
-      const sale = Number(item.salePrice) || 0;
-      const discount = Number(item.discountPrice) || 0;
+      const sale = Number(item.salePrice);
       const pt = priceTypes.find(t => t.id === item.priceTypeId);
       const typeName = pt?.name || 'Tipo de precio';
 
-      if (sale > 0 && discount > 0 && discount > sale) {
-        toastError(`El precio de descuento no puede ser mayor al de venta para: ${typeName}`);
+      // 1. Validar que el precio de venta sea obligatorio y positivo
+      if (!item.salePrice || isNaN(sale) || sale <= 0) {
+        toastError(`El precio de venta es obligatorio y debe ser mayor a 0 para: ${typeName}`);
         return;
       }
-    }
 
-    const validPrices = editPrices.filter(p => Number(p.salePrice) > 0);
-    if (validPrices.length === 0 && editPrices.length > 0) {
-      toastError("Por favor ingresa al menos un precio de venta válido.");
-      return;
+      // 2. Validar precio de descuento si fue ingresado
+      if (item.discountPrice !== '' && item.discountPrice != null) {
+        const discount = Number(item.discountPrice);
+        if (isNaN(discount) || discount < 0) {
+          toastError(`El precio de descuento debe ser un valor positivo para: ${typeName}`);
+          return;
+        }
+        if (discount >= sale) {
+          toastError(`El precio de descuento (${discount.toFixed(2)}) debe ser menor al precio de venta (${sale.toFixed(2)}) para: ${typeName}`);
+          return;
+        }
+      }
     }
 
     setIsSubmitting(true);
     try {
-      const promises = validPrices.map(async (item) => {
+      const payloadPrices = editPrices.map((item) => {
         const sale = Number(item.salePrice);
-        const discount = Number(item.discountPrice) || 0;
-
-        const currentActive = activePrices.find(ap =>
-          ap.priceType?.id === item.priceTypeId || ap.priceTypeId === item.priceTypeId ||
-          ap.priceType?.name === item.priceTypeId
-        );
-
-        // Only update if changed
-        if (!currentActive || currentActive.salePrice !== sale || currentActive.discountPrice !== discount) {
-          await commercialService.changePrice({
-            priceTypeId: item.priceTypeId,
-            variantId: variantId,
-            salePrice: sale,
-            discountPrice: discount > 0 ? discount : undefined,
-          });
-        }
+        const rawDiscount = item.discountPrice !== '' && item.discountPrice != null ? Number(item.discountPrice) : null;
+        const discount = rawDiscount != null && rawDiscount > 0 ? rawDiscount : null;
+        return {
+          priceTypeId: item.priceTypeId,
+          salePrice: sale,
+          discountPrice: discount
+        };
       });
 
-      await Promise.all(promises);
-      toastSuccess("Precios actualizados exitosamente");
+      await commercialService.syncVariantPrices(variantId, { prices: payloadPrices });
+      toastSuccess("Precios sincronizados exitosamente");
       setIsEditing(false);
       loadData();
     } catch (e: any) {
-      toastError(e.response?.data?.message || "Error al actualizar los precios");
+      toastError(e.response?.data?.message || "Error al sincronizar los precios de la variante");
     } finally {
       setIsSubmitting(false);
     }
@@ -218,19 +216,26 @@ export const VariantPricesModal = ({ isOpen, onClose, variantId, variantName }: 
       onClose={onClose}
       title={`Precios de: ${variantName}`}
       size="md"
+      variant={isEditing ? "form" : "view"}
+      actions={
+        !isEditing && canManagePrices ? (
+          configuredPrices.length > 0 ? (
+            <BtnUpdatePrices onClick={handleStartEditing} label="Modificar" responsive={false} />
+          ) : (
+            <BtnCreate onClick={handleStartEditing} label="Asignar Precios" responsive={false} />
+          )
+        ) : undefined
+      }
     >
       <div className="space-y-4">
-        {/* Cabecera / Acciones */}
+        {/* Cabecera */}
         <div className="flex justify-between items-center pb-1">
           <div className="flex items-center gap-2">
-            <DollarSign className="w-5 h-5 text-primary" />
+            <Coins className="w-5 h-5 text-primary" />
             <h3 className="font-semibold text-base-content text-sm sm:text-base">
               {isEditing ? "Modificar Precios" : "Precios Vigentes"}
             </h3>
           </div>
-          {!isEditing && canManagePrices && (
-            <BtnUpdatePrices onClick={handleStartEditing} label="Modificar" responsive={true} />
-          )}
         </div>
 
         {isLoading ? (
@@ -240,17 +245,9 @@ export const VariantPricesModal = ({ isOpen, onClose, variantId, variantName }: 
         ) : !isEditing ? (
           /* ================= VISTA MINIMALISTA DE PRECIOS ================= */
           configuredPrices.length === 0 ? (
-            <div className="text-center py-8 px-4 bg-base-200/40 rounded-2xl border border-dashed border-base-300">
+            <div className="text-center py-8 px-4 bg-base-100 rounded-2xl border border-dashed border-base-300">
               <Tag className="w-8 h-8 mx-auto text-base-content/30 mb-2" />
               <p className="text-sm font-medium text-base-content/60">No hay precios configurados para esta variante</p>
-              {canManagePrices && (
-                <button
-                  onClick={handleStartEditing}
-                  className="btn btn-primary btn-sm mt-3 gap-1.5"
-                >
-                  <Plus size={15} /> Asignar Precios
-                </button>
-              )}
             </div>
           ) : (
             <div className="space-y-2.5">
@@ -265,42 +262,41 @@ export const VariantPricesModal = ({ isOpen, onClose, variantId, variantName }: 
                 return (
                   <div
                     key={priceType.id}
-                    className="bg-base-100 p-3.5 rounded-xl border border-base-200 shadow-2xs hover:border-primary/20 transition-all"
+                    className="bg-base-100 p-3.5 rounded-2xl border border-base-200 shadow-2xs hover:border-primary/20 transition-all"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div>
-                        <div className="font-semibold text-sm text-base-content flex items-center gap-2">
-                          <span>{priceType.name}</span>
-                          <span className="badge badge-sm badge-ghost font-normal text-[11px] text-base-content/60">
-                            x{factor} {factor === 1 ? 'unidad' : 'unidades'}
-                          </span>
-                        </div>
+                        <h4 className="font-bold text-sm text-base-content leading-tight">
+                          {priceType.name}
+                        </h4>
+                        <p className="text-xs text-base-content/60 font-medium mt-0.5">
+                          x{factor} {factor === 1 ? 'unidad' : 'unidades'}
+                        </p>
                       </div>
 
-                      {/* Precios a la derecha */}
+                      {/* Precios a la derecha: Precio Venta normal y Precio Descuento en rojo */}
                       <div className="text-right">
-                        <div className="flex items-baseline justify-end gap-1.5">
+                        <div className="flex items-baseline justify-end gap-2">
                           <span className="text-xs text-base-content/50 font-medium">{currencyCode}</span>
-                          <span className={`font-bold text-base ${hasDiscount ? 'line-through text-base-content/40 text-xs' : 'text-base-content'}`}>
+                          <span className="font-bold text-sm sm:text-base text-base-content">
                             {salePrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                           {hasDiscount && (
-                            <span className="font-bold text-base text-success">
+                            <span className="font-bold text-sm sm:text-base text-error">
                               {discountPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </span>
                           )}
                         </div>
 
-                        {/* Totales si factor > 1 */}
+                        {/* Totales multiplicados por el factor (sin la palabra TOTAL:) */}
                         {factor > 1 && (
-                          <div className="text-[11px] font-medium mt-0.5">
-                            {hasDiscount ? (
-                              <span className="text-success">
-                                Total: {currencyCode} {totalDiscount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              </span>
-                            ) : (
-                              <span className="text-primary">
-                                Total: {currencyCode} {totalSale.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          <div className="text-[11px] font-medium mt-0.5 font-mono flex items-center justify-end gap-2 text-base-content/60">
+                            <span>
+                              {currencyCode} {totalSale.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                            {hasDiscount && (
+                              <span className="text-error font-semibold">
+                                {currencyCode} {totalDiscount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </span>
                             )}
                           </div>

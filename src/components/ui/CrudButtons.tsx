@@ -1,4 +1,4 @@
-import { Save, X, Trash2, Pencil, FileSpreadsheet, FileText, Plus, ArrowLeft, ArrowRight, RefreshCw, Eye, Unlock, Lock, DollarSign } from "lucide-react";
+import { Save, X, Trash2, Pencil, FileSpreadsheet, FileText, Plus, ArrowLeft, ArrowRight, RefreshCw, Eye, Unlock, Lock, DollarSign, Coins } from "lucide-react";
 import { ComerziaButton } from "./ComerziaButton";
 
 // Tipos para pasar props extra (como onClick)
@@ -294,12 +294,12 @@ export const BtnCloseShift = ({ label = "Arqueo y Cierre", responsive = false, .
     />
 );
 
-// 20. BOTÓN ACTUALIZAR PRECIOS (Primario + Dinero, para abrir modo edición)
+// 20. BOTÓN ACTUALIZAR PRECIOS (Primario + Monedas, para abrir modo edición)
 export const BtnUpdatePrices = ({ label = "Actualizar Precios", responsive = true, ...props }: BaseBtnProps) => (
     <ComerziaButton 
         variant="primary" 
         label={label} 
-        icon={<DollarSign size={18} />} 
+        icon={<Coins size={18} />} 
         responsive={responsive}
         {...props} 
     />

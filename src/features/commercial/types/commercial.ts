@@ -58,11 +58,22 @@ export interface SalePriceResponse {
   priceType?: PriceTypeResponse;
   priceTypeId?: string;
   priceTypeName?: string;
-  basePrice: number;
+  equivalenceFactor?: number;
+  basePrice?: number;
   salePrice: number;
-  discountPrice: number;
-  validFrom: string;
+  discountPrice?: number | null;
+  validFrom?: string;
   validTo?: string | null;
+}
+
+export interface VariantPriceItemRequest {
+  priceTypeId: string;
+  salePrice: number;
+  discountPrice?: number | null;
+}
+
+export interface SyncVariantPricesRequest {
+  prices: VariantPriceItemRequest[];
 }
 
 export interface CreateInitialPriceRequest {
