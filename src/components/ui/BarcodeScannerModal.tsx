@@ -15,7 +15,7 @@ export const BarcodeScannerModal = ({
   isOpen,
   onClose,
   onScan,
-  title = "Escanear Código de Barras / QR",
+  title = "Escanear Código de Barras",
 }: Props) => {
   const handleSuccess = (code: string) => {
     onScan(code);
