@@ -34,7 +34,10 @@ import type {
   BulkProductUploadRequest,
   BulkUploadSummaryResponse,
   PageProductVariantEnrichmentResponse,
-  SyncVariantPricesRequest
+  SyncVariantPricesRequest,
+  ReplenishmentMetricsResponse,
+  PageReplenishmentReportResponse,
+  UpdateBranchVariantSettingsRequest
 } from '../types/commercial';
 
 export const commercialService = {
@@ -341,5 +344,52 @@ export const commercialService = {
     const params = new URLSearchParams({ page: String(page), size: String(size) });
     const response = await api.get(`/tenant/catalog/bulk-upload/pending-enrichment?${params.toString()}`);
     return response.data;
+  },
+
+  // Replenishment & Stock Reports
+  getReplenishmentReport: async (params: {
+    branchId: string;
+    categoryId?: string;
+    segmentId?: string;
+    brandId?: string;
+    search?: string;
+    status?: string;
+    page?: number;
+    size?: number;
+    sort?: string;
+  }): Promise<PageReplenishmentReportResponse> => {
+    const query = new URLSearchParams();
+    query.append('branchId', params.branchId);
+    if (params.categoryId) query.append('categoryId', params.categoryId);
+    if (params.segmentId) query.append('segmentId', params.segmentId);
+    if (params.brandId) query.append('brandId', params.brandId);
+    if (params.search && params.search.trim()) query.append('search', params.search.trim());
+    if (params.status && params.status.trim()) query.append('status', params.status.trim());
+    if (params.page !== undefined) query.append('page', String(params.page));
+    if (params.size !== undefined) query.append('size', String(params.size));
+    if (params.sort && params.sort.trim()) query.append('sort', params.sort.trim());
+
+    const response = await api.get(`/tenant/stock/replenishment-report?${query.toString()}`);
+    return response.data;
+  },
+
+  getReplenishmentMetrics: async (params: {
+    branchId: string;
+    categoryId?: string;
+    segmentId?: string;
+    brandId?: string;
+  }): Promise<ReplenishmentMetricsResponse> => {
+    const query = new URLSearchParams();
+    query.append('branchId', params.branchId);
+    if (params.categoryId) query.append('categoryId', params.categoryId);
+    if (params.segmentId) query.append('segmentId', params.segmentId);
+    if (params.brandId) query.append('brandId', params.brandId);
+
+    const response = await api.get(`/tenant/stock/replenishment-metrics?${query.toString()}`);
+    return response.data;
+  },
+
+  updateBranchStockSettings: async (data: UpdateBranchVariantSettingsRequest): Promise<void> => {
+    await api.put('/tenant/stock/branch-settings', data);
   }
 };

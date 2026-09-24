@@ -19,6 +19,7 @@ export const CompanyProfilePage = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [companyLogo, setCompanyLogo] = useState<SingleImageValue | null>(null);
+  const [ticketLogo, setTicketLogo] = useState<SingleImageValue | null>(null);
   
   // Estado para validación visual
   const [shakeKey, setShakeKey] = useState<number>(0);
@@ -32,7 +33,9 @@ export const CompanyProfilePage = () => {
     timezone: '',
     taxName: '',
     taxPercentage: 0,
-    ticketFooterText: ''
+    ticketFooterText: '',
+    defaultMinStock: 0,
+    defaultIdealStock: 0
   });
 
   const loadProfile = async () => {
@@ -42,6 +45,7 @@ export const CompanyProfilePage = () => {
       setProfileData(data);
       
       setCompanyLogo(data.companyLogoUrl ? { preview: data.companyLogoUrl } : null);
+      setTicketLogo(data.ticketLogoUrl ? { preview: data.ticketLogoUrl } : null);
 
       // Mapeamos los datos al formulario. 
       // IMPORTANTE: Mantenemos las URLs originales intactas para no sobrescribirlas al guardar.
@@ -52,7 +56,9 @@ export const CompanyProfilePage = () => {
         timezone: data.timezone,
         taxName: data.taxName || '',
         taxPercentage: data.taxPercentage || 0,
-        ticketFooterText: data.ticketFooterText || ''
+        ticketFooterText: data.ticketFooterText || '',
+        defaultMinStock: data.defaultMinStock ?? 0,
+        defaultIdealStock: data.defaultIdealStock ?? 0
       });
     } catch (error) {
       console.error('Error loading company profile:', error);
@@ -71,7 +77,9 @@ export const CompanyProfilePage = () => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'taxPercentage' ? Number(value) : value
+      [name]: (name === 'taxPercentage' || name === 'defaultMinStock' || name === 'defaultIdealStock')
+        ? (value === '' ? '' : Number(value))
+        : value
     }));
     
     // Limpiar el error del campo al escribir
@@ -87,6 +95,19 @@ export const CompanyProfilePage = () => {
     if (!formData.currencyCode) newErrors.currencyCode = 'El código de moneda es requerido';
     if (!formData.timezone) newErrors.timezone = 'La zona horaria es requerida';
 
+    const minStockVal = Number(formData.defaultMinStock ?? 0);
+    const idealStockVal = Number(formData.defaultIdealStock ?? 0);
+
+    if (minStockVal < 0) {
+      newErrors.defaultMinStock = 'El stock mínimo no puede ser negativo';
+    }
+    if (idealStockVal < 0) {
+      newErrors.defaultIdealStock = 'El stock ideal no puede ser negativo';
+    }
+    if (idealStockVal > 0 && minStockVal > idealStockVal) {
+      newErrors.defaultMinStock = 'El stock mínimo no puede ser mayor que el stock ideal';
+    }
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       setShakeKey(prev => prev + 1); // Disparamos la vibración (shake) en la UI
@@ -101,7 +122,9 @@ export const CompanyProfilePage = () => {
     try {
       setIsSaving(true);
       let finalCompanyLogoUrl: string | null = null;
+      let finalTicketLogoUrl: string | null = null;
 
+      // Subida de logo de la empresa
       if (companyLogo) {
         if (companyLogo.file) {
           try {
@@ -121,9 +144,32 @@ export const CompanyProfilePage = () => {
         }
       }
 
+      // Subida de logo de tickets
+      if (ticketLogo) {
+        if (ticketLogo.file) {
+          try {
+            finalTicketLogoUrl = await uploadFile(
+              ticketLogo.file,
+              STORAGE_FOLDERS.COMPANY,
+              `ticket-logo-${profileData?.slug || 'company'}-${Date.now()}`
+            );
+          } catch (uploadErr) {
+            console.error("Error al subir logo de ticket:", uploadErr);
+            showToast("No se pudo subir la imagen del logo de ticket", "error");
+            setIsSaving(false);
+            return;
+          }
+        } else if (ticketLogo.preview) {
+          finalTicketLogoUrl = ticketLogo.preview;
+        }
+      }
+
       await companyService.updateCompanySettings({
         ...formData,
-        companyLogoUrl: finalCompanyLogoUrl
+        companyLogoUrl: finalCompanyLogoUrl,
+        ticketLogoUrl: finalTicketLogoUrl,
+        defaultMinStock: formData.defaultMinStock != null ? Number(formData.defaultMinStock) : 0,
+        defaultIdealStock: formData.defaultIdealStock != null ? Number(formData.defaultIdealStock) : 0
       });
       showToast('Configuración actualizada exitosamente', 'success');
       
@@ -293,12 +339,19 @@ export const CompanyProfilePage = () => {
                   Identidad Visual
                 </div>
 
-                <div className="md:col-span-2">
+                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
                   <ComerziaSingleImageUploader
                     label="Logo de la Empresa"
                     value={companyLogo}
                     onChange={setCompanyLogo}
-                    helperText="Formato recomendado: PNG transparente o JPG (Máx. 5MB). Se usará en el encabezado, sidebar y documentos."
+                    helperText="Formato: PNG transparente o JPG (Máx. 5MB). Se usará en cabecera, sidebar y reportes."
+                    compact
+                  />
+                  <ComerziaSingleImageUploader
+                    label="Logo para Tickets de Venta"
+                    value={ticketLogo}
+                    onChange={setTicketLogo}
+                    helperText="Optimizado para impresión en tickets y recibos térmicos del punto de venta."
                     compact
                   />
                 </div>
@@ -335,6 +388,36 @@ export const CompanyProfilePage = () => {
                     placeholder="¡Gracias por su preferencia! Vuelva pronto..."
                   />
                 </div>
+
+                <div className="divider md:col-span-2 my-2 text-xs font-bold text-base-content/40 uppercase tracking-widest">
+                  Inventario y Reabastecimiento por Defecto
+                </div>
+
+                <ComerziaInput 
+                  label="Stock Mínimo por Defecto" 
+                  name="defaultMinStock"
+                  type="number"
+                  value={formData.defaultMinStock ?? 0} 
+                  onChange={handleChange}
+                  placeholder="0"
+                  min={0}
+                  helperText="Umbral base de alerta de stock bajo cuando la variante no tiene límite asignado"
+                  error={errors.defaultMinStock}
+                  shakeKey={shakeKey}
+                />
+
+                <ComerziaInput 
+                  label="Stock Ideal por Defecto" 
+                  name="defaultIdealStock"
+                  type="number"
+                  value={formData.defaultIdealStock ?? 0} 
+                  onChange={handleChange}
+                  placeholder="0"
+                  min={0}
+                  helperText="Meta base de abastecimiento sugerida para compras y reposición"
+                  error={errors.defaultIdealStock}
+                  shakeKey={shakeKey}
+                />
               </div>
 
               {/* ACTION BUTTONS */}

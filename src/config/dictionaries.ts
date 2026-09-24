@@ -17,6 +17,7 @@ export const DICTIONARIES = {
     INVENTORY_STATUS: 'inventory-status',
     STOCK_STATUS: 'stock-status',
     VARIANT_TYPE: 'variant-type',
+    REPLENISHMENT_STATUS: 'replenishment-status',
     // SALES
     SALE_STATUS: 'sale-status',
     CUSTOMER_TYPE: 'customer-type',

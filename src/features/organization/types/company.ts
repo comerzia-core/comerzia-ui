@@ -24,6 +24,8 @@ export interface TenantCompanyProfileResponse {
   taxName: string;
   taxPercentage: number;
   ticketFooterText: string;
+  defaultMinStock?: number | null;
+  defaultIdealStock?: number | null;
 
   // Subscription
   currentSubscription: TenantSubscriptionResponse;
@@ -37,4 +39,6 @@ export interface UpdateCompanySettingsRequest {
   taxName: string;
   taxPercentage: number;
   ticketFooterText: string;
+  defaultMinStock?: number | null;
+  defaultIdealStock?: number | null;
 }

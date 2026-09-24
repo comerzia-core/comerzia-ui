@@ -114,6 +114,28 @@ export const CompanyDashboardPage = () => {
                                     </span>
                                 </div>
 
+                                <div className="bg-base-200/50 p-4 rounded-xl border border-base-200">
+                                    <span className="block text-xs font-semibold text-base-content/60 uppercase tracking-wider mb-1">Stock Mínimo (Defecto)</span>
+                                    <span className="text-lg font-bold font-mono">{company.saasCompanySettingsResponse?.defaultMinStock ?? 0} uds</span>
+                                </div>
+
+                                <div className="bg-base-200/50 p-4 rounded-xl border border-base-200">
+                                    <span className="block text-xs font-semibold text-base-content/60 uppercase tracking-wider mb-1">Stock Ideal (Defecto)</span>
+                                    <span className="text-lg font-bold font-mono">{company.saasCompanySettingsResponse?.defaultIdealStock ?? 0} uds</span>
+                                </div>
+
+                                <div className="bg-base-200/50 p-4 rounded-xl border border-base-200">
+                                    <span className="block text-xs font-semibold text-base-content/60 uppercase tracking-wider mb-1">Logo para Tickets</span>
+                                    {company.saasCompanySettingsResponse?.ticketLogoUrl ? (
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <img src={company.saasCompanySettingsResponse.ticketLogoUrl} alt="Logo Ticket" className="h-8 object-contain rounded border border-base-300 bg-base-100 p-0.5" />
+                                            <span className="text-xs text-success font-medium">Configurado</span>
+                                        </div>
+                                    ) : (
+                                        <span className="text-sm text-base-content/50 italic">Sin logo</span>
+                                    )}
+                                </div>
+
                                 <div className="bg-base-200/50 p-4 rounded-xl border border-base-200 md:col-span-3">
                                     <span className="block text-xs font-semibold text-base-content/60 uppercase tracking-wider mb-1">Pie de Ticket (Impresión)</span>
                                     <p className="text-sm italic text-base-content/80">

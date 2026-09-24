@@ -28,6 +28,7 @@ import { StockQueryPage } from "../features/commercial/pages/StockQueryPage";
 import { StockMovementsPage } from "../features/commercial/pages/StockMovementsPage";
 import { PricesPage } from "../features/commercial/pages/PricesPage";
 import { InventoriesPage } from "../features/commercial/pages/InventoriesPage";
+import { StockReportsPage } from "../features/commercial/pages/StockReportsPage";
 
 // --- SECURITY ---
 import { AuditPage } from "../features/security/pages/AuditPage";
@@ -76,6 +77,7 @@ export const AppRouter = () => {
             <Route path="/commercial/stock-movements" element={<StockMovementsPage />} />
             <Route path="/commercial/prices" element={<PricesPage />} />
             <Route path="/commercial/inventories" element={<InventoriesPage />} />
+            <Route path="/commercial/reports" element={<StockReportsPage />} />
 
             {/* --- POINT OF SALE --- */}
             <Route path="/pos/terminal" element={<TerminalPage />} />

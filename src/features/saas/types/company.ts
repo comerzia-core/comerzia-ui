@@ -16,6 +16,8 @@ export interface SaasCompanySettingsResponse {
     taxName: string;
     taxPercentage: number;
     ticketFooterText: string;
+    defaultMinStock?: number | null;
+    defaultIdealStock?: number | null;
 }
 
 export interface SaasSubscriptionResponse {

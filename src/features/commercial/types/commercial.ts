@@ -404,3 +404,50 @@ export interface PageProductVariantEnrichmentResponse {
   number: number;
 }
 
+// Replenishment & Stock Reports
+export interface ReplenishmentMetricsResponse {
+  totalVariantsEvaluated: number;
+  outOfStockCount: number;
+  lowStockCount: number;
+  healthyStockCount: number;
+  overStockCount: number;
+}
+
+export interface ReplenishmentReportResponse {
+  id?: string;
+  variantId: string;
+  variantName: string;
+  productName: string;
+  sku: string;
+  barCode: string;
+  imageUrl?: string | null;
+  categoryName?: string;
+  segmentName?: string;
+  brandName?: string;
+  currentStock: number;
+  minStock: number;
+  idealStock: number;
+  suggestedOrderQuantity: number;
+  status: { code: number; label: string } | number | string;
+}
+
+export interface PageReplenishmentReportResponse {
+  content: ReplenishmentReportResponse[];
+  totalElements: number;
+  totalPages: number;
+  size: number;
+  number: number;
+}
+
+export interface VariantSettingItemRequest {
+  variantId: string;
+  minStock: number;
+  idealStock: number;
+}
+
+export interface UpdateBranchVariantSettingsRequest {
+  branchId: string;
+  settings: VariantSettingItemRequest[];
+}
+
+

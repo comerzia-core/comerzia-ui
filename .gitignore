@@ -24,3 +24,5 @@ dist-ssr
 *.sw?
 
 .env
+
+frontend_replenishment_guide.md

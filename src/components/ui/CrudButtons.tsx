@@ -20,6 +20,17 @@ export const BtnSave = ({ label = "Guardar", responsive = true, ...props }: Base
     />
 );
 
+// 1.1 BOTÓN GUARDAR ICONO (Verde + Icono Save + Redondo para Tablas)
+export const BtnSaveIcon = (props: BaseBtnProps) => (
+    <ComerziaButton 
+        variant="save" 
+        isIconOnly 
+        icon={<Save size={16} />} 
+        tooltip="Guardar"
+        {...props} 
+    />
+);
+
 // 2. BOTÓN CANCELAR (Rojo + Icono X)
 export const BtnCancel = ({ label = "Cancelar", responsive = true, ...props }: BaseBtnProps) => (
     <ComerziaButton 
