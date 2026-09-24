@@ -37,7 +37,10 @@ import type {
   SyncVariantPricesRequest,
   ReplenishmentMetricsResponse,
   PageReplenishmentReportResponse,
-  UpdateBranchVariantSettingsRequest
+  UpdateBranchVariantSettingsRequest,
+  ValuationMetricsResponse,
+  ValuationChartsResponse,
+  PageValuationReportResponse
 } from '../types/commercial';
 
 export const commercialService = {
@@ -391,5 +394,62 @@ export const commercialService = {
 
   updateBranchStockSettings: async (data: UpdateBranchVariantSettingsRequest): Promise<void> => {
     await api.put('/tenant/stock/branch-settings', data);
+  },
+
+  // Stock Valuation & Financial Inventory
+  getValuationReport: async (params: {
+    branchId?: string;
+    categoryId?: string;
+    segmentId?: string;
+    brandId?: string;
+    search?: string;
+    page?: number;
+    size?: number;
+    sort?: string;
+  }): Promise<PageValuationReportResponse> => {
+    const query = new URLSearchParams();
+    if (params.branchId && params.branchId.trim()) query.append('branchId', params.branchId.trim());
+    if (params.categoryId && params.categoryId.trim()) query.append('categoryId', params.categoryId.trim());
+    if (params.segmentId && params.segmentId.trim()) query.append('segmentId', params.segmentId.trim());
+    if (params.brandId && params.brandId.trim()) query.append('brandId', params.brandId.trim());
+    if (params.search && params.search.trim()) query.append('search', params.search.trim());
+    if (params.page !== undefined) query.append('page', String(params.page));
+    if (params.size !== undefined) query.append('size', String(params.size));
+    if (params.sort && params.sort.trim()) query.append('sort', params.sort.trim());
+
+    const response = await api.get(`/tenant/stock/valuation-report?${query.toString()}`);
+    return response.data;
+  },
+
+  getValuationMetrics: async (params: {
+    branchId?: string;
+    categoryId?: string;
+    segmentId?: string;
+    brandId?: string;
+  }): Promise<ValuationMetricsResponse> => {
+    const query = new URLSearchParams();
+    if (params.branchId && params.branchId.trim()) query.append('branchId', params.branchId.trim());
+    if (params.categoryId && params.categoryId.trim()) query.append('categoryId', params.categoryId.trim());
+    if (params.segmentId && params.segmentId.trim()) query.append('segmentId', params.segmentId.trim());
+    if (params.brandId && params.brandId.trim()) query.append('brandId', params.brandId.trim());
+
+    const response = await api.get(`/tenant/stock/valuation-metrics?${query.toString()}`);
+    return response.data;
+  },
+
+  getValuationCharts: async (params: {
+    branchId?: string;
+    categoryId?: string;
+    segmentId?: string;
+    brandId?: string;
+  }): Promise<ValuationChartsResponse> => {
+    const query = new URLSearchParams();
+    if (params.branchId && params.branchId.trim()) query.append('branchId', params.branchId.trim());
+    if (params.categoryId && params.categoryId.trim()) query.append('categoryId', params.categoryId.trim());
+    if (params.segmentId && params.segmentId.trim()) query.append('segmentId', params.segmentId.trim());
+    if (params.brandId && params.brandId.trim()) query.append('brandId', params.brandId.trim());
+
+    const response = await api.get(`/tenant/stock/valuation-charts?${query.toString()}`);
+    return response.data;
   }
 };

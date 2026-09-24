@@ -450,4 +450,64 @@ export interface UpdateBranchVariantSettingsRequest {
   settings: VariantSettingItemRequest[];
 }
 
+// Valuation & Financial Inventory Reports
+export interface ValuationMetricsResponse {
+  totalUnits: number;
+  totalCost: number;
+  totalPotentialRevenue: number;
+  totalPotentialProfit: number;
+  averageMarginPercentage: number;
+}
+
+export interface ValuationCategoryChartItem {
+  categoryId: string;
+  categoryName: string;
+  totalCost: number;
+  potentialRevenue: number;
+  percentage: number;
+}
+
+export interface ValuationBranchChartItem {
+  branchId: string;
+  branchName: string;
+  totalCost: number;
+  potentialRevenue: number;
+  totalUnits: number;
+}
+
+export type ValuationDistributionType = 'CATEGORY' | 'SEGMENT' | 'BRAND' | 'PRODUCT';
+
+export interface ValuationChartsResponse {
+  distributionType?: ValuationDistributionType | string;
+  categoryDistribution: ValuationCategoryChartItem[];
+  branchDistribution: ValuationBranchChartItem[];
+}
+
+export interface ValuationReportResponse {
+  variantId: string;
+  productName: string;
+  variantName: string;
+  sku: string;
+  barCode: string;
+  imageUrl?: string | null;
+  categoryName?: string;
+  segmentName?: string;
+  brandName?: string;
+  totalQuantity: number;
+  averageUnitCost: number;
+  totalCost: number;
+  salePrice: number;
+  potentialRevenue: number;
+  potentialProfit: number;
+  marginPercentage: number;
+}
+
+export interface PageValuationReportResponse {
+  content: ValuationReportResponse[];
+  totalElements: number;
+  totalPages: number;
+  size: number;
+  number: number;
+}
+
 
