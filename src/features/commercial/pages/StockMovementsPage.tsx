@@ -642,584 +642,582 @@ export const StockMovementsPage = () => {
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Formulario Lateral */}
-          {(isEntryCardOpen || adjustmentTarget) && (
-            <div className="lg:col-span-1 bg-base-100 p-6 rounded-2xl shadow-sm border border-base-200 relative">
-              {adjustmentTarget ? (
-                <>
-                  <div className="flex justify-between items-start mb-2">
-                    <h2 className="text-xl font-bold text-primary">Ajuste Manual Stock</h2>
-                    <button onClick={() => setAdjustmentTarget(null)} className="btn btn-ghost btn-xs btn-circle"><X size={16} /></button>
-                  </div>
-                  <div className="text-sm text-base-content/60 mb-6 space-y-1">
-                    <p>Producto: <strong>{productData.productName}</strong></p>
-                    <p>Variante: <strong>{scannedVariant.variantName}</strong></p>
-                    <p>Fecha Stock: <strong>{formatDateForUser(adjustmentTarget.entryDate)}</strong></p>
-                    {isOwner && <p>Sucursal: <strong>{adjustmentTarget.branchName || 'Principal'}</strong></p>}
-                    <p>Cant. Inicial: <strong>{adjustmentTarget.quantityIn}</strong></p>
-                    <p>Cant. Disponible: <strong>{adjustmentTarget.availableQuantity}</strong></p>
-                  </div>
+            {/* Formulario Lateral */}
+            {(isEntryCardOpen || adjustmentTarget) && (
+              <div className="lg:col-span-1 bg-base-100 p-6 rounded-2xl shadow-sm border border-base-200 relative">
+                {adjustmentTarget ? (
+                  <>
+                    <div className="flex justify-between items-start mb-2">
+                      <h2 className="text-xl font-bold text-primary">Ajuste Manual Stock</h2>
+                      <button onClick={() => setAdjustmentTarget(null)} className="btn btn-ghost btn-xs btn-circle"><X size={16} /></button>
+                    </div>
+                    <div className="text-sm text-base-content/60 mb-6 space-y-1">
+                      <p>Producto: <strong>{productData.productName}</strong></p>
+                      <p>Variante: <strong>{scannedVariant.variantName}</strong></p>
+                      <p>Fecha Stock: <strong>{formatDateForUser(adjustmentTarget.entryDate)}</strong></p>
+                      {isOwner && <p>Sucursal: <strong>{adjustmentTarget.branchName || 'Principal'}</strong></p>}
+                      <p>Cant. Inicial: <strong>{adjustmentTarget.quantityIn}</strong></p>
+                      <p>Cant. Disponible: <strong>{adjustmentTarget.availableQuantity}</strong></p>
+                    </div>
 
-                  <div className="space-y-4">
-                    <ComerziaSelect
-                      label="Tipo de Ajuste"
-                      options={adjustmentTypeOptions}
-                      value={adjustmentType}
-                      onChange={(e) => {
-                        setAdjustmentType(e.target.value ? Number(e.target.value) : '');
-                        setAdjustmentQty(0);
-                      }}
-                      isRequired
-                    />
-                    <ComerziaInput
-                      label="Cantidad a Ajustar"
-                      type="number"
-                      value={adjustmentQty}
-                      onChange={(e) => {
-                        let val: number | '' = e.target.value !== '' ? Number(e.target.value) : '';
-                        const code = Number(adjustmentType);
-                        const isSubtract = code === 301 || code === 303;
-                        if (typeof val === 'number' && isSubtract && adjustmentTarget && val > adjustmentTarget.availableQuantity) {
-                          val = adjustmentTarget.availableQuantity;
-                        }
-                        setAdjustmentQty(val);
-                      }}
-                      isRequired
-                    />
-                    {adjustmentQty !== '' && (
-                      <div className="text-sm text-base-content/70 bg-base-200 p-3 rounded-lg flex justify-between">
-                        <span>Nueva cant. disp. estimada:</span>
-                        <span className="font-bold text-primary">
-                          {(() => {
-                            const code = Number(adjustmentType);
-                            const qty = Number(adjustmentQty);
-                            if (code === 301 || code === 303) {
-                              return adjustmentTarget.availableQuantity - qty;
-                            } else if (code === 302 || code === 304) {
-                              return adjustmentTarget.availableQuantity + qty;
-                            }
-                            return adjustmentTarget.availableQuantity;
-                          })()}
-                        </span>
-                      </div>
-                    )}
-                    <ComerziaTextarea
-                      label="Observación"
-                      value={adjustmentObs}
-                      onChange={(e) => setAdjustmentObs(e.target.value)}
-                      isRequired
-                    />
-                    <BtnSave
-                      className="w-full mt-4"
-                      label="Guardar Ajuste"
-                      onClick={handleSubmitAdjustment}
-                      isLoading={isSubmittingAdjustment}
-                    />
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="flex justify-between items-start mb-2">
-                    <h2 className="text-xl font-bold text-primary">Registrar Entrada</h2>
-                    <button onClick={() => setIsEntryCardOpen(false)} className="btn btn-ghost btn-xs btn-circle"><X size={16} /></button>
-                  </div>
-                  <p className="text-sm text-base-content/60 mb-6">
-                    Producto: <strong>{productData.productName}</strong><br />
-                    Variante: <strong>{scannedVariant.variantName}</strong>
-                  </p>
-
-                  <div className="space-y-4">
-                    {hasDistributePermission ? (
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between pb-1 border-b border-base-200">
-                          <label className="text-xs font-bold text-base-content flex items-center gap-1.5">
-                            <Store size={15} className="text-primary" />
-                            Distribución por Sucursales
-                          </label>
-                          <span className="text-xs font-mono text-base-content/70">
-                            Total: <strong className="text-primary font-bold">{totalDistributedQty}</strong> uds
-                          </span>
-                        </div>
-
-                        <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-                          {branches.length === 0 ? (
-                            <p className="text-xs text-base-content/50 italic py-2 text-center">
-                              Cargando sucursales disponibles...
-                            </p>
-                          ) : (
-                            branches.map(branch => {
-                              const currentQty = branchQuantities[branch.id];
-                              return (
-                                <div
-                                  key={branch.id}
-                                  className="flex items-center justify-between gap-3 p-2.5 bg-base-200/50 hover:bg-base-200/80 rounded-xl border border-base-200 transition-colors"
-                                >
-                                  <div className="min-w-0 flex-1">
-                                    <span className="font-semibold text-xs text-base-content block truncate">
-                                      {branch.name}
-                                    </span>
-                                    {branch.code && (
-                                      <span className="font-mono text-[10px] text-base-content/50 uppercase">
-                                        Cód: {branch.code}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div className="flex items-center gap-1 bg-base-100 border border-base-300 rounded-xl p-0.5 shrink-0 shadow-2xs focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all">
-                                    <button
-                                      type="button"
-                                      title="Disminuir"
-                                      className="btn btn-ghost btn-xs h-7 w-7 min-h-0 p-0 rounded-lg text-base-content/70 hover:text-primary hover:bg-base-200 cursor-pointer flex items-center justify-center"
-                                      onClick={() => {
-                                        const current = typeof currentQty === 'number' ? currentQty : 0;
-                                        setBranchQuantities(prev => ({
-                                          ...prev,
-                                          [branch.id]: Math.max(0, current - 1)
-                                        }));
-                                      }}
-                                    >
-                                      <Minus size={13} strokeWidth={2.5} />
-                                    </button>
-                                    <input
-                                      type="number"
-                                      min="0"
-                                      placeholder="0"
-                                      value={currentQty === '' ? '' : currentQty ?? ''}
-                                      onChange={(e) => {
-                                        const val = e.target.value;
-                                        if (val === '') {
-                                          setBranchQuantities(prev => ({ ...prev, [branch.id]: '' }));
-                                        } else if (/^\d+$/.test(val)) {
-                                          setBranchQuantities(prev => ({ ...prev, [branch.id]: Number(val) }));
-                                        }
-                                      }}
-                                      className="w-14 sm:w-16 text-center font-bold font-mono text-sm bg-transparent border-0 focus:outline-hidden p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none text-base-content"
-                                    />
-                                    <button
-                                      type="button"
-                                      title="Aumentar"
-                                      className="btn btn-ghost btn-xs h-7 w-7 min-h-0 p-0 rounded-lg text-base-content/70 hover:text-primary hover:bg-base-200 cursor-pointer flex items-center justify-center"
-                                      onClick={() => {
-                                        const current = typeof currentQty === 'number' ? currentQty : 0;
-                                        setBranchQuantities(prev => ({
-                                          ...prev,
-                                          [branch.id]: current + 1
-                                        }));
-                                      }}
-                                    >
-                                      <Plus size={13} strokeWidth={2.5} />
-                                    </button>
-                                  </div>
-                                </div>
-                              );
-                            })
-                          )}
-                        </div>
-                      </div>
-                    ) : (
-                      <ComerziaInput
-                        label="Cantidad a Ingresar"
-                        type="number"
-                        value={quantityIn}
+                    <div className="space-y-4">
+                      <ComerziaSelect
+                        label="Tipo de Ajuste"
+                        options={adjustmentTypeOptions}
+                        value={adjustmentType}
                         onChange={(e) => {
-                          const val = e.target.value;
-                          if (val === '') {
-                            setQuantityIn('');
-                          } else if (/^\d+$/.test(val)) {
-                            setQuantityIn(Number(val));
-                          }
+                          setAdjustmentType(e.target.value ? Number(e.target.value) : '');
+                          setAdjustmentQty(0);
                         }}
                         isRequired
                       />
-                    )}
-
-                    {hasCostPermission && (
-                      <>
-                        <ComerziaRadioGroup
-                          label="Ingresar por:"
-                          name="costInputType"
-                          value={costInputType}
-                          onChange={(val) => { setCostInputType(val); setCostInputValue(''); }}
-                          options={[
-                            { value: 'unit', label: 'Costo Unitario', icon: <Coins size={20} /> },
-                            { value: 'total', label: 'Costo Total', icon: <Banknote size={20} /> }
-                          ]}
-                        />
-
-                        <ComerziaInput
-                          label={costInputType === 'unit' ? 'Costo Unitario' : 'Costo Total'}
-                          type="number"
-                          value={costInputValue}
-                          onChange={(e) => setCostInputValue(e.target.value ? Number(e.target.value) : '')}
-                          isRequired
-                        />
-
-                        {costInputValue !== '' && (
-                          <div className="text-sm text-base-content/70 bg-primary/10 p-3 rounded-lg flex justify-between items-center border border-primary/20">
-                            <span>{costInputType === 'unit' ? 'Costo Total Calculado:' : 'Costo Unitario Calculado:'}</span>
-                            <span className="font-bold text-primary text-lg">
-                              {costInputType === 'unit'
-                                ? ((hasDistributePermission ? totalDistributedQty : (typeof quantityIn === 'number' ? quantityIn : 0)) * Number(costInputValue)).toFixed(2)
-                                : ((hasDistributePermission ? totalDistributedQty : (typeof quantityIn === 'number' ? quantityIn : 0)) > 0
-                                  ? Number(costInputValue) / (hasDistributePermission ? totalDistributedQty : Number(quantityIn))
-                                  : 0).toFixed(2)
+                      <ComerziaInput
+                        label="Cantidad a Ajustar"
+                        type="number"
+                        value={adjustmentQty}
+                        onChange={(e) => {
+                          let val: number | '' = e.target.value !== '' ? Number(e.target.value) : '';
+                          const code = Number(adjustmentType);
+                          const isSubtract = code === 301 || code === 303;
+                          if (typeof val === 'number' && isSubtract && adjustmentTarget && val > adjustmentTarget.availableQuantity) {
+                            val = adjustmentTarget.availableQuantity;
+                          }
+                          setAdjustmentQty(val);
+                        }}
+                        isRequired
+                      />
+                      {adjustmentQty !== '' && (
+                        <div className="text-sm text-base-content/70 bg-base-200 p-3 rounded-lg flex justify-between">
+                          <span>Nueva cant. disp. estimada:</span>
+                          <span className="font-bold text-primary">
+                            {(() => {
+                              const code = Number(adjustmentType);
+                              const qty = Number(adjustmentQty);
+                              if (code === 301 || code === 303) {
+                                return adjustmentTarget.availableQuantity - qty;
+                              } else if (code === 302 || code === 304) {
+                                return adjustmentTarget.availableQuantity + qty;
                               }
+                              return adjustmentTarget.availableQuantity;
+                            })()}
+                          </span>
+                        </div>
+                      )}
+                      <ComerziaTextarea
+                        label="Observación"
+                        value={adjustmentObs}
+                        onChange={(e) => setAdjustmentObs(e.target.value)}
+                        isRequired
+                      />
+                      <BtnSave
+                        className="w-full mt-4"
+                        label="Guardar Ajuste"
+                        responsive={false}
+                        onClick={handleSubmitAdjustment}
+                        isLoading={isSubmittingAdjustment}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex justify-between items-start mb-2">
+                      <h2 className="text-xl font-bold text-primary">Registrar Entrada</h2>
+                      <button onClick={() => setIsEntryCardOpen(false)} className="btn btn-ghost btn-xs btn-circle"><X size={16} /></button>
+                    </div>
+                    <p className="text-sm text-base-content/60 mb-6">
+                      Producto: <strong>{productData.productName}</strong><br />
+                      Variante: <strong>{scannedVariant.variantName}</strong>
+                    </p>
+
+                    <div className="space-y-4">
+                      {hasDistributePermission ? (
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between pb-1 border-b border-base-200">
+                            <label className="text-xs font-bold text-base-content flex items-center gap-1.5">
+                              <Store size={15} className="text-primary" />
+                              Distribución por Sucursales
+                            </label>
+                            <span className="text-xs font-mono text-base-content/70">
+                              Total: <strong className="text-primary font-bold">{totalDistributedQty}</strong> uds
                             </span>
                           </div>
-                        )}
-                      </>
-                    )}
-                    <ComerziaTextarea
-                      label="Nota (Opcional)"
-                      value={note}
-                      onChange={(e) => setNote(e.target.value)}
-                    />
-                    {hasCostPermission && !hasDistributePermission && (
-                      <ComerziaSelect
-                        label="Sucursal/Tienda (Opcional)"
-                        options={branches.map(b => ({ value: b.id, label: b.name }))}
-                        value={selectedBranchId}
-                        onChange={(e) => setSelectedBranchId(e.target.value)}
+
+                          <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                            {branches.length === 0 ? (
+                              <p className="text-xs text-base-content/50 italic py-2 text-center">
+                                Cargando sucursales disponibles...
+                              </p>
+                            ) : (
+                              branches.map(branch => {
+                                const currentQty = branchQuantities[branch.id];
+                                return (
+                                  <div
+                                    key={branch.id}
+                                    className="flex items-center justify-between gap-3 p-2.5 bg-base-200/50 hover:bg-base-200/80 rounded-xl border border-base-200 transition-colors"
+                                  >
+                                    <div className="min-w-0 flex-1">
+                                      <span className="font-semibold text-xs text-base-content block truncate">
+                                        {branch.name}
+                                      </span>
+                                      {branch.code && (
+                                        <span className="font-mono text-[10px] text-base-content/50 uppercase">
+                                          Cód: {branch.code}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-1 bg-base-100 border border-base-300 rounded-xl p-0.5 shrink-0 shadow-2xs focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all">
+                                      <button
+                                        type="button"
+                                        title="Disminuir"
+                                        className="btn btn-ghost btn-xs h-7 w-7 min-h-0 p-0 rounded-lg text-base-content/70 hover:text-primary hover:bg-base-200 cursor-pointer flex items-center justify-center"
+                                        onClick={() => {
+                                          const current = typeof currentQty === 'number' ? currentQty : 0;
+                                          setBranchQuantities(prev => ({
+                                            ...prev,
+                                            [branch.id]: Math.max(0, current - 1)
+                                          }));
+                                        }}
+                                      >
+                                        <Minus size={13} strokeWidth={2.5} />
+                                      </button>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        placeholder="0"
+                                        value={currentQty === '' ? '' : currentQty ?? ''}
+                                        onChange={(e) => {
+                                          const val = e.target.value;
+                                          if (val === '') {
+                                            setBranchQuantities(prev => ({ ...prev, [branch.id]: '' }));
+                                          } else if (/^\d+$/.test(val)) {
+                                            setBranchQuantities(prev => ({ ...prev, [branch.id]: Number(val) }));
+                                          }
+                                        }}
+                                        className="w-14 sm:w-16 text-center font-bold font-mono text-sm bg-transparent border-0 focus:outline-hidden p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none text-base-content"
+                                      />
+                                      <button
+                                        type="button"
+                                        title="Aumentar"
+                                        className="btn btn-ghost btn-xs h-7 w-7 min-h-0 p-0 rounded-lg text-base-content/70 hover:text-primary hover:bg-base-200 cursor-pointer flex items-center justify-center"
+                                        onClick={() => {
+                                          const current = typeof currentQty === 'number' ? currentQty : 0;
+                                          setBranchQuantities(prev => ({
+                                            ...prev,
+                                            [branch.id]: current + 1
+                                          }));
+                                        }}
+                                      >
+                                        <Plus size={13} strokeWidth={2.5} />
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <ComerziaInput
+                          label="Cantidad a Ingresar"
+                          type="number"
+                          value={quantityIn}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === '') {
+                              setQuantityIn('');
+                            } else if (/^\d+$/.test(val)) {
+                              setQuantityIn(Number(val));
+                            }
+                          }}
+                          isRequired
+                        />
+                      )}
+
+                      {hasCostPermission && (
+                        <>
+                          <ComerziaRadioGroup
+                            label="Ingresar por:"
+                            name="costInputType"
+                            value={costInputType}
+                            onChange={(val) => { setCostInputType(val); setCostInputValue(''); }}
+                            options={[
+                              { value: 'unit', label: 'Costo Unitario', icon: <Coins size={20} /> },
+                              { value: 'total', label: 'Costo Total', icon: <Banknote size={20} /> }
+                            ]}
+                          />
+
+                          <ComerziaInput
+                            label={costInputType === 'unit' ? 'Costo Unitario' : 'Costo Total'}
+                            type="number"
+                            value={costInputValue}
+                            onChange={(e) => setCostInputValue(e.target.value ? Number(e.target.value) : '')}
+                            isRequired
+                          />
+
+                          {costInputValue !== '' && (
+                            <div className="text-sm text-base-content/70 bg-primary/10 p-3 rounded-lg flex justify-between items-center border border-primary/20">
+                              <span>{costInputType === 'unit' ? 'Costo Total Calculado:' : 'Costo Unitario Calculado:'}</span>
+                              <span className="font-bold text-primary text-lg">
+                                {costInputType === 'unit'
+                                  ? ((hasDistributePermission ? totalDistributedQty : (typeof quantityIn === 'number' ? quantityIn : 0)) * Number(costInputValue)).toFixed(2)
+                                  : ((hasDistributePermission ? totalDistributedQty : (typeof quantityIn === 'number' ? quantityIn : 0)) > 0
+                                    ? Number(costInputValue) / (hasDistributePermission ? totalDistributedQty : Number(quantityIn))
+                                    : 0).toFixed(2)
+                                }
+                              </span>
+                            </div>
+                          )}
+                        </>
+                      )}
+                      <ComerziaTextarea
+                        label="Nota (Opcional)"
+                        value={note}
+                        onChange={(e) => setNote(e.target.value)}
                       />
-                    )}
-                    <BtnSave
-                      className="w-full mt-4"
-                      label="Guardar Entrada"
-                      onClick={handleSubmitEntry}
-                      isLoading={isSubmitting}
-                    />
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-
-          {/* Kardex Tabs and Table/Cards */}
-          <div className={`${(isEntryCardOpen || adjustmentTarget) ? 'lg:col-span-2' : 'lg:col-span-3'} space-y-4 md:space-y-6 md:card md:bg-base-100 md:p-6 md:rounded-2xl md:shadow-xs md:border md:border-base-200`}>
-            {/* Header / Tabs */}
-            <div className="card bg-base-100 p-4 rounded-2xl shadow-xs border border-base-200 md:p-0 md:bg-transparent md:shadow-none md:border-0">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex flex-wrap items-center gap-3">
-                  <h2 className="text-lg sm:text-xl font-bold text-base-content">Historial Kardex</h2>
-                  <div className="tabs tabs-boxed">
-                    <a
-                      className={`tab ${activeTab === 'entries' ? 'tab-active' : ''}`}
-                      onClick={() => { setActiveTab('entries'); setFilterStockId(null); setPage(0); }}
-                    >
-                      Entradas
-                    </a>
-                    {hasCostPermission && (
-                      <a
-                        className={`tab ${activeTab === 'adjustments' ? 'tab-active' : ''}`}
-                        onClick={() => { setActiveTab('adjustments'); setPage(0); }}
-                      >
-                        Ajustes Manuales
-                      </a>
-                    )}
-                  </div>
-                </div>
-
-                {hasActiveBranchesPermission && activeTab === 'entries' && (
-                  <div className="w-full sm:w-56">
-                    <ComerziaSelect
-                      placeholder="Todas las sucursales"
-                      enableDefaultOption={true}
-                      value={kardexBranchId}
-                      onChange={e => {
-                        setKardexBranchId(e.target.value);
-                        setPage(0);
-                      }}
-                      options={activeBranches.map(b => ({
-                        value: b.id,
-                        label: b.name
-                      }))}
-                      isLoading={isLoadingActiveBranches}
-                    />
-                  </div>
+                      {hasCostPermission && !hasDistributePermission && (
+                        <ComerziaSelect
+                          label="Sucursal/Tienda (Opcional)"
+                          options={branches.map(b => ({ value: b.id, label: b.name }))}
+                          value={selectedBranchId}
+                          onChange={(e) => setSelectedBranchId(e.target.value)}
+                        />
+                      )}
+                      <BtnSave
+                        className="w-full mt-4"
+                        label="Guardar Entrada"
+                        responsive={false}
+                        onClick={handleSubmitEntry}
+                        isLoading={isSubmitting}
+                      />
+                    </div>
+                  </>
                 )}
-              </div>
-            </div>
-
-            {activeTab === 'adjustments' && filterStockId && (
-              <div className="p-3 bg-info/15 border border-info/30 rounded-2xl flex items-center justify-between text-xs animate-fade-in gap-2">
-                <span className="font-semibold text-info">
-                  Mostrando ajustes del lote de stock seleccionado
-                </span>
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-xs text-info hover:bg-info/20 cursor-pointer font-bold shrink-0"
-                  onClick={() => {
-                    setFilterStockId(null);
-                    setPage(0);
-                  }}
-                >
-                  Ver todos los ajustes
-                </button>
               </div>
             )}
 
-            {/* VISTA DESKTOP: TABLA KARDEX */}
-            <div className="hidden md:block">
-              <ComerziaTable
-                data={kardexData}
-                columns={(activeTab === 'entries' ? entryColumns : adjustmentColumns) as any}
-                isLoading={isLoadingKardex}
-                pagination={pagination}
-                showRowNumbers={true}
-                onRowContextMenu={(e, row) => {
-                  if (activeTab === 'entries' && hasCostPermission) {
-                    e.preventDefault();
-                    setContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, isCentered: false, row: row as StockEntryResponse });
-                  }
-                }}
-                rowClassName={() => (activeTab === 'entries' && hasCostPermission ? 'hover:!bg-primary/10 transition-colors cursor-pointer' : '')}
-              />
-            </div>
-
-            {/* VISTA MOBILE: CARDS DE KARDEX (MINIMALISTA) */}
-            <div className="block md:hidden space-y-2.5">
-              {isLoadingKardex ? (
-                <div className="py-10 text-center">
-                  <span className="loading loading-spinner loading-md text-primary"></span>
-                  <p className="text-xs text-base-content/50 mt-2">Cargando kardex...</p>
-                </div>
-              ) : kardexData.length === 0 ? (
-                <div className="text-center py-8 text-base-content/50 bg-base-200/50 rounded-xl text-xs">
-                  No se encontraron movimientos en este historial.
-                </div>
-              ) : (
-                <div className="space-y-2.5">
-                  {kardexData.map((item: any, index: number) => {
-                    if (activeTab === 'entries') {
-                      const entry = item as StockEntryResponse;
-                      const statusObj = typeof entry.statusType === 'object' ? entry.statusType : null;
-                      const statusNum = typeof entry.statusType === 'number' ? entry.statusType : statusObj?.code;
-                      const statusLabel = statusObj?.label || (stockStatusOptions.find(o => Number(o.value) === statusNum)?.label) || 'Activo';
-                      const badgeVariant = statusNum === 331 ? 'warning' : statusNum === 332 ? 'success' : 'ghost';
-
-                      return (
-                        <article
-                          key={entry.id}
-                          onClick={() => {
-                            if (hasCostPermission) {
-                              setContextMenu({ isOpen: true, x: 0, y: 0, isCentered: true, row: entry });
-                            }
-                          }}
-                          onContextMenu={(e) => {
-                            if (hasCostPermission) {
-                              e.preventDefault();
-                              setContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, isCentered: false, row: entry });
-                            }
-                          }}
-                          className={`bg-base-100 p-3 rounded-2xl border border-base-200 shadow-xs active:scale-[0.99] transition-all flex flex-col gap-2 select-none ${
-                            hasCostPermission ? 'cursor-pointer hover:border-primary/40' : ''
-                          }`}
+            {/* Kardex Tabs and Table/Cards */}
+            <div className={`${(isEntryCardOpen || adjustmentTarget) ? 'lg:col-span-2' : 'lg:col-span-3'} space-y-4 md:space-y-6 md:card md:bg-base-100 md:p-6 md:rounded-2xl md:shadow-xs md:border md:border-base-200`}>
+              {/* Header / Tabs */}
+              <div className="card bg-base-100 p-4 rounded-2xl shadow-xs border border-base-200 md:p-0 md:bg-transparent md:shadow-none md:border-0">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <h2 className="text-lg sm:text-xl font-bold text-base-content">Historial Kardex</h2>
+                    <div className="tabs tabs-boxed">
+                      <a
+                        className={`tab ${activeTab === 'entries' ? 'tab-active' : ''}`}
+                        onClick={() => { setActiveTab('entries'); setFilterStockId(null); setPage(0); }}
+                      >
+                        Entradas
+                      </a>
+                      {hasCostPermission && (
+                        <a
+                          className={`tab ${activeTab === 'adjustments' ? 'tab-active' : ''}`}
+                          onClick={() => { setActiveTab('adjustments'); setPage(0); }}
                         >
-                          {/* FILA 1: NUMERACIÓN, CANTIDADES Y ESTADO */}
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span className="text-xs font-bold text-base-content/40 w-4 text-center shrink-0">
-                                {page * size + index + 1}
-                              </span>
-                              <div className="min-w-0">
-                                <span className="text-sm font-bold text-base-content">
-                                  {entry.availableQuantity} <span className="text-xs font-normal text-base-content/50">/ {entry.quantityIn} uds</span>
+                          Ajustes Manuales
+                        </a>
+                      )}
+                    </div>
+                  </div>
+
+                  {hasActiveBranchesPermission && activeTab === 'entries' && (
+                    <div className="w-full sm:w-56">
+                      <ComerziaSelect
+                        placeholder="Todas las sucursales"
+                        enableDefaultOption={true}
+                        value={kardexBranchId}
+                        onChange={e => {
+                          setKardexBranchId(e.target.value);
+                          setPage(0);
+                        }}
+                        options={activeBranches.map(b => ({
+                          value: b.id,
+                          label: b.name
+                        }))}
+                        isLoading={isLoadingActiveBranches}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {activeTab === 'adjustments' && filterStockId && (
+                <div className="p-3 bg-info/15 border border-info/30 rounded-2xl flex items-center justify-between text-xs animate-fade-in gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-xs text-info hover:bg-info/20 cursor-pointer font-bold shrink-0"
+                    onClick={() => {
+                      setFilterStockId(null);
+                      setPage(0);
+                    }}
+                  >
+                    Ver todos los ajustes
+                  </button>
+                </div>
+              )}
+
+              {/* VISTA DESKTOP: TABLA KARDEX */}
+              <div className="hidden md:block">
+                <ComerziaTable
+                  data={kardexData}
+                  columns={(activeTab === 'entries' ? entryColumns : adjustmentColumns) as any}
+                  isLoading={isLoadingKardex}
+                  pagination={pagination}
+                  showRowNumbers={true}
+                  onRowContextMenu={(e, row) => {
+                    if (activeTab === 'entries' && hasCostPermission) {
+                      e.preventDefault();
+                      setContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, isCentered: false, row: row as StockEntryResponse });
+                    }
+                  }}
+                  rowClassName={() => (activeTab === 'entries' && hasCostPermission ? 'hover:!bg-primary/10 transition-colors cursor-pointer' : '')}
+                />
+              </div>
+
+              {/* VISTA MOBILE: CARDS DE KARDEX (MINIMALISTA) */}
+              <div className="block md:hidden space-y-2.5">
+                {isLoadingKardex ? (
+                  <div className="py-10 text-center">
+                    <span className="loading loading-spinner loading-md text-primary"></span>
+                    <p className="text-xs text-base-content/50 mt-2">Cargando kardex...</p>
+                  </div>
+                ) : kardexData.length === 0 ? (
+                  <div className="text-center py-8 text-base-content/50 bg-base-200/50 rounded-xl text-xs">
+                    No se encontraron movimientos en este historial.
+                  </div>
+                ) : (
+                  <div className="space-y-2.5">
+                    {kardexData.map((item: any, index: number) => {
+                      if (activeTab === 'entries') {
+                        const entry = item as StockEntryResponse;
+                        const statusObj = typeof entry.statusType === 'object' ? entry.statusType : null;
+                        const statusNum = typeof entry.statusType === 'number' ? entry.statusType : statusObj?.code;
+                        const statusLabel = statusObj?.label || (stockStatusOptions.find(o => Number(o.value) === statusNum)?.label) || 'Activo';
+                        const badgeVariant = statusNum === 331 ? 'warning' : statusNum === 332 ? 'success' : 'ghost';
+
+                        return (
+                          <article
+                            key={entry.id}
+                            onClick={() => {
+                              if (hasCostPermission) {
+                                setContextMenu({ isOpen: true, x: 0, y: 0, isCentered: true, row: entry });
+                              }
+                            }}
+                            onContextMenu={(e) => {
+                              if (hasCostPermission) {
+                                e.preventDefault();
+                                setContextMenu({ isOpen: true, x: e.clientX, y: e.clientY, isCentered: false, row: entry });
+                              }
+                            }}
+                            className={`bg-base-100 p-3 rounded-2xl border border-base-200 shadow-xs active:scale-[0.99] transition-all flex flex-col gap-2 select-none ${hasCostPermission ? 'cursor-pointer hover:border-primary/40' : ''
+                              }`}
+                          >
+                            {/* FILA 1: NUMERACIÓN, CANTIDADES Y ESTADO */}
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-xs font-bold text-base-content/40 w-4 text-center shrink-0">
+                                  {page * size + index + 1}
+                                </span>
+                                <div className="min-w-0">
+                                  <span className="text-sm font-bold text-base-content">
+                                    {entry.availableQuantity} <span className="text-xs font-normal text-base-content/50">/ {entry.quantityIn} uds</span>
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="shrink-0">
+                                <ComerziaBadge label={statusLabel} variant={badgeVariant} />
+                              </div>
+                            </div>
+
+                            {/* FILA 2: SUCURSAL Y COSTO UNITARIO (SIN TOTAL EN MOBILE) */}
+                            <div className="pl-6 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-base-content/70">
+                              {entry.branchName ? (
+                                <div className="flex items-center gap-1 truncate">
+                                  <Store size={12} className="text-primary/70 shrink-0" />
+                                  <span className="truncate font-medium">{entry.branchName}</span>
+                                </div>
+                              ) : <span />}
+
+                              {hasCostPermission && (
+                                <div className="flex items-center gap-1 shrink-0 ml-auto">
+                                  <span><strong className="font-mono text-primary">{currencyCode} {(entry.unitCost || 0).toFixed(2)}</strong></span>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* FILA 3: NOTA U OBSERVACIÓN CORTA (SI EXISTE) */}
+                            {entry.note && (
+                              <div className="pl-6 text-[11px] text-base-content/60 italic truncate">
+                                "{entry.note}"
+                              </div>
+                            )}
+
+                            {/* PIE DE TARJETA: FECHA Y BADGE DE AJUSTES */}
+                            <div className="pl-6 pt-1.5 border-t border-base-200/50 flex items-center justify-between text-[11px] text-base-content/50">
+                              <div className="flex items-center gap-1">
+                                <Calendar size={12} className="text-base-content/40 shrink-0" />
+                                <span>{formatDateForUser(entry.entryDate)}</span>
+                              </div>
+
+                              {entry.hasAdjustments && (
+                                <button
+                                  type="button"
+                                  className="text-[11px] text-info font-semibold hover:underline flex items-center gap-1 cursor-pointer"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setFilterStockId(entry.id);
+                                    setActiveTab('adjustments');
+                                    setPage(0);
+                                  }}
+                                >
+                                  <SlidersHorizontal size={11} /> Ver Ajustes
+                                </button>
+                              )}
+                            </div>
+                          </article>
+                        );
+                      } else {
+                        const adj = item as StockAdjustmentResponse;
+                        const adjTypeObj = typeof adj.adjustmentType === 'object' ? adj.adjustmentType : null;
+                        const adjCode = typeof adj.adjustmentType === 'number' ? adj.adjustmentType : adjTypeObj?.code;
+                        const adjName = adjTypeObj?.label || (adjustmentTypeOptions.find(o => Number(o.value) === adjCode)?.label) || 'Ajuste';
+                        const isNegative = adjCode === 301 || adjCode === 303;
+
+                        return (
+                          <article
+                            key={adj.id}
+                            className="bg-base-100 p-3 rounded-2xl border border-base-200 shadow-xs flex flex-col gap-2 select-none"
+                          >
+                            {/* FILA 1: NUMERACIÓN, TIPO Y CANTIDAD */}
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-xs font-bold text-base-content/40 w-4 text-center shrink-0">
+                                  {page * size + index + 1}
+                                </span>
+                                <h3 className="text-sm font-semibold text-base-content leading-tight truncate">
+                                  {adjName}
+                                </h3>
+                              </div>
+
+                              <div className="shrink-0">
+                                <span className={`badge badge-sm font-bold text-white ${isNegative ? 'badge-error' : 'badge-success'}`}>
+                                  {isNegative ? '-' : '+'}{adj.quantity} uds
                                 </span>
                               </div>
                             </div>
 
-                            <div className="shrink-0">
-                              <ComerziaBadge label={statusLabel} variant={badgeVariant} />
+                            {/* FILA 2: COSTO UNITARIO Y REPORTE INVENTARIO */}
+                            <div className="pl-6 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-base-content/70">
+                              {adj.inventoryId ? (
+                                <button
+                                  type="button"
+                                  className="text-xs text-primary font-semibold flex items-center gap-1 hover:underline cursor-pointer"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedInventoryId(adj.inventoryId!);
+                                  }}
+                                >
+                                  <ClipboardList size={12} className="shrink-0" /> Reporte
+                                </button>
+                              ) : <span />}
+
+                              {hasCostPermission && (adj.unitCost > 0) && (
+                                <div className="flex items-center gap-1 shrink-0 ml-auto">
+                                  <Coins size={12} className="text-primary/70 shrink-0" />
+                                  <span>Costo: <strong className="font-mono text-primary">{currencyCode} {(adj.unitCost || 0).toFixed(2)}</strong></span>
+                                </div>
+                              )}
                             </div>
-                          </div>
 
-                          {/* FILA 2: SUCURSAL Y COSTO UNITARIO (SIN TOTAL EN MOBILE) */}
-                          <div className="pl-6 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-base-content/70">
-                            {entry.branchName ? (
-                              <div className="flex items-center gap-1 truncate">
-                                <Store size={12} className="text-primary/70 shrink-0" />
-                                <span className="truncate font-medium">{entry.branchName}</span>
-                              </div>
-                            ) : <span />}
-
-                            {hasCostPermission && (
-                              <div className="flex items-center gap-1 shrink-0 ml-auto">
-                                <span><strong className="font-mono text-primary">{currencyCode} {(entry.unitCost || 0).toFixed(2)}</strong></span>
+                            {/* FILA 3: OBSERVACIÓN (SI EXISTE) */}
+                            {adj.observation && (
+                              <div className="pl-6 text-[11px] text-base-content/60 italic truncate">
+                                "{adj.observation}"
                               </div>
                             )}
-                          </div>
 
-                          {/* FILA 3: NOTA U OBSERVACIÓN CORTA (SI EXISTE) */}
-                          {entry.note && (
-                            <div className="pl-6 text-[11px] text-base-content/60 italic truncate">
-                              "{entry.note}"
+                            {/* PIE DE TARJETA: FECHA */}
+                            <div className="pl-6 pt-1.5 border-t border-base-200/50 flex items-center text-[11px] text-base-content/50">
+                              <Calendar size={12} className="mr-1 text-base-content/40 shrink-0" />
+                              <span>{formatDateForUser(adj.date)}</span>
                             </div>
-                          )}
+                          </article>
+                        );
+                      }
+                    })}
+                  </div>
+                )}
 
-                          {/* PIE DE TARJETA: FECHA Y BADGE DE AJUSTES */}
-                          <div className="pl-6 pt-1.5 border-t border-base-200/50 flex items-center justify-between text-[11px] text-base-content/50">
-                            <div className="flex items-center gap-1">
-                              <Calendar size={12} className="text-base-content/40 shrink-0" />
-                              <span>{formatDateForUser(entry.entryDate)}</span>
-                            </div>
-
-                            {entry.hasAdjustments && (
-                              <button
-                                type="button"
-                                className="text-[11px] text-info font-semibold hover:underline flex items-center gap-1 cursor-pointer"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setFilterStockId(entry.id);
-                                  setActiveTab('adjustments');
-                                  setPage(0);
-                                }}
-                              >
-                                <SlidersHorizontal size={11} /> Ver Ajustes
-                              </button>
-                            )}
-                          </div>
-                        </article>
-                      );
-                    } else {
-                      const adj = item as StockAdjustmentResponse;
-                      const adjTypeObj = typeof adj.adjustmentType === 'object' ? adj.adjustmentType : null;
-                      const adjCode = typeof adj.adjustmentType === 'number' ? adj.adjustmentType : adjTypeObj?.code;
-                      const adjName = adjTypeObj?.label || (adjustmentTypeOptions.find(o => Number(o.value) === adjCode)?.label) || 'Ajuste';
-                      const isNegative = adjCode === 301 || adjCode === 303;
-
-                      return (
-                        <article
-                          key={adj.id}
-                          className="bg-base-100 p-3 rounded-2xl border border-base-200 shadow-xs flex flex-col gap-2 select-none"
+                {/* PAGINACIÓN MOBILE */}
+                {totalElements > 0 && (
+                  <footer className="mt-4 pt-3 pb-3 px-3 bg-base-100 border border-base-200 rounded-2xl shadow-xs" data-purpose="mobile-pagination">
+                    <div className="flex items-center justify-between text-[11px] sm:text-xs text-base-content/70 mb-3 gap-2">
+                      <div className="flex items-center gap-1.5 whitespace-nowrap shrink-0">
+                        <span>Mostrar</span>
+                        <select
+                          value={size}
+                          onChange={(e) => {
+                            setSize(Number(e.target.value));
+                            setPage(0);
+                          }}
+                          className="select select-bordered select-xs text-[11px] sm:text-xs font-semibold bg-base-100 h-6 min-h-6 px-1.5"
                         >
-                          {/* FILA 1: NUMERACIÓN, TIPO Y CANTIDAD */}
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span className="text-xs font-bold text-base-content/40 w-4 text-center shrink-0">
-                                {page * size + index + 1}
-                              </span>
-                              <h3 className="text-sm font-semibold text-base-content leading-tight truncate">
-                                {adjName}
-                              </h3>
-                            </div>
-
-                            <div className="shrink-0">
-                              <span className={`badge badge-sm font-bold text-white ${isNegative ? 'badge-error' : 'badge-success'}`}>
-                                {isNegative ? '-' : '+'}{adj.quantity} uds
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* FILA 2: COSTO UNITARIO Y REPORTE INVENTARIO */}
-                          <div className="pl-6 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-base-content/70">
-                            {adj.inventoryId ? (
-                              <button
-                                type="button"
-                                className="text-xs text-primary font-semibold flex items-center gap-1 hover:underline cursor-pointer"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedInventoryId(adj.inventoryId!);
-                                }}
-                              >
-                                <ClipboardList size={12} className="shrink-0" /> Reporte
-                              </button>
-                            ) : <span />}
-
-                            {hasCostPermission && (adj.unitCost > 0) && (
-                              <div className="flex items-center gap-1 shrink-0 ml-auto">
-                                <Coins size={12} className="text-primary/70 shrink-0" />
-                                <span>Costo: <strong className="font-mono text-primary">{currencyCode} {(adj.unitCost || 0).toFixed(2)}</strong></span>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* FILA 3: OBSERVACIÓN (SI EXISTE) */}
-                          {adj.observation && (
-                            <div className="pl-6 text-[11px] text-base-content/60 italic truncate">
-                              "{adj.observation}"
-                            </div>
-                          )}
-
-                          {/* PIE DE TARJETA: FECHA */}
-                          <div className="pl-6 pt-1.5 border-t border-base-200/50 flex items-center text-[11px] text-base-content/50">
-                            <Calendar size={12} className="mr-1 text-base-content/40 shrink-0" />
-                            <span>{formatDateForUser(adj.date)}</span>
-                          </div>
-                        </article>
-                      );
-                    }
-                  })}
-                </div>
-              )}
-
-              {/* PAGINACIÓN MOBILE */}
-              {totalElements > 0 && (
-                <footer className="mt-4 pt-3 pb-3 px-3 bg-base-100 border border-base-200 rounded-2xl shadow-xs" data-purpose="mobile-pagination">
-                  <div className="flex items-center justify-between text-[11px] sm:text-xs text-base-content/70 mb-3 gap-2">
-                    <div className="flex items-center gap-1.5 whitespace-nowrap shrink-0">
-                      <span>Mostrar</span>
-                      <select
-                        value={size}
-                        onChange={(e) => {
-                          setSize(Number(e.target.value));
-                          setPage(0);
-                        }}
-                        className="select select-bordered select-xs text-[11px] sm:text-xs font-semibold bg-base-100 h-6 min-h-6 px-1.5"
-                      >
-                        <option value={5}>5</option>
-                        <option value={10}>10</option>
-                        <option value={25}>25</option>
-                      </select>
-                      <span className="whitespace-nowrap">de {totalElements} registros</span>
+                          <option value={5}>5</option>
+                          <option value={10}>10</option>
+                          <option value={25}>25</option>
+                        </select>
+                        <span className="whitespace-nowrap">de {totalElements} registros</span>
+                      </div>
+                      <span className="font-semibold text-base-content/80 whitespace-nowrap shrink-0">
+                        Página {page + 1} de {Math.max(1, totalPages)}
+                      </span>
                     </div>
-                    <span className="font-semibold text-base-content/80 whitespace-nowrap shrink-0">
-                      Página {page + 1} de {Math.max(1, totalPages)}
-                    </span>
-                  </div>
 
-                  <div className="flex items-center justify-center gap-1.5">
-                    <button
-                      type="button"
-                      aria-label="Primera página"
-                      disabled={page === 0 || isLoadingKardex}
-                      onClick={() => setPage(0)}
-                      className="w-8 h-8 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
-                    >
-                      <ChevronsLeft className="w-4 h-4" />
-                    </button>
-                    <button
-                      type="button"
-                      aria-label="Página anterior"
-                      disabled={page === 0 || isLoadingKardex}
-                      onClick={() => setPage(Math.max(0, page - 1))}
-                      className="w-8 h-8 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                    </button>
-                    <button
-                      type="button"
-                      aria-label="Página siguiente"
-                      disabled={page >= totalPages - 1 || isLoadingKardex}
-                      onClick={() => setPage(page + 1)}
-                      className="w-8 h-8 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
-                    <button
-                      type="button"
-                      aria-label="Última página"
-                      disabled={page >= totalPages - 1 || isLoadingKardex}
-                      onClick={() => setPage(totalPages - 1)}
-                      className="w-8 h-8 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
-                    >
-                      <ChevronsRight className="w-4 h-4" />
-                    </button>
-                  </div>
-                </footer>
-              )}
+                    <div className="flex items-center justify-center gap-1.5">
+                      <button
+                        type="button"
+                        aria-label="Primera página"
+                        disabled={page === 0 || isLoadingKardex}
+                        onClick={() => setPage(0)}
+                        className="w-8 h-8 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
+                      >
+                        <ChevronsLeft className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Página anterior"
+                        disabled={page === 0 || isLoadingKardex}
+                        onClick={() => setPage(Math.max(0, page - 1))}
+                        className="w-8 h-8 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Página siguiente"
+                        disabled={page >= totalPages - 1 || isLoadingKardex}
+                        onClick={() => setPage(page + 1)}
+                        className="w-8 h-8 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Última página"
+                        disabled={page >= totalPages - 1 || isLoadingKardex}
+                        onClick={() => setPage(totalPages - 1)}
+                        className="w-8 h-8 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
+                      >
+                        <ChevronsRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </footer>
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
       ) : (
         /* VISTA PRINCIPAL A PRIMERA VISTA (CUANDO NO HAY PRODUCTO ESCANEADO) */
         <div className="animate-fade-in">
