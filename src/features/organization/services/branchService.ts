@@ -1,13 +1,18 @@
 // src/features/organization/services/branchService.ts
 import api from '../../../lib/axios';
 import type { PageResponse } from '../../../types/api';
-import type { BranchResponse, CreateBranchRequest, UpdateBranchRequest } from '../types/branch';
+import type { BranchResponse, CreateBranchRequest, UpdateBranchRequest, TenantActiveBranchResponse } from '../types/branch';
 
 export const branchService = {
   getBranches: async (page: number, size: number, onlyActive = false): Promise<PageResponse<BranchResponse>> => {
     const response = await api.get<PageResponse<BranchResponse>>('/tenant/branches', {
       params: { page, size, onlyActive }
     });
+    return response.data;
+  },
+
+  getActiveBranches: async (): Promise<TenantActiveBranchResponse[]> => {
+    const response = await api.get<TenantActiveBranchResponse[]>('/tenant/branches/active');
     return response.data;
   },
 
@@ -24,4 +29,4 @@ export const branchService = {
   deleteBranch: async (id: string): Promise<void> => {
     await api.delete(`/tenant/branches/${id}`);
   }
-};
+};

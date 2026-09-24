@@ -188,8 +188,25 @@ export const commercialService = {
   },
 
   // Stock Entries
-  getStockEntries: async (variantId: string, page = 0, size = 20): Promise<PageStockEntryResponse> => {
-    const params = new URLSearchParams({ variantId, page: String(page), size: String(size) });
+  getStockEntries: async (
+    variantId?: string,
+    page = 0,
+    size = 20,
+    branchId?: string,
+    sort?: string
+  ): Promise<PageStockEntryResponse> => {
+    const params = new URLSearchParams();
+    params.append('page', String(page));
+    params.append('size', String(size));
+    if (variantId && variantId.trim()) {
+      params.append('variantId', variantId.trim());
+    }
+    if (branchId && branchId.trim()) {
+      params.append('branchId', branchId.trim());
+    }
+    if (sort && sort.trim()) {
+      params.append('sort', sort.trim());
+    }
     const response = await api.get(`/tenant/stock/entries?${params.toString()}`);
     return response.data;
   },

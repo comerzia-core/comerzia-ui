@@ -19,3 +19,8 @@ export interface UpdateBranchRequest {
   address: string;
   status: boolean;
 }
+
+export interface TenantActiveBranchResponse {
+  id: string;
+  name: string;
+}

@@ -39,7 +39,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { branchService } from '../../organization/services/branchService';
-import type { BranchResponse } from '../../organization/types/branch';
+import type { BranchResponse, TenantActiveBranchResponse } from '../../organization/types/branch';
 import { DICTIONARIES } from '../../../config/dictionaries';
 import { useLoadDictionaries } from '../../../hooks/useLoadDictionaries';
 import { ValuateStockModal } from '../components/ValuateStockModal';
@@ -101,6 +101,7 @@ export const StockMovementsPage = () => {
   const hasCostPermission = hasPermission('COM_STOCK_COST_MANAGE');
   const hasDistributePermission = hasPermission('COM_STOCK_DISTRIBUTE');
   const hasAdjustmentReadPermission = hasPermission('COM_STOCK_ADJUSTMENT_READ');
+  const hasActiveBranchesPermission = hasPermission('ORG_BRANCHES_ACTIVE_READ');
   const isOwner = hasRole('OWNER');
   const currencyCode = userProfile?.companySettings?.currencyCode || 'USD';
 
@@ -118,6 +119,9 @@ export const StockMovementsPage = () => {
   // Tabs and Kardex State
   const [activeTab, setActiveTab] = useState<'entries' | 'adjustments'>('entries');
   const [filterStockId, setFilterStockId] = useState<string | null>(null);
+  const [kardexBranchId, setKardexBranchId] = useState('');
+  const [activeBranches, setActiveBranches] = useState<TenantActiveBranchResponse[]>([]);
+  const [isLoadingActiveBranches, setIsLoadingActiveBranches] = useState(false);
   const [selectedInventoryId, setSelectedInventoryId] = useState<string | null>(null);
   const [kardexData, setKardexData] = useState<any[]>([]);
   const [isLoadingKardex, setIsLoadingKardex] = useState(false);
@@ -176,6 +180,17 @@ export const StockMovementsPage = () => {
     }
   }, [hasCostPermission, hasDistributePermission]);
 
+  // Cargar sucursales activas para selector de filtros si tiene permiso
+  useEffect(() => {
+    if (hasActiveBranchesPermission) {
+      setIsLoadingActiveBranches(true);
+      branchService.getActiveBranches()
+        .then(res => setActiveBranches(res || []))
+        .catch(err => console.error('Error loading active branches:', err))
+        .finally(() => setIsLoadingActiveBranches(false));
+    }
+  }, [hasActiveBranchesPermission]);
+
   const loadPendingCostEntries = async (targetPage = pendingCostPage, targetSize = pendingCostSize) => {
     if (!hasCostPermission) return;
     setIsLoadingPendingCost(true);
@@ -204,14 +219,19 @@ export const StockMovementsPage = () => {
     if (scannedVariant) {
       loadKardex();
     }
-  }, [productData?.variantId, activeTab, page, size, filterStockId]);
+  }, [productData?.variantId, activeTab, page, size, filterStockId, kardexBranchId]);
 
   const loadKardex = async () => {
     if (!scannedVariant) return;
     setIsLoadingKardex(true);
     try {
       if (activeTab === 'entries') {
-        const res = await commercialService.getStockEntries(scannedVariant.variantId, page, size);
+        const res = await commercialService.getStockEntries(
+          scannedVariant.variantId,
+          page,
+          size,
+          kardexBranchId || undefined
+        );
         setKardexData(res.content || []);
         setTotalElements(res.totalElements || 0);
         setTotalPages(res.totalPages || 0);
@@ -878,23 +898,44 @@ export const StockMovementsPage = () => {
             {/* Header / Tabs */}
             <div className="card bg-base-100 p-4 rounded-2xl shadow-xs border border-base-200 md:p-0 md:bg-transparent md:shadow-none md:border-0">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <h2 className="text-lg sm:text-xl font-bold text-base-content">Historial Kardex</h2>
-                <div className="tabs tabs-boxed">
-                  <a
-                    className={`tab ${activeTab === 'entries' ? 'tab-active' : ''}`}
-                    onClick={() => { setActiveTab('entries'); setFilterStockId(null); setPage(0); }}
-                  >
-                    Entradas
-                  </a>
-                  {hasCostPermission && (
+                <div className="flex flex-wrap items-center gap-3">
+                  <h2 className="text-lg sm:text-xl font-bold text-base-content">Historial Kardex</h2>
+                  <div className="tabs tabs-boxed">
                     <a
-                      className={`tab ${activeTab === 'adjustments' ? 'tab-active' : ''}`}
-                      onClick={() => { setActiveTab('adjustments'); setPage(0); }}
+                      className={`tab ${activeTab === 'entries' ? 'tab-active' : ''}`}
+                      onClick={() => { setActiveTab('entries'); setFilterStockId(null); setPage(0); }}
                     >
-                      Ajustes Manuales
+                      Entradas
                     </a>
-                  )}
+                    {hasCostPermission && (
+                      <a
+                        className={`tab ${activeTab === 'adjustments' ? 'tab-active' : ''}`}
+                        onClick={() => { setActiveTab('adjustments'); setPage(0); }}
+                      >
+                        Ajustes Manuales
+                      </a>
+                    )}
+                  </div>
                 </div>
+
+                {hasActiveBranchesPermission && activeTab === 'entries' && (
+                  <div className="w-full sm:w-56">
+                    <ComerziaSelect
+                      placeholder="Todas las sucursales"
+                      enableDefaultOption={true}
+                      value={kardexBranchId}
+                      onChange={e => {
+                        setKardexBranchId(e.target.value);
+                        setPage(0);
+                      }}
+                      options={activeBranches.map(b => ({
+                        value: b.id,
+                        label: b.name
+                      }))}
+                      isLoading={isLoadingActiveBranches}
+                    />
+                  </div>
+                )}
               </div>
             </div>
 

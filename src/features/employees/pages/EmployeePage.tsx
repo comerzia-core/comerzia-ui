@@ -1,5 +1,5 @@
 // src/features/employees/pages/EmployeePage.tsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Users } from 'lucide-react';
 import { EmployeeModal } from '../components/EmployeeModal';
 import { EmployeeTable } from '../components/EmployeeTable';
@@ -11,17 +11,32 @@ import { BtnCreate } from '../../../components/ui/CrudButtons';
 import { useToast } from '../../../context/ToastContext';
 import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
+import { ComerziaSelect } from '../../../components/ui/ComerziaSelect';
 import { EmployeeCredentialsModal } from '../components/EmployeeCredentialsModal';
 import { EmployeeRolesModal } from '../components/EmployeeRolesModal';
+import { useAuthStore } from '../../../stores/useAuthStore';
+import { useDebounce } from '../../../hooks/useDebounce';
+import { branchService } from '../../organization/services/branchService';
+import type { TenantActiveBranchResponse } from '../../organization/types/branch';
 
 type EmployeeActionType = 'DELETE' | null;
 
 export const EmployeePage = () => {
+  const { hasPermission } = useAuthStore();
+  const hasBranchesPermission = hasPermission('ORG_BRANCHES_ACTIVE_READ');
+
   const [data, setData] = useState<PageResponse<EmployeeSummaryResponse> | null>(null);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(5);
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 350);
+
+  const [selectedBranchId, setSelectedBranchId] = useState('');
+  const [activeBranches, setActiveBranches] = useState<TenantActiveBranchResponse[]>([]);
+  const [isLoadingBranches, setIsLoadingBranches] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  const isFirstRender = useRef(true);
 
   // Modales
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -43,10 +58,32 @@ export const EmployeePage = () => {
 
   const { success, error } = useToast();
 
-  const loadData = async (targetPage = page, targetSize = pageSize) => {
+  // Cargar sucursales activas si el usuario tiene el permiso
+  useEffect(() => {
+    if (hasBranchesPermission) {
+      setIsLoadingBranches(true);
+      branchService.getActiveBranches()
+        .then(res => setActiveBranches(res || []))
+        .catch(err => console.error('Error loading active branches:', err))
+        .finally(() => setIsLoadingBranches(false));
+    }
+  }, [hasBranchesPermission]);
+
+  const loadData = async (
+    targetPage = page,
+    targetSize = pageSize,
+    q = debouncedSearch,
+    branchId = selectedBranchId
+  ) => {
     setIsLoading(true);
     try {
-      const response = await employeeService.getAll(targetPage, targetSize, ['branchName,asc', 'fullName,asc']);
+      const response = await employeeService.getAll(
+        targetPage,
+        targetSize,
+        ['branchName,asc', 'fullName,asc'],
+        q,
+        branchId
+      );
       setData(response);
     } catch (err) {
       console.error('Error loading employees:', err);
@@ -56,10 +93,20 @@ export const EmployeePage = () => {
     }
   };
 
+  // Reset de página a 0 cuando cambian los filtros de búsqueda o sucursal
   useEffect(() => {
-    loadData(page, pageSize);
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    setPage(0);
+  }, [debouncedSearch, selectedBranchId]);
+
+  // Cargar datos ante cambios de paginación o filtros
+  useEffect(() => {
+    loadData(page, pageSize, debouncedSearch, selectedBranchId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, pageSize]);
+  }, [page, pageSize, debouncedSearch, selectedBranchId]);
 
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
@@ -145,20 +192,6 @@ export const EmployeePage = () => {
 
   const confirmationContent = getConfirmationContent();
 
-  // Filtrado reactivo en cliente (si aplica)
-  const filteredData = data
-    ? {
-      ...data,
-      content: data.content.filter(employee => {
-        return (
-          search === '' ||
-          (employee.fullName || '').toLowerCase().includes(search.toLowerCase()) ||
-          (employee.documentNumber || '').includes(search)
-        );
-      })
-    }
-    : null;
-
   return (
     <div className="space-y-6 w-full animate-fade-in">
       {/* HEADER DE LA PÁGINA */}
@@ -183,11 +216,27 @@ export const EmployeePage = () => {
           <div className="w-full sm:w-80">
             <ComerziaInput
               icon="Search"
-              placeholder="Buscar por Nombre o CI..."
+              placeholder="Buscar por nombre, CI o celular..."
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
           </div>
+
+          {hasBranchesPermission && (
+            <div className="w-full sm:w-64">
+              <ComerziaSelect
+                placeholder="Todas las sucursales"
+                enableDefaultOption={true}
+                value={selectedBranchId}
+                onChange={e => setSelectedBranchId(e.target.value)}
+                options={activeBranches.map(b => ({
+                  value: b.id,
+                  label: b.name
+                }))}
+                isLoading={isLoadingBranches}
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -195,7 +244,7 @@ export const EmployeePage = () => {
       <div className="md:card md:bg-base-100 md:shadow-xs md:border md:border-base-200 md:rounded-2xl md:overflow-hidden">
         <div className="md:card-body md:p-0">
           <EmployeeTable
-            data={filteredData}
+            data={data}
             isLoading={isLoading}
             page={page}
             pageSize={pageSize}

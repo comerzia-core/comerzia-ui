@@ -12,12 +12,24 @@ import type {
 } from '../types/employee';
 
 export const employeeService = {
-  getAll: async (page: number, size: number, sort?: string[]): Promise<PageResponse<EmployeeSummaryResponse>> => {
+  getAll: async (
+    page: number = 0,
+    size: number = 10,
+    sort?: string[],
+    q?: string,
+    branchId?: string
+  ): Promise<PageResponse<EmployeeSummaryResponse>> => {
     const params = new URLSearchParams();
     params.append('page', page.toString());
     params.append('size', size.toString());
     if (sort && sort.length > 0) {
       sort.forEach(s => params.append('sort', s));
+    }
+    if (q && q.trim()) {
+      params.append('q', q.trim());
+    }
+    if (branchId && branchId.trim()) {
+      params.append('branchId', branchId.trim());
     }
     const response = await api.get<PageResponse<EmployeeSummaryResponse>>('/tenant/employees', { params });
     return response.data;
