@@ -659,41 +659,39 @@ export const StockReportsPage = () => {
       </div>
 
       {/* 2. TARJETAS RESUMEN DE INDICADORES (KPIs) */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5 sm:gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         {/* KPI 1: Agotados */}
         <div
           onClick={() => handleKpiFilterToggle('341')}
-          className={`card p-4 rounded-2xl transition-all cursor-pointer select-none outline-none ${
+          className={`card p-3 sm:p-4 rounded-2xl transition-all cursor-pointer select-none outline-none ${
             selectedStatus === '341'
               ? 'bg-red-500/10 border-2 !border-red-500 shadow-sm shadow-red-500/10'
               : 'bg-base-100 border border-base-200 hover:border-red-500/50 hover:bg-red-500/5 shadow-xs'
           }`}
           style={selectedStatus === '341' ? { borderColor: '#ef4444' } : undefined}
         >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-red-500 uppercase tracking-wider">Agotados</span>
+          <div className="flex items-center justify-between gap-1">
+            <span className="text-[11px] sm:text-xs font-bold text-red-500 uppercase tracking-wider truncate">Agotados</span>
             <div
-              className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${
+              className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center transition-colors shrink-0 ${
                 selectedStatus === '341' ? 'bg-red-500 text-white shadow-xs' : 'bg-red-500/10 text-red-500'
               }`}
               style={selectedStatus === '341' ? { backgroundColor: '#ef4444', color: '#ffffff' } : undefined}
             >
-              <PackageX size={18} />
+              <PackageX size={16} />
             </div>
           </div>
-          <div className="mt-2.5 flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-bold font-mono text-red-500">
+          <div className="mt-2 flex items-baseline gap-1.5">
+            <span className="text-xl sm:text-3xl font-bold font-mono text-red-500">
               {isLoadingMetrics ? '...' : metrics?.outOfStockCount || 0}
             </span>
-            <span className="text-xs text-base-content/50">productos</span>
+            <span className="text-[10px] sm:text-xs text-base-content/50 truncate">productos</span>
           </div>
-          <div className="flex items-center justify-between mt-1">
-            <span className="text-[11px] text-base-content/60">
-              Stock disponible = 0 uds
-            </span>
+          <div className="flex items-center justify-between mt-1 text-[10px] sm:text-[11px] text-base-content/60 gap-1">
+            <span className="truncate">Stock = 0 uds</span>
             {selectedStatus === '341' && (
-              <span className="badge bg-red-500 border-none text-white text-[10px] font-bold py-1 px-1.5 shadow-2xs">
-                Filtro activo
+              <span className="text-[10px] font-bold text-red-500 shrink-0 font-mono">
+                Activo
               </span>
             )}
           </div>
@@ -702,37 +700,35 @@ export const StockReportsPage = () => {
         {/* KPI 2: Stock Bajo */}
         <div
           onClick={() => handleKpiFilterToggle('342')}
-          className={`card p-4 rounded-2xl transition-all cursor-pointer select-none outline-none ${
+          className={`card p-3 sm:p-4 rounded-2xl transition-all cursor-pointer select-none outline-none ${
             selectedStatus === '342'
               ? 'bg-amber-500/10 border-2 !border-amber-500 shadow-sm shadow-amber-500/10'
               : 'bg-base-100 border border-base-200 hover:border-amber-500/50 hover:bg-amber-500/5 shadow-xs'
           }`}
           style={selectedStatus === '342' ? { borderColor: '#f59e0b' } : undefined}
         >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-amber-500 uppercase tracking-wider">Stock Bajo</span>
+          <div className="flex items-center justify-between gap-1">
+            <span className="text-[11px] sm:text-xs font-bold text-amber-500 uppercase tracking-wider truncate">Stock Bajo</span>
             <div
-              className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${
+              className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center transition-colors shrink-0 ${
                 selectedStatus === '342' ? 'bg-amber-500 text-white shadow-xs' : 'bg-amber-500/10 text-amber-500'
               }`}
               style={selectedStatus === '342' ? { backgroundColor: '#f59e0b', color: '#ffffff' } : undefined}
             >
-              <AlertTriangle size={18} />
+              <AlertTriangle size={16} />
             </div>
           </div>
-          <div className="mt-2.5 flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-bold font-mono text-amber-500">
+          <div className="mt-2 flex items-baseline gap-1.5">
+            <span className="text-xl sm:text-3xl font-bold font-mono text-amber-500">
               {isLoadingMetrics ? '...' : metrics?.lowStockCount || 0}
             </span>
-            <span className="text-xs text-base-content/50">productos</span>
+            <span className="text-[10px] sm:text-xs text-base-content/50 truncate">productos</span>
           </div>
-          <div className="flex items-center justify-between mt-1">
-            <span className="text-[11px] text-base-content/60">
-              Por debajo del Stock Mínimo
-            </span>
+          <div className="flex items-center justify-between mt-1 text-[10px] sm:text-[11px] text-base-content/60 gap-1">
+            <span className="truncate">&lt; Stock Mín.</span>
             {selectedStatus === '342' && (
-              <span className="badge bg-amber-500 border-none text-white text-[10px] font-bold py-1 px-1.5 shadow-2xs">
-                Filtro activo
+              <span className="text-[10px] font-bold text-amber-500 shrink-0 font-mono">
+                Activo
               </span>
             )}
           </div>
@@ -741,37 +737,35 @@ export const StockReportsPage = () => {
         {/* KPI 3: Saludable */}
         <div
           onClick={() => handleKpiFilterToggle('343')}
-          className={`card p-4 rounded-2xl transition-all cursor-pointer select-none outline-none ${
+          className={`card p-3 sm:p-4 rounded-2xl transition-all cursor-pointer select-none outline-none ${
             selectedStatus === '343'
               ? 'bg-emerald-500/10 border-2 !border-emerald-500 shadow-sm shadow-emerald-500/10'
               : 'bg-base-100 border border-base-200 hover:border-emerald-500/50 hover:bg-emerald-500/5 shadow-xs'
           }`}
           style={selectedStatus === '343' ? { borderColor: '#10b981' } : undefined}
         >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Saludable</span>
+          <div className="flex items-center justify-between gap-1">
+            <span className="text-[11px] sm:text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider truncate">Saludable</span>
             <div
-              className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${
+              className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center transition-colors shrink-0 ${
                 selectedStatus === '343' ? 'bg-emerald-500 text-white shadow-xs' : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
               }`}
               style={selectedStatus === '343' ? { backgroundColor: '#10b981', color: '#ffffff' } : undefined}
             >
-              <CheckCircle2 size={18} />
+              <CheckCircle2 size={16} />
             </div>
           </div>
-          <div className="mt-2.5 flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-bold font-mono text-emerald-600 dark:text-emerald-400">
+          <div className="mt-2 flex items-baseline gap-1.5">
+            <span className="text-xl sm:text-3xl font-bold font-mono text-emerald-600 dark:text-emerald-400">
               {isLoadingMetrics ? '...' : metrics?.healthyStockCount || 0}
             </span>
-            <span className="text-xs text-base-content/50">productos</span>
+            <span className="text-[10px] sm:text-xs text-base-content/50 truncate">productos</span>
           </div>
-          <div className="flex items-center justify-between mt-1">
-            <span className="text-[11px] text-base-content/60">
-              Dentro del rango óptimo
-            </span>
+          <div className="flex items-center justify-between mt-1 text-[10px] sm:text-[11px] text-base-content/60 gap-1">
+            <span className="truncate">Rango óptimo</span>
             {selectedStatus === '343' && (
-              <span className="badge bg-emerald-500 border-none text-white text-[10px] font-bold py-1 px-1.5 shadow-2xs">
-                Filtro activo
+              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 shrink-0 font-mono">
+                Activo
               </span>
             )}
           </div>
@@ -780,37 +774,35 @@ export const StockReportsPage = () => {
         {/* KPI 4: Sobre Stock */}
         <div
           onClick={() => handleKpiFilterToggle('344')}
-          className={`card p-4 rounded-2xl transition-all cursor-pointer select-none outline-none ${
+          className={`card p-3 sm:p-4 rounded-2xl transition-all cursor-pointer select-none outline-none ${
             selectedStatus === '344'
               ? 'bg-sky-500/10 border-2 !border-sky-500 shadow-sm shadow-sky-500/10'
               : 'bg-base-100 border border-base-200 hover:border-sky-500/50 hover:bg-sky-500/5 shadow-xs'
           }`}
           style={selectedStatus === '344' ? { borderColor: '#0ea5e9' } : undefined}
         >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-sky-500 uppercase tracking-wider">Sobre Stock</span>
+          <div className="flex items-center justify-between gap-1">
+            <span className="text-[11px] sm:text-xs font-bold text-sky-500 uppercase tracking-wider truncate">Sobre Stock</span>
             <div
-              className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${
+              className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center transition-colors shrink-0 ${
                 selectedStatus === '344' ? 'bg-sky-500 text-white shadow-xs' : 'bg-sky-500/10 text-sky-500'
               }`}
               style={selectedStatus === '344' ? { backgroundColor: '#0ea5e9', color: '#ffffff' } : undefined}
             >
-              <Layers size={18} />
+              <Layers size={16} />
             </div>
           </div>
-          <div className="mt-2.5 flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-bold font-mono text-sky-500">
+          <div className="mt-2 flex items-baseline gap-1.5">
+            <span className="text-xl sm:text-3xl font-bold font-mono text-sky-500">
               {isLoadingMetrics ? '...' : metrics?.overStockCount || 0}
             </span>
-            <span className="text-xs text-base-content/50">productos</span>
+            <span className="text-[10px] sm:text-xs text-base-content/50 truncate">productos</span>
           </div>
-          <div className="flex items-center justify-between mt-1">
-            <span className="text-[11px] text-base-content/60">
-              Supera el Stock Ideal
-            </span>
+          <div className="flex items-center justify-between mt-1 text-[10px] sm:text-[11px] text-base-content/60 gap-1">
+            <span className="truncate">&gt; Stock Ideal</span>
             {selectedStatus === '344' && (
-              <span className="badge bg-sky-500 border-none text-white text-[10px] font-bold py-1 px-1.5 shadow-2xs">
-                Filtro activo
+              <span className="text-[10px] font-bold text-sky-500 shrink-0 font-mono">
+                Activo
               </span>
             )}
           </div>
@@ -891,9 +883,9 @@ export const StockReportsPage = () => {
 
         {/* Indicador de Filtro de Estado Activo */}
         {selectedStatus && (
-          <div className="mt-3 pt-3 border-t border-base-200/60 flex items-center justify-between text-xs">
-            <div className="flex items-center gap-2">
-              <span className="text-base-content/60">Filtro de salud aplicado:</span>
+          <div className="mt-3 pt-3 border-t border-base-200/60 flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-base-content/60 truncate">Filtro aplicado:</span>
               {(() => {
                 const { label, variant } = getStatusInfo(selectedStatus);
                 return <ComerziaBadge label={label} variant={variant} />;
@@ -902,9 +894,9 @@ export const StockReportsPage = () => {
             <button
               type="button"
               onClick={() => setSelectedStatus('')}
-              className="text-primary font-bold hover:underline cursor-pointer"
+              className="text-primary font-bold hover:underline cursor-pointer text-xs shrink-0"
             >
-              Limpiar filtro de estado
+              Limpiar filtro
             </button>
           </div>
         )}
@@ -912,36 +904,36 @@ export const StockReportsPage = () => {
 
       {/* 4. BARRA DE ACCIÓN MASIVA (SI HAY PRODUCTOS SELECCIONADOS) */}
       {selectedVariantIds.length > 0 && canManageStock && (
-        <div className="p-4 sm:p-5 bg-primary/10 border-2 border-primary/30 rounded-2xl shadow-md flex flex-col sm:flex-row items-center justify-between gap-4 animate-fade-in backdrop-blur-sm">
-          <div className="flex items-center gap-3 text-sm font-bold text-primary">
+        <div className="p-3.5 sm:p-5 bg-primary/10 border-2 border-primary/30 rounded-2xl shadow-md flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 animate-fade-in backdrop-blur-sm">
+          <div className="flex items-center gap-2.5 sm:gap-3 text-sm font-bold text-primary min-w-0">
             <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center shadow-xs shrink-0"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shadow-xs shrink-0"
               style={{ backgroundColor: '#432ad5', color: '#ffffff' }}
             >
-              <Sliders size={18} />
+              <Sliders size={17} />
             </div>
-            <div>
-              <p className="text-sm sm:text-base font-black leading-tight text-primary">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs sm:text-base font-black leading-tight text-primary truncate">
                 {selectedVariantIds.length} producto{selectedVariantIds.length > 1 ? 's' : ''} seleccionado{selectedVariantIds.length > 1 ? 's' : ''}
               </p>
-              <span className="text-xs text-base-content/70 font-medium block mt-0.5">
-                Sucursal activa: <strong className="text-base-content">{selectedBranchName}</strong>
+              <span className="text-[11px] sm:text-xs text-base-content/70 font-medium block truncate mt-0.5">
+                Sucursal: <strong className="text-base-content">{selectedBranchName}</strong>
               </span>
             </div>
           </div>
-          <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+          <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
             <ComerziaButton
               variant="ghost"
               label="Deseleccionar"
               onClick={() => setSelectedVariantIds([])}
-              className="px-4 py-2 h-auto min-h-[38px] text-xs font-semibold rounded-xl"
+              className="flex-1 sm:flex-none px-3 py-2 h-9 min-h-9 text-xs font-semibold rounded-xl text-center justify-center min-w-0 truncate"
             />
             <ComerziaButton
               variant="primary"
               label="Actualizar Límites"
-              icon={<Sliders size={16} />}
+              icon={<Sliders size={15} />}
               onClick={() => setIsBulkModalOpen(true)}
-              className="px-5 py-2.5 h-auto min-h-[40px] rounded-xl font-bold gap-2 shadow-md shadow-[#432ad5]/25"
+              className="flex-1 sm:flex-none px-3 sm:px-5 py-2 h-9 min-h-9 rounded-xl font-bold text-xs gap-1.5 shadow-md shadow-[#432ad5]/25 text-center justify-center min-w-0 truncate"
             />
           </div>
         </div>
@@ -981,12 +973,12 @@ export const StockReportsPage = () => {
               return (
                 <article
                   key={row.variantId}
-                  className={`bg-base-100 p-4 rounded-2xl border transition-all ${
+                  className={`bg-base-100 p-3.5 rounded-2xl border transition-all ${
                     isSelected ? 'border-primary/50 bg-primary/5 shadow-xs' : 'border-base-200 shadow-xs'
                   }`}
                 >
-                  {/* Fila 1: Checkbox, Nombre y Badge */}
-                  <div className="flex items-start justify-between gap-2.5">
+                  {/* Fila 1: Checkbox, Nombre, Variante y Badge */}
+                  <div className="flex items-start justify-between gap-2">
                     <div className="flex items-start gap-2.5 min-w-0 flex-1">
                       <ComerziaCheckbox
                         checked={isSelected}
@@ -995,33 +987,31 @@ export const StockReportsPage = () => {
                         className="mt-0.5 shrink-0"
                       />
                       <div className="min-w-0 flex-1">
-                        <h3 className="font-bold text-sm text-base-content leading-snug">
+                        <h3 className="font-bold text-sm text-base-content leading-snug truncate">
                           {row.productName}
                         </h3>
-                        <span className="text-xs text-base-content/60 block font-medium">
+                        <p className="text-xs text-base-content/60 font-medium truncate mt-0.5">
                           {row.variantName}
-                        </span>
+                          {(row.categoryName || row.brandName) && (
+                            <span className="text-base-content/40 font-normal">
+                              {' '}• {row.categoryName || row.brandName}
+                            </span>
+                          )}
+                        </p>
                       </div>
                     </div>
 
-                    <ComerziaBadge label={label} variant={variant} />
-                  </div>
-
-                  {/* Fila 2: SKU, Barcode, Categoría y Marca */}
-                  <div className="pl-6 pt-1.5 flex flex-wrap items-center justify-between gap-2 text-[11px] text-base-content/60">
-                    <div className="flex items-center gap-1.5 font-mono">
-                      {row.sku && <span className="bg-base-200 px-1.5 py-0.5 rounded font-bold">{row.sku}</span>}
-                      {row.barCode && <span>{row.barCode}</span>}
+                    <div className="shrink-0">
+                      <ComerziaBadge label={label} variant={variant} />
                     </div>
-                    <span>{row.categoryName} • {row.brandName}</span>
                   </div>
 
-                  {/* Fila 3: Grilla de Stock y Límites */}
-                  <div className="pl-6 pt-3 grid grid-cols-4 gap-2 text-center">
-                    <div className="bg-base-200/50 p-2 rounded-xl border border-base-200">
+                  {/* Fila 2: Grilla compacta de Stock y Límites */}
+                  <div className="pl-6 pt-2.5 grid grid-cols-4 gap-1.5 text-center">
+                    <div className="bg-base-200/50 py-1.5 px-1 rounded-xl border border-base-200">
                       <span className="text-[10px] text-base-content/50 block">Actual</span>
                       <span
-                        className={`text-sm font-bold font-mono ${
+                        className={`text-xs sm:text-sm font-bold font-mono ${
                           isOut ? 'text-error' : isLow ? 'text-warning' : 'text-base-content'
                         }`}
                       >
@@ -1029,43 +1019,43 @@ export const StockReportsPage = () => {
                       </span>
                     </div>
 
-                    <div className="bg-base-200/50 p-2 rounded-xl border border-base-200">
+                    <div className="bg-base-200/50 py-1.5 px-1 rounded-xl border border-base-200">
                       <span className="text-[10px] text-base-content/50 block">Mínimo</span>
-                      <span className="text-sm font-bold font-mono text-base-content">
+                      <span className="text-xs sm:text-sm font-bold font-mono text-base-content">
                         {edit.minStock === '' ? 0 : edit.minStock}
                       </span>
                     </div>
 
-                    <div className="bg-base-200/50 p-2 rounded-xl border border-base-200">
+                    <div className="bg-base-200/50 py-1.5 px-1 rounded-xl border border-base-200">
                       <span className="text-[10px] text-base-content/50 block">Ideal</span>
-                      <span className="text-sm font-bold font-mono text-base-content">
+                      <span className="text-xs sm:text-sm font-bold font-mono text-base-content">
                         {edit.idealStock === '' ? 1 : edit.idealStock}
                       </span>
                     </div>
 
-                    <div className="bg-primary/10 p-2 rounded-xl border border-primary/20">
+                    <div className="bg-primary/10 py-1.5 px-1 rounded-xl border border-primary/20">
                       <span className="text-[10px] text-primary font-semibold block">Sugerido</span>
-                      <span className="text-sm font-bold font-mono text-primary">
+                      <span className="text-xs sm:text-sm font-bold font-mono text-primary">
                         {row.suggestedOrderQuantity > 0 ? `+${row.suggestedOrderQuantity}` : '0'}
                       </span>
                     </div>
                   </div>
 
-                  {/* Fila 4: Edición Rápida si tiene permisos */}
+                  {/* Fila 3: Edición Rápida si tiene permisos */}
                   {canManageStock && (
-                    <div className="pl-6 pt-3 flex items-center justify-between gap-2 border-t border-base-200/50 mt-3">
-                      <span className="text-[11px] text-base-content/50 italic">
+                    <div className="pl-6 pt-2 flex items-center justify-between gap-2 border-t border-base-200/60 mt-2.5">
+                      <span className="text-[11px] text-base-content/50 italic truncate">
                         Límites de esta sucursal
                       </span>
                       <ComerziaButton
                         variant="ghost"
                         label="Editar Límites"
-                        icon={<Sliders size={13} />}
+                        icon={<Sliders size={12} />}
                         onClick={() => {
                           setSelectedVariantIds([row.variantId]);
                           setIsBulkModalOpen(true);
                         }}
-                        className="btn-xs text-primary font-bold rounded-lg border-primary/20 hover:bg-primary/10"
+                        className="btn-xs text-primary font-bold rounded-lg border-primary/20 hover:bg-primary/10 px-2.5 h-6 min-h-6 shrink-0"
                       />
                     </div>
                   )}
@@ -1073,51 +1063,72 @@ export const StockReportsPage = () => {
               );
             })}
 
-            {/* Paginación Mobile */}
+            {/* Paginación Mobile Estándar */}
             {totalElements > 0 && (
-              <div className="card bg-base-100 p-3 rounded-2xl border border-base-200 shadow-xs flex items-center justify-between text-xs">
-                <span className="text-base-content/60 font-mono whitespace-nowrap">
-                  {page * size + 1}-{Math.min((page + 1) * size, totalElements)} de {totalElements}
-                </span>
-
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-xs btn-square"
-                    disabled={page === 0}
-                    onClick={() => setPage(0)}
-                  >
-                    <ChevronsLeft size={14} />
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-xs btn-square"
-                    disabled={page === 0}
-                    onClick={() => setPage(p => Math.max(0, p - 1))}
-                  >
-                    <ChevronLeft size={14} />
-                  </button>
-                  <span className="px-2 font-mono font-bold text-primary">
-                    {page + 1}/{totalPages || 1}
+              <footer className="mt-4 pt-3 pb-3 px-3 bg-base-100 border border-base-200 rounded-2xl shadow-xs" data-purpose="mobile-pagination">
+                <div className="flex items-center justify-between text-[11px] sm:text-xs text-base-content/70 mb-3 gap-2">
+                  <div className="flex items-center gap-1.5 whitespace-nowrap shrink-0">
+                    <span>Mostrar</span>
+                    <select
+                      value={size}
+                      onChange={e => {
+                        const newSize = Number(e.target.value);
+                        setSize(newSize);
+                        setPage(0);
+                      }}
+                      className="select select-bordered select-xs text-[11px] sm:text-xs font-semibold bg-base-100 h-6 min-h-6 px-1.5"
+                    >
+                      <option value={5}>5</option>
+                      <option value={10}>10</option>
+                      <option value={25}>25</option>
+                    </select>
+                    <span className="whitespace-nowrap">de {totalElements} registros</span>
+                  </div>
+                  <span className="font-semibold text-base-content/80 whitespace-nowrap shrink-0">
+                    Página {page + 1} de {Math.max(1, totalPages)}
                   </span>
+                </div>
+
+                {/* BOTONES DE NAVEGACIÓN */}
+                <div className="flex items-center justify-center gap-1.5">
                   <button
                     type="button"
-                    className="btn btn-ghost btn-xs btn-square"
-                    disabled={page >= totalPages - 1}
-                    onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+                    aria-label="Primera página"
+                    disabled={page === 0 || isLoadingReport}
+                    onClick={() => setPage(0)}
+                    className="w-8 h-8 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
                   >
-                    <ChevronRight size={14} />
+                    <ChevronsLeft className="w-4 h-4" />
                   </button>
                   <button
                     type="button"
-                    className="btn btn-ghost btn-xs btn-square"
-                    disabled={page >= totalPages - 1}
-                    onClick={() => setPage(totalPages - 1)}
+                    aria-label="Página anterior"
+                    disabled={page === 0 || isLoadingReport}
+                    onClick={() => setPage(Math.max(0, page - 1))}
+                    className="w-8 h-8 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
                   >
-                    <ChevronsRight size={14} />
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Página siguiente"
+                    disabled={page >= totalPages - 1 || isLoadingReport}
+                    onClick={() => setPage(page + 1)}
+                    className="w-8 h-8 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Última página"
+                    disabled={page >= totalPages - 1 || isLoadingReport}
+                    onClick={() => setPage(totalPages - 1)}
+                    className="w-8 h-8 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
+                  >
+                    <ChevronsRight className="w-4 h-4" />
                   </button>
                 </div>
-              </div>
+              </footer>
             )}
           </div>
         )}
