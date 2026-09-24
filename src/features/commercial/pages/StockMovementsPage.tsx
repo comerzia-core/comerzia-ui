@@ -35,7 +35,8 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Package,
-  ArrowLeft
+  ArrowLeft,
+  AlertTriangle
 } from 'lucide-react';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { branchService } from '../../organization/services/branchService';
@@ -400,28 +401,82 @@ export const StockMovementsPage = () => {
     }
   };
 
+  const getMaxAdjustmentQty = (typeCode: number, target: StockEntryResponse): number | null => {
+    // SHRINKAGE (301, "Merma / Pérdida"): 1 <= q <= availableQuantity
+    if (typeCode === 301) {
+      return target.availableQuantity;
+    }
+    // POSITIVE_ADJUSTMENT (302, "Ajuste Positivo / Sobrante"): 1 <= q <= (quantityIn - availableQuantity)
+    if (typeCode === 302) {
+      return Math.max(0, target.quantityIn - target.availableQuantity);
+    }
+    // CORRECTION_MINUS (303, "Corrección de error - Restar stock"): 1 <= q <= availableQuantity
+    if (typeCode === 303) {
+      return target.availableQuantity;
+    }
+    // CORRECTION_PLUS (304, "Corrección de error - Sumar stock"): q >= 1 (sin tope superior)
+    if (typeCode === 304) {
+      return null;
+    }
+    return target.availableQuantity;
+  };
+
   const handleSubmitAdjustment = async () => {
     if (!adjustmentTarget || !adjustmentQty || !adjustmentType || !adjustmentObs) {
       toastError("Completa todos los campos obligatorios.");
       return;
     }
+
+    const code = Number(adjustmentType);
+    const qty = Number(adjustmentQty);
+
+    if (qty <= 0) {
+      toastError("La cantidad a ajustar debe ser mayor a cero.");
+      return;
+    }
+
+    const maxLimit = getMaxAdjustmentQty(code, adjustmentTarget);
+    if (maxLimit !== null && qty > maxLimit) {
+      if (code === 301) {
+        toastError(`La merma no puede superar el stock disponible actual (${maxLimit} uds).`);
+      } else if (code === 302) {
+        toastError(`El ajuste positivo no puede superar las unidades consumidas (${maxLimit} uds) para no exceder la cantidad inicial.`);
+      } else if (code === 303) {
+        toastError(`La corrección no puede restar más del stock disponible actual (${maxLimit} uds).`);
+      } else {
+        toastError(`La cantidad a ajustar no puede superar el límite permitido (${maxLimit} uds).`);
+      }
+      return;
+    }
+
     setIsSubmittingAdjustment(true);
     try {
       await commercialService.createManualAdjustment({
         stockId: adjustmentTarget.id,
-        quantity: Number(adjustmentQty),
-        adjustmentType: Number(adjustmentType),
+        quantity: qty,
+        adjustmentType: code,
         observation: adjustmentObs
       });
       toastSuccess("Ajuste registrado exitosamente.");
       setAdjustmentTarget(null);
       loadKardex();
     } catch (e: any) {
-      const errorCode = e.response?.data?.errorCode;
-      if (errorCode === 'invalid_adjustment_quantity') {
-        toastError('La cantidad de ajuste no es válida.');
+      const data = e.response?.data;
+      const errorCode = data?.errorCode || data?.code;
+      const message = data?.message;
+
+      if (errorCode === 'invalid_stock_adjustment') {
+        toastError('El ajuste no es válido. La cantidad resultante excede el límite permitido.');
+      } else if (errorCode === 'insufficient_stock') {
+        toastError('Stock insuficiente para aplicar la reducción.');
+      } else if (errorCode === 'resource_not_found') {
+        toastError('Lote de stock o empleado no encontrado.');
+      } else if (errorCode === 'invalid_adjustment_quantity') {
+        toastError('La cantidad de ajuste debe ser mayor a cero.');
+      } else if (errorCode === 'access_denied') {
+        toastError('No cuentas con los permisos necesarios para realizar ajustes.');
       } else {
-        toastError(e.response?.data?.message || "Error al registrar el ajuste.");
+        toastError(message || 'Error al registrar el ajuste de stock.');
       }
     } finally {
       setIsSubmittingAdjustment(false);
@@ -677,30 +732,92 @@ export const StockMovementsPage = () => {
                         value={adjustmentQty}
                         onChange={(e) => {
                           let val: number | '' = e.target.value !== '' ? Number(e.target.value) : '';
-                          const code = Number(adjustmentType);
-                          const isSubtract = code === 301 || code === 303;
-                          if (typeof val === 'number' && isSubtract && adjustmentTarget && val > adjustmentTarget.availableQuantity) {
-                            val = adjustmentTarget.availableQuantity;
+                          if (typeof val === 'number') {
+                            if (val < 0) val = 0;
+                            if (adjustmentTarget && adjustmentType !== '') {
+                              const maxLimit = getMaxAdjustmentQty(Number(adjustmentType), adjustmentTarget);
+                              if (maxLimit !== null && val > maxLimit) {
+                                val = maxLimit;
+                              }
+                            }
                           }
                           setAdjustmentQty(val);
                         }}
                         isRequired
                       />
+                      {adjustmentType !== '' && adjustmentTarget && (
+                        (() => {
+                          const code = Number(adjustmentType);
+                          const maxLimit = getMaxAdjustmentQty(code, adjustmentTarget);
+
+                          if (code === 302 && maxLimit === 0) {
+                            return (
+                              <div className="p-3 bg-amber-500/15 dark:bg-amber-500/20 border border-amber-500/40 dark:border-amber-500/50 rounded-xl text-xs text-amber-950 dark:text-amber-100 font-medium -mt-2 leading-relaxed flex items-start gap-2.5 shadow-2xs">
+                                <AlertTriangle size={16} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                                <div>
+                                  El lote ya cuenta con el <span className="font-bold text-black dark:text-white">100% de su stock disponible</span> ({adjustmentTarget.availableQuantity}/{adjustmentTarget.quantityIn} uds). Para registrar más unidades que las facturadas originalmente, utiliza <strong className="font-bold text-black dark:text-white underline decoration-amber-500">Corrección de error - Sumar stock</strong>.
+                                </div>
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <div className="text-[11px] text-base-content/60 flex items-center justify-between -mt-2 px-1">
+                              <span>
+                                {code === 301 && 'Máximo permitido (Stock disp.):'}
+                                {code === 302 && 'Máximo a recuperar (Inicial - Disp.):'}
+                                {code === 303 && 'Máximo a restar (Stock disp.):'}
+                                {code === 304 && 'Límite máximo:'}
+                              </span>
+                              <span className="font-semibold font-mono text-base-content">
+                                {maxLimit !== null ? `${maxLimit} uds` : 'Sin límite (Aumenta lote)'}
+                              </span>
+                            </div>
+                          );
+                        })()
+                      )}
                       {adjustmentQty !== '' && (
-                        <div className="text-sm text-base-content/70 bg-base-200 p-3 rounded-lg flex justify-between">
-                          <span>Nueva cant. disp. estimada:</span>
-                          <span className="font-bold text-primary">
-                            {(() => {
-                              const code = Number(adjustmentType);
-                              const qty = Number(adjustmentQty);
-                              if (code === 301 || code === 303) {
-                                return adjustmentTarget.availableQuantity - qty;
-                              } else if (code === 302 || code === 304) {
-                                return adjustmentTarget.availableQuantity + qty;
-                              }
-                              return adjustmentTarget.availableQuantity;
-                            })()}
-                          </span>
+                        <div className="text-xs sm:text-sm text-base-content/70 bg-base-200/70 p-3 rounded-xl flex flex-col gap-1.5 border border-base-200">
+                          {(() => {
+                            const code = Number(adjustmentType);
+                            const qty = Number(adjustmentQty);
+                            const isCorrection = code === 303 || code === 304;
+
+                            if (isCorrection) {
+                              const newInitial = code === 303
+                                ? Math.max(0, adjustmentTarget.quantityIn - qty)
+                                : adjustmentTarget.quantityIn + qty;
+
+                              return (
+                                <>
+                                  <div className="flex justify-between items-center">
+                                    <span>Nueva cant. inicial estimada:</span>
+                                    <span className="font-bold font-mono text-primary">
+                                      {newInitial} uds
+                                    </span>
+                                  </div>
+                                  {code === 303 && qty === adjustmentTarget.quantityIn && (
+                                    <div className="text-[11px] text-error font-medium pt-1 border-t border-error/20 flex items-center gap-1">
+                                      <span>* El lote quedará completamente <strong>Anulado (VOIDED)</strong>.</span>
+                                    </div>
+                                  )}
+                                </>
+                              );
+                            }
+
+                            const newAvailable = code === 301
+                              ? Math.max(0, adjustmentTarget.availableQuantity - qty)
+                              : adjustmentTarget.availableQuantity + qty;
+
+                            return (
+                              <div className="flex justify-between items-center">
+                                <span>Nueva cant. disp. estimada:</span>
+                                <span className="font-bold font-mono text-primary">
+                                  {newAvailable} uds
+                                </span>
+                              </div>
+                            );
+                          })()}
                         </div>
                       )}
                       <ComerziaTextarea
