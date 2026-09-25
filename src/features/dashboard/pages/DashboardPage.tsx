@@ -13,6 +13,7 @@ import type {
 } from '../types/dashboard';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
 import { ComerziaSelect } from '../../../components/ui/ComerziaSelect';
+import { ComerziaButton } from '../../../components/ui/ComerziaButton';
 import { ComerziaLineChart } from '../../../components/ui/charts';
 import { PersonalStatsBanner } from '../components/PersonalStatsBanner';
 import { SellerPodium } from '../components/SellerPodium';
@@ -35,8 +36,9 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  RefreshCw,
-  LineChart as LineChartIcon
+  LineChart as LineChartIcon,
+  ShieldAlert,
+  Lock
 } from 'lucide-react';
 
 const PERIOD_OPTIONS = [
@@ -61,9 +63,18 @@ export const DashboardPage = () => {
 
   // 2. Permisos y configuración de moneda
   const currencyCode = userProfile?.companySettings?.currencyCode || 'USD';
+  const hasSummaryRead = hasPermission('COM_DASHBOARD_READ_SUMMARY');
   const hasFinancialPermission = hasPermission('COM_DASHBOARD_FINANCIAL_READ');
   const hasGlobalBranchPermission = hasPermission('COM_DASHBOARD_GLOBAL_READ');
+  const canReadBranches = hasPermission('ORG_BRANCHES_ACTIVE_READ');
+  const hasDashboardRead = hasPermission('COM_DASHBOARD_READ');
   const isSeller = hasRole('SELLER');
+
+  // Determinar vistas y filtros habilitados según permisos
+  const canViewSummary = hasSummaryRead;
+  const canViewRanking = hasDashboardRead;
+  const showFiltersCard = hasGlobalBranchPermission || canReadBranches;
+  const showTabs = canViewSummary && canViewRanking;
 
   // 3. Estados de Filtros Principales
   const [branches, setBranches] = useState<TenantActiveBranchResponse[]>([]);
@@ -71,17 +82,28 @@ export const DashboardPage = () => {
   const [period, setPeriod] = useState<DashboardPeriod>('THIS_MONTH');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
-  const [isLoadingBranches, setIsLoadingBranches] = useState<boolean>(true);
+  const [isLoadingBranches, setIsLoadingBranches] = useState<boolean>(false);
 
   // Tab activo: 'summary' (Resumen Ejecutivo) | 'ranking' (Ranking de Vendedores)
-  const [activeTab, setActiveTab] = useState<'summary' | 'ranking'>('summary');
+  const [activeTab, setActiveTab] = useState<'summary' | 'ranking'>(() => {
+    if (canViewSummary) return 'summary';
+    return 'ranking';
+  });
+
+  // Sincronizar tab si cambian los permisos
+  useEffect(() => {
+    if (!canViewSummary && canViewRanking) {
+      setActiveTab('ranking');
+    } else if (canViewSummary && !canViewRanking) {
+      setActiveTab('summary');
+    }
+  }, [canViewSummary, canViewRanking]);
 
   // 4. Estados de Datos
   const [summaryData, setSummaryData] = useState<DashboardSummaryResponse | null>(null);
-  const [isLoadingSummary, setIsLoadingSummary] = useState<boolean>(true);
+  const [isLoadingSummary, setIsLoadingSummary] = useState<boolean>(false);
 
   const [personalStats, setPersonalStats] = useState<DashboardSellerPersonalResponse | null>(null);
-  const [isLoadingPersonalStats, setIsLoadingPersonalStats] = useState<boolean>(false);
 
   // Ranking de Vendedores
   const [sellerRanking, setSellerRanking] = useState<DashboardSellerRankingResponse[]>([]);
@@ -98,14 +120,17 @@ export const DashboardPage = () => {
     return `${currencyCode} ${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
-  // 5. Cargar sucursales activas al montar
+  // 5. Cargar sucursales activas al montar (Solo si tiene ORG_BRANCHES_ACTIVE_READ)
   useEffect(() => {
+    if (!canReadBranches) {
+      setIsLoadingBranches(false);
+      return;
+    }
     const loadBranches = async () => {
       setIsLoadingBranches(true);
       try {
         const branchList = await branchService.getActiveBranches();
         setBranches(branchList || []);
-        // Si no tiene permiso global, fija la primera sucursal disponible si existe
         if (!hasGlobalBranchPermission && branchList && branchList.length > 0) {
           setSelectedBranchId(branchList[0].id);
         }
@@ -116,10 +141,11 @@ export const DashboardPage = () => {
       }
     };
     loadBranches();
-  }, [hasGlobalBranchPermission]);
+  }, [canReadBranches, hasGlobalBranchPermission]);
 
-  // 6. Cargar Resumen Ejecutivo (KPIs, Tendencias y Sucursales)
+  // 6. Cargar Resumen Ejecutivo (KPIs, Tendencias y Sucursales) - Solo si tiene COM_DASHBOARD_READ_SUMMARY
   const loadSummary = async () => {
+    if (!canViewSummary) return;
     setIsLoadingSummary(true);
     try {
       const res = await dashboardService.getDashboardSummary({
@@ -138,10 +164,9 @@ export const DashboardPage = () => {
     }
   };
 
-  // 7. Cargar Estadísticas Personales (para vendedores o si aplica)
+  // 7. Cargar Estadísticas Personales - Solo si tiene COM_DASHBOARD_READ y es vendedor
   const loadPersonalStats = async () => {
-    if (!isSeller) return;
-    setIsLoadingPersonalStats(true);
+    if (!hasDashboardRead || !isSeller) return;
     try {
       const res = await dashboardService.getMyStats({
         period,
@@ -152,13 +177,12 @@ export const DashboardPage = () => {
     } catch (err) {
       console.error('Error loading personal stats:', err);
       setPersonalStats(null);
-    } finally {
-      setIsLoadingPersonalStats(false);
     }
   };
 
-  // 8. Cargar Leaderboard de Vendedores
+  // 8. Cargar Leaderboard de Vendedores - Solo si tiene COM_DASHBOARD_READ
   const loadSellerRanking = async (targetPage = sellerPage) => {
+    if (!hasDashboardRead) return;
     setIsLoadingRanking(true);
     try {
       const res = await dashboardService.getSellerRanking({
@@ -175,32 +199,35 @@ export const DashboardPage = () => {
       setSellerTotalPages(res.totalPages || 0);
     } catch (err) {
       console.error('Error loading seller ranking:', err);
-      setSellerRanking([]);
       toastError('No se pudo cargar el ranking de vendedores.');
     } finally {
       setIsLoadingRanking(false);
     }
   };
 
-  // Disparar carga de datos al cambiar filtros principales
+  // Disparar carga de resumen y personal stats al cambiar filtros
   useEffect(() => {
-    if (period === 'CUSTOM' && (!startDate || !endDate)) {
-      return; // Espera a que el usuario complete ambas fechas
+    if (period === 'CUSTOM' && (!startDate || !endDate)) return;
+    if (canViewSummary) {
+      loadSummary();
     }
-    loadSummary();
-    loadPersonalStats();
+    if (hasDashboardRead && isSeller) {
+      loadPersonalStats();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedBranchId, period, startDate, endDate]);
+  }, [selectedBranchId, period, startDate, endDate, canViewSummary, hasDashboardRead, isSeller]);
 
   // Disparar carga de ranking al cambiar tab o parámetros de ranking
   useEffect(() => {
+    if (!hasDashboardRead) return;
     if (period === 'CUSTOM' && (!startDate || !endDate)) return;
     loadSellerRanking(sellerPage);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedBranchId, period, startDate, endDate, sellerSortBy, sellerPage]);
+  }, [selectedBranchId, period, startDate, endDate, sellerSortBy, sellerPage, hasDashboardRead]);
 
-  // Reiniciar página al cambiar filtros principales o criterio de ordenación
+  // Reiniciar página al cambiar filtros principales o criterio de ordenación sin llamadas redundantes
   const handleSortChange = (newSort: DashboardSellerSort) => {
+    if (newSort === sellerSortBy || isLoadingRanking) return;
     setSellerSortBy(newSort);
     setSellerPage(0);
   };
@@ -239,134 +266,136 @@ export const DashboardPage = () => {
             Métricas comerciales en tiempo real, tendencias de ventas y desempeño del equipo.
           </p>
         </div>
-
-        {/* Botón de refresco manual */}
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              loadSummary();
-              loadPersonalStats();
-              loadSellerRanking(sellerPage);
-            }}
-            className="btn btn-sm btn-ghost gap-1.5 text-base-content/70 hover:text-base-content"
-            title="Actualizar datos"
-          >
-            <RefreshCw size={14} className={isLoadingSummary || isLoadingRanking || isLoadingPersonalStats ? 'animate-spin' : ''} />
-            <span>Actualizar</span>
-          </button>
-        </div>
       </div>
 
-      {/* 2. TARJETA SUPERIOR DE RENDIMIENTO PERSONAL (Para Vendedores) */}
-      {personalStats && (
+      {/* 2. TARJETA SUPERIOR DE RENDIMIENTO PERSONAL (Solo si tiene COM_DASHBOARD_READ) */}
+      {hasDashboardRead && personalStats && (
         <PersonalStatsBanner stats={personalStats} currencyCode={currencyCode} />
       )}
 
-      {/* 3. BARRA DE FILTROS (Período, Sucursal y Rango Custom) */}
-      <div className="card bg-base-100 p-4 rounded-2xl shadow-xs border border-base-200">
-        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 sm:gap-4 flex-wrap">
-          {/* Selector de Período */}
-          <div className="w-full sm:w-60">
-            <label className="text-xs font-bold text-base-content/70 block mb-1 flex items-center gap-1.5">
-              <Calendar size={14} className="text-primary" />
-              Período de Análisis:
-            </label>
-            <ComerziaSelect
-              value={period}
-              onChange={e => {
-                setPeriod(e.target.value as DashboardPeriod);
-                setSellerPage(0);
-              }}
-              options={PERIOD_OPTIONS}
-            />
-          </div>
-
-          {/* Fechas personalizadas si period === 'CUSTOM' */}
-          {period === 'CUSTOM' && (
-            <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
-              <div className="w-full sm:w-44">
-                <ComerziaInput
-                  label="Desde:"
-                  type="date"
-                  value={startDate}
-                  onChange={e => setStartDate(e.target.value)}
+      {/* 3. BARRA DE FILTROS (Se muestra solo si al menos un selector está disponible) */}
+      {showFiltersCard && (
+        <div className="card bg-base-100 p-4 rounded-2xl shadow-xs border border-base-200">
+          <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 sm:gap-4 flex-wrap">
+            {/* Selector de Período solo si tiene permiso COM_DASHBOARD_GLOBAL_READ */}
+            {hasGlobalBranchPermission && (
+              <div className="w-full sm:w-60">
+                <label className="text-xs font-bold text-base-content/70 block mb-1 flex items-center gap-1.5">
+                  <Calendar size={14} className="text-primary" />
+                  Período de Análisis:
+                </label>
+                <ComerziaSelect
+                  value={period}
+                  onChange={e => {
+                    setPeriod(e.target.value as DashboardPeriod);
+                    setSellerPage(0);
+                  }}
+                  options={PERIOD_OPTIONS}
                 />
               </div>
-              <div className="w-full sm:w-44">
-                <ComerziaInput
-                  label="Hasta:"
-                  type="date"
-                  value={endDate}
-                  onChange={e => setEndDate(e.target.value)}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Selector de Sucursal */}
-          <div className="w-full sm:w-72">
-            <label className="text-xs font-bold text-base-content/70 block mb-1 flex items-center gap-1.5">
-              <Store size={14} className="text-primary" />
-              Sucursal:
-            </label>
-            <ComerziaSelect
-              placeholder="Todas las sucursales"
-              enableDefaultOption={hasGlobalBranchPermission}
-              value={selectedBranchId}
-              onChange={e => {
-                setSelectedBranchId(e.target.value);
-                setSellerPage(0);
-              }}
-              options={branches.map(b => ({
-                value: b.id,
-                label: b.name
-              }))}
-              disabled={!hasGlobalBranchPermission && branches.length <= 1}
-              isLoading={isLoadingBranches}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* 4. TABS PRINCIPALES (Resumen Ejecutivo vs Ranking de Vendedores) */}
-      <div className="flex items-center justify-between border-b border-base-200">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setActiveTab('summary')}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-bold border-b-2 transition-all cursor-pointer ${
-              activeTab === 'summary'
-                ? 'border-primary text-primary bg-primary/5 rounded-t-xl'
-                : 'border-transparent text-base-content/60 hover:text-base-content'
-            }`}
-          >
-            <TrendingUp size={16} />
-            <span>Resumen Ejecutivo</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('ranking')}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-bold border-b-2 transition-all cursor-pointer ${
-              activeTab === 'ranking'
-                ? 'border-primary text-primary bg-primary/5 rounded-t-xl'
-                : 'border-transparent text-base-content/60 hover:text-base-content'
-            }`}
-          >
-            <Trophy size={16} />
-            <span>Ranking de Vendedores</span>
-            {sellerTotalElements > 0 && (
-              <span className="badge badge-sm badge-neutral font-mono font-bold">
-                {sellerTotalElements}
-              </span>
             )}
-          </button>
-        </div>
-      </div>
 
-      {/* 5. CONTENIDO DEL TAB 1: RESUMEN EJECUTIVO & TENDENCIAS */}
-      {activeTab === 'summary' && (
+            {/* Fechas personalizadas si tiene permiso global y period === 'CUSTOM' */}
+            {hasGlobalBranchPermission && period === 'CUSTOM' && (
+              <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
+                <div className="w-full sm:w-44">
+                  <ComerziaInput
+                    label="Desde:"
+                    type="date"
+                    value={startDate}
+                    onChange={e => setStartDate(e.target.value)}
+                  />
+                </div>
+                <div className="w-full sm:w-44">
+                  <ComerziaInput
+                    label="Hasta:"
+                    type="date"
+                    value={endDate}
+                    onChange={e => setEndDate(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Selector de Sucursal solo si tiene permiso ORG_BRANCHES_ACTIVE_READ */}
+            {canReadBranches && (
+              <div className="w-full sm:w-72">
+                <label className="text-xs font-bold text-base-content/70 block mb-1 flex items-center gap-1.5">
+                  <Store size={14} className="text-primary" />
+                  Sucursal:
+                </label>
+                <ComerziaSelect
+                  placeholder="Todas las sucursales"
+                  enableDefaultOption={hasGlobalBranchPermission}
+                  value={selectedBranchId}
+                  onChange={e => {
+                    setSelectedBranchId(e.target.value);
+                    setSellerPage(0);
+                  }}
+                  options={branches.map(b => ({
+                    value: b.id,
+                    label: b.name
+                  }))}
+                  disabled={!hasGlobalBranchPermission && branches.length <= 1}
+                  isLoading={isLoadingBranches}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 4. TABS PRINCIPALES (Solo si tiene permisos para ver ambos: Resumen y Ranking) */}
+      {showTabs && (
+        <div className="flex items-center justify-between border-b border-base-200">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setActiveTab('summary')}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-bold border-b-2 transition-all cursor-pointer ${
+                activeTab === 'summary'
+                  ? 'border-primary text-primary bg-primary/5 rounded-t-xl'
+                  : 'border-transparent text-base-content/60 hover:text-base-content'
+              }`}
+            >
+              <TrendingUp size={16} />
+              <span>Resumen Ejecutivo</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('ranking')}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-bold border-b-2 transition-all cursor-pointer ${
+                activeTab === 'ranking'
+                  ? 'border-primary text-primary bg-primary/5 rounded-t-xl'
+                  : 'border-transparent text-base-content/60 hover:text-base-content'
+              }`}
+            >
+              <Trophy size={16} />
+              <span>Ranking de Vendedores</span>
+              {sellerTotalElements > 0 && (
+                <span className="badge badge-sm badge-neutral font-mono font-bold">
+                  {sellerTotalElements}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 5. CASO SIN PERMISOS (Ni Financiero ni Dashboard Read) */}
+      {!canViewSummary && !canViewRanking && (
+        <div className="card bg-base-100 p-12 text-center border border-base-200 rounded-3xl flex flex-col items-center justify-center gap-2">
+          <ShieldAlert size={36} className="text-warning" />
+          <h3 className="font-bold text-base text-base-content">Acceso Restringido</h3>
+          <p className="text-xs text-base-content/60 max-w-md">
+            No cuentas con los permisos requeridos para visualizar las métricas ejecutivas o los rankings comerciales.
+          </p>
+        </div>
+      )}
+
+      {/* 6. VISTA RESUMEN EJECUTIVO (Solo si tiene COM_DASHBOARD_READ_SUMMARY y tab activo o vista única) */}
+      {canViewSummary && (activeTab === 'summary' || !canViewRanking) && (
         <div className="space-y-6 animate-fade-in">
           {isLoadingSummary ? (
             <div className="py-20 text-center">
@@ -399,55 +428,41 @@ export const DashboardPage = () => {
                   </span>
                 </div>
 
-                {/* KPI 2: Ganancia Neta (o Transacciones si no tiene permiso financiero) */}
-                {hasFinancialPermission && summaryData?.kpis.totalNetProfit !== null ? (
-                  <div className="card bg-base-100 p-4 rounded-2xl border border-base-200 shadow-xs flex flex-col justify-between">
-                    <div>
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
-                          Ganancia Neta
-                        </span>
-                        <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                          <DollarSign size={16} />
-                        </div>
+                {/* KPI 2: Ganancia Neta */}
+                <div className="card bg-base-100 p-4 rounded-2xl border border-base-200 shadow-xs flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+                        Ganancia Neta
+                      </span>
+                      <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                        <DollarSign size={16} />
                       </div>
-                      <div className="mt-2 flex items-baseline gap-1.5 flex-wrap">
-                        <span className="text-base sm:text-xl lg:text-2xl font-bold font-mono text-emerald-600 dark:text-emerald-400 tracking-tight block truncate">
-                          {formatMoney(summaryData?.kpis.totalNetProfit)}
-                        </span>
-                        {summaryData?.kpis.marginPercentage !== null && (
-                          <span className="badge badge-sm badge-success text-white font-mono text-[10px] font-bold">
-                            {Number(summaryData?.kpis.marginPercentage).toFixed(1)}%
+                    </div>
+                    <div className="mt-2 flex items-baseline gap-1.5 flex-wrap">
+                      {hasFinancialPermission && summaryData?.kpis.totalNetProfit != null ? (
+                        <>
+                          <span className="text-base sm:text-xl lg:text-2xl font-bold font-mono text-emerald-600 dark:text-emerald-400 tracking-tight block truncate">
+                            {formatMoney(summaryData?.kpis.totalNetProfit)}
                           </span>
-                        )}
-                      </div>
-                    </div>
-                    <span className="text-[11px] text-base-content/50 mt-1 block">
-                      Margen sobre ventas brutas
-                    </span>
-                  </div>
-                ) : (
-                  <div className="card bg-base-100 p-4 rounded-2xl border border-base-200 shadow-xs flex flex-col justify-between">
-                    <div>
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="text-xs font-bold text-sky-500 uppercase tracking-wider">
-                          Transacciones
-                        </span>
-                        <div className="w-8 h-8 rounded-xl bg-sky-500/10 text-sky-500 flex items-center justify-center shrink-0">
-                          <Receipt size={16} />
+                          {summaryData?.kpis.marginPercentage != null && (
+                            <span className="badge badge-sm badge-success text-white font-mono text-[10px] font-bold">
+                              {Number(summaryData?.kpis.marginPercentage).toFixed(1)}%
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <div className="flex items-center gap-1.5 text-base-content/40 py-1">
+                          <Lock size={15} />
+                          <span className="text-sm font-semibold italic">Confidencial</span>
                         </div>
-                      </div>
-                      <div className="mt-2">
-                        <span className="text-base sm:text-xl lg:text-2xl font-bold font-mono text-sky-500 tracking-tight block">
-                          {summaryData?.kpis.totalTransactions || 0}
-                        </span>
-                      </div>
+                      )}
                     </div>
-                    <span className="text-[11px] text-base-content/50 mt-1 block">
-                      Tickets totales procesados
-                    </span>
                   </div>
-                )}
+                  <span className="text-[11px] text-base-content/50 mt-1 block">
+                    Margen sobre ventas brutas
+                  </span>
+                </div>
 
                 {/* KPI 3: Total Descuentos */}
                 <div className="card bg-base-100 p-4 rounded-2xl border border-base-200 shadow-xs flex flex-col justify-between">
@@ -506,7 +521,7 @@ export const DashboardPage = () => {
                         Curva de Tendencia de Ventas
                       </h3>
                       <p className="text-xs text-base-content/60">
-                        Evolución periódica de facturación {hasFinancialPermission ? 'y rentabilidad neta' : ''}.
+                        Evolución periódica de facturación y rentabilidad neta.
                       </p>
                     </div>
                   </div>
@@ -544,56 +559,50 @@ export const DashboardPage = () => {
         </div>
       )}
 
-      {/* 6. CONTENIDO DEL TAB 2: RANKING DE VENDEDORES (LEADERBOARD) */}
-      {activeTab === 'ranking' && (
+      {/* 7. VISTA RANKING DE VENDEDORES (Solo si tiene COM_DASHBOARD_READ y tab activo o vista única) */}
+      {canViewRanking && (activeTab === 'ranking' || !canViewSummary) && (
         <div className="space-y-6 animate-fade-in">
-          {/* Barra de opciones de ordenación del leaderboard */}
+          {/* Barra de opciones de ordenación del leaderboard con componentes ComerziaButton */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-base-100 rounded-2xl border border-base-200 shadow-xs">
             <div className="flex items-center gap-2">
               <Users size={18} className="text-primary" />
               <span className="text-sm font-bold text-base-content">Ordenar Leaderboard por:</span>
+              {isLoadingRanking && sellerRanking.length > 0 && (
+                <span className="loading loading-spinner loading-xs text-primary ml-1"></span>
+              )}
             </div>
 
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <button
-                type="button"
+            <div className="flex items-center gap-2 flex-wrap">
+              <ComerziaButton
+                variant={sellerSortBy === 'SALES' ? 'primary' : 'ghost'}
+                icon={<TrendingUp size={14} />}
+                label="Mayor Volumen ($)"
                 onClick={() => handleSortChange('SALES')}
-                className={`btn btn-xs sm:btn-sm rounded-xl font-bold cursor-pointer transition-all ${
-                  sellerSortBy === 'SALES' ? 'btn-primary' : 'btn-ghost text-base-content/70'
-                }`}
-              >
-                <TrendingUp size={14} />
-                <span>Mayor Volumen ($)</span>
-              </button>
+                className="btn-xs sm:btn-sm rounded-xl min-w-0"
+              />
 
-              <button
-                type="button"
+              <ComerziaButton
+                variant={sellerSortBy === 'TRANSACTIONS' ? 'primary' : 'ghost'}
+                icon={<Receipt size={14} />}
+                label="Más Ventas (#)"
                 onClick={() => handleSortChange('TRANSACTIONS')}
-                className={`btn btn-xs sm:btn-sm rounded-xl font-bold cursor-pointer transition-all ${
-                  sellerSortBy === 'TRANSACTIONS' ? 'btn-primary' : 'btn-ghost text-base-content/70'
-                }`}
-              >
-                <Receipt size={14} />
-                <span>Más Ventas (#)</span>
-              </button>
+                className="btn-xs sm:btn-sm rounded-xl min-w-0"
+              />
 
               {/* Opción de Ganancia solo si tiene permiso financiero */}
               {hasFinancialPermission && (
-                <button
-                  type="button"
+                <ComerziaButton
+                  variant={sellerSortBy === 'PROFIT' ? 'primary' : 'ghost'}
+                  icon={<DollarSign size={14} />}
+                  label="Mayor Rentabilidad ($)"
                   onClick={() => handleSortChange('PROFIT')}
-                  className={`btn btn-xs sm:btn-sm rounded-xl font-bold cursor-pointer transition-all ${
-                    sellerSortBy === 'PROFIT' ? 'btn-primary' : 'btn-ghost text-base-content/70'
-                  }`}
-                >
-                  <DollarSign size={14} />
-                  <span>Mayor Rentabilidad ($)</span>
-                </button>
+                  className="btn-xs sm:btn-sm rounded-xl min-w-0"
+                />
               )}
             </div>
           </div>
 
-          {isLoadingRanking ? (
+          {isLoadingRanking && sellerRanking.length === 0 ? (
             <div className="py-20 text-center">
               <span className="loading loading-spinner loading-lg text-primary"></span>
               <p className="text-xs text-base-content/50 mt-2">Calculando posiciones y podio del equipo...</p>
@@ -603,91 +612,106 @@ export const DashboardPage = () => {
               No se registraron ventas de colaboradores en el período seleccionado.
             </div>
           ) : (
-            <>
-              {/* PODIO OLÍMPICO VISUAL (Top 3) */}
-              <SellerPodium
-                topSellers={top3Sellers}
-                currencyCode={currencyCode}
-                hasFinancialPermission={hasFinancialPermission}
-              />
+            <div className="relative">
+              {/* Overlay sutil para evitar colapso de layout o temblores durante peticiones */}
+              {isLoadingRanking && (
+                <div className="absolute inset-0 bg-base-100/40 backdrop-blur-[1px] z-20 rounded-3xl flex items-center justify-center transition-all duration-200">
+                  <div className="bg-base-100 shadow-xl border border-base-200 px-4 py-2 rounded-full flex items-center gap-2.5 text-xs font-semibold text-base-content">
+                    <span className="loading loading-spinner loading-sm text-primary"></span>
+                    <span>Actualizando leaderboard...</span>
+                  </div>
+                </div>
+              )}
 
-              {/* RESTO DEL EQUIPO: CARDS COLORIDAS Y DINÁMICAS (Puesto 4 en adelante) */}
-              {remainingSellers.length > 0 && (
-                <div className="space-y-4 pt-2">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-base sm:text-lg font-bold text-base-content flex items-center gap-2">
-                        <Users size={18} className="text-primary" />
-                        Resto del Equipo Comercial
-                      </h3>
-                      <p className="text-xs text-base-content/60">
-                        Colaboradores a partir del 4º puesto en el ranking comercial.
-                      </p>
+              <div className={`space-y-6 transition-opacity duration-200 ${isLoadingRanking ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
+                {/* PODIO OLÍMPICO VISUAL (Top 3) */}
+                <SellerPodium
+                  topSellers={top3Sellers}
+                  currencyCode={currencyCode}
+                  hasFinancialPermission={hasFinancialPermission}
+                />
+
+                {/* RESTO DEL EQUIPO: CARDS COLORIDAS Y DINÁMICAS (Puesto 4 en adelante) */}
+                {remainingSellers.length > 0 && (
+                  <div className="space-y-4 pt-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-base sm:text-lg font-bold text-base-content flex items-center gap-2">
+                          <Users size={18} className="text-primary" />
+                          Resto del Equipo Comercial
+                        </h3>
+                        <p className="text-xs text-base-content/60">
+                          Colaboradores a partir del 4º puesto en el ranking comercial.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                      {remainingSellers.map((seller, idx) => (
+                        <SellerCard
+                          key={seller.employeeId}
+                          seller={seller}
+                          index={idx}
+                          currencyCode={currencyCode}
+                          hasFinancialPermission={hasFinancialPermission}
+                        />
+                      ))}
                     </div>
                   </div>
+                )}
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                    {remainingSellers.map((seller, idx) => (
-                      <SellerCard
-                        key={seller.employeeId}
-                        seller={seller}
-                        index={idx}
-                        currencyCode={currencyCode}
-                        hasFinancialPermission={hasFinancialPermission}
+                {/* PAGINACIÓN SERVER-SIDE ESTÁNDAR CON COMERZIA BUTTONS */}
+                {sellerTotalPages > 1 && (
+                  <div className="card bg-base-100 p-3.5 rounded-2xl border border-base-200 shadow-xs flex flex-row items-center justify-between gap-2 overflow-x-auto whitespace-nowrap text-xs">
+                    <span className="text-base-content/60 shrink-0 font-medium">
+                      Página <strong>{sellerPage + 1}</strong> de <strong>{sellerTotalPages}</strong> ({sellerTotalElements} vendedores en total)
+                    </span>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                      <ComerziaButton
+                        variant="ghost"
+                        isIconOnly
+                        icon={<ChevronsLeft size={14} />}
+                        onClick={() => setSellerPage(0)}
+                        disabled={sellerPage === 0 || isLoadingRanking}
+                        tooltip="Primera página"
+                        className="btn-xs"
                       />
-                    ))}
+                      <ComerziaButton
+                        variant="ghost"
+                        isIconOnly
+                        icon={<ChevronLeft size={14} />}
+                        onClick={() => setSellerPage(p => Math.max(0, p - 1))}
+                        disabled={sellerPage === 0 || isLoadingRanking}
+                        tooltip="Página anterior"
+                        className="btn-xs"
+                      />
+                      <span className="px-2 font-mono font-bold text-xs text-base-content">
+                        {sellerPage + 1} / {sellerTotalPages}
+                      </span>
+                      <ComerziaButton
+                        variant="ghost"
+                        isIconOnly
+                        icon={<ChevronRight size={14} />}
+                        onClick={() => setSellerPage(p => Math.min(sellerTotalPages - 1, p + 1))}
+                        disabled={sellerPage >= sellerTotalPages - 1 || isLoadingRanking}
+                        tooltip="Página siguiente"
+                        className="btn-xs"
+                      />
+                      <ComerziaButton
+                        variant="ghost"
+                        isIconOnly
+                        icon={<ChevronsRight size={14} />}
+                        onClick={() => setSellerPage(sellerTotalPages - 1)}
+                        disabled={sellerPage >= sellerTotalPages - 1 || isLoadingRanking}
+                        tooltip="Última página"
+                        className="btn-xs"
+                      />
+                    </div>
                   </div>
-                </div>
-              )}
-
-              {/* PAGINACIÓN SERVER-SIDE ESTÁNDAR (Comerzia UI Standard) */}
-              {sellerTotalPages > 1 && (
-                <div className="card bg-base-100 p-3.5 rounded-2xl border border-base-200 shadow-xs flex flex-row items-center justify-between gap-2 overflow-x-auto whitespace-nowrap text-xs">
-                  <span className="text-base-content/60 shrink-0 font-medium">
-                    Página <strong>{sellerPage + 1}</strong> de <strong>{sellerTotalPages}</strong> ({sellerTotalElements} vendedores en total)
-                  </span>
-
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => setSellerPage(0)}
-                      disabled={sellerPage === 0}
-                      className="btn btn-xs btn-ghost btn-square"
-                      title="Primera página"
-                    >
-                      <ChevronsLeft size={14} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSellerPage(p => Math.max(0, p - 1))}
-                      disabled={sellerPage === 0}
-                      className="btn btn-xs btn-ghost btn-square"
-                      title="Página anterior"
-                    >
-                      <ChevronLeft size={14} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSellerPage(p => Math.min(sellerTotalPages - 1, p + 1))}
-                      disabled={sellerPage >= sellerTotalPages - 1}
-                      className="btn btn-xs btn-ghost btn-square"
-                      title="Página siguiente"
-                    >
-                      <ChevronRight size={14} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSellerPage(sellerTotalPages - 1)}
-                      disabled={sellerPage >= sellerTotalPages - 1}
-                      className="btn btn-xs btn-ghost btn-square"
-                      title="Última página"
-                    >
-                      <ChevronsRight size={14} />
-                    </button>
-                  </div>
-                </div>
-              )}
-            </>
+                )}
+              </div>
+            </div>
           )}
         </div>
       )}

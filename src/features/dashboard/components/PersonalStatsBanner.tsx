@@ -18,9 +18,9 @@ export const PersonalStatsBanner: React.FC<Props> = ({ stats, currencyCode }) =>
   const isLeader = stats.rankingPosition === 1;
 
   return (
-    <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-primary/10 via-primary/5 to-base-100 border border-primary/20 p-5 sm:p-6 shadow-sm">
-      {/* Elemento decorativo de fondo */}
-      <div className="absolute -top-10 -right-10 w-44 h-44 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
+    <div className="card bg-base-100 p-5 sm:p-6 rounded-3xl border border-base-200 shadow-xs relative overflow-hidden">
+      {/* Elemento decorativo sutil de fondo */}
+      <div className="absolute -top-10 -right-10 w-44 h-44 rounded-full bg-primary/5 blur-3xl pointer-events-none" />
 
       <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-5">
         {/* Lado izquierdo: Saludo e información del vendedor */}
@@ -61,52 +61,78 @@ export const PersonalStatsBanner: React.FC<Props> = ({ stats, currencyCode }) =>
           </div>
         </div>
 
-        {/* Lado derecho: Métricas personales y puesto en el ranking */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full lg:w-auto">
+        {/* Lado derecho: Métricas personales y puesto en el ranking con alto contraste */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3.5 w-full lg:w-auto">
           {/* Métrica 1: Ventas Totales */}
-          <div className="bg-base-100/90 backdrop-blur-xs p-3 rounded-2xl border border-base-200/80 shadow-2xs text-left">
-            <span className="text-[10px] sm:text-[11px] font-bold text-base-content/50 uppercase tracking-wider block flex items-center gap-1">
-              <TrendingUp size={12} className="text-primary" />
-              Tus Ventas
-            </span>
-            <span className="text-sm sm:text-base lg:text-lg font-bold font-mono text-primary mt-1 block">
+          <div className="bg-primary/5 hover:bg-primary/10 border border-primary/20 p-3 sm:p-3.5 rounded-2xl shadow-xs transition-all duration-200 text-left min-w-[130px] sm:min-w-[145px]">
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <div className="w-6 h-6 rounded-lg bg-primary/15 text-primary flex items-center justify-center shrink-0">
+                <TrendingUp size={13} />
+              </div>
+              <span className="text-[11px] font-bold text-primary uppercase tracking-wider block">
+                Tus Ventas
+              </span>
+            </div>
+            <span className="text-base sm:text-lg lg:text-xl font-black font-mono text-primary tracking-tight block truncate">
               {formatMoney(stats.grossSales)}
             </span>
           </div>
 
           {/* Métrica 2: Tickets */}
-          <div className="bg-base-100/90 backdrop-blur-xs p-3 rounded-2xl border border-base-200/80 shadow-2xs text-left">
-            <span className="text-[10px] sm:text-[11px] font-bold text-base-content/50 uppercase tracking-wider block flex items-center gap-1">
-              <Receipt size={12} className="text-sky-500" />
-              Tickets
-            </span>
-            <span className="text-sm sm:text-base lg:text-lg font-bold font-mono text-base-content mt-1 block">
-              {stats.transactions} <span className="text-[11px] font-normal text-base-content/50">ops</span>
-            </span>
+          <div className="bg-sky-500/5 hover:bg-sky-500/10 border border-sky-500/25 p-3 sm:p-3.5 rounded-2xl shadow-xs transition-all duration-200 text-left min-w-[130px] sm:min-w-[145px]">
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <div className="w-6 h-6 rounded-lg bg-sky-500/15 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
+                <Receipt size={13} />
+              </div>
+              <span className="text-[11px] font-bold text-sky-600 dark:text-sky-400 uppercase tracking-wider block">
+                Tickets
+              </span>
+            </div>
+            <div className="flex items-baseline gap-1 mt-0.5">
+              <span className="text-base sm:text-lg lg:text-xl font-black font-mono text-sky-700 dark:text-sky-300">
+                {stats.transactions}
+              </span>
+              <span className="text-[11px] font-semibold text-sky-600/70 dark:text-sky-400/70">
+                órdenes
+              </span>
+            </div>
           </div>
 
           {/* Métrica 3: Unidades */}
-          <div className="bg-base-100/90 backdrop-blur-xs p-3 rounded-2xl border border-base-200/80 shadow-2xs text-left">
-            <span className="text-[10px] sm:text-[11px] font-bold text-base-content/50 uppercase tracking-wider block flex items-center gap-1">
-              <ShoppingBag size={12} className="text-emerald-500" />
-              Unidades
-            </span>
-            <span className="text-sm sm:text-base lg:text-lg font-bold font-mono text-base-content mt-1 block">
-              {stats.unitsSold} <span className="text-[11px] font-normal text-base-content/50">uds</span>
-            </span>
+          <div className="bg-emerald-500/5 hover:bg-emerald-500/10 border border-emerald-500/25 p-3 sm:p-3.5 rounded-2xl shadow-xs transition-all duration-200 text-left min-w-[130px] sm:min-w-[145px]">
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <div className="w-6 h-6 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                <ShoppingBag size={13} />
+              </div>
+              <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">
+                Unidades
+              </span>
+            </div>
+            <div className="flex items-baseline gap-1 mt-0.5">
+              <span className="text-base sm:text-lg lg:text-xl font-black font-mono text-emerald-700 dark:text-emerald-300">
+                {stats.unitsSold}
+              </span>
+              <span className="text-[11px] font-semibold text-emerald-600/70 dark:text-emerald-400/70">
+                uds
+              </span>
+            </div>
           </div>
 
           {/* Métrica 4: Puesto de Gamificación */}
-          <div className="bg-base-100/90 backdrop-blur-xs p-3 rounded-2xl border border-base-200/80 shadow-2xs text-left">
-            <span className="text-[10px] sm:text-[11px] font-bold text-base-content/50 uppercase tracking-wider block flex items-center gap-1">
-              <Trophy size={12} className="text-amber-500" />
-              Tu Posición
-            </span>
-            <div className="mt-1 flex items-baseline gap-1">
-              <span className="text-sm sm:text-base lg:text-lg font-extrabold font-mono text-amber-500">
+          <div className="bg-amber-500/10 hover:bg-amber-500/15 border border-amber-500/30 p-3 sm:p-3.5 rounded-2xl shadow-xs transition-all duration-200 text-left min-w-[130px] sm:min-w-[145px]">
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <div className="w-6 h-6 rounded-lg bg-amber-500/25 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                <Trophy size={13} />
+              </div>
+              <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider block">
+                Tu Posición
+              </span>
+            </div>
+            <div className="flex items-baseline gap-1 mt-0.5">
+              <span className="text-base sm:text-lg lg:text-xl font-black font-mono text-amber-600 dark:text-amber-400">
                 #{stats.rankingPosition}
               </span>
-              <span className="text-[11px] text-base-content/50 font-medium">
+              <span className="text-[11px] font-semibold text-amber-700/70 dark:text-amber-300/70">
                 de {stats.totalSellers}
               </span>
             </div>
