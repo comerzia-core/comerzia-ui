@@ -153,7 +153,7 @@ export const ComerziaBcgMatrixChart = ({
         <div className="flex flex-col justify-end items-end text-[11px] font-bold text-sky-500">
           <span className="inline-flex items-center gap-1.5">
             <Coins size={13} className="shrink-0" />
-            <span>Vacas Lecheras</span>
+            <span>Volumen</span>
           </span>
           <span className="text-[9px] font-normal text-base-content/60">Bajo Margen • Alta Rotación</span>
         </div>

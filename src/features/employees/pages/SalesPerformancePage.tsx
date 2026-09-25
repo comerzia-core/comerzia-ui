@@ -22,15 +22,7 @@ import {
   ShieldAlert,
   Activity
 } from 'lucide-react';
-
-const PERIOD_OPTIONS = [
-  { value: 'TODAY', label: 'Hoy' },
-  { value: 'THIS_WEEK', label: 'Esta semana' },
-  { value: 'THIS_MONTH', label: 'Este mes' },
-  { value: 'LAST_MONTH', label: 'Mes anterior' },
-  { value: 'THIS_YEAR', label: 'Este año' },
-  { value: 'CUSTOM', label: 'Rango personalizado' }
-];
+import { PERIOD_OPTIONS, getPeriodDescription } from '../../../utils/date';
 
 export const SalesPerformancePage: React.FC = () => {
   const { hasPermission, userProfile } = useAuthStore();
@@ -297,13 +289,18 @@ export const SalesPerformancePage: React.FC = () => {
           </div>
 
           {/* Filtros de Fecha / Periodo */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-start gap-2 w-full lg:w-auto">
             <div className="w-full sm:w-52">
               <ComerziaSelect
                 value={period}
                 onChange={e => setPeriod(e.target.value as SalesPerformancePeriod)}
                 options={PERIOD_OPTIONS}
               />
+              {period !== 'CUSTOM' && (
+                <span className="text-[11px] text-base-content/60 font-medium block mt-1 pl-1">
+                  {getPeriodDescription(period)}
+                </span>
+              )}
             </div>
 
             {period === 'CUSTOM' && (
@@ -315,7 +312,7 @@ export const SalesPerformancePage: React.FC = () => {
                     onChange={e => setCustomStartDate(e.target.value)}
                   />
                 </div>
-                <span className="text-xs text-base-content/40 font-bold shrink-0">al</span>
+                <span className="text-xs text-base-content/40 font-bold shrink-0 mt-2">al</span>
                 <div className="w-full sm:w-40">
                   <ComerziaInput
                     type="date"

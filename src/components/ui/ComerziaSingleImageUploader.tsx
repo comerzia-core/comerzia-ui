@@ -1,9 +1,9 @@
 // src/components/ui/ComerziaSingleImageUploader.tsx
 import { useRef } from "react";
-import { ImagePlus, FileImage, AlertCircle, Camera, Upload } from "lucide-react";
+import { ImagePlus, FileImage, AlertCircle, Camera } from "lucide-react";
 import { MAX_FILE_SIZE_BYTES, MAX_FILE_SIZE_MB, ALLOWED_IMAGE_TYPES } from "../../config/storage";
 import { useToast } from "../../context/ToastContext";
-import { BtnChange, BtnRemove } from "./CrudButtons";
+import { BtnChange, BtnRemove, BtnCamera, BtnGallery } from "./CrudButtons";
 
 export interface SingleImageValue {
   file?: File;
@@ -98,28 +98,30 @@ export const ComerziaSingleImageUploader = ({
           />
 
           {/* Overlay con acciones visibles en móvil y por hover en desktop */}
-          <div className="absolute inset-0 bg-black/40 sm:bg-black/50 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 p-2">
-            <button
+          <div className="absolute inset-0 bg-black/40 sm:bg-black/50 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 sm:gap-2 p-2">
+            <BtnCamera
               type="button"
               onClick={openCamera}
-              className="btn btn-sm bg-primary hover:bg-primary/90 text-primary-content border-none gap-1.5 shadow-md font-bold transition-all active:scale-95"
+              label="Foto"
+              responsive={true}
+              className="btn-sm !min-w-0 !px-2.5 sm:!px-3 shadow-md gap-1.5"
               title="Tomar nueva foto con la cámara"
-            >
-              <Camera size={16} />
-              <span className="text-xs">Foto</span>
-            </button>
+            />
 
             <BtnChange
-              onClick={openGallery}
               type="button"
-              className="btn-sm bg-base-100/90 text-base-content hover:bg-base-100 border-none shadow-md"
+              onClick={openGallery}
+              responsive={true}
+              className="btn-sm !min-w-0 !px-2.5 sm:!px-3 shadow-md gap-1.5"
               title="Elegir otra imagen de la galería"
             />
 
             <BtnRemove
-              onClick={handleRemove}
               type="button"
-              className="btn-sm bg-error/90 text-error-content hover:bg-error border-none shadow-md"
+              onClick={handleRemove}
+              responsive={true}
+              className="btn-sm !min-w-0 !px-2.5 sm:!px-3 shadow-md gap-1.5"
+              title="Quitar imagen"
             />
           </div>
 
@@ -161,23 +163,21 @@ export const ComerziaSingleImageUploader = ({
 
           {/* BOTONES DIRECTOS: TOMAR FOTO O SUBIR DE GALERÍA */}
           <div className="flex items-center gap-2 w-full max-w-sm justify-center">
-            <button
+            <BtnCamera
               type="button"
               onClick={openCamera}
-              className="btn btn-sm bg-primary hover:bg-primary/90 text-primary-content border-none flex-1 gap-1.5 shadow-sm font-bold min-h-[38px] active:scale-95 transition-all"
-            >
-              <Camera size={17} />
-              <span className="text-xs sm:text-sm">Tomar Foto</span>
-            </button>
+              label="Tomar Foto"
+              className="flex-1 btn-sm min-h-[38px]"
+              responsive={true}
+            />
 
-            <button
+            <BtnGallery
               type="button"
               onClick={openGallery}
-              className="btn btn-sm bg-base-200 hover:bg-base-300 text-base-content border-base-300 flex-1 gap-1.5 font-semibold min-h-[38px] active:scale-95 transition-all"
-            >
-              <Upload size={16} />
-              <span className="text-xs sm:text-sm">Galería</span>
-            </button>
+              label="Galería"
+              className="flex-1 btn-sm min-h-[38px]"
+              responsive={true}
+            />
           </div>
         </div>
       )}

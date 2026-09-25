@@ -36,6 +36,7 @@ import { DemandForecastingPage } from "../features/commercial/pages/DemandForeca
 // --- SECURITY ---
 import { AuditPage } from "../features/security/pages/AuditPage";
 import { UsersPage } from "../features/security/pages/UsersPage";
+import { ProfilePage } from "../features/security/pages/ProfilePage";
 
 import { NewSalePage } from "../features/sales/pages/NewSalePage";
 import { SalesHistoryPage } from "../features/sales/pages/SalesHistoryPage";
@@ -116,6 +117,7 @@ export const AppRouter = () => {
             {/* --- SECURITY --- */}
             <Route path="/security/audit" element={<AuditPage />} />
             <Route path="/security/users" element={<UsersPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
 
             {/* --- MÓDULOS DEL SISTEMA --- */}
             <Route path="/saas/tenants" element={<CompaniesPage />} />

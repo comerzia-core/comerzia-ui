@@ -69,10 +69,14 @@ export const EmployeePage = () => {
     }
   }, [hasBranchesPermission]);
 
+  // Validación de mínimo 3 caracteres para búsqueda o vacío para traer todos
+  const searchTrimmed = debouncedSearch.trim();
+  const isSearchValid = searchTrimmed.length === 0 || searchTrimmed.length >= 3;
+
   const loadData = async (
     targetPage = page,
     targetSize = pageSize,
-    q = debouncedSearch,
+    q = searchTrimmed.length >= 3 ? searchTrimmed : undefined,
     branchId = selectedBranchId
   ) => {
     setIsLoading(true);
@@ -93,20 +97,34 @@ export const EmployeePage = () => {
     }
   };
 
-  // Reset de página a 0 cuando cambian los filtros de búsqueda o sucursal
+  // Carga ante cambios en filtros de búsqueda o sucursal
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false;
+      loadData(page, pageSize, undefined, selectedBranchId);
       return;
     }
+
+    // Si tiene 1 o 2 caracteres, no hacemos el llamado hasta que llegue a 3 o se limpie
+    if (!isSearchValid) {
+      return;
+    }
+
+    const queryToSearch = searchTrimmed.length >= 3 ? searchTrimmed : undefined;
     setPage(0);
+    loadData(0, pageSize, queryToSearch, selectedBranchId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearch, selectedBranchId]);
 
-  // Cargar datos ante cambios de paginación o filtros
+  // Cargar datos ante cambios de paginación
   useEffect(() => {
-    loadData(page, pageSize, debouncedSearch, selectedBranchId);
+    if (isFirstRender.current) return;
+    if (!isSearchValid) return;
+
+    const queryToSearch = searchTrimmed.length >= 3 ? searchTrimmed : undefined;
+    loadData(page, pageSize, queryToSearch, selectedBranchId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, pageSize, debouncedSearch, selectedBranchId]);
+  }, [page, pageSize]);
 
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
@@ -216,7 +234,7 @@ export const EmployeePage = () => {
           <div className="w-full sm:w-80">
             <ComerziaInput
               icon="Search"
-              placeholder="Buscar por nombre, CI o celular..."
+              placeholder="Buscar por nombre, CI o celular... (mín. 3 caracteres)"
               value={search}
               onChange={e => setSearch(e.target.value)}
             />

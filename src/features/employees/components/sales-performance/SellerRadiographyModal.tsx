@@ -97,8 +97,8 @@ export const SellerRadiographyModal: React.FC<Props> = ({
       size="xl"
       variant="view"
       actions={
-        <div className="flex justify-end w-full">
-          <BtnCancel onClick={onClose} label="Cerrar" responsive={true} />
+        <div className="flex flex-row items-center gap-2 w-full sm:justify-end">
+          <BtnCancel onClick={onClose} label="Cerrar" responsive={false} className="w-full sm:w-auto" />
         </div>
       }
     >
@@ -208,23 +208,23 @@ export const SellerRadiographyModal: React.FC<Props> = ({
                 </div>
               ) : (
                 <div className="overflow-x-auto rounded-2xl border border-base-200 bg-base-100 shadow-xs">
-                  <table className="table table-sm text-xs">
+                  <table className="table table-sm text-xs whitespace-nowrap">
                     <thead>
                       <tr className="bg-base-200/50 text-base-content/70">
-                        <th>Producto</th>
-                        <th className="text-center">Cant.</th>
-                        <th className="text-right">Venta Bruta</th>
-                        <th className="text-right">Descuentos</th>
-                        <th className="text-right">Venta Neta</th>
-                        <th className="text-right">Costo</th>
-                        <th className="text-right">Ganancia</th>
-                        <th className="text-center">Margen</th>
+                        <th className="whitespace-nowrap">Producto</th>
+                        <th className="text-center whitespace-nowrap">Cant.</th>
+                        <th className="text-right whitespace-nowrap">Venta Bruta</th>
+                        <th className="text-right whitespace-nowrap">Descuentos</th>
+                        <th className="text-right whitespace-nowrap">Venta Neta</th>
+                        <th className="text-right whitespace-nowrap">Costo</th>
+                        <th className="text-right whitespace-nowrap">Ganancia</th>
+                        <th className="text-center whitespace-nowrap">Margen</th>
                       </tr>
                     </thead>
                     <tbody>
                       {detail.topProducts.map(prod => (
                         <tr key={prod.variantId} className="hover:bg-base-200/30 transition-colors">
-                          <td>
+                          <td className="whitespace-nowrap">
                             <div className="flex items-center gap-2.5">
                               {prod.imageUrl ? (
                                 <img
@@ -237,36 +237,37 @@ export const SellerRadiographyModal: React.FC<Props> = ({
                                   <Package size={14} />
                                 </div>
                               )}
-                              <div className="min-w-0 max-w-[200px]">
+                              <div className="min-w-0 max-w-[220px]">
                                 <span className="font-bold text-base-content block truncate" title={prod.productName}>
                                   {prod.productName}
                                 </span>
-                                <span className="text-[10px] text-base-content/60 block truncate font-mono">
-                                  {prod.variantName ? `${prod.variantName} • ` : ''}
-                                  {prod.sku}
-                                </span>
+                                {prod.variantName && (
+                                  <span className="text-[10px] text-base-content/60 block truncate">
+                                    {prod.variantName}
+                                  </span>
+                                )}
                               </div>
                             </div>
                           </td>
-                          <td className="text-center font-mono font-bold">
+                          <td className="text-center font-mono font-bold whitespace-nowrap">
                             {prod.quantitySold} uds
                           </td>
-                          <td className="text-right font-mono font-semibold text-primary">
+                          <td className="text-right font-mono font-semibold text-primary whitespace-nowrap">
                             {formatMoney(prod.grossSales)}
                           </td>
-                          <td className="text-right font-mono text-amber-500">
+                          <td className="text-right font-mono text-amber-500 whitespace-nowrap">
                             {formatMoney(prod.discounts)}
                           </td>
-                          <td className="text-right font-mono font-bold text-base-content">
+                          <td className="text-right font-mono font-bold text-base-content whitespace-nowrap">
                             {formatMoney(prod.netSales)}
                           </td>
-                          <td className="text-right font-mono text-base-content/60">
+                          <td className="text-right font-mono text-base-content/60 whitespace-nowrap">
                             {formatMoney(prod.cost)}
                           </td>
-                          <td className="text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                          <td className="text-right font-mono font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
                             {formatMoney(prod.netProfit)}
                           </td>
-                          <td className="text-center">
+                          <td className="text-center whitespace-nowrap">
                             <span
                               className={`badge badge-xs text-[10px] font-bold font-mono py-1 px-1.5 ${
                                 prod.profitMargin >= 30

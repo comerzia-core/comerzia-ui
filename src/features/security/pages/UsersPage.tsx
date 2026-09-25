@@ -1,20 +1,26 @@
 // src/features/security/pages/UsersPage.tsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Users } from 'lucide-react';
 import { UsersTable } from '../components/users/UsersTable';
 import { UserRolesModal } from '../components/users/UserRolesModal';
 import { UserTemporaryPasswordModal } from '../components/users/UserTemporaryPasswordModal';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
+import { ComerziaSelect } from '../../../components/ui/ComerziaSelect';
 import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
 import { useTenantUsers } from '../hooks/useTenantUsers';
 import { userService } from '../services/userService';
 import { useToast } from '../../../context/ToastContext';
+import { useAuthStore } from '../../../stores/useAuthStore';
+import { branchService } from '../../organization/services/branchService';
+import type { TenantActiveBranchResponse } from '../../organization/types/branch';
 import type { UserResponse, ResetPasswordResponse } from '../types/user';
 
 type UserActionType = 'TOGGLE_ACCESS' | 'UNLOCK' | 'RESET_PASSWORD' | null;
 
 export const UsersPage = () => {
   const { addToast: showToast } = useToast();
+  const { hasPermission } = useAuthStore();
+  const hasBranchesPermission = hasPermission('ORG_BRANCHES_ACTIVE_READ');
 
   const {
     data,
@@ -23,10 +29,26 @@ export const UsersPage = () => {
     pageSize,
     searchQuery,
     setSearchQuery,
+    selectedBranchId,
+    setSelectedBranchId,
     handlePageChange,
     handlePageSizeChange,
     refetch
   } = useTenantUsers({ initialPageSize: 5 });
+
+  const [activeBranches, setActiveBranches] = useState<TenantActiveBranchResponse[]>([]);
+  const [isLoadingBranches, setIsLoadingBranches] = useState<boolean>(false);
+
+  // Cargar sucursales activas solo si cuenta con el permiso ORG_BRANCHES_ACTIVE_READ
+  useEffect(() => {
+    if (hasBranchesPermission) {
+      setIsLoadingBranches(true);
+      branchService.getActiveBranches()
+        .then(res => setActiveBranches(res || []))
+        .catch(err => console.error('Error loading active branches:', err))
+        .finally(() => setIsLoadingBranches(false));
+    }
+  }, [hasBranchesPermission]);
 
   // Estado del usuario seleccionado y tipo de acción
   const [selectedUser, setSelectedUser] = useState<UserResponse | null>(null);
@@ -189,11 +211,27 @@ export const UsersPage = () => {
           <div className="w-full sm:w-80">
             <ComerziaInput
               icon="Search"
-              placeholder="Buscar por usuario, nombre o rol..."
+              placeholder="Buscar por usuario o nombre... (mín. 3 caracteres)"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
             />
           </div>
+
+          {hasBranchesPermission && (
+            <div className="w-full sm:w-64">
+              <ComerziaSelect
+                placeholder="Todas las sucursales"
+                enableDefaultOption={true}
+                value={selectedBranchId}
+                onChange={e => setSelectedBranchId(e.target.value)}
+                options={activeBranches.map(b => ({
+                  value: b.id,
+                  label: b.name
+                }))}
+                isLoading={isLoadingBranches}
+              />
+            </div>
+          )}
         </div>
       </div>
 

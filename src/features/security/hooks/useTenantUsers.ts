@@ -1,9 +1,10 @@
 // src/features/security/hooks/useTenantUsers.ts
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { userService } from '../services/userService';
 import type { UserResponse } from '../types/user';
 import type { PageResponse } from '../../../types/api';
 import { useToast } from '../../../context/ToastContext';
+import { useDebounce } from '../../../hooks/useDebounce';
 
 interface UseTenantUsersOptions {
   initialPageSize?: number;
@@ -17,12 +18,25 @@ export const useTenantUsers = ({ initialPageSize = 10 }: UseTenantUsersOptions =
   const [page, setPage] = useState<number>(0);
   const [pageSize, setPageSize] = useState<number>(initialPageSize);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [selectedBranchId, setSelectedBranchId] = useState<string>('');
+
+  const debouncedSearch = useDebounce(searchQuery, 350);
+  const isFirstRender = useRef(true);
+
+  // Validación de mínimo 3 caracteres para búsqueda o vacío para traer todos
+  const searchTrimmed = debouncedSearch.trim();
+  const isSearchValid = searchTrimmed.length === 0 || searchTrimmed.length >= 3;
 
   const loadUsers = useCallback(
-    async (currentPage: number, currentSize: number) => {
+    async (currentPage: number, currentSize: number, q?: string, branchId?: string) => {
       try {
         setIsLoading(true);
-        const response = await userService.getTenantUsers(currentPage, currentSize);
+        const response = await userService.getTenantUsers(
+          currentPage,
+          currentSize,
+          q || undefined,
+          branchId || undefined
+        );
         setData(response);
       } catch (error) {
         console.error('Error loading tenant users:', error);
@@ -31,12 +45,37 @@ export const useTenantUsers = ({ initialPageSize = 10 }: UseTenantUsersOptions =
         setIsLoading(false);
       }
     },
-    []
+    [showToast]
   );
 
+  // Carga inicial y cambios en filtros (búsqueda y sucursal)
   useEffect(() => {
-    loadUsers(page, pageSize);
-  }, [loadUsers, page, pageSize]);
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      loadUsers(page, pageSize, undefined, selectedBranchId);
+      return;
+    }
+
+    // Si tiene 1 o 2 caracteres, no hacemos el llamado hasta que llegue a 3 o se limpie
+    if (!isSearchValid) {
+      return;
+    }
+
+    const queryToSearch = searchTrimmed.length >= 3 ? searchTrimmed : undefined;
+    setPage(0);
+    loadUsers(0, pageSize, queryToSearch, selectedBranchId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch, selectedBranchId]);
+
+  // Manejo de paginación
+  useEffect(() => {
+    if (isFirstRender.current) return;
+    if (!isSearchValid) return;
+
+    const queryToSearch = searchTrimmed.length >= 3 ? searchTrimmed : undefined;
+    loadUsers(page, pageSize, queryToSearch, selectedBranchId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, pageSize]);
 
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
@@ -48,31 +87,19 @@ export const useTenantUsers = ({ initialPageSize = 10 }: UseTenantUsersOptions =
   };
 
   const refetch = () => {
-    loadUsers(page, pageSize);
+    const queryToSearch = searchTrimmed.length >= 3 ? searchTrimmed : undefined;
+    loadUsers(page, pageSize, queryToSearch, selectedBranchId);
   };
 
-  // Filtrado local reactivo sobre los usuarios de la página cargada
-  const filteredUsers = useMemo(() => {
-    if (!data?.content) return [];
-    if (!searchQuery.trim()) return data.content;
-
-    const query = searchQuery.toLowerCase().trim();
-    return data.content.filter(
-      user =>
-        user.username.toLowerCase().includes(query) ||
-        user.fullName.toLowerCase().includes(query) ||
-        user.roles.some(role => role.toLowerCase().includes(query)) ||
-        (user.statusTypeName && user.statusTypeName.toLowerCase().includes(query))
-    );
-  }, [data?.content, searchQuery]);
-
   return {
-    data: data ? { ...data, content: filteredUsers } : null,
+    data,
     isLoading,
     page,
     pageSize,
     searchQuery,
     setSearchQuery,
+    selectedBranchId,
+    setSelectedBranchId,
     handlePageChange,
     handlePageSizeChange,
     refetch

@@ -843,7 +843,7 @@ export const DemandForecastingPage = () => {
                   <div className="p-3 rounded-2xl bg-sky-500/10 border border-sky-500/20 text-sky-900 dark:text-sky-200 flex flex-col justify-between shadow-2xs">
                     <div className="flex items-center gap-2 font-bold mb-1 text-sky-600 dark:text-sky-400">
                       <Coins size={15} className="shrink-0" />
-                      <span className="text-xs">Vacas</span>
+                      <span className="text-xs">Volumen</span>
                     </div>
                     <span className="text-[11px] opacity-80 leading-snug block">Alta rotación y bajo margen. Traen flujo continuo.</span>
                   </div>

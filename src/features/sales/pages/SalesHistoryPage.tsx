@@ -14,7 +14,7 @@ import { ComerziaContextMenu, ContextMenuItem } from '../../../components/ui/Com
 import { BtnCancel, BtnModalYes } from '../../../components/ui/CrudButtons';
 import { SaleDetailsModal } from '../components/SaleDetailsModal';
 import { RegisterSaleCustomerModal } from '../components/RegisterSaleCustomerModal';
-import { formatDateForUser } from '../../../utils/date';
+import { formatDateForUser, type FilterPeriod, PERIOD_OPTIONS, getPeriodDescription } from '../../../utils/date';
 import { useLoadDictionaries } from '../../../hooks/useLoadDictionaries';
 import { DICTIONARIES } from '../../../config/dictionaries';
 import {
@@ -78,12 +78,55 @@ export const SalesHistoryPage = () => {
     return `${year}-${month}-${day}`;
   };
 
+  const formatLocalDate = (d: Date): string => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const getDateRange = (
+    selectedPeriod: FilterPeriod,
+    customStart: string,
+    customEnd: string
+  ): { start?: string; end?: string } => {
+    const now = new Date();
+    if (selectedPeriod === 'TODAY') {
+      const todayStr = formatLocalDate(now);
+      return { start: todayStr, end: todayStr };
+    }
+    if (selectedPeriod === 'THIS_WEEK') {
+      const day = now.getDay();
+      const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Lunes
+      const monday = new Date(now.getFullYear(), now.getMonth(), diff);
+      return { start: formatLocalDate(monday), end: formatLocalDate(now) };
+    }
+    if (selectedPeriod === 'THIS_MONTH') {
+      const start = new Date(now.getFullYear(), now.getMonth(), 1);
+      return { start: formatLocalDate(start), end: formatLocalDate(now) };
+    }
+    if (selectedPeriod === 'LAST_MONTH') {
+      const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const end = new Date(now.getFullYear(), now.getMonth(), 0);
+      return { start: formatLocalDate(start), end: formatLocalDate(end) };
+    }
+    if (selectedPeriod === 'THIS_YEAR') {
+      const start = new Date(now.getFullYear(), 0, 1);
+      return { start: formatLocalDate(start), end: formatLocalDate(now) };
+    }
+    if (selectedPeriod === 'CUSTOM') {
+      return { start: customStart || undefined, end: customEnd || undefined };
+    }
+    return {};
+  };
+
   // Lista de vendedores disponibles para el filtro
   const [sellers, setSellers] = useState<SellerResponse[]>([]);
 
-  // Estados de Filtro (por defecto la fecha actual en ambos)
-  const [startDate, setStartDate] = useState(getTodayDateString());
-  const [endDate, setEndDate] = useState(getTodayDateString());
+  // Estados de Filtro (por defecto TODAY)
+  const [period, setPeriod] = useState<FilterPeriod>('TODAY');
+  const [customStartDate, setCustomStartDate] = useState(getTodayDateString());
+  const [customEndDate, setCustomEndDate] = useState(getTodayDateString());
   const [selectedSeller, setSelectedSeller] = useState('');
   const [appliedFilters, setAppliedFilters] = useState<{
     startDate?: string;
@@ -185,13 +228,14 @@ export const SalesHistoryPage = () => {
   };
 
   const handleApplyFilters = () => {
-    if (startDate && endDate && startDate > endDate) {
+    const range = getDateRange(period, customStartDate, customEndDate);
+    if (period === 'CUSTOM' && range.start && range.end && range.start > range.end) {
       toastError("La fecha 'Desde' no puede ser posterior a la fecha 'Hasta'.");
       return;
     }
     const newFilters = {
-      startDate: startDate || undefined,
-      endDate: endDate || undefined,
+      startDate: range.start,
+      endDate: range.end,
       sellerUsername: selectedSeller || undefined
     };
     setAppliedFilters(newFilters);
@@ -409,21 +453,39 @@ export const SalesHistoryPage = () => {
       {canFilter && (
         <div className="card bg-base-100 p-4 rounded-2xl shadow-xs border border-base-200 w-full">
           <div className="flex flex-col lg:flex-row gap-3 sm:gap-4 items-stretch lg:items-end w-full">
-            {/* Fechas en la misma fila en mobile (grid-cols-2) y flex-1 en desktop */}
-            <div className="grid grid-cols-2 gap-2 sm:gap-4 flex-1">
-              <ComerziaInput
-                label="Fecha Desde"
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+            {/* Selector de Periodo */}
+            <div className="w-full lg:w-56">
+              <ComerziaSelect
+                label="Periodo"
+                value={period}
+                onChange={(e) => setPeriod(e.target.value as FilterPeriod)}
+                options={PERIOD_OPTIONS}
               />
-              <ComerziaInput
-                label="Fecha Hasta"
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-              />
+              {period !== 'CUSTOM' && (
+                <span className="text-[11px] text-base-content/60 font-medium block mt-1 pl-1">
+                  {getPeriodDescription(period)}
+                </span>
+              )}
             </div>
+
+            {/* Rango Personalizado (solo cuando period === 'CUSTOM') */}
+            {period === 'CUSTOM' && (
+              <div className="grid grid-cols-2 gap-2 sm:gap-4 flex-1 animate-fade-in">
+                <ComerziaInput
+                  label="Fecha Desde"
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                />
+                <ComerziaInput
+                  label="Fecha Hasta"
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                />
+              </div>
+            )}
+
             {/* Selector de vendedor */}
             <div className="w-full lg:w-72 xl:w-80">
               <ComerziaSelect
@@ -439,6 +501,7 @@ export const SalesHistoryPage = () => {
                 ]}
               />
             </div>
+
             {/* Botones de acción */}
             <div className="flex items-center gap-2 shrink-0">
               <ComerziaButton

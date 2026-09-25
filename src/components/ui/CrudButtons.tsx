@@ -1,4 +1,4 @@
-import { Save, X, Trash2, Pencil, FileSpreadsheet, FileText, Plus, ArrowLeft, ArrowRight, RefreshCw, Eye, Unlock, Lock, DollarSign, Coins } from "lucide-react";
+import { Save, X, Trash2, Pencil, FileSpreadsheet, FileText, Plus, ArrowLeft, ArrowRight, RefreshCw, Eye, Unlock, Lock, DollarSign, Coins, Camera, Upload } from "lucide-react";
 import { ComerziaButton } from "./ComerziaButton";
 
 // Tipos para pasar props extra (como onClick)
@@ -333,6 +333,28 @@ export const BtnValuateIcon = (props: BaseBtnProps) => (
         isIconOnly 
         icon={<DollarSign size={16} />} 
         tooltip="Valorizar Stock"
+        {...props} 
+    />
+);
+
+// 22. BOTÓN CÁMARA / FOTO (Primario + Cámara)
+export const BtnCamera = ({ label = "Tomar Foto", responsive = false, ...props }: BaseBtnProps) => (
+    <ComerziaButton 
+        variant="primary" 
+        label={label} 
+        icon={<Camera size={16} />} 
+        responsive={responsive}
+        {...props} 
+    />
+);
+
+// 23. BOTÓN GALERÍA / SUBIR (Neutral/Ghost + Upload)
+export const BtnGallery = ({ label = "Galería", responsive = false, ...props }: BaseBtnProps) => (
+    <ComerziaButton 
+        variant="neutral" 
+        label={label} 
+        icon={<Upload size={16} />} 
+        responsive={responsive}
         {...props} 
     />
 );

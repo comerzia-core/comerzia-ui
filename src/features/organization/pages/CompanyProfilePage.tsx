@@ -255,51 +255,49 @@ export const CompanyProfilePage = () => {
             </div>
           </div>
 
-          {/* TARJETA SUSCRIPCIÓN */}
-          <div className="card bg-gradient-to-br from-primary/5 to-base-100 shadow-sm border border-primary/20">
-            <div className="card-body p-6">
-              <h2 className="card-title text-lg mb-4 text-primary flex gap-2">
-                <CreditCard className="w-5 h-5" /> Tu Suscripción
-              </h2>
-              
-              <div className="space-y-3">
-                <div className="flex justify-between items-center border-b border-base-200/50 pb-2">
-                  <span className="text-sm font-medium text-base-content/70">Plan</span>
-                  <span className="badge badge-primary">{currentSubscription.planName}</span>
-                </div>
-                <div className="flex justify-between items-center border-b border-base-200/50 pb-2">
-                  <span className="text-sm font-medium text-base-content/70">Estado</span>
-                  <span className="font-bold text-success text-sm">{currentSubscription.statusName}</span>
-                </div>
+          {/* TARJETA SUSCRIPCIÓN (Oculta para planes Perpetuos - 705) */}
+          {currentSubscription && currentSubscription.planTypeCode !== 705 && (
+            <div className="card bg-base-100 shadow-xs border border-base-200">
+              <div className="card-body p-6">
+                <h2 className="card-title text-lg mb-4 text-primary flex items-center gap-2 font-bold">
+                  <CreditCard className="w-5 h-5 text-primary" /> Tu Suscripción
+                </h2>
+                
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center border-b border-base-200 pb-2">
+                    <span className="text-sm font-medium text-base-content/70">Plan</span>
+                    <span className="badge badge-primary font-bold">{currentSubscription.planName}</span>
+                  </div>
+                  <div className="flex justify-between items-center border-b border-base-200 pb-2">
+                    <span className="text-sm font-medium text-base-content/70">Estado</span>
+                    <span className="font-bold text-success text-sm">{currentSubscription.statusName}</span>
+                  </div>
 
-                {currentSubscription.planTypeCode !== 705 && (
-                  <>
-                    <div className="flex justify-between items-center border-b border-base-200/50 pb-2">
-                      <span className="text-sm font-medium text-base-content/70">Válido hasta</span>
-                      <span className="text-sm font-semibold text-base-content">
-                        {formatDateForUser(currentSubscription.validUntil)}
-                      </span>
+                  <div className="flex justify-between items-center border-b border-base-200 pb-2">
+                    <span className="text-sm font-medium text-base-content/70">Válido hasta</span>
+                    <span className="text-sm font-semibold text-base-content">
+                      {formatDateForUser(currentSubscription.validUntil)}
+                    </span>
+                  </div>
+                  
+                  <div className="pt-3 grid grid-cols-3 gap-2 text-center">
+                    <div className="bg-base-200/50 rounded-xl p-2.5 border border-base-200">
+                      <p className="text-[10px] uppercase font-bold text-base-content/50 mb-1">Sucursales</p>
+                      <p className="font-black text-lg text-base-content">{currentSubscription.maxBranches}</p>
                     </div>
-                    
-                    <div className="pt-3 grid grid-cols-3 gap-2 text-center">
-                      <div className="bg-base-100 rounded-box p-2 shadow-sm border border-base-200">
-                        <p className="text-[10px] uppercase font-bold text-base-content/50 mb-1">Sucursales</p>
-                        <p className="font-black text-lg text-base-content">{currentSubscription.maxBranches}</p>
-                      </div>
-                      <div className="bg-base-100 rounded-box p-2 shadow-sm border border-base-200">
-                        <p className="text-[10px] uppercase font-bold text-base-content/50 mb-1">Usuarios</p>
-                        <p className="font-black text-lg text-base-content">{currentSubscription.maxUsers}</p>
-                      </div>
-                      <div className="bg-base-100 rounded-box p-2 shadow-sm border border-base-200">
-                        <p className="text-[10px] uppercase font-bold text-base-content/50 mb-1">Productos</p>
-                        <p className="font-black text-lg text-base-content">{currentSubscription.maxProducts}</p>
-                      </div>
+                    <div className="bg-base-200/50 rounded-xl p-2.5 border border-base-200">
+                      <p className="text-[10px] uppercase font-bold text-base-content/50 mb-1">Usuarios</p>
+                      <p className="font-black text-lg text-base-content">{currentSubscription.maxUsers}</p>
                     </div>
-                  </>
-                )}
+                    <div className="bg-base-200/50 rounded-xl p-2.5 border border-base-200">
+                      <p className="text-[10px] uppercase font-bold text-base-content/50 mb-1">Productos</p>
+                      <p className="font-black text-lg text-base-content">{currentSubscription.maxProducts}</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
         </div>
 

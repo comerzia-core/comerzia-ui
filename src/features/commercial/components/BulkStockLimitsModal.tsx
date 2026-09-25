@@ -196,12 +196,19 @@ export const BulkStockLimitsModal = ({
         </div>
 
         {/* Botones de acción */}
-        <div className="flex justify-end gap-2 pt-3 border-t border-base-200">
-          <BtnCancel onClick={onClose} disabled={isSubmitting} />
+        <div className="flex flex-row items-center gap-2 mt-6 pt-3 border-t border-base-200 w-full sm:justify-end">
+          <BtnCancel
+            onClick={onClose}
+            disabled={isSubmitting}
+            responsive={true}
+            className="flex-1 sm:flex-none sm:w-auto min-w-0"
+          />
           <BtnSave
             onClick={handleSubmit}
             isLoading={isSubmitting}
             label="Aplicar a Todos"
+            responsive={true}
+            className="flex-1 sm:flex-none sm:w-auto min-w-0"
           />
         </div>
       </div>

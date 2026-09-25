@@ -10,9 +10,18 @@ import type {
 } from '../types/user';
 
 export const userService = {
-  getTenantUsers: async (page: number, size: number): Promise<PageResponse<UserResponse>> => {
+  getTenantUsers: async (
+    page: number,
+    size: number,
+    q?: string,
+    branchId?: string
+  ): Promise<PageResponse<UserResponse>> => {
+    const params: Record<string, any> = { page, size };
+    if (q) params.q = q;
+    if (branchId) params.branchId = branchId;
+
     const response = await api.get<PageResponse<UserResponse>>('/tenant/users', {
-      params: { page, size }
+      params
     });
     return response.data;
   },
