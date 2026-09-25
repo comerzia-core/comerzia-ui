@@ -14,6 +14,7 @@ import { CompanyDashboardPage } from "../features/saas/pages/CompanyDashboardPag
 import { CompanyProfilePage } from "../features/organization/pages/CompanyProfilePage";
 import { BranchesPage } from "../features/organization/pages/BranchesPage";
 import { EmployeePage } from "../features/employees/pages/EmployeePage";
+import { SalesPerformancePage } from "../features/employees/pages/SalesPerformancePage";
 
 // --- POINT OF SALE ---
 import { TerminalPage } from "../features/pos/pages/TerminalPage";
@@ -73,6 +74,7 @@ export const AppRouter = () => {
             {/* --- MÓDULO RRHH --- */}
             <Route path="/hrm/staff" element={<EmployeePage />} />
             <Route path="/hrm/payroll" element={<UnderConstruction />} />
+            <Route path="/hrm/sales-performance" element={<SalesPerformancePage />} />
             
             <Route path="/commercial/catalog" element={<CatalogPage />} />
             <Route path="/commercial/stock-query" element={<StockQueryPage />} />
