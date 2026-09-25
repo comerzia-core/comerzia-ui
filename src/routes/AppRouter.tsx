@@ -30,6 +30,7 @@ import { PricesPage } from "../features/commercial/pages/PricesPage";
 import { InventoriesPage } from "../features/commercial/pages/InventoriesPage";
 import { StockReportsPage } from "../features/commercial/pages/StockReportsPage";
 import { StockValuationPage } from "../features/commercial/pages/StockValuationPage";
+import { DemandForecastingPage } from "../features/commercial/pages/DemandForecastingPage";
 
 // --- SECURITY ---
 import { AuditPage } from "../features/security/pages/AuditPage";
@@ -80,6 +81,7 @@ export const AppRouter = () => {
             <Route path="/commercial/inventories" element={<InventoriesPage />} />
             <Route path="/commercial/reports" element={<StockReportsPage />} />
             <Route path="/commercial/valuation" element={<StockValuationPage />} />
+            <Route path="/commercial/forecast" element={<DemandForecastingPage />} />
 
             {/* --- POINT OF SALE --- */}
             <Route path="/pos/terminal" element={<TerminalPage />} />

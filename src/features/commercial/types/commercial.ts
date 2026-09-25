@@ -510,4 +510,60 @@ export interface PageValuationReportResponse {
   number: number;
 }
 
+// Demand Forecasting & BI Intelligence
+export interface DemandBcgItem {
+  id: string;
+  name: string;
+  velocity: number;
+  marginPercentage: number;
+  totalSales: number;
+}
+
+export interface DemandTrendItem {
+  dateGroup: string;
+  totalSales: number;
+}
+
+export interface DemandChartsResponse {
+  distributionType?: string;
+  trendChart: DemandTrendItem[];
+  bcgMatrix: DemandBcgItem[];
+}
+
+export interface DemandMetricsResponse {
+  globalVelocity: number;
+  averageDaysRemaining: number;
+  deadStockCapital: number;
+  turnoverRate: number;
+}
+
+export type DemandRotationStatus = 'HIGH' | 'MEDIUM' | 'LOW' | 'DEAD';
+export type DemandSuggestedAction = 'REORDER' | 'MAINTAIN' | 'PROMOTE' | 'LIQUIDATE' | 'HOLD';
+
+export interface DemandReportResponse {
+  variantId: string;
+  variantName: string;
+  productName: string;
+  sku: string;
+  barCode: string;
+  imageUrl?: string | null;
+  categoryName?: string;
+  segmentName?: string;
+  brandName?: string;
+  currentStock: number;
+  dailyVelocity: number;
+  daysRemaining: number | null;
+  rotationStatus: DemandRotationStatus | string;
+  suggestedAction: DemandSuggestedAction | string;
+  marginPercentage?: number;
+}
+
+export interface PageDemandReportResponse {
+  content: DemandReportResponse[];
+  totalElements: number;
+  totalPages: number;
+  size: number;
+  number: number;
+}
+
 

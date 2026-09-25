@@ -493,19 +493,17 @@ const DONUT_PALETTE = [
             Sucursal / Tienda Activa:
           </label>
           <ComerziaSelect
-            placeholder="Consolidado Corporativo (Todas)"
+            placeholder="Todas las sucursales"
+            enableDefaultOption={true}
             value={selectedBranchId}
             onChange={e => {
               setSelectedBranchId(e.target.value);
               setPage(0);
             }}
-            options={[
-              { value: '', label: '🌐 Todas las Sucursales (Consolidado)' },
-              ...branches.map(b => ({
-                value: b.id,
-                label: b.name
-              }))
-            ]}
+            options={branches.map(b => ({
+              value: b.id,
+              label: b.name
+            }))}
             isLoading={isLoadingBranches}
           />
         </div>

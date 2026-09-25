@@ -40,7 +40,10 @@ import type {
   UpdateBranchVariantSettingsRequest,
   ValuationMetricsResponse,
   ValuationChartsResponse,
-  PageValuationReportResponse
+  PageValuationReportResponse,
+  DemandMetricsResponse,
+  DemandChartsResponse,
+  PageDemandReportResponse
 } from '../types/commercial';
 
 export const commercialService = {
@@ -450,6 +453,67 @@ export const commercialService = {
     if (params.brandId && params.brandId.trim()) query.append('brandId', params.brandId.trim());
 
     const response = await api.get(`/tenant/stock/valuation-charts?${query.toString()}`);
+    return response.data;
+  },
+
+  // Demand Forecasting (BI)
+  getDemandMetrics: async (params: {
+    branchId?: string;
+    daysHistory?: number;
+    categoryId?: string;
+    segmentId?: string;
+    brandId?: string;
+  }): Promise<DemandMetricsResponse> => {
+    const query = new URLSearchParams();
+    if (params.branchId && params.branchId.trim()) query.append('branchId', params.branchId.trim());
+    if (params.daysHistory !== undefined) query.append('daysHistory', String(params.daysHistory));
+    if (params.categoryId && params.categoryId.trim()) query.append('categoryId', params.categoryId.trim());
+    if (params.segmentId && params.segmentId.trim()) query.append('segmentId', params.segmentId.trim());
+    if (params.brandId && params.brandId.trim()) query.append('brandId', params.brandId.trim());
+
+    const response = await api.get(`/tenant/stock/demand/metrics?${query.toString()}`);
+    return response.data;
+  },
+
+  getDemandCharts: async (params: {
+    branchId?: string;
+    daysHistory?: number;
+    categoryId?: string;
+    segmentId?: string;
+    brandId?: string;
+  }): Promise<DemandChartsResponse> => {
+    const query = new URLSearchParams();
+    if (params.branchId && params.branchId.trim()) query.append('branchId', params.branchId.trim());
+    if (params.daysHistory !== undefined) query.append('daysHistory', String(params.daysHistory));
+    if (params.categoryId && params.categoryId.trim()) query.append('categoryId', params.categoryId.trim());
+    if (params.segmentId && params.segmentId.trim()) query.append('segmentId', params.segmentId.trim());
+    if (params.brandId && params.brandId.trim()) query.append('brandId', params.brandId.trim());
+
+    const response = await api.get(`/tenant/stock/demand/charts?${query.toString()}`);
+    return response.data;
+  },
+
+  getDemandReport: async (params: {
+    branchId?: string;
+    categoryId?: string;
+    segmentId?: string;
+    brandId?: string;
+    daysHistory?: number;
+    page?: number;
+    size?: number;
+    sort?: string;
+  }): Promise<PageDemandReportResponse> => {
+    const query = new URLSearchParams();
+    if (params.branchId && params.branchId.trim()) query.append('branchId', params.branchId.trim());
+    if (params.categoryId && params.categoryId.trim()) query.append('categoryId', params.categoryId.trim());
+    if (params.segmentId && params.segmentId.trim()) query.append('segmentId', params.segmentId.trim());
+    if (params.brandId && params.brandId.trim()) query.append('brandId', params.brandId.trim());
+    if (params.daysHistory !== undefined) query.append('daysHistory', String(params.daysHistory));
+    if (params.page !== undefined) query.append('page', String(params.page));
+    if (params.size !== undefined) query.append('size', String(params.size));
+    if (params.sort && params.sort.trim()) query.append('sort', params.sort.trim());
+
+    const response = await api.get(`/tenant/stock/demand/report?${query.toString()}`);
     return response.data;
   }
 };
