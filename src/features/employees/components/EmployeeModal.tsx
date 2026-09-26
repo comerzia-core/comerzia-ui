@@ -16,6 +16,7 @@ import { useToast } from '../../../context/ToastContext';
 import { SubscriptionLimitModal } from '../../../components/ui/SubscriptionLimitModal';
 import type { EmployeeSummaryResponse, EmployeeCreatedResponse } from '../types/employee';
 import type { RoleResponse } from '../../security/types/user';
+import type { BranchResponse } from '../../organization/types/branch';
 
 interface Props {
   isOpen: boolean;
@@ -124,7 +125,7 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
       const rolesRes = !isEditing ? results[1] : null;
 
       if (branchesRes && branchesRes.status === 'fulfilled') {
-        setBranches(branchesRes.value.content.map(b => ({ value: b.id, label: b.name })));
+        setBranches(branchesRes.value.content.map((b: BranchResponse) => ({ value: b.id, label: b.name })));
       }
       if (rolesRes && rolesRes.status === 'fulfilled') {
         setRoles(rolesRes.value);
