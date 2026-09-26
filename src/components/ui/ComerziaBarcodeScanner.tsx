@@ -31,12 +31,14 @@ export const ComerziaBarcodeScanner = ({
   const onScanSuccessRef = useRef(onScanSuccess);
   const onScanErrorRef = useRef(onScanError);
 
+  const defaultDeviceIdRef = useRef<string>("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeDeviceId, setActiveDeviceId] = useState<string>("");
   const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
   const [hasTorch, setHasTorch] = useState<boolean>(false);
   const [isTorchOn, setIsTorchOn] = useState<boolean>(false);
+  const [isCameraSwitched, setIsCameraSwitched] = useState<boolean>(false);
 
   // Mantener actualizadas las referencias de callbacks sin reiniciar el efecto
   useEffect(() => {
@@ -120,6 +122,7 @@ export const ComerziaBarcodeScanner = ({
             d.label.toLowerCase().match(/back|rear|environment|trasera|posterior|externa/)
           );
           chosenDeviceId = backCam ? backCam.deviceId : devices[0].deviceId;
+          defaultDeviceIdRef.current = chosenDeviceId;
         }
 
         if (!videoRef.current || !isMounted) return;
@@ -234,9 +237,12 @@ export const ComerziaBarcodeScanner = ({
 
   const toggleCamera = () => {
     if (videoDevices.length <= 1) return;
-    const currentIndex = videoDevices.findIndex((d) => d.deviceId === activeDeviceId);
-    const nextIndex = (currentIndex + 1) % videoDevices.length;
-    setActiveDeviceId(videoDevices[nextIndex].deviceId);
+    const currentId = activeDeviceId || defaultDeviceIdRef.current || videoDevices[0].deviceId;
+    const currentIndex = videoDevices.findIndex((d) => d.deviceId === currentId);
+    const nextIndex = (currentIndex >= 0 ? currentIndex + 1 : 1) % videoDevices.length;
+    const nextDevice = videoDevices[nextIndex];
+    setActiveDeviceId(nextDevice.deviceId);
+    setIsCameraSwitched(nextDevice.deviceId !== defaultDeviceIdRef.current);
   };
 
   const toggleTorch = async () => {
@@ -298,16 +304,16 @@ export const ComerziaBarcodeScanner = ({
             <button
               type="button"
               onClick={toggleTorch}
-              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold shadow-lg transition-all active:scale-95 backdrop-blur-md border ${
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold shadow-lg transition-all active:scale-95 backdrop-blur-md border-none outline-none focus:outline-none focus-visible:outline-none ring-0 focus:ring-0 select-none ${
                 isTorchOn
-                  ? "bg-warning text-black border-warning ring-2 ring-warning/50 font-black shadow-warning/20"
-                  : "bg-black/75 text-white border-white/20 hover:bg-black/90"
+                  ? "bg-warning text-black font-black shadow-warning/20"
+                  : "bg-black/75 text-white hover:bg-black/90"
               }`}
               title={isTorchOn ? "Apagar Linterna" : "Encender Linterna"}
             >
               {isTorchOn ? (
                 <>
-                  <FlashlightOff size={16} className="shrink-0" />
+                  <FlashlightOff size={16} className="shrink-0 text-black" />
                   <span>Flash: ON</span>
                 </>
               ) : (
@@ -326,10 +332,19 @@ export const ComerziaBarcodeScanner = ({
             <button
               type="button"
               onClick={toggleCamera}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-black/75 text-white border border-white/20 hover:bg-black/90 backdrop-blur-md shadow-lg transition-all active:scale-95"
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold shadow-lg transition-all active:scale-95 backdrop-blur-md border-none outline-none focus:outline-none focus-visible:outline-none ring-0 focus:ring-0 select-none ${
+                isCameraSwitched
+                  ? "bg-warning text-black font-black shadow-warning/20"
+                  : "bg-black/75 text-white hover:bg-black/90"
+              }`}
               title="Alternar entre cámara frontal y trasera"
             >
-              <RefreshCw size={15} className="text-primary shrink-0" />
+              <RefreshCw
+                size={15}
+                className={`shrink-0 transition-transform duration-300 ${
+                  isCameraSwitched ? "text-black rotate-180" : "text-warning"
+                }`}
+              />
               <span>Girar Cámara</span>
             </button>
           )}

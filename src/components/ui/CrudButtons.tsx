@@ -1,4 +1,4 @@
-import { Save, X, Trash2, Pencil, FileSpreadsheet, FileText, Plus, ArrowLeft, ArrowRight, RefreshCw, Eye, Unlock, Lock, DollarSign, Coins, Camera, Upload } from "lucide-react";
+import { Save, X, Trash2, Pencil, FileSpreadsheet, FileText, Plus, ArrowLeft, ArrowRight, RefreshCw, Eye, Unlock, Lock, DollarSign, Coins, Camera, Upload, ScanBarcode } from "lucide-react";
 import { ComerziaButton } from "./ComerziaButton";
 
 // Tipos para pasar props extra (como onClick)
@@ -355,6 +355,30 @@ export const BtnGallery = ({ label = "Galería", responsive = false, ...props }:
         label={label} 
         icon={<Upload size={16} />} 
         responsive={responsive}
+        {...props} 
+    />
+);
+
+// 24. BOTÓN ESCANEAR CÓDIGO (Primario + ScanBarcode)
+export const BtnScan = ({ label = "Escanear", responsive = true, type = "button", ...props }: BaseBtnProps) => (
+    <ComerziaButton 
+        type={type}
+        variant="primary" 
+        label={label} 
+        icon={<ScanBarcode size={18} className="sm:w-5 sm:h-5" />} 
+        responsive={responsive}
+        {...props} 
+    />
+);
+
+// 24.1 BOTÓN ESCANEAR ICONO (Redondo para campos de formulario)
+export const BtnScanIcon = ({ type = "button", ...props }: BaseBtnProps) => (
+    <ComerziaButton 
+        type={type}
+        variant="primary" 
+        isIconOnly 
+        icon={<ScanBarcode size={16} />} 
+        tooltip="Escanear código con cámara"
         {...props} 
     />
 );

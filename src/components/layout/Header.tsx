@@ -67,7 +67,7 @@ export const Header = () => {
 
   return (
     <>
-      <div className="h-16 flex items-center justify-between px-4 sm:px-6 border-b border-base-300 bg-base-100 sticky top-0 z-30 shadow-sm">
+      <div className={`h-16 flex items-center justify-between px-4 sm:px-6 border-b border-base-300 bg-base-100 sticky top-0 ${isDropdownOpen ? 'z-50' : 'z-30'} shadow-sm`}>
 
         {/* IZQUIERDA */}
         <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1 mr-2">
@@ -90,10 +90,10 @@ export const Header = () => {
         {/* DERECHA */}
         <div className="flex items-center gap-2 shrink-0">
 
-          {/* TELÓN DE FONDO (BACKDROP OSCURO) EN MOBILE */}
+          {/* TELÓN DE FONDO (BACKDROP OSCURO Y DIFUMINADO) EN MOBILE */}
           {isDropdownOpen && (
             <div
-              className="fixed inset-0 bg-neutral/40 dark:bg-black/50 backdrop-blur-[1px] z-40 lg:hidden animate-fade-in cursor-pointer"
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden animate-fade-in cursor-pointer"
               onClick={closeDropdown}
               aria-label="Cerrar opciones de perfil"
             />

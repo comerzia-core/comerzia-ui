@@ -1,6 +1,7 @@
 import api from '../../../lib/axios';
 import type { 
-  CategoryResponse, 
+  CategoryResponse,
+  CatalogAvailabilityResponse,
   SegmentResponse, 
   BrandResponse, 
   ProductResponse,
@@ -175,6 +176,21 @@ export const commercialService = {
   // Catalog Master (Full Product)
   createFullProduct: async (data: CreateFullProductRequest): Promise<ProductResponse> => {
     const response = await api.post('/tenant/catalog/products', data);
+    return response.data;
+  },
+
+  checkProductName: async (name: string, brandId: string): Promise<CatalogAvailabilityResponse> => {
+    const response = await api.get('/tenant/catalog/check-product-name', { params: { name, brandId } });
+    return response.data;
+  },
+
+  checkSku: async (sku: string): Promise<CatalogAvailabilityResponse> => {
+    const response = await api.get('/tenant/catalog/check-sku', { params: { sku } });
+    return response.data;
+  },
+
+  checkBarcode: async (barcode: string): Promise<CatalogAvailabilityResponse> => {
+    const response = await api.get('/tenant/catalog/check-barcode', { params: { barcode } });
     return response.data;
   },
 

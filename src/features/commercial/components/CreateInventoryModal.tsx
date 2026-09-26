@@ -30,9 +30,12 @@ export const CreateInventoryModal = ({ isOpen, onClose, onSuccess }: Props) => {
 
   useEffect(() => {
     if (isOpen) {
+      setShakeKey(0);
       setSegmentId('');
       setEmployeeId('');
       loadLookups();
+    } else {
+      setShakeKey(0);
     }
   }, [isOpen]);
 
@@ -71,6 +74,7 @@ export const CreateInventoryModal = ({ isOpen, onClose, onSuccess }: Props) => {
         assignedEmployeeId: employeeId
       });
       toastSuccess("Orden de inventario creada exitosamente.");
+      setShakeKey(0);
       onSuccess();
       onClose();
     } catch (e: any) {
@@ -80,10 +84,15 @@ export const CreateInventoryModal = ({ isOpen, onClose, onSuccess }: Props) => {
     }
   };
 
+  const handleModalClose = () => {
+    setShakeKey(0);
+    onClose();
+  };
+
   return (
     <ComerziaModal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={handleModalClose}
       title="Nueva Orden de Conteo Físico"
       size="md"
     >
@@ -109,7 +118,7 @@ export const CreateInventoryModal = ({ isOpen, onClose, onSuccess }: Props) => {
         />
 
         <div className="flex flex-row items-center gap-2 mt-6 pt-3 border-t border-base-200 w-full sm:justify-end">
-          <BtnCancel onClick={onClose} disabled={isSubmitting} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
+          <BtnCancel onClick={handleModalClose} disabled={isSubmitting} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
           <BtnSave onClick={handleSubmit} isLoading={isSubmitting} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
         </div>
       </div>

@@ -6,6 +6,7 @@ import { BtnSave, BtnCancel } from '../../../components/ui/CrudButtons';
 import { commercialService } from '../services/commercialService';
 import type { FamilyResponse } from '../types/commercial';
 import { useToast } from '../../../context/ToastContext';
+import { getCatalogErrorMessage } from '../utils/catalogErrorMessages';
 
 interface Props {
   isOpen: boolean;
@@ -32,11 +33,14 @@ export const GroupFamilyModal = ({ isOpen, onClose, selectedProductIds, onSucces
 
   useEffect(() => {
     if (isOpen) {
+      setShakeKey(0);
       setMode('create');
       setName('');
       setDescription('');
       setSelectedFamilyId('');
       loadFamilies();
+    } else {
+      setShakeKey(0);
     }
   }, [isOpen]);
 
@@ -54,28 +58,31 @@ export const GroupFamilyModal = ({ isOpen, onClose, selectedProductIds, onSucces
 
   const handleSubmit = async () => {
     if (mode === 'create') {
-      if (!name) {
+      if (!name.trim()) {
         setShakeKey(prev => prev + 1);
+        toastError("Ingresa el nombre de la familia.");
         return;
       }
       setIsSubmitting(true);
       try {
         await commercialService.createFamilyGroup({
-          name,
-          description: description || undefined,
+          name: name.trim(),
+          description: description?.trim() || undefined,
           productIds: selectedProductIds
         });
-        toastSuccess("Familia creada exitosamente.");
+        toastSuccess("Grupo de familia creado exitosamente.");
+        setShakeKey(0);
         onSuccess();
         onClose();
       } catch (e: any) {
-        toastError(e.response?.data?.message || "Error al crear la familia.");
+        toastError(getCatalogErrorMessage(e, "Error al crear la familia."));
       } finally {
         setIsSubmitting(false);
       }
     } else {
       if (!selectedFamilyId) {
         setShakeKey(prev => prev + 1);
+        toastError("Selecciona una familia existente.");
         return;
       }
       setIsSubmitting(true);
@@ -84,20 +91,26 @@ export const GroupFamilyModal = ({ isOpen, onClose, selectedProductIds, onSucces
           productIds: selectedProductIds
         });
         toastSuccess("Productos añadidos a la familia exitosamente.");
+        setShakeKey(0);
         onSuccess();
         onClose();
       } catch (e: any) {
-        toastError(e.response?.data?.message || "Error al añadir a la familia.");
+        toastError(getCatalogErrorMessage(e, "Error al añadir a la familia."));
       } finally {
         setIsSubmitting(false);
       }
     }
   };
 
+  const handleModalClose = () => {
+    setShakeKey(0);
+    onClose();
+  };
+
   return (
     <ComerziaModal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={handleModalClose}
       title="Agrupar en Familia"
       size="md"
     >
@@ -105,13 +118,19 @@ export const GroupFamilyModal = ({ isOpen, onClose, selectedProductIds, onSucces
         <div className="tabs tabs-boxed mb-6">
           <a 
             className={`tab ${mode === 'create' ? 'tab-active' : ''}`}
-            onClick={() => setMode('create')}
+            onClick={() => {
+              setShakeKey(0);
+              setMode('create');
+            }}
           >
             Crear Nueva Familia
           </a>
           <a 
             className={`tab ${mode === 'add' ? 'tab-active' : ''}`}
-            onClick={() => setMode('add')}
+            onClick={() => {
+              setShakeKey(0);
+              setMode('add');
+            }}
           >
             Añadir a Existente
           </a>
@@ -155,7 +174,7 @@ export const GroupFamilyModal = ({ isOpen, onClose, selectedProductIds, onSucces
         )}
 
         <div className="flex flex-row items-center gap-2 mt-6 pt-3 border-t border-base-200 w-full sm:justify-end">
-          <BtnCancel onClick={onClose} disabled={isSubmitting} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
+          <BtnCancel onClick={handleModalClose} disabled={isSubmitting} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
           <BtnSave onClick={handleSubmit} isLoading={isSubmitting} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
         </div>
       </div>

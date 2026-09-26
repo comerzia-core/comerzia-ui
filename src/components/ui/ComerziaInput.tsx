@@ -31,18 +31,31 @@ export const ComerziaInput = forwardRef<HTMLInputElement, Props>(({
   };
 
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    if (e.target.value) {
-      e.target.value = e.target.value.trim();
-      if (uppercase) e.target.value = e.target.value.toUpperCase();
+    if (typeof e.target.value === "string") {
+      let trimmed = e.target.value.trim();
+      if (uppercase) trimmed = trimmed.toUpperCase();
+
+      if (trimmed !== e.target.value) {
+        e.target.value = trimmed;
+        if (e.currentTarget) e.currentTarget.value = trimmed;
+        if (onChange) {
+          const syntheticEvent = {
+            ...e,
+            target: e.target,
+            currentTarget: e.currentTarget || e.target,
+          } as unknown as React.ChangeEvent<HTMLInputElement>;
+          onChange(syntheticEvent);
+        }
+      }
     }
     if (onBlur) onBlur(e);
   };
 
   return (
     // ❌ Fuera el key dinámico. ✅ Solo aplicamos la clase CSS.
-    <div className={`form-control w-full ${isShaking ? "animate-shake" : ""}`}>
+    <div className={`form-control w-full min-w-0 ${isShaking ? "animate-shake" : ""}`}>
       {label && (
-        <label className="label py-1">
+        <label className="label py-1 w-full min-w-0">
           <span className={`label-text font-semibold flex gap-1 ${error ? "text-error" : ""}`}>
               {label}
               {isRequired && <span className="text-error" title="Campo obligatorio">*</span>}
@@ -50,11 +63,11 @@ export const ComerziaInput = forwardRef<HTMLInputElement, Props>(({
         </label>
       )}
       
-      <div className="relative flex items-center">
+      <div className="relative flex items-center w-full min-w-0">
         <input
           ref={ref}
           className={`
-            input input-bordered w-full transition-all duration-200
+            input input-bordered w-full min-w-0 transition-all duration-200
             bg-base-100 text-base-content
             border-base-300 hover:border-base-content/40
             focus:border-primary focus:ring-2 focus:ring-primary/20 focus:bg-base-100
@@ -87,14 +100,14 @@ export const ComerziaInput = forwardRef<HTMLInputElement, Props>(({
 
       {/* Reorganización de Helper y Error para que no roben espacio si no existen */}
       {helperText && !error && (
-        <label className="label py-1 pb-0 w-full">
+        <label className="label py-1 pb-0 w-full min-w-0">
             <span className="label-text-alt text-base-content/60 whitespace-normal break-words w-full">{helperText}</span>
         </label>
       )}
 
       {error && (
-        <label className="label py-1 pb-0">
-          <span className="label-text-alt text-error font-medium">{error}</span>
+        <label className="label py-1 pb-0 w-full min-w-0">
+          <span className="label-text-alt text-error font-medium whitespace-normal break-words w-full text-xs leading-tight">{error}</span>
         </label>
       )}
     </div>

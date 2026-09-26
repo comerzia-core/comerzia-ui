@@ -52,9 +52,10 @@ export const ComerziaButton = ({
       case "info": return "btn-comerzia-info border-none";
       case "neutral": return "btn-comerzia-neutral border-none";
 
+      case "primary": return "btn-comerzia-primary text-white border-none";
       case "white": return "bg-white text-base-content hover:bg-gray-100 border-none"; 
       case "overlay": return "bg-black/40 hover:bg-black/60 text-white border-none backdrop-blur-[2px] shadow-sm";
-      default: return "btn-comerzia-primary text-white";
+      default: return "btn-comerzia-primary text-white border-none";
     }
   };
 
@@ -66,7 +67,9 @@ export const ComerziaButton = ({
         ${fullWidth ? "w-full" : ""}
         ${isIconOnly 
             ? "btn-circle btn-sm md:btn-md" 
-            : "px-4 min-w-[100px] sm:min-w-[120px] gap-2" 
+            : responsive
+                ? "px-3 sm:px-4 min-w-0 sm:min-w-[110px] gap-1.5 sm:gap-2"
+                : "px-4 min-w-[100px] sm:min-w-[120px] gap-2" 
         }
         shadow-sm hover:shadow-md transition-all
         ${(props.disabled || isLoading) ? "opacity-40 grayscale cursor-not-allowed pointer-events-none shadow-none" : ""}

@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, Package, ScanBarcode } from 'lucide-react';
+import { Search, Package } from 'lucide-react';
 import { salesService } from '../../sales/services/salesService';
 import type { SalesCatalogSuggestionResponse } from '../../sales/types/sales';
 import { getThumbnailUrl } from '../../../utils/image';
 import { BarcodeScannerModal } from '../../../components/ui/BarcodeScannerModal';
+import { BtnScan } from '../../../components/ui/CrudButtons';
 
 interface CommercialProductSearchBarProps {
   onSearchBarcode: (barcode: string) => void;
@@ -55,9 +56,13 @@ export const CommercialProductSearchBar = ({
 
   useEffect(() => {
     const trimmed = term.trim();
-    if (trimmed.length < 4) {
+    // Validación de mínimo 3 letras antes de solicitar sugerencias a la API
+    if (trimmed.length < 3) {
       setSuggestions([]);
       setIsOpen(false);
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
       return;
     }
 
@@ -86,7 +91,8 @@ export const CommercialProductSearchBar = ({
       }
     };
 
-    const debounceTimer = setTimeout(fetchSuggestions, 300);
+    // Delay de debounce de 350ms para esperar que el usuario termine de tipear
+    const debounceTimer = setTimeout(fetchSuggestions, 350);
     return () => clearTimeout(debounceTimer);
   }, [term, branchId]);
 
@@ -153,16 +159,13 @@ export const CommercialProductSearchBar = ({
         </div>
 
         {/* Botón de Escáner de Cámara */}
-        <button
-          type="button"
+        <BtnScan
           onClick={() => setIsScannerOpen(true)}
           disabled={isLoading}
-          className="btn btn-primary h-10 sm:h-12 min-h-0 px-3 sm:px-4 rounded-xl sm:rounded-2xl shadow-xs flex items-center gap-1.5 shrink-0 transition-all"
+          responsive={true}
+          className="h-10 sm:h-12 min-h-0 rounded-xl sm:rounded-2xl shadow-xs shrink-0"
           title="Escanear con cámara"
-        >
-          <ScanBarcode size={18} className="sm:w-5 sm:h-5" />
-          <span className="hidden sm:inline text-xs sm:text-sm font-semibold">Escanear</span>
-        </button>
+        />
       </div>
 
       {/* Dropdown de Sugerencias */}

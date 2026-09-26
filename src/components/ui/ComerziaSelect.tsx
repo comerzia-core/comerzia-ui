@@ -28,9 +28,9 @@ export const ComerziaSelect = forwardRef<HTMLSelectElement, Props>(({
     const isShaking = useShake(shakeKey);
 
     return (
-        <div className={`form-control w-full ${isShaking ? "animate-shake" : ""}`}>
+        <div className={`form-control w-full min-w-0 ${isShaking ? "animate-shake" : ""}`}>
             {label && (
-                <label className="label py-1">
+                <label className="label py-1 w-full min-w-0">
                     <span className={`label-text font-semibold flex gap-1 ${error ? "text-error" : ""}`}>
                         {label}
                         {isRequired && <span className="text-error" title="Campo obligatorio">*</span>}
@@ -41,7 +41,7 @@ export const ComerziaSelect = forwardRef<HTMLSelectElement, Props>(({
             <select 
                 ref={ref}
                 className={`
-                    select select-bordered w-full transition-all duration-200 px-4
+                    select select-bordered w-full min-w-0 transition-all duration-200 px-4
                     bg-base-100 text-base-content
                     border-base-300 hover:border-base-content/40
                     focus:border-primary focus:ring-2 focus:ring-primary/20 focus:bg-base-100
@@ -66,8 +66,8 @@ export const ComerziaSelect = forwardRef<HTMLSelectElement, Props>(({
             </select>
 
             {error && (
-                <label className="label py-1 pb-0">
-                    <span className="label-text-alt text-error font-medium">{error}</span>
+                <label className="label py-1 pb-0 w-full min-w-0">
+                    <span className="label-text-alt text-error font-medium whitespace-normal break-words w-full text-xs leading-tight">{error}</span>
                 </label>
             )}
         </div>

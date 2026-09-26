@@ -28,9 +28,14 @@ export const ComerziaProductSearch = ({ onProductSelect, onError }: ComerziaProd
   }, []);
 
   useEffect(() => {
-    if (term.trim().length < 4) {
+    const trimmed = term.trim();
+    // Validación de mínimo 3 letras antes de solicitar sugerencias
+    if (trimmed.length < 3) {
       setSuggestions([]);
       setIsOpen(false);
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
       return;
     }
 
@@ -43,7 +48,7 @@ export const ComerziaProductSearch = ({ onProductSelect, onError }: ComerziaProd
       abortControllerRef.current = controller;
 
       try {
-        const results = await salesService.getSuggestions(term.trim(), controller.signal);
+        const results = await salesService.getSuggestions(trimmed, controller.signal);
         if (!controller.signal.aborted) {
           setSuggestions(results);
           setIsOpen(true);
@@ -59,7 +64,7 @@ export const ComerziaProductSearch = ({ onProductSelect, onError }: ComerziaProd
       }
     };
 
-    const debounceTimer = setTimeout(fetchSuggestions, 300);
+    const debounceTimer = setTimeout(fetchSuggestions, 350);
     return () => clearTimeout(debounceTimer);
   }, [term]);
 

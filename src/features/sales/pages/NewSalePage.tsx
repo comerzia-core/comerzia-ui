@@ -327,7 +327,7 @@ export const NewSalePage = () => {
   const isCashier = hasRole('CASHIER') || roles.includes('CASHIER');
   const isSeller = hasRole('SELLER') || roles.includes('SELLER');
   const isOwnerOrManager = hasRole('OWNER') || roles.includes('OWNER') || hasRole('BRANCH_MANAGER') || roles.includes('BRANCH_MANAGER');
-  const canAccessPosTerminal = (isCashier && isSeller) || isOwnerOrManager || isCashier;
+  const canAccessPosTerminal = (isCashier && isSeller);
 
   const { success: toastSuccess, error: toastError, warning: toastWarning } = useToast();
 

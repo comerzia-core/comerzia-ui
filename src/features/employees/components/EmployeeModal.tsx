@@ -97,6 +97,7 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
 
   useEffect(() => {
     if (isOpen) {
+      setShakeKey(0);
       setCurrentStep(1);
       setSelectedRoleIds([]);
       loadExternalData();
@@ -105,6 +106,8 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
       } else {
         resetForm();
       }
+    } else {
+      setShakeKey(0);
     }
   }, [isOpen, employee]);
 
@@ -177,6 +180,7 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
       paymentFrequency: '',
       baseSalary: ''
     });
+    setShakeKey(0);
     setSelectedRoleIds([]);
   };
 
@@ -233,10 +237,12 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
       setShakeKey(prev => prev + 1);
       return;
     }
+    setShakeKey(0);
     setCurrentStep(prev => Math.min(prev + 1, STEPS.length));
   };
 
   const handleBack = () => {
+    setShakeKey(0);
     setCurrentStep(prev => Math.max(prev - 1, 1));
   };
 
@@ -283,6 +289,7 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
         });
         onSaved(response);
       }
+      setShakeKey(0);
       onClose();
     } catch (err: any) {
       console.error('Error saving employee:', err);
@@ -316,11 +323,16 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
     }
   };
 
+  const handleModalClose = () => {
+    setShakeKey(0);
+    onClose();
+  };
+
   return (
     <>
       <ComerziaModal
         isOpen={isOpen}
-        onClose={onClose}
+        onClose={handleModalClose}
         title={isEditing ? 'Editar Empleado' : 'Nuevo Empleado'}
         size="lg"
       >
@@ -540,7 +552,7 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
             {currentStep > 1 ? (
               <BtnBack onClick={handleBack} disabled={isLoading} responsive={true} className="w-full sm:w-auto min-w-0" />
             ) : (
-              <BtnCancel onClick={onClose} disabled={isLoading} responsive={true} className="w-full sm:w-auto min-w-0" />
+              <BtnCancel onClick={handleModalClose} disabled={isLoading} responsive={true} className="w-full sm:w-auto min-w-0" />
             )}
           </div>
 

@@ -286,7 +286,11 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
                                                         if (e.key === 'Escape') setEditOptionId(null);
                                                     }}
                                                 />
-                                                <div className="flex-shrink-0" onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                                                <div 
+                                                    className="flex-shrink-0" 
+                                                    onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                                                    onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                                                >
                                                     <ComerziaSwitch 
                                                         checked={editOptionStatus} 
                                                         onChange={() => setEditOptionStatus(!editOptionStatus)} 
@@ -298,6 +302,8 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
                                                     label={`Eliminar ${entityName}`}
                                                     className="btn-sm w-full mt-1"
                                                     responsive={false}
+                                                    onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                                                    onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
                                                     onClick={(e) => {
                                                         e.preventDefault();
                                                         e.stopPropagation();
@@ -331,7 +337,13 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
                                             {onUpdate && canManage && (
                                                 <button 
                                                     type="button"
-                                                    className="btn btn-ghost btn-xs btn-square opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                                                    className={`btn btn-ghost btn-xs btn-square opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity z-10 ${
+                                                        opt.value === value 
+                                                            ? "text-primary-content hover:bg-black/20" 
+                                                            : "text-base-content/70 hover:text-base-content hover:bg-base-200"
+                                                    }`}
+                                                    title={`Editar ${entityName}`}
+                                                    onPointerDown={(e) => e.stopPropagation()}
                                                     onClick={(e) => {
                                                         e.stopPropagation();
                                                         startEditing(e, opt);

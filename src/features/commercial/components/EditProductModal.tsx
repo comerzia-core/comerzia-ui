@@ -11,6 +11,7 @@ import { useToast } from '../../../context/ToastContext';
 
 import { useLoadDictionaries } from '../../../hooks/useLoadDictionaries';
 import { DICTIONARIES } from '../../../config/dictionaries';
+import { getCatalogErrorMessage } from '../utils/catalogErrorMessages';
 
 interface Props {
   isOpen: boolean;
@@ -34,36 +35,56 @@ export const EditProductModal = ({ isOpen, onClose, onSuccess, product }: Props)
 
   useEffect(() => {
     if (isOpen && product) {
+      setShakeKey(0);
       setName(product.name);
       setDescription(product.description || '');
       setVariantType(product.variantType.toString());
       setStatus(product.status);
+    } else {
+      setShakeKey(0);
     }
   }, [isOpen, product]);
 
   const handleSubmit = async () => {
-    if (!name || !variantType || !product?.brand?.id) {
+    if (!name.trim()) {
       setShakeKey(prev => prev + 1);
+      toastError("Ingresa el nombre del producto.");
+      return;
+    }
+    if (!variantType) {
+      setShakeKey(prev => prev + 1);
+      toastError("Selecciona el tipo de variante.");
+      return;
+    }
+    if (!product?.brand?.id) {
+      setShakeKey(prev => prev + 1);
+      toastError("El producto debe tener una marca asociada.");
       return;
     }
 
     setIsSubmitting(true);
     try {
       await commercialService.updateProduct(product.id, {
-        name,
-        description: description || undefined,
+        name: name.trim(),
+        description: description?.trim() || undefined,
         variantType: Number(variantType),
         brandId: product.brand.id,
         status
       });
       toastSuccess("Producto actualizado exitosamente.");
+      setShakeKey(0);
       onSuccess();
       onClose();
     } catch (e: any) {
-      toastError(e.response?.data?.message || "Error al actualizar el producto.");
+      toastError(getCatalogErrorMessage(e, "Error al actualizar el producto."));
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleModalClose = () => {
+    setShakeKey(0);
+    onClose();
   };
 
   if (!product) return null;
@@ -71,7 +92,7 @@ export const EditProductModal = ({ isOpen, onClose, onSuccess, product }: Props)
   return (
     <ComerziaModal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={handleModalClose}
       title={`Editar Producto: ${product.name}`}
       size="lg"
     >
@@ -110,7 +131,7 @@ export const EditProductModal = ({ isOpen, onClose, onSuccess, product }: Props)
         </div>
 
         <div className="flex flex-row items-center gap-2 mt-6 pt-3 border-t border-base-200 w-full sm:justify-end">
-          <BtnCancel onClick={onClose} disabled={isSubmitting} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
+          <BtnCancel onClick={handleModalClose} disabled={isSubmitting} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
           <BtnSave onClick={handleSubmit} isLoading={isSubmitting} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
         </div>
       </div>

@@ -29,11 +29,14 @@ export const UserRolesModal = ({ isOpen, onClose, user, onSuccess }: Props) => {
 
   useEffect(() => {
     if (isOpen && user) {
+      setShakeKey(0);
       // Inicializar con roleIds si ya existen en el objeto user
       if (user.roleIds && Array.isArray(user.roleIds)) {
         setSelectedRoleIds(user.roleIds);
       }
       loadRoles();
+    } else {
+      setShakeKey(0);
     }
   }, [isOpen, user]);
 
@@ -79,6 +82,7 @@ export const UserRolesModal = ({ isOpen, onClose, user, onSuccess }: Props) => {
       setIsSaving(true);
       await userService.updateUserRoles(user.id, selectedRoleIds);
       showToast('Roles de usuario actualizados exitosamente', 'success');
+      setShakeKey(0);
       onSuccess();
       onClose();
     } catch (error: any) {
@@ -97,9 +101,14 @@ export const UserRolesModal = ({ isOpen, onClose, user, onSuccess }: Props) => {
     }
   };
 
+  const handleModalClose = () => {
+    setShakeKey(0);
+    onClose();
+  };
+
   const modalActions = (
     <div className="flex flex-row items-center gap-2 w-full sm:justify-end">
-      <BtnCancel onClick={onClose} disabled={isSaving} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
+      <BtnCancel onClick={handleModalClose} disabled={isSaving} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
       <BtnSave onClick={handleSave} isLoading={isSaving} label="Guardar Roles" responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
     </div>
   );
@@ -107,7 +116,7 @@ export const UserRolesModal = ({ isOpen, onClose, user, onSuccess }: Props) => {
   return (
     <ComerziaModal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={handleModalClose}
       title={
         <div className="flex items-center gap-2 text-primary font-bold">
           <UserCog size={22} />

@@ -4,6 +4,7 @@ import { ComerziaStepper } from '../../../components/ui/ComerziaStepper';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
 import { ComerziaTextarea } from '../../../components/ui/ComerziaTextarea';
 import { ComerziaSelect } from '../../../components/ui/ComerziaSelect';
+import { ComerziaSwitch } from '../../../components/ui/ComerziaSwitch';
 import { BtnCancel, BtnSave, BtnBack, BtnNext } from '../../../components/ui/CrudButtons';
 import { commercialService } from '../services/commercialService';
 import type {
@@ -22,7 +23,9 @@ import { ComerziaSingleImageUploader, type SingleImageValue } from '../../../com
 import { BarcodeScannerModal } from '../../../components/ui/BarcodeScannerModal';
 import { uploadFile } from '../../shared/services/storageService';
 import { STORAGE_FOLDERS } from '../../../config/storage';
-import { ScanBarcode, BadgePercent, X, Plus } from 'lucide-react';
+import { BtnScanIcon } from '../../../components/ui/CrudButtons';
+import { BadgePercent, X, Plus } from 'lucide-react';
+import { getCatalogErrorMessage } from '../utils/catalogErrorMessages';
 
 interface Props {
   isOpen: boolean;
@@ -52,7 +55,7 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
   const [brandId, setBrandId] = useState('');
   const [variantType, setVariantType] = useState('');
   const [variants, setVariants] = useState<CreateFullVariantRequest[]>([
-    { name: '', sku: '', barCode: '', prices: [] }
+    { name: '', sku: '', barCode: '', isInternalBarcode: false, prices: [] }
   ]);
   const [variantImages, setVariantImages] = useState<(SingleImageValue | null)[]>([null]);
   const [scanningVariantIndex, setScanningVariantIndex] = useState<number | null>(null);
@@ -68,18 +71,24 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
   const { error: toastError, success: toastSuccess } = useToast();
   const [openDiscounts, setOpenDiscounts] = useState<Record<string, boolean>>({});
 
+  const [nameError, setNameError] = useState('');
+  const [barcodeErrors, setBarcodeErrors] = useState<Record<number, string>>({});
+
   const hasPreselectedHierarchy = Boolean(initialCategoryId && initialSegmentId && initialBrandId);
 
   useEffect(() => {
     if (isOpen) {
       setStep(1);
+      setShakeKey(0);
+      setNameError('');
+      setBarcodeErrors({});
       setName('');
       setDescription('');
       setCategoryId(initialCategoryId || '');
       setSegmentId(initialSegmentId || '');
       setBrandId(initialBrandId || '');
       setVariantType('');
-      setVariants([{ name: '', sku: '', barCode: '', prices: [] }]);
+      setVariants([{ name: '', sku: '', barCode: '', isInternalBarcode: false, prices: [] }]);
       setVariantImages([null]);
       setOpenDiscounts({});
       loadInitialData();
@@ -89,6 +98,10 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
       if (initialSegmentId) {
         commercialService.getBrandsBySegment(initialSegmentId).then(setBrands);
       }
+    } else {
+      setShakeKey(0);
+      setNameError('');
+      setBarcodeErrors({});
     }
   }, [isOpen, initialCategoryId, initialSegmentId, initialBrandId]);
 
@@ -115,45 +128,139 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
     }
   }, [segmentId]);
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (step === 1) {
-      if (!name || !brandId || !variantType) {
+      if (!name.trim()) {
         setShakeKey(prev => prev + 1);
+        toastError("Ingresa el nombre del producto.");
         return;
+      }
+      if (!variantType) {
+        setShakeKey(prev => prev + 1);
+        toastError("Selecciona el tipo de variante.");
+        return;
+      }
+      if (!brandId) {
+        setShakeKey(prev => prev + 1);
+        toastError("Selecciona una marca.");
+        return;
+      }
+
+      setIsSubmitting(true);
+      try {
+        const nameCheck = await commercialService.checkProductName(name.trim(), brandId);
+        if (!nameCheck.available) {
+          const rawMsg = nameCheck.message || '';
+          const isAlreadyRegistered = rawMsg.toLowerCase().includes('registrado') || rawMsg.toLowerCase().includes('existe');
+          setNameError(isAlreadyRegistered ? "Nombre ya registrado" : (rawMsg || "Nombre no disponible"));
+          toastError(rawMsg || "Nombre ya registrado");
+          setShakeKey(prev => prev + 1);
+          return;
+        }
+      } catch (e: any) {
+        toastError(getCatalogErrorMessage(e, "Error validando el nombre."));
+        return;
+      } finally {
+        setIsSubmitting(false);
       }
     }
     if (step === 2) {
-      for (const v of variants) {
-        if (!v.name || !v.barCode) {
+      for (let i = 0; i < variants.length; i++) {
+        const v = variants[i];
+        if (!v.name.trim()) {
           setShakeKey(prev => prev + 1);
-          toastError("Por favor completa todos los campos de las variantes.");
+          toastError(`Completa el nombre de la variante ${i + 1}.`);
+          return;
+        }
+        if (!v.isInternalBarcode && !v.barCode.trim()) {
+          setShakeKey(prev => prev + 1);
+          toastError(`Completa el código de barras de la variante ${i + 1}.`);
           return;
         }
       }
 
-      // Ensure sku is generated automatically in background
-      const variantsWithSku = variants.map(v => ({
-        ...v,
-        sku: v.sku || generateSku(name, v.name)
-      }));
+      // Validar códigos de barras duplicados entre variantes (solo para los que no son internos y tienen barcode)
+      const scannedBarcodes = variants.filter(v => !v.isInternalBarcode && v.barCode.trim() !== '').map(v => v.barCode.trim());
+      if (new Set(scannedBarcodes).size !== scannedBarcodes.length) {
+        setShakeKey(prev => prev + 1);
+        toastError("Hay códigos de barras duplicados entre las variantes.");
+        return;
+      }
 
-      // Initialize prices for step 3 if empty (only first price type enabled by default)
-      const updatedVariants = variantsWithSku.map(v => {
-        if (v.prices.length === 0) {
-          const initialPrices = priceTypes.length > 0 ? [{
-            priceTypeId: priceTypes[0].id,
-            salePrice: '' as unknown as number,
-            discountPrice: '' as unknown as number
-          }] : [];
+      setIsSubmitting(true);
+      try {
+        const newBarcodeErrors: Record<number, string> = {};
+        let hasBarcodeError = false;
+
+        // Validar códigos de barras con el backend (solo si no son internos)
+        for (let i = 0; i < variants.length; i++) {
+          const v = variants[i];
+          if (!v.isInternalBarcode && v.barCode.trim() !== '') {
+            const checkBarcode = await commercialService.checkBarcode(v.barCode.trim());
+            if (!checkBarcode.available) {
+              const rawMsg = checkBarcode.message || '';
+              const isAlreadyRegistered = rawMsg.toLowerCase().includes('registrado') || rawMsg.toLowerCase().includes('existe');
+              newBarcodeErrors[i] = isAlreadyRegistered ? "Código ya registrado" : (rawMsg || "Código no disponible");
+              toastError(`Variante ${i + 1}: ${rawMsg || "Código ya registrado"}`);
+              hasBarcodeError = true;
+            }
+          }
+        }
+
+        if (hasBarcodeError) {
+          setBarcodeErrors(newBarcodeErrors);
+          setShakeKey(prev => prev + 1);
+          return;
+        }
+
+        // Ensure sku is generated automatically in background and resolve conflicts (-1...N)
+        const variantsWithSku = await Promise.all(variants.map(async (v) => {
+          let availableSku = v.sku || generateSku(name, v.name);
+          let isSkuAvailable = false;
+          let counter = 1;
+          const maxAttempts = 100;
+          
+          while (!isSkuAvailable && counter < maxAttempts) {
+            const checkSku = await commercialService.checkSku(availableSku);
+            if (checkSku.available) {
+              isSkuAvailable = true;
+            } else {
+              availableSku = `${v.sku || generateSku(name, v.name)}-${counter}`;
+              counter++;
+            }
+          }
+          
           return {
             ...v,
-            prices: initialPrices
+            sku: availableSku
           };
-        }
-        return v;
-      });
-      setVariants(updatedVariants);
+        }));
+
+        // Initialize prices for step 3 if empty (only first price type enabled by default)
+        const updatedVariants = variantsWithSku.map(v => {
+          if (v.prices.length === 0) {
+            const initialPrices = priceTypes.length > 0 ? [{
+              priceTypeId: priceTypes[0].id,
+              salePrice: '' as unknown as number,
+              discountPrice: '' as unknown as number
+            }] : [];
+            return {
+              ...v,
+              prices: initialPrices
+            };
+          }
+          return v;
+        });
+        setVariants(updatedVariants);
+      } catch (e: any) {
+        toastError(getCatalogErrorMessage(e, "Error validando las variantes."));
+        return;
+      } finally {
+        setIsSubmitting(false);
+      }
     }
+    setShakeKey(0);
+    setNameError('');
     setStep(prev => prev + 1);
   };
 
@@ -214,19 +321,38 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
         variants: processedVariants
       });
       toastSuccess("Producto creado exitosamente.");
+      setShakeKey(0);
+      setNameError('');
+      setBarcodeErrors({});
       onSuccess();
       onClose();
     } catch (e: any) {
-      toastError(e.message || e.response?.data?.message || "Error al crear el producto.");
+      toastError(getCatalogErrorMessage(e, "Error al crear el producto."));
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleBack = () => {
+    setShakeKey(0);
+    setNameError('');
+    setStep(prev => Math.max(prev - 1, 1));
+  };
+
+  const handleModalClose = () => {
+    setShakeKey(0);
+    setNameError('');
+    setBarcodeErrors({});
+    onClose();
   };
 
   const updateVariant = (index: number, field: string, value: any) => {
     const updated = [...variants];
     (updated[index] as any)[field] = value;
     setVariants(updated);
+    if (field === 'barCode' || field === 'name') {
+      setBarcodeErrors(prev => ({ ...prev, [index]: '' }));
+    }
   };
 
   const updatePrice = (variantIndex: number, priceIndex: number, field: string, value: number | string) => {
@@ -265,7 +391,7 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
   };
 
   const addVariant = () => {
-    setVariants([...variants, { name: '', sku: '', barCode: '', prices: [] }]);
+    setVariants([...variants, { name: '', sku: '', barCode: '', isInternalBarcode: false, prices: [] }]);
     setVariantImages([...variantImages, null]);
   };
 
@@ -279,7 +405,7 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
   return (
     <ComerziaModal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={handleModalClose}
       title="Crear Nuevo Producto"
       size="xl"
     >
@@ -310,6 +436,7 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
                 const newName = e.target.value.toUpperCase();
                 const oldName = name;
                 setName(newName);
+                setNameError('');
                 setVariants(prev => prev.map(v => {
                   const prevAutoSku = generateSku(oldName, v.name);
                   if (!v.sku || v.sku === prevAutoSku) {
@@ -318,7 +445,7 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
                   return v;
                 }));
               }}
-              error={!name && shakeKey > 0 ? "Requerido" : ""}
+              error={(!name && shakeKey > 0) ? "Requerido" : (nameError || "")}
               shakeKey={shakeKey}
               isRequired
             />
@@ -361,7 +488,10 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
                     label="Marca"
                     options={brands.map(b => ({ value: b.id, label: b.name }))}
                     value={brandId}
-                    onChange={(e) => setBrandId(e.target.value)}
+                    onChange={(e) => {
+                      setBrandId(e.target.value);
+                      setNameError('');
+                    }}
                     disabled={!segmentId}
                     error={!brandId && shakeKey > 0 ? "Requerido" : ""}
                     shakeKey={shakeKey}
@@ -407,31 +537,47 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
                           updated[index].name = val;
                           updated[index].sku = generateSku(name, val);
                           setVariants(updated);
+                          setBarcodeErrors(prev => ({ ...prev, [index]: '' }));
                         }}
                         error={!variant.name && shakeKey > 0 ? "Requerido" : ""}
                         shakeKey={shakeKey}
                         isRequired
                       />
-                      <div className="flex items-end gap-1.5">
-                        <div className="flex-1">
-                          <ComerziaInput
-                            label="Código de Barras"
-                            value={variant.barCode}
-                            onChange={(e) => updateVariant(index, 'barCode', e.target.value)}
-                            error={!variant.barCode && shakeKey > 0 ? "Requerido" : ""}
-                            shakeKey={shakeKey}
-                            isRequired
+                      <div className="flex items-center gap-4 pt-1">
+                        <span className="label-text">Generar código de barras internamente</span> 
+                        <ComerziaSwitch 
+                          checked={variant.isInternalBarcode} 
+                          onChange={() => {
+                            const updated = [...variants];
+                            updated[index].isInternalBarcode = !updated[index].isInternalBarcode;
+                            if (updated[index].isInternalBarcode) {
+                              updated[index].barCode = '';
+                              setBarcodeErrors(prev => ({ ...prev, [index]: '' }));
+                            }
+                            setVariants(updated);
+                          }} 
+                        />
+                      </div>
+                      {!variant.isInternalBarcode && (
+                        <div className="flex items-end gap-1.5 w-full min-w-0">
+                          <div className="flex-1 min-w-0">
+                            <ComerziaInput
+                              label="Código de Barras"
+                              value={variant.barCode}
+                              onChange={(e) => updateVariant(index, 'barCode', e.target.value)}
+                              error={(!variant.barCode && shakeKey > 0) ? "Requerido" : (barcodeErrors[index] || "")}
+                              shakeKey={shakeKey}
+                              isRequired
+                              readOnly
+                            />
+                          </div>
+                          <BtnScanIcon
+                            onClick={() => setScanningVariantIndex(index)}
+                            className="mb-0.5 h-[38px] w-[38px] min-h-0 shrink-0"
+                            title="Escanear con cámara"
                           />
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => setScanningVariantIndex(index)}
-                          className="btn btn-outline btn-primary btn-sm mb-0.5 h-[38px] px-2.5"
-                          title="Escanear con cámara"
-                        >
-                          <ScanBarcode size={18} />
-                        </button>
-                      </div>
+                      )}
                     </div>
                   </div>
 
@@ -630,9 +776,9 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
 
         <div className="flex flex-row items-center gap-2 mt-8 pt-4 border-t border-base-200 w-full sm:justify-end">
           {step === 1 ? (
-            <BtnCancel onClick={onClose} disabled={isSubmitting} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
+            <BtnCancel onClick={handleModalClose} disabled={isSubmitting} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
           ) : (
-            <BtnBack onClick={() => setStep(prev => prev - 1)} disabled={isSubmitting} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
+            <BtnBack onClick={handleBack} disabled={isSubmitting} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
           )}
           {step < 3 ? (
             <BtnNext onClick={handleNext} disabled={isSubmitting} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />

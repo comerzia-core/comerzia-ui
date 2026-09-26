@@ -4,6 +4,12 @@ export interface CategoryResponse {
   status: boolean;
 }
 
+export interface CatalogAvailabilityResponse {
+  available: boolean;
+  exists: boolean;
+  message: string;
+}
+
 export interface SegmentResponse {
   id: string;
   name: string;
@@ -34,6 +40,7 @@ export interface ProductVariantResponse {
   description?: string;
   sku: string;
   barCode: string;
+  isInternalBarcode?: boolean;
   imageUrl?: string;
   status: boolean;
   product: ProductResponse;
@@ -87,6 +94,7 @@ export interface CreateFullVariantRequest {
   description?: string;
   sku: string;
   barCode: string;
+  isInternalBarcode: boolean;
   imageUrl?: string;
   prices: CreateInitialPriceRequest[];
 }

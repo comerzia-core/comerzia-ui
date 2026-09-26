@@ -9,6 +9,7 @@ import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
 import { useToast } from '../../../context/ToastContext';
 import { ComerziaContextMenu, ContextMenuItem } from '../../../components/ui/ComerziaContextMenu';
 import { EditProductModal } from './EditProductModal';
+import { getCatalogErrorMessage } from '../utils/catalogErrorMessages';
 import { 
   Pencil, 
   Trash2, 
@@ -135,7 +136,7 @@ export const ProductTable = ({
       loadData();
       setProductToDelete(null);
     } catch (e: any) {
-      toastError(e.response?.data?.message || "Error al eliminar el producto");
+      toastError(getCatalogErrorMessage(e, "Error al eliminar el producto"));
     } finally {
       setIsDeleting(false);
     }

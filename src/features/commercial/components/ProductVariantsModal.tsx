@@ -13,6 +13,7 @@ import { BtnCreate } from '../../../components/ui/CrudButtons';
 import { useToast } from '../../../context/ToastContext';
 import { ComerziaContextMenu, ContextMenuItem } from '../../../components/ui/ComerziaContextMenu';
 import { Edit, Trash2, DollarSign, Search, ArrowRightLeft, History, Eye, Barcode } from 'lucide-react';
+import { getCatalogErrorMessage } from '../utils/catalogErrorMessages';
 
 interface Props {
   isOpen: boolean;
@@ -78,7 +79,7 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
       loadData();
       setVariantToDelete(null);
     } catch (e: any) {
-      toastError(e.response?.data?.message || "Error al eliminar la variante");
+      toastError(getCatalogErrorMessage(e, "Error al eliminar la variante"));
     } finally {
       setIsDeleting(false);
     }

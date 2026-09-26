@@ -1,9 +1,8 @@
 // src/components/ui/ProductFormBarcodeField.tsx
 import { useState } from "react";
 import { ComerziaInput } from "./ComerziaInput";
-import { ComerziaButton } from "./ComerziaButton";
+import { BtnScan } from "./CrudButtons";
 import { BarcodeScannerModal } from "./BarcodeScannerModal";
-import { ScanLine } from "lucide-react";
 
 interface Props {
   value: string;
@@ -29,9 +28,9 @@ export const ProductFormBarcodeField = ({
   const [isScannerOpen, setIsScannerOpen] = useState(false);
 
   return (
-    <div className="w-full">
-      <div className="flex items-end gap-1.5">
-        <div className="flex-1">
+    <div className="w-full min-w-0">
+      <div className="flex items-end gap-1.5 w-full min-w-0">
+        <div className="flex-1 min-w-0">
           <ComerziaInput
             label={label}
             value={value}
@@ -44,13 +43,9 @@ export const ProductFormBarcodeField = ({
           />
         </div>
         {!disabled && (
-          <ComerziaButton
-            type="button"
-            variant="secondary"
-            icon={<ScanLine size={18} />}
-            label="Escanear"
+          <BtnScan
             onClick={() => setIsScannerOpen(true)}
-            className="btn-sm mb-0.5 h-[38px]"
+            className="btn-sm mb-0.5 h-[38px] min-h-0 shrink-0"
           />
         )}
       </div>

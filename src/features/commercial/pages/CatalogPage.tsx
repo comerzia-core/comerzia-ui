@@ -11,6 +11,7 @@ import { BulkUploadModal } from '../components/BulkUploadModal';
 import { useToast } from '../../../context/ToastContext';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { Filter, ChevronDown, FileSpreadsheet, Search, X } from 'lucide-react';
+import { getCatalogErrorMessage } from '../utils/catalogErrorMessages';
 
 export const CatalogPage = () => {
   const { error: toastError, success: toastSuccess } = useToast();
@@ -209,7 +210,7 @@ export const CatalogPage = () => {
                   toastSuccess("Categoría creada");
                   return newCat.id;
                 } catch (e: any) {
-                  toastError(e.response?.data?.message || "Error al crear la categoría");
+                  toastError(getCatalogErrorMessage(e, "Error al crear la categoría"));
                   throw e;
                 }
               }}
@@ -218,7 +219,7 @@ export const CatalogPage = () => {
                   await commercialService.updateCategory(id as string, newLabel, status);
                   setCategories(prev => prev.map(c => c.id === id ? { ...c, name: newLabel, status } : c));
                 } catch (e: any) {
-                  toastError(e.response?.data?.message || "Error al actualizar la categoría");
+                  toastError(getCatalogErrorMessage(e, "Error al actualizar la categoría"));
                   throw e;
                 }
               }}
@@ -229,7 +230,7 @@ export const CatalogPage = () => {
                   if (selectedCategoryId === id) setSelectedCategoryId('');
                   toastSuccess("Categoría eliminada");
                 } catch (e: any) {
-                  toastError(e.response?.data?.message || "Error al eliminar la categoría");
+                  toastError(getCatalogErrorMessage(e, "Error al eliminar la categoría"));
                   throw e;
                 }
               }}
@@ -251,7 +252,7 @@ export const CatalogPage = () => {
                   toastSuccess("Rubro creado");
                   return newSeg.id;
                 } catch (e: any) {
-                  toastError(e.response?.data?.message || "Error al crear rubro");
+                  toastError(getCatalogErrorMessage(e, "Error al crear rubro"));
                   throw e;
                 }
               }}
@@ -261,7 +262,7 @@ export const CatalogPage = () => {
                   await commercialService.updateSegment(id as string, newLabel, status, existing?.category?.id ?? selectedCategoryId);
                   setSegments(prev => prev.map(s => s.id === id ? { ...s, name: newLabel, status } : s));
                 } catch (e: any) {
-                  toastError(e.response?.data?.message || "Error al actualizar rubro");
+                  toastError(getCatalogErrorMessage(e, "Error al actualizar rubro"));
                   throw e;
                 }
               }}
@@ -272,7 +273,7 @@ export const CatalogPage = () => {
                   if (selectedSegmentId === id) setSelectedSegmentId('');
                   toastSuccess("Rubro eliminado");
                 } catch (e: any) {
-                  toastError(e.response?.data?.message || "Error al eliminar rubro");
+                  toastError(getCatalogErrorMessage(e, "Error al eliminar rubro"));
                   throw e;
                 }
               }}
@@ -293,7 +294,7 @@ export const CatalogPage = () => {
                   toastSuccess("Marca creada");
                   return newBrand.id;
                 } catch (e: any) {
-                  toastError(e.response?.data?.message || "Error al crear marca");
+                  toastError(getCatalogErrorMessage(e, "Error al crear marca"));
                   throw e;
                 }
               }}
@@ -303,7 +304,7 @@ export const CatalogPage = () => {
                   await commercialService.updateBrand(id as string, newLabel, status, existing?.segment?.id ?? selectedSegmentId);
                   setBrands(prev => prev.map(b => b.id === id ? { ...b, name: newLabel, status } : b));
                 } catch (e: any) {
-                  toastError(e.response?.data?.message || "Error al actualizar marca");
+                  toastError(getCatalogErrorMessage(e, "Error al actualizar marca"));
                   throw e;
                 }
               }}
@@ -314,7 +315,7 @@ export const CatalogPage = () => {
                   if (selectedBrandId === id) setSelectedBrandId('');
                   toastSuccess("Marca eliminada");
                 } catch (e: any) {
-                  toastError(e.response?.data?.message || "Error al eliminar marca");
+                  toastError(getCatalogErrorMessage(e, "Error al eliminar marca"));
                   throw e;
                 }
               }}
@@ -341,16 +342,18 @@ export const CatalogPage = () => {
         />
       </div>
 
-      <CreateFullProductModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        initialCategoryId={selectedCategoryId}
-        initialSegmentId={selectedSegmentId}
-        initialBrandId={selectedBrandId}
-        onSuccess={() => {
-          setRefreshKey(prev => prev + 1);
-        }}
-      />
+      {isCreateModalOpen && (
+        <CreateFullProductModal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          initialCategoryId={selectedCategoryId}
+          initialSegmentId={selectedSegmentId}
+          initialBrandId={selectedBrandId}
+          onSuccess={() => {
+            setRefreshKey(prev => prev + 1);
+          }}
+        />
+      )}
 
       <BulkUploadModal
         isOpen={isBulkModalOpen}
