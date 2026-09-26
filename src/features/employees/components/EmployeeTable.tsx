@@ -26,8 +26,8 @@ interface Props {
   onPageChange: (newPage: number) => void;
   onPageSizeChange: (newSize: number) => void;
   onViewDetails: (employee: EmployeeSummaryResponse) => void;
-  onEdit: (employee: EmployeeSummaryResponse) => void;
-  onDelete: (employee: EmployeeSummaryResponse) => void;
+  onEdit?: (employee: EmployeeSummaryResponse) => void;
+  onDelete?: (employee: EmployeeSummaryResponse) => void;
   onModifyRoles?: (employee: EmployeeSummaryResponse) => void;
 }
 
@@ -330,21 +330,25 @@ export const EmployeeTable = ({
                 }}
               />
             )}
-            <ContextMenuItem
-              icon={Pencil}
-              label="Editar empleado"
-              onClick={() => {
-                if (contextMenu.employee) onEdit(contextMenu.employee);
-              }}
-            />
-            <ContextMenuItem
-              icon={Trash2}
-              label="Eliminar empleado"
-              variant="error"
-              onClick={() => {
-                if (contextMenu.employee) onDelete(contextMenu.employee);
-              }}
-            />
+            {onEdit && (
+              <ContextMenuItem
+                icon={Pencil}
+                label="Editar empleado"
+                onClick={() => {
+                  if (contextMenu.employee) onEdit(contextMenu.employee);
+                }}
+              />
+            )}
+            {onDelete && (
+              <ContextMenuItem
+                icon={Trash2}
+                label="Eliminar empleado"
+                variant="error"
+                onClick={() => {
+                  if (contextMenu.employee) onDelete(contextMenu.employee);
+                }}
+              />
+            )}
           </>
         )}
       </ComerziaContextMenu>

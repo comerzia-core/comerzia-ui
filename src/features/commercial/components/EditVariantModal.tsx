@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ComerziaModal } from '../../../components/ui/ComerziaModal';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
-import { ComerziaTextarea } from '../../../components/ui/ComerziaTextarea';
 import { ComerziaSwitch } from '../../../components/ui/ComerziaSwitch';
 import { ComerziaSingleImageUploader, type SingleImageValue } from '../../../components/ui/ComerziaSingleImageUploader';
 import { BarcodeScannerModal } from '../../../components/ui/BarcodeScannerModal';
@@ -25,7 +24,6 @@ interface Props {
 
 export const EditVariantModal = ({ isOpen, onClose, onSuccess, productId, productName, variant }: Props) => {
   const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
   const [sku, setSku] = useState('');
   const [barCode, setBarCode] = useState('');
   const [isInternalBarcode, setIsInternalBarcode] = useState(false);
@@ -44,7 +42,6 @@ export const EditVariantModal = ({ isOpen, onClose, onSuccess, productId, produc
       setBarcodeError('');
       if (variant) {
         setName(variant.name);
-        setDescription(variant.description || '');
         setSku(variant.sku);
         setBarCode(variant.barCode || '');
         setIsInternalBarcode(variant.isInternalBarcode || false);
@@ -52,7 +49,6 @@ export const EditVariantModal = ({ isOpen, onClose, onSuccess, productId, produc
         setStatus(variant.status);
       } else {
         setName('');
-        setDescription('');
         setSku('');
         setBarCode('');
         setIsInternalBarcode(false);
@@ -76,15 +72,10 @@ export const EditVariantModal = ({ isOpen, onClose, onSuccess, productId, produc
       toastError("Ingresa el código de barras.");
       return;
     }
-    if (!sku.trim()) {
-      setShakeKey(prev => prev + 1);
-      toastError("Ingresa el SKU de la variante.");
-      return;
-    }
 
     setIsSubmitting(true);
     try {
-      let finalSku = sku.trim();
+      let finalSku = sku.trim() || generateSku(productName, name.trim());
 
       // Verificar barcode y resolver conflictos de SKU al crear una nueva variante
       if (!variant) {
@@ -104,13 +95,14 @@ export const EditVariantModal = ({ isOpen, onClose, onSuccess, productId, produc
         let isSkuAvailable = false;
         let counter = 1;
         const maxAttempts = 100;
+        const baseSku = finalSku;
         
         while (!isSkuAvailable && counter < maxAttempts) {
           const checkSku = await commercialService.checkSku(finalSku);
           if (checkSku.available) {
             isSkuAvailable = true;
           } else {
-            finalSku = `${sku.trim()}-${counter}`;
+            finalSku = `${baseSku}-${counter}`;
             counter++;
           }
         }
@@ -140,7 +132,7 @@ export const EditVariantModal = ({ isOpen, onClose, onSuccess, productId, produc
 
       const payload = {
         name: name.trim(),
-        description: description?.trim() || undefined,
+        description: variant?.description || undefined,
         sku: finalSku,
         barCode: isInternalBarcode ? '' : barCode.trim(),
         isInternalBarcode,
@@ -199,16 +191,6 @@ export const EditVariantModal = ({ isOpen, onClose, onSuccess, productId, produc
           shakeKey={shakeKey}
           isRequired
         />
-        <ComerziaInput
-          label="SKU Interno"
-          value={sku}
-          uppercase
-          onChange={(e) => setSku(e.target.value.toUpperCase())}
-          error={!sku && shakeKey > 0 ? "Requerido" : ""}
-          shakeKey={shakeKey}
-          isRequired
-          disabled={!!variant}
-        />
         
         <div className="flex items-center gap-4 py-1">
           <span className="label-text">Generar código de barras internamente</span> 
@@ -256,11 +238,6 @@ export const EditVariantModal = ({ isOpen, onClose, onSuccess, productId, produc
           value={selectedImage}
           onChange={setSelectedImage}
           compact
-        />
-        <ComerziaTextarea
-          label="Descripción (Opcional)"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
         />
 
         {variant && (

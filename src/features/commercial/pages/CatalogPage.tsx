@@ -15,9 +15,10 @@ import { getCatalogErrorMessage } from '../utils/catalogErrorMessages';
 
 export const CatalogPage = () => {
   const { error: toastError, success: toastSuccess } = useToast();
-  const { hasPermission } = useAuthStore();
+  const { hasPermission, hasRole } = useAuthStore();
   const canManage = hasPermission('COM_CATALOG_MANAGE');
   const canBulkUpload = hasPermission('COM_BULK_UPLOAD');
+  const canCreateProduct = hasRole('OWNER') || hasRole('BRANCH_MANAGER');
 
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -132,11 +133,13 @@ export const CatalogPage = () => {
               className="flex-1 sm:flex-initial"
             />
           )}
-          <BtnCreate
-            label="Nuevo Producto"
-            onClick={() => setIsCreateModalOpen(true)}
-            className="flex-1 sm:flex-initial"
-          />
+          {canCreateProduct && (
+            <BtnCreate
+              label="Nuevo Producto"
+              onClick={() => setIsCreateModalOpen(true)}
+              className="flex-1 sm:flex-initial"
+            />
+          )}
         </div>
       </div>
 

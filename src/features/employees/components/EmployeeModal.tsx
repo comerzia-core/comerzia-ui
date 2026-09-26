@@ -114,15 +114,19 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
   const loadExternalData = async () => {
     setIsLoadingExternals(true);
     try {
-      const [branchesRes, rolesRes] = await Promise.allSettled([
-        branchService.getBranches(0, 100),
-        userService.getAllRoles()
-      ]);
+      const promises: Promise<any>[] = [branchService.getBranches(0, 100)];
+      if (!isEditing) {
+        promises.push(userService.getAllRoles());
+      }
 
-      if (branchesRes.status === 'fulfilled') {
+      const results = await Promise.allSettled(promises);
+      const branchesRes = results[0];
+      const rolesRes = !isEditing ? results[1] : null;
+
+      if (branchesRes && branchesRes.status === 'fulfilled') {
         setBranches(branchesRes.value.content.map(b => ({ value: b.id, label: b.name })));
       }
-      if (rolesRes.status === 'fulfilled') {
+      if (rolesRes && rolesRes.status === 'fulfilled') {
         setRoles(rolesRes.value);
       }
     } catch (error) {

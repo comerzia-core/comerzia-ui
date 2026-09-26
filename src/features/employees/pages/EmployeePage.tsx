@@ -24,6 +24,8 @@ type EmployeeActionType = 'DELETE' | null;
 export const EmployeePage = () => {
   const { hasPermission } = useAuthStore();
   const hasBranchesPermission = hasPermission('ORG_BRANCHES_ACTIVE_READ');
+  const canModifyRoles = hasPermission('SEC_ROLES_READ');
+  const canManageEmployees = hasPermission('HUM_EMPLOYEES_MANAGE');
 
   const [data, setData] = useState<PageResponse<EmployeeSummaryResponse> | null>(null);
   const [page, setPage] = useState(0);
@@ -223,9 +225,11 @@ export const EmployeePage = () => {
             Administra el personal, asigna sucursales y configura sus accesos.
           </p>
         </div>
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <BtnCreate onClick={handleCreate} label="Nuevo Empleado" className="w-full sm:w-auto" />
-        </div>
+        {canManageEmployees && (
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <BtnCreate onClick={handleCreate} label="Nuevo Empleado" className="w-full sm:w-auto" />
+          </div>
+        )}
       </div>
 
       {/* BARRA DE FILTROS */}
@@ -269,9 +273,9 @@ export const EmployeePage = () => {
             onPageChange={handlePageChange}
             onPageSizeChange={handlePageSizeChange}
             onViewDetails={handleViewDetails}
-            onEdit={handleEdit}
-            onDelete={handleDeleteRequest}
-            onModifyRoles={handleModifyRoles}
+            onEdit={canManageEmployees ? handleEdit : undefined}
+            onDelete={canManageEmployees ? handleDeleteRequest : undefined}
+            onModifyRoles={canModifyRoles ? handleModifyRoles : undefined}
           />
         </div>
       </div>

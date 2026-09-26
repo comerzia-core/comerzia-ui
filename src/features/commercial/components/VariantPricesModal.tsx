@@ -218,12 +218,17 @@ export const VariantPricesModal = ({ isOpen, onClose, variantId, variantName }: 
       size="md"
       variant={isEditing ? "form" : "view"}
       actions={
-        !isEditing && canManagePrices ? (
-          configuredPrices.length > 0 ? (
-            <BtnUpdatePrices onClick={handleStartEditing} label="Modificar" responsive={false} />
-          ) : (
-            <BtnCreate onClick={handleStartEditing} label="Asignar Precios" responsive={false} />
-          )
+        !isEditing ? (
+          <div className="flex items-center justify-between sm:justify-end gap-2 w-full">
+            <BtnCancel onClick={onClose} label="Cerrar" responsive={false} className="flex-1 sm:flex-none sm:w-auto" />
+            {canManagePrices && (
+              configuredPrices.length > 0 ? (
+                <BtnUpdatePrices onClick={handleStartEditing} label="Modificar" responsive={false} className="flex-1 sm:flex-none sm:w-auto" />
+              ) : (
+                <BtnCreate onClick={handleStartEditing} label="Asignar Precios" responsive={false} className="flex-1 sm:flex-none sm:w-auto" />
+              )
+            )}
+          </div>
         ) : undefined
       }
     >

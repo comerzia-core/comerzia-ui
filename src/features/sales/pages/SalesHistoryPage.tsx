@@ -227,20 +227,43 @@ export const SalesHistoryPage = () => {
     }
   };
 
-  const handleApplyFilters = () => {
-    const range = getDateRange(period, customStartDate, customEndDate);
-    if (period === 'CUSTOM' && range.start && range.end && range.start > range.end) {
+  const applyFiltersWithValues = (
+    newPeriod: FilterPeriod,
+    start: string,
+    end: string,
+    seller: string
+  ) => {
+    const range = getDateRange(newPeriod, start, end);
+    if (newPeriod === 'CUSTOM' && range.start && range.end && range.start > range.end) {
       toastError("La fecha 'Desde' no puede ser posterior a la fecha 'Hasta'.");
       return;
     }
     const newFilters = {
       startDate: range.start,
       endDate: range.end,
-      sellerUsername: selectedSeller || undefined
+      sellerUsername: seller || undefined
     };
     setAppliedFilters(newFilters);
     setPage(0);
     loadSales(0, size, newFilters);
+  };
+
+  const handlePeriodChange = (newPeriod: FilterPeriod) => {
+    setPeriod(newPeriod);
+    if (newPeriod !== 'CUSTOM') {
+      applyFiltersWithValues(newPeriod, customStartDate, customEndDate, selectedSeller);
+    }
+  };
+
+  const handleSellerChange = (newSeller: string) => {
+    setSelectedSeller(newSeller);
+    if (period !== 'CUSTOM') {
+      applyFiltersWithValues(period, customStartDate, customEndDate, newSeller);
+    }
+  };
+
+  const handleApplyFilters = () => {
+    applyFiltersWithValues(period, customStartDate, customEndDate, selectedSeller);
   };
 
   const getStatusCode = (status: number | { code: number; label: string } | undefined): number => {
@@ -454,18 +477,22 @@ export const SalesHistoryPage = () => {
         <div className="card bg-base-100 p-4 rounded-2xl shadow-xs border border-base-200 w-full">
           <div className="flex flex-col lg:flex-row gap-3 sm:gap-4 items-stretch lg:items-end w-full">
             {/* Selector de Periodo */}
-            <div className="w-full lg:w-56">
+            <div className="w-full lg:w-64">
+              <div className="flex items-center justify-between gap-1 mb-1 px-1">
+                <label className="text-xs font-semibold text-base-content/80">
+                  Periodo
+                </label>
+                {period !== 'CUSTOM' && (
+                  <span className="text-[11px] text-base-content/50 font-mono font-medium truncate" title={getPeriodDescription(period)}>
+                    {getPeriodDescription(period)}
+                  </span>
+                )}
+              </div>
               <ComerziaSelect
-                label="Periodo"
                 value={period}
-                onChange={(e) => setPeriod(e.target.value as FilterPeriod)}
+                onChange={(e) => handlePeriodChange(e.target.value as FilterPeriod)}
                 options={PERIOD_OPTIONS}
               />
-              {period !== 'CUSTOM' && (
-                <span className="text-[11px] text-base-content/60 font-medium block mt-1 pl-1">
-                  {getPeriodDescription(period)}
-                </span>
-              )}
             </div>
 
             {/* Rango Personalizado (solo cuando period === 'CUSTOM') */}
@@ -488,10 +515,14 @@ export const SalesHistoryPage = () => {
 
             {/* Selector de vendedor */}
             <div className="w-full lg:w-72 xl:w-80">
+              <div className="mb-1 px-1">
+                <label className="text-xs font-semibold text-base-content/80">
+                  Vendedor
+                </label>
+              </div>
               <ComerziaSelect
-                label="Vendedor"
                 value={selectedSeller}
-                onChange={(e) => setSelectedSeller(e.target.value)}
+                onChange={(e) => handleSellerChange(e.target.value)}
                 options={[
                   { value: '', label: 'Todos los vendedores' },
                   ...sellers.map(s => ({
@@ -502,17 +533,19 @@ export const SalesHistoryPage = () => {
               />
             </div>
 
-            {/* Botones de acción */}
-            <div className="flex items-center gap-2 shrink-0">
-              <ComerziaButton
-                variant="primary"
-                label="Filtrar"
-                icon={<Search size={16} />}
-                onClick={handleApplyFilters}
-                className="flex-1 lg:flex-initial"
-                disabled={isLoading}
-              />
-            </div>
+            {/* Botón de acción (Solo para Rango personalizado) */}
+            {period === 'CUSTOM' && (
+              <div className="flex items-center gap-2 shrink-0 animate-fade-in">
+                <ComerziaButton
+                  variant="primary"
+                  label="Filtrar"
+                  icon={<Search size={16} />}
+                  onClick={handleApplyFilters}
+                  className="flex-1 lg:flex-initial"
+                  disabled={isLoading}
+                />
+              </div>
+            )}
           </div>
         </div>
       )}

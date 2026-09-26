@@ -132,13 +132,13 @@ export const SellerPodium: React.FC<Props> = ({
           </span>
 
           {/* Resumen de tickets y unidades */}
-          <div className="flex items-center justify-center gap-1.5 mt-1 text-[10px] sm:text-[11px] text-base-content/60 font-mono">
-            <span className="inline-flex items-center gap-0.5">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 mt-1 text-[10px] sm:text-[11px] text-base-content/60 font-mono whitespace-nowrap">
+            <span className="inline-flex items-center gap-0.5 whitespace-nowrap">
               <Receipt size={10} className="shrink-0" />
               {seller.totalTransactions} tickets
             </span>
-            <span>•</span>
-            <span className="inline-flex items-center gap-0.5">
+            <span className="hidden sm:inline">•</span>
+            <span className="inline-flex items-center gap-0.5 whitespace-nowrap">
               <ShoppingBag size={10} className="shrink-0" />
               {seller.totalUnitsSold} uds
             </span>

@@ -38,9 +38,8 @@ export const ComerziaModal = ({ isOpen, onClose, title, children, actions, size 
         ? '!bg-base-200 dark:!bg-base-300' 
         : '!bg-base-100 dark:!bg-base-100'; // Form mantiene fondo blanco.
         
-    const headerBgClass = variant === 'view' ? 'bg-base-100 dark:bg-base-100' : 'bg-base-200';
-    const headerBorderClass = variant === 'view' ? 'border-base-300' : 'border-base-200';
-    const footerBorderClass = variant === 'view' ? 'border-base-300/50' : 'border-base-200';
+    const headerBgClass = variant === 'view' ? 'bg-base-100 dark:bg-base-200' : 'bg-base-200 dark:bg-base-200/50';
+    const borderClass = 'border-base-200 dark:border-base-200/50';
 
     // Si no está abierto, no renderizamos nada (para limpiar el DOM)
     if (!isOpen) return null;
@@ -57,13 +56,13 @@ export const ComerziaModal = ({ isOpen, onClose, title, children, actions, size 
         >
             
             <div 
-                className={`modal-box ${sizeClasses[size]} p-0 overflow-hidden ${bgClasses} shadow-2xl relative border ${footerBorderClass}`}
+                className={`modal-box ${sizeClasses[size]} p-0 overflow-hidden ${bgClasses} shadow-2xl relative border ${borderClass}`}
                 role="dialog"
                 aria-modal="true"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className={`${headerBgClass} px-6 py-4 flex justify-between items-center border-b ${headerBorderClass}`}>
+                <div className={`${headerBgClass} px-6 py-4 flex justify-between items-center border-b ${borderClass}`}>
                     <div className="font-bold text-lg text-base-content flex items-center gap-2">
                         {title}
                     </div>
@@ -83,7 +82,7 @@ export const ComerziaModal = ({ isOpen, onClose, title, children, actions, size 
 
                 {/* Footer */}
                 {actions && (
-                    <div className={`modal-action ${bgClasses} px-6 py-4 mt-0 border-t ${footerBorderClass} flex justify-end gap-2`}>
+                    <div className={`modal-action ${bgClasses} px-6 py-4 mt-0 border-t ${borderClass} flex justify-end gap-2`}>
                         {actions}
                     </div>
                 )}

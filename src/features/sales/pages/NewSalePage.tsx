@@ -184,9 +184,8 @@ const ProductDiscountControl = ({
           <button
             type="button"
             onClick={() => handleModeChange('UNIT')}
-            className={`px-1.5 py-0.5 text-[9px] font-bold rounded transition-all whitespace-nowrap ${
-              mode === 'UNIT' ? 'bg-base-100 text-error shadow-xs' : 'text-base-content/50 hover:text-base-content'
-            }`}
+            className={`px-1.5 py-0.5 text-[9px] font-bold rounded transition-all whitespace-nowrap ${mode === 'UNIT' ? 'bg-base-100 text-error shadow-xs' : 'text-base-content/50 hover:text-base-content'
+              }`}
             title="Descuento por Unidad"
           >
             X Unid.
@@ -194,9 +193,8 @@ const ProductDiscountControl = ({
           <button
             type="button"
             onClick={() => handleModeChange('TOTAL')}
-            className={`px-1.5 py-0.5 text-[9px] font-bold rounded transition-all whitespace-nowrap ${
-              mode === 'TOTAL' ? 'bg-base-100 text-error shadow-xs' : 'text-base-content/50 hover:text-base-content'
-            }`}
+            className={`px-1.5 py-0.5 text-[9px] font-bold rounded transition-all whitespace-nowrap ${mode === 'TOTAL' ? 'bg-base-100 text-error shadow-xs' : 'text-base-content/50 hover:text-base-content'
+              }`}
             title="Descuento sobre Total"
           >
             Total
@@ -243,22 +241,20 @@ const ProductDiscountControl = ({
         <button
           type="button"
           onClick={() => handleModeChange('UNIT')}
-          className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition-all whitespace-nowrap text-left ${
-            mode === 'UNIT'
-              ? 'bg-base-100 text-error shadow-xs'
-              : 'text-base-content/60 hover:text-base-content'
-          }`}
+          className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition-all whitespace-nowrap text-left ${mode === 'UNIT'
+            ? 'bg-base-100 text-error shadow-xs'
+            : 'text-base-content/60 hover:text-base-content'
+            }`}
         >
           Por Unidad
         </button>
         <button
           type="button"
           onClick={() => handleModeChange('TOTAL')}
-          className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition-all whitespace-nowrap text-left ${
-            mode === 'TOTAL'
-              ? 'bg-base-100 text-error shadow-xs'
-              : 'text-base-content/60 hover:text-base-content'
-          }`}
+          className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition-all whitespace-nowrap text-left ${mode === 'TOTAL'
+            ? 'bg-base-100 text-error shadow-xs'
+            : 'text-base-content/60 hover:text-base-content'
+            }`}
         >
           Por Total
         </button>
@@ -326,7 +322,6 @@ export const NewSalePage = () => {
   const roles = userProfile?.roles || [];
   const isCashier = hasRole('CASHIER') || roles.includes('CASHIER');
   const isSeller = hasRole('SELLER') || roles.includes('SELLER');
-  const isOwnerOrManager = hasRole('OWNER') || roles.includes('OWNER') || hasRole('BRANCH_MANAGER') || roles.includes('BRANCH_MANAGER');
   const canAccessPosTerminal = (isCashier && isSeller);
 
   const { success: toastSuccess, error: toastError, warning: toastWarning } = useToast();
@@ -353,7 +348,7 @@ export const NewSalePage = () => {
   const initView = async () => {
     setIsLoadingInit(true);
     setInitError(null);
-    
+
     if (editSale) {
       setSelectedBranchId(editSale.branchId || '');
       setCartBranchId(editSale.branchId || null);
@@ -361,12 +356,12 @@ export const NewSalePage = () => {
         try {
           const branchList = await salesService.getBranches();
           setBranches(branchList || []);
-        } catch (_) {}
+        } catch (_) { }
       }
       try {
         const details = await salesService.getSaleDetails(editSale.id);
         const newCartItems: CartItem[] = [];
-        
+
         for (const d of details) {
           let productResponse = null;
           try {
@@ -374,11 +369,11 @@ export const NewSalePage = () => {
           } catch (err) {
             console.error("Error loading product detail", err);
           }
-          
+
           if (productResponse && productResponse.activePrices && productResponse.activePrices.length > 0) {
             const activePrice = productResponse.activePrices.find((p: any) => p.priceTypeId === (d as any).priceTypeId) || productResponse.activePrices[0];
             const factor = activePrice.equivalenceFactor || 1;
-            
+
             newCartItems.push({
               productVariantId: d.productVariantId,
               productName: d.productName,
@@ -641,21 +636,18 @@ export const NewSalePage = () => {
               responsive={true}
               tooltip="Terminal de Cobro"
               icon={<Monitor size={18} className="text-primary" />}
-              className="btn-sm font-semibold rounded-xl border border-base-300 hover:border-primary hover:bg-primary/10 transition-all text-xs sm:text-sm px-3 sm:px-4 min-w-0 shrink-0 h-11 sm:h-auto"
+              className="font-semibold rounded-xl border border-base-300 hover:border-primary hover:bg-primary/10 transition-all text-xs sm:text-sm px-3 sm:px-4 min-w-0 shrink-0 h-11 sm:h-[52px]"
               onClick={() => navigate('/pos/terminal')}
             />
           )}
 
           {/* Selector de Sucursal */}
           {hasSwitchBranchPerm && branches.length > 0 && (
-            <div className="flex items-center gap-2 sm:gap-3 bg-base-200/50 p-1.5 sm:p-2.5 rounded-xl border border-base-300 flex-1 sm:flex-initial sm:w-auto max-w-full sm:max-w-xs shrink-0">
+            <div className="flex items-center gap-2 sm:gap-3 bg-base-200/50 p-1.5 sm:p-2.5 rounded-xl border border-[#d1d5db] dark:border-white/200 hover:border-primary transition-all flex-1 sm:flex-initial sm:w-auto max-w-full sm:max-w-xs shrink-0">
               <div className="p-1.5 sm:p-2 rounded-lg bg-primary/10 text-primary shrink-0">
                 <Store size={18} />
               </div>
               <div className="flex flex-col min-w-0 flex-1">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-base-content/60 truncate">
-                  Sucursal de Origen
-                </span>
                 <select
                   className="select select-bordered select-xs sm:select-sm w-full bg-base-100 font-bold text-xs sm:text-sm text-base-content truncate pl-2 sm:pl-3 pr-6 sm:pr-8 focus:border-primary focus:outline-none"
                   value={selectedBranchId}
@@ -950,13 +942,13 @@ export const NewSalePage = () => {
                                   </button>
                                 ) : (
                                   <div className="bg-base-200/90 dark:bg-base-300/80 rounded-xl p-2 border border-error shadow-sm text-xs flex flex-col items-end gap-1 relative">
-                                    <button 
-                                      type="button" 
-                                      className="btn btn-ghost btn-xs min-h-0 h-5 w-5 p-0 rounded-full text-base-content/40 hover:text-error absolute -top-2 -right-2 bg-base-100 border border-base-300 shadow-xs" 
+                                    <button
+                                      type="button"
+                                      className="btn btn-ghost btn-xs min-h-0 h-5 w-5 p-0 rounded-full text-base-content/40 hover:text-error absolute -top-2 -right-2 bg-base-100 border border-base-300 shadow-xs"
                                       onClick={() => setExpandedItems(prev => ({ ...prev, [item.productVariantId]: false }))}
                                       title="Cerrar opciones de descuento"
                                     >
-                                      <X size={12}/>
+                                      <X size={12} />
                                     </button>
                                     <ProductDiscountControl
                                       item={item}

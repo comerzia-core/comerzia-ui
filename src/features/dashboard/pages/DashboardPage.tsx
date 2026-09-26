@@ -49,6 +49,12 @@ const PERIOD_OPTIONS = [
   { value: 'CUSTOM', label: 'Rango personalizado' }
 ];
 
+const RESTRICTED_PERIOD_OPTIONS = [
+  { value: 'TODAY', label: 'Hoy' },
+  { value: 'THIS_WEEK', label: 'Esta semana' },
+  { value: 'THIS_MONTH', label: 'Este mes' }
+];
+
 export const DashboardPage = () => {
   const { error: toastError } = useToast();
   const { userProfile, hasPermission, hasRole } = useAuthStore();
@@ -73,7 +79,7 @@ export const DashboardPage = () => {
   // Determinar vistas y filtros habilitados según permisos
   const canViewSummary = hasSummaryRead;
   const canViewRanking = hasDashboardRead;
-  const showFiltersCard = hasGlobalBranchPermission || canReadBranches;
+  const showFiltersCard = true;
   const showTabs = canViewSummary && canViewRanking;
 
   // 3. Estados de Filtros Principales
@@ -277,23 +283,21 @@ export const DashboardPage = () => {
       {showFiltersCard && (
         <div className="card bg-base-100 p-4 rounded-2xl shadow-xs border border-base-200">
           <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 sm:gap-4 flex-wrap">
-            {/* Selector de Período solo si tiene permiso COM_DASHBOARD_GLOBAL_READ */}
-            {hasGlobalBranchPermission && (
-              <div className="w-full sm:w-60">
-                <label className="text-xs font-bold text-base-content/70 block mb-1 flex items-center gap-1.5">
-                  <Calendar size={14} className="text-primary" />
-                  Período de Análisis:
-                </label>
-                <ComerziaSelect
-                  value={period}
-                  onChange={e => {
-                    setPeriod(e.target.value as DashboardPeriod);
-                    setSellerPage(0);
-                  }}
-                  options={PERIOD_OPTIONS}
-                />
-              </div>
-            )}
+            {/* Selector de Período */}
+            <div className="w-full sm:w-60">
+              <label className="text-xs font-bold text-base-content/70 block mb-1 flex items-center gap-1.5">
+                <Calendar size={14} className="text-primary" />
+                Período de Análisis:
+              </label>
+              <ComerziaSelect
+                value={period}
+                onChange={e => {
+                  setPeriod(e.target.value as DashboardPeriod);
+                  setSellerPage(0);
+                }}
+                options={hasGlobalBranchPermission ? PERIOD_OPTIONS : RESTRICTED_PERIOD_OPTIONS}
+              />
+            </div>
 
             {/* Fechas personalizadas si tiene permiso global y period === 'CUSTOM' */}
             {hasGlobalBranchPermission && period === 'CUSTOM' && (
