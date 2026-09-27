@@ -20,6 +20,7 @@ export const CompanyProfilePage = () => {
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [companyLogo, setCompanyLogo] = useState<SingleImageValue | null>(null);
   const [ticketLogo, setTicketLogo] = useState<SingleImageValue | null>(null);
+  const [companyQr, setCompanyQr] = useState<SingleImageValue | null>(null);
   
   // Estado para validación visual
   const [shakeKey, setShakeKey] = useState<number>(0);
@@ -29,6 +30,7 @@ export const CompanyProfilePage = () => {
   const [formData, setFormData] = useState<UpdateCompanySettingsRequest>({
     companyLogoUrl: null,
     ticketLogoUrl: null,
+    companyQrUrl: null,
     currencyCode: '',
     timezone: '',
     taxName: '',
@@ -46,12 +48,14 @@ export const CompanyProfilePage = () => {
       
       setCompanyLogo(data.companyLogoUrl ? { preview: data.companyLogoUrl } : null);
       setTicketLogo(data.ticketLogoUrl ? { preview: data.ticketLogoUrl } : null);
+      setCompanyQr(data.companyQrUrl ? { preview: data.companyQrUrl } : null);
 
       // Mapeamos los datos al formulario. 
       // IMPORTANTE: Mantenemos las URLs originales intactas para no sobrescribirlas al guardar.
       setFormData({
         companyLogoUrl: data.companyLogoUrl, 
         ticketLogoUrl: data.ticketLogoUrl,
+        companyQrUrl: data.companyQrUrl,
         currencyCode: data.currencyCode,
         timezone: data.timezone,
         taxName: data.taxName || '',
@@ -164,10 +168,32 @@ export const CompanyProfilePage = () => {
         }
       }
 
+      // Subida de código QR de la empresa (para cobros QR)
+      let finalCompanyQrUrl: string | null = null;
+      if (companyQr) {
+        if (companyQr.file) {
+          try {
+            finalCompanyQrUrl = await uploadFile(
+              companyQr.file,
+              STORAGE_FOLDERS.COMPANY,
+              `qr-${profileData?.slug || 'company'}-${Date.now()}`
+            );
+          } catch (uploadErr) {
+            console.error("Error al subir QR de la empresa:", uploadErr);
+            showToast("No se pudo subir la imagen del código QR", "error");
+            setIsSaving(false);
+            return;
+          }
+        } else if (companyQr.preview) {
+          finalCompanyQrUrl = companyQr.preview;
+        }
+      }
+
       await companyService.updateCompanySettings({
         ...formData,
         companyLogoUrl: finalCompanyLogoUrl,
         ticketLogoUrl: finalTicketLogoUrl,
+        companyQrUrl: finalCompanyQrUrl,
         defaultMinStock: formData.defaultMinStock != null ? Number(formData.defaultMinStock) : 0,
         defaultIdealStock: formData.defaultIdealStock != null ? Number(formData.defaultIdealStock) : 0
       });
@@ -333,28 +359,35 @@ export const CompanyProfilePage = () => {
                   error={errors.currencyCode}
                 />
 
-                <div className="divider md:col-span-2 my-2 text-xs font-bold text-base-content/40 uppercase tracking-widest">
+                <div className="divider md:col-span-2 my-2 text-xs font-bold text-base-content/40 uppercase tracking-widest text-center whitespace-normal break-words sm:whitespace-nowrap px-1">
                   Identidad Visual
                 </div>
 
-                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4">
                   <ComerziaSingleImageUploader
                     label="Logo de la Empresa"
                     value={companyLogo}
                     onChange={setCompanyLogo}
-                    helperText="Formato: PNG transparente o JPG (Máx. 5MB). Se usará en cabecera, sidebar y reportes."
+                    helperText="Formato: PNG o JPG. Se usará en cabecera, sidebar y reportes."
                     compact
                   />
                   <ComerziaSingleImageUploader
-                    label="Logo para Tickets de Venta"
+                    label="Logo para Tickets"
                     value={ticketLogo}
                     onChange={setTicketLogo}
-                    helperText="Optimizado para impresión en tickets y recibos térmicos del punto de venta."
+                    helperText="Optimizado para impresión en tickets y recibos térmicos."
+                    compact
+                  />
+                  <ComerziaSingleImageUploader
+                    label="Código QR de Cobro"
+                    value={companyQr}
+                    onChange={setCompanyQr}
+                    helperText="Imagen del QR de la empresa para mostrar en terminal al cobrar."
                     compact
                   />
                 </div>
 
-                <div className="divider md:col-span-2 my-2 text-xs font-bold text-base-content/40 uppercase tracking-widest">
+                <div className="divider md:col-span-2 my-2 text-xs font-bold text-base-content/40 uppercase tracking-widest text-center whitespace-normal break-words sm:whitespace-nowrap px-1">
                   Facturación e Impuestos
                 </div>
 
@@ -387,7 +420,7 @@ export const CompanyProfilePage = () => {
                   />
                 </div>
 
-                <div className="divider md:col-span-2 my-2 text-xs font-bold text-base-content/40 uppercase tracking-widest">
+                <div className="divider md:col-span-2 my-2 text-xs font-bold text-base-content/40 uppercase tracking-widest text-center whitespace-normal break-words sm:whitespace-nowrap px-1">
                   Inventario y Reabastecimiento por Defecto
                 </div>
 

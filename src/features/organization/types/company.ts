@@ -21,6 +21,7 @@ export interface TenantCompanyProfileResponse {
   currencyCode: string;
   timezone: string;
   ticketLogoUrl: string | null;
+  companyQrUrl: string | null;
   taxName: string;
   taxPercentage: number;
   ticketFooterText: string;
@@ -34,6 +35,7 @@ export interface TenantCompanyProfileResponse {
 export interface UpdateCompanySettingsRequest {
   companyLogoUrl: string | null;
   ticketLogoUrl: string | null;
+  companyQrUrl: string | null;
   currencyCode: string;
   timezone: string;
   taxName: string;

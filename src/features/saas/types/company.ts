@@ -11,6 +11,7 @@ export interface SaasCompanySettingsResponse {
     id: string;
     companyLogoUrl: string;
     ticketLogoUrl: string;
+    companyQrUrl?: string | null;
     currencyCode: string;
     timezone: string;
     taxName: string;

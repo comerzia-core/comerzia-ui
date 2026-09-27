@@ -6,7 +6,9 @@ import { salesService } from '../services/salesService';
 import type { SaleResponse } from '../types/sales';
 import { useToast } from '../../../context/ToastContext';
 import { useAuthStore } from '../../../stores/useAuthStore';
-import { Banknote, CreditCard, QrCode, Landmark, CheckCircle } from 'lucide-react';
+import { useLoadDictionaries } from '../../../hooks/useLoadDictionaries';
+import { DICTIONARIES } from '../../../config/dictionaries';
+import { Banknote, CreditCard, QrCode, Landmark, CheckCircle, ImageOff } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
@@ -19,9 +21,13 @@ interface Props {
 export const PaySaleModal = ({ isOpen, onClose, sale, shiftId, onPaymentSuccess }: Props) => {
   const { userProfile } = useAuthStore();
   const currencyCode = userProfile?.companySettings?.currencyCode || 'USD';
+  const companyQrUrl = userProfile?.companySettings?.companyQrUrl;
   const { error: toastError, success: toastSuccess } = useToast();
 
-  const [paymentType, setPaymentType] = useState<number>(701); // 701 = Cash by default
+  const { options: dictOptions } = useLoadDictionaries([DICTIONARIES.PAYMENT_TYPE]);
+  const paymentTypeOptions = dictOptions[DICTIONARIES.PAYMENT_TYPE] || [];
+
+  const [paymentType, setPaymentType] = useState<number>(701); // 701 = Cash por defecto
   const [amountPaid, setAmountPaid] = useState<number | ''>('');
   const [shakeKey, setShakeKey] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -91,12 +97,40 @@ export const PaySaleModal = ({ isOpen, onClose, sale, shiftId, onPaymentSuccess 
     }
   };
 
-  const paymentOptions = [
-    { type: 701, label: 'Efectivo', icon: Banknote, color: 'text-success bg-success/10 border-success/30 hover:bg-success/20' },
-    { type: 702, label: 'QR / Transferencia', icon: QrCode, color: 'text-warning bg-warning/10 border-warning/30 hover:bg-warning/20' },
-    { type: 703, label: 'Tarjeta', icon: CreditCard, color: 'text-info bg-info/10 border-info/30 hover:bg-info/20' },
-    { type: 704, label: 'Transferencia', icon: Landmark, color: 'text-secondary bg-secondary/10 border-secondary/30 hover:bg-secondary/20' }
-  ];
+  const getIconForType = (code: number) => {
+    switch (code) {
+      case 701: return Banknote;
+      case 702: return QrCode;
+      case 703: return CreditCard;
+      default: return Landmark;
+    }
+  };
+
+  const getColorForType = (code: number) => {
+    switch (code) {
+      case 701: return 'text-success bg-success/10 border-success/30 hover:bg-success/20';
+      case 702: return 'text-warning bg-warning/10 border-warning/30 hover:bg-warning/20';
+      case 703: return 'text-info bg-info/10 border-info/30 hover:bg-info/20';
+      default: return 'text-secondary bg-secondary/10 border-secondary/30 hover:bg-secondary/20';
+    }
+  };
+
+  // Opciones generadas a partir del diccionario del backend
+  const paymentOptions = paymentTypeOptions.length > 0
+    ? paymentTypeOptions.map(opt => {
+        const typeNum = Number(opt.value);
+        return {
+          type: typeNum,
+          label: opt.label,
+          icon: getIconForType(typeNum),
+          color: getColorForType(typeNum)
+        };
+      })
+    : [
+        { type: 701, label: 'Efectivo', icon: Banknote, color: 'text-success bg-success/10 border-success/30 hover:bg-success/20' },
+        { type: 702, label: 'QR', icon: QrCode, color: 'text-warning bg-warning/10 border-warning/30 hover:bg-warning/20' },
+        { type: 703, label: 'Tarjeta', icon: CreditCard, color: 'text-info bg-info/10 border-info/30 hover:bg-info/20' }
+      ];
 
   return (
     <ComerziaModal
@@ -124,32 +158,69 @@ export const PaySaleModal = ({ isOpen, onClose, sale, shiftId, onPaymentSuccess 
           )}
         </div>
 
-        {/* Método de Pago Selector */}
-        <div>
-          <label className="block text-xs font-semibold text-base-content/70 mb-2">
-            Método de Pago
-          </label>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {paymentOptions.map((opt) => {
-              const Icon = opt.icon;
-              const isSelected = paymentType === opt.type;
-              return (
-                <button
-                  key={opt.type}
-                  type="button"
-                  onClick={() => handleSelectPaymentType(opt.type)}
-                  className={`p-2.5 sm:p-3 rounded-xl border-2 flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                    isSelected 
-                      ? `${opt.color} ring-2 ring-primary border-primary shadow-xs scale-[1.02]` 
-                      : 'border-base-200 bg-base-100 hover:border-base-300 text-base-content/70'
-                  }`}
-                >
-                  <Icon size={20} className="shrink-0" />
-                  <span className="font-bold text-[11px] text-center leading-tight">{opt.label}</span>
-                </button>
-              );
-            })}
+        {/* Sección de Métodos de Pago y Código QR */}
+        <div className={`grid gap-4 ${paymentType === 702 ? 'grid-cols-1 lg:grid-cols-12 items-start' : 'grid-cols-1'}`}>
+          
+          {/* Selector de Método de Pago */}
+          <div className={paymentType === 702 ? 'lg:col-span-4 space-y-2' : 'space-y-2'}>
+            <label className="block text-xs font-semibold text-base-content/70">
+              Método de Pago
+            </label>
+            <div className={paymentType === 702 ? 'grid grid-cols-2 lg:flex lg:flex-col gap-2' : 'grid grid-cols-2 sm:grid-cols-4 gap-2'}>
+              {paymentOptions.map((opt) => {
+                const Icon = opt.icon;
+                const isSelected = paymentType === opt.type;
+                return (
+                  <button
+                    key={opt.type}
+                    type="button"
+                    onClick={() => handleSelectPaymentType(opt.type)}
+                    className={`p-2.5 sm:p-3 rounded-xl border-2 flex ${
+                      paymentType === 702 
+                        ? 'flex-col lg:flex-row items-center lg:justify-start gap-2.5 lg:px-4' 
+                        : 'flex-col items-center justify-center gap-1.5'
+                    } transition-all cursor-pointer ${
+                      isSelected 
+                        ? `${opt.color} ring-2 ring-primary border-primary shadow-xs scale-[1.02]` 
+                        : 'border-base-200 bg-base-100 hover:border-base-300 text-base-content/70'
+                    }`}
+                  >
+                    <Icon size={20} className="shrink-0" />
+                    <span className="font-bold text-[11px] sm:text-xs text-center lg:text-left leading-tight">{opt.label}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
+
+          {/* Muestra de Código QR cuando el método seleccionado es QR (702) */}
+          {paymentType === 702 && (
+            <div className="lg:col-span-8 bg-base-100 p-4 sm:p-6 rounded-2xl border-2 border-warning/30 shadow-sm flex flex-col items-center justify-center gap-3.5 animate-fade-in text-center">
+              <div className="flex items-center gap-1.5 text-warning font-bold text-xs sm:text-sm uppercase tracking-wider">
+                <QrCode size={20} className="text-warning" /> Código QR para Cobro
+              </div>
+
+              {companyQrUrl ? (
+                <div className="bg-white p-3 sm:p-4 rounded-2xl border border-base-200 shadow-md inline-flex items-center justify-center">
+                  <img
+                    src={companyQrUrl}
+                    alt="QR de Cobro de la Empresa"
+                    className="w-56 h-56 sm:w-64 sm:h-64 md:w-80 md:h-80 lg:w-96 lg:h-96 max-h-[45vh] object-contain"
+                  />
+                </div>
+              ) : (
+                <div className="py-10 px-4 w-full bg-base-200/50 rounded-2xl border border-dashed border-base-300 flex flex-col items-center gap-2.5 text-base-content/50">
+                  <ImageOff size={40} className="text-base-content/30" />
+                  <p className="text-xs sm:text-sm font-bold text-base-content/70">No hay código QR configurado</p>
+                  <p className="text-[11px] max-w-xs leading-tight">Puedes registrar el QR de la empresa en el Perfil de la Empresa.</p>
+                </div>
+              )}
+
+              <p className="text-[11px] sm:text-xs text-base-content/70 font-medium max-w-sm">
+                Muestra este código al cliente para escanear y realizar la transferencia.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Form Inputs */}

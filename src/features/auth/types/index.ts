@@ -32,6 +32,9 @@ export interface CompanySettings {
     timezone: string;
     currencyCode: string;
     logoUrl: string | null;
+    companyLogoUrl?: string | null;
+    ticketLogoUrl?: string | null;
+    companyQrUrl?: string | null;
 }
 
 export interface UserProfile {
