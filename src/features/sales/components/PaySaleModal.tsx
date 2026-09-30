@@ -101,18 +101,6 @@ export const PaySaleModal = ({ isOpen, onClose, sale, shiftId, onPaymentSuccess 
     }
   };
 
-  // Manejo de cambio en Efectivo en modo MIXED
-  const handleCashChangeMixed = (val: number | '') => {
-    setCashAmount(val);
-    if (typeof val === 'number') {
-      // Si ingresa un efectivo menor al total y no hay QR, auto-sugerir el saldo exacto en QR
-      if (val < totalAmount && numQr === 0) {
-        const diff = Number((totalAmount - val).toFixed(2));
-        setQrAmount(diff > 0 ? diff : '');
-      }
-    }
-  };
-
   // Manejo de cambio en QR en modo MIXED
   const handleQrChangeMixed = (val: number | '') => {
     if (val === '') {
