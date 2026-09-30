@@ -588,4 +588,16 @@ export interface PageDemandReportResponse {
   number: number;
 }
 
+export interface StockTransferBranchResponse {
+  id: string;
+  name: string;
+  isCurrent: boolean;
+}
+
+export interface CreateStockTransferRequest {
+  targetBranchId: string;
+  productVariantId: string;
+  quantity: number;
+}
+
 

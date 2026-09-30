@@ -44,7 +44,9 @@ import type {
   PageValuationReportResponse,
   DemandMetricsResponse,
   DemandChartsResponse,
-  PageDemandReportResponse
+  PageDemandReportResponse,
+  StockTransferBranchResponse,
+  CreateStockTransferRequest
 } from '../types/commercial';
 
 export const commercialService = {
@@ -531,5 +533,22 @@ export const commercialService = {
 
     const response = await api.get(`/tenant/stock/demand/report?${query.toString()}`);
     return response.data;
+  },
+
+  // Quick Stock Transfers
+  getTransferBranches: async (): Promise<StockTransferBranchResponse[]> => {
+    const response = await api.get<StockTransferBranchResponse[]>('/tenant/stock-transfers/branches');
+    return response.data;
+  },
+
+  createQuickTransfer: async (
+    request: CreateStockTransferRequest,
+    originBranchId?: string
+  ): Promise<void> => {
+    const headers: Record<string, string> = {};
+    if (originBranchId) {
+      headers['X-Branch-Context'] = originBranchId;
+    }
+    await api.post('/tenant/stock-transfers', request, { headers });
   }
 };

@@ -10,7 +10,7 @@ import type {
 import { useToast } from '../../../context/ToastContext';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
 import { ComerziaTextarea } from '../../../components/ui/ComerziaTextarea';
-import { BtnSave, BtnCreate } from '../../../components/ui/CrudButtons';
+import { BtnSave, BtnCreate, BtnTransfer } from '../../../components/ui/CrudButtons';
 import { ComerziaTable, type Column, type TablePaginationConfig } from '../../../components/ui/ComerziaTable';
 import { CommercialProductSearchBar } from '../components/CommercialProductSearchBar';
 import { ComerziaSelect } from '../../../components/ui/ComerziaSelect';
@@ -45,6 +45,7 @@ import { DICTIONARIES } from '../../../config/dictionaries';
 import { useLoadDictionaries } from '../../../hooks/useLoadDictionaries';
 import { ValuateStockModal } from '../components/ValuateStockModal';
 import { InventoryReportModal } from '../components/InventoryReportModal';
+import { QuickStockTransferModal } from '../components/QuickStockTransferModal';
 import { formatDateForUser } from '../../../utils/date';
 import { getThumbnailUrl } from '../../../utils/image';
 
@@ -99,12 +100,15 @@ export const StockMovementsPage = () => {
   const [branches, setBranches] = useState<BranchResponse[]>([]);
 
   const { hasPermission, hasRole, userProfile } = useAuthStore();
+  const canManageStock = hasPermission('COM_STOCK_MANAGE');
   const hasCostPermission = hasPermission('COM_STOCK_COST_MANAGE');
   const hasDistributePermission = hasPermission('COM_STOCK_DISTRIBUTE');
   const hasAdjustmentReadPermission = hasPermission('COM_STOCK_ADJUSTMENT_READ');
   const hasActiveBranchesPermission = hasPermission('ORG_BRANCHES_ACTIVE_READ');
   const isOwner = hasRole('OWNER');
   const currencyCode = userProfile?.companySettings?.currencyCode || 'USD';
+
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
 
   // Total distribuido calculado en modo multi-tienda
   const totalDistributedQty = useMemo(() => {
@@ -164,6 +168,11 @@ export const StockMovementsPage = () => {
 
   const { options } = useLoadDictionaries([DICTIONARIES.ADJUSTMENT_TYPE, DICTIONARIES.STOCK_STATUS]);
   const adjustmentTypeOptions = options[DICTIONARIES.ADJUSTMENT_TYPE] || [];
+  // Excluir 305 (TRANSFER_OUT) y 306 (TRANSFER_IN) del selector de ajustes manuales ya que son automáticos del sistema
+  const manualAdjustmentTypeOptions = useMemo(
+    () => adjustmentTypeOptions.filter(opt => Number(opt.value) !== 305 && Number(opt.value) !== 306),
+    [adjustmentTypeOptions]
+  );
   const stockStatusOptions = options[DICTIONARIES.STOCK_STATUS] || [];
 
   const [isValuateModalOpen, setIsValuateModalOpen] = useState(false);
@@ -654,15 +663,21 @@ export const StockMovementsPage = () => {
             </p>
           </div>
         </div>
-        {!isEntryCardOpen && !adjustmentTarget && (
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          {scannedVariant && canManageStock && (
+            <BtnTransfer
+              onClick={() => setIsTransferModalOpen(true)}
+              className="w-full sm:w-auto"
+            />
+          )}
+          {!isEntryCardOpen && !adjustmentTarget && (
             <BtnCreate
               label="Registrar Entrada"
               onClick={() => setIsEntryCardOpen(true)}
               className="w-full sm:w-auto"
             />
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* 2. BARRA DE BÚSQUEDA Y SUGERENCIAS */}
@@ -678,9 +693,38 @@ export const StockMovementsPage = () => {
       {/* 3. CONTENIDO: PRODUCTO ESCANEADO O LISTADO INICIAL (PENDIENTES DE COSTO) */}
       {scannedVariant && productData ? (
         <div className="space-y-4 animate-slide-up">
-          {/* Botón Volver a Pendientes cuando se ha buscado un producto */}
-          {hasCostPermission && (
-            <div className="flex items-center justify-between">
+          {/* Barra Contextual de la Variante Escaneada y Acciones */}
+          <div className="flex items-center justify-between gap-2.5 sm:gap-3 bg-base-100 p-3 sm:p-4 rounded-2xl border border-base-200 shadow-2xs">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+              <div className="w-10 h-10 rounded-xl bg-base-200/60 border border-base-300 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
+                {productData.imageUrl ? (
+                  <img
+                    src={getThumbnailUrl(productData.imageUrl)}
+                    alt={productData.productName}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <Package size={20} className="text-primary" />
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-xs sm:text-sm font-bold text-base-content truncate">
+                    {productData.productName}
+                  </h3>
+                  {productData.sku && (
+                    <span className="font-mono text-[10px] bg-base-200/70 px-1.5 py-0.5 rounded-md border border-base-300/50 text-base-content/70 hidden sm:inline">
+                      {productData.sku}
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] sm:text-xs text-base-content/60 truncate font-medium">
+                  Variante: <strong className="text-base-content/90 font-semibold">{scannedVariant.variantName}</strong>
+                </p>
+              </div>
+            </div>
+
+            {hasCostPermission && (
               <button
                 type="button"
                 onClick={() => {
@@ -688,13 +732,14 @@ export const StockMovementsPage = () => {
                   setFilterStockId(null);
                   loadPendingCostEntries();
                 }}
-                className="btn btn-ghost btn-xs gap-1.5 text-base-content/70 hover:text-primary cursor-pointer -ml-1"
+                title="Volver a Pendientes"
+                className="btn btn-ghost btn-sm p-2 sm:px-3 gap-1.5 text-base-content/70 hover:text-primary hover:bg-base-200/60 cursor-pointer shrink-0 rounded-xl"
               >
-                <ArrowLeft size={14} />
-                <span className="font-semibold text-xs">Volver a Entradas con Costo Pendiente</span>
+                <ArrowLeft size={16} />
+                <span className="text-xs font-semibold hidden sm:inline">Volver a Pendientes</span>
               </button>
-            </div>
-          )}
+            )}
+          </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Formulario Lateral */}
@@ -718,7 +763,7 @@ export const StockMovementsPage = () => {
                     <div className="space-y-4">
                       <ComerziaSelect
                         label="Tipo de Ajuste"
-                        options={adjustmentTypeOptions}
+                        options={manualAdjustmentTypeOptions}
                         value={adjustmentType}
                         onChange={(e) => {
                           setAdjustmentType(e.target.value ? Number(e.target.value) : '');
@@ -1163,9 +1208,9 @@ export const StockMovementsPage = () => {
                               )}
                             </div>
 
-                            {/* FILA 3: NOTA U OBSERVACIÓN CORTA (SI EXISTE) */}
+                            {/* FILA 3: NOTA U OBSERVACIÓN (SI EXISTE) */}
                             {entry.note && (
-                              <div className="pl-6 text-[11px] text-base-content/60 italic truncate">
+                              <div className="pl-6 text-[11px] text-base-content/70 italic break-words whitespace-normal leading-relaxed">
                                 "{entry.note}"
                               </div>
                             )}
@@ -1249,7 +1294,7 @@ export const StockMovementsPage = () => {
 
                             {/* FILA 3: OBSERVACIÓN (SI EXISTE) */}
                             {adj.observation && (
-                              <div className="pl-6 text-[11px] text-base-content/60 italic truncate">
+                              <div className="pl-6 text-[11px] text-base-content/70 italic break-words whitespace-normal leading-relaxed">
                                 "{adj.observation}"
                               </div>
                             )}
@@ -1420,9 +1465,9 @@ export const StockMovementsPage = () => {
                           </div>
                         </div>
 
-                        {/* FILA 3: NOTA U OBSERVACIÓN CORTA (SI EXISTE) */}
+                        {/* FILA 3: NOTA U OBSERVACIÓN (SI EXISTE) */}
                         {entry.note && (
-                          <div className="pl-6 text-[11px] text-base-content/60 italic truncate">
+                          <div className="pl-6 text-[11px] text-base-content/70 italic break-words whitespace-normal leading-relaxed">
                             "{entry.note}"
                           </div>
                         )}
@@ -1634,6 +1679,26 @@ export const StockMovementsPage = () => {
         onClose={() => setSelectedInventoryId(null)}
         inventoryId={selectedInventoryId}
       />
+
+      {scannedVariant && productData && (
+        <QuickStockTransferModal
+          isOpen={isTransferModalOpen}
+          onClose={() => setIsTransferModalOpen(false)}
+          productVariant={{
+            variantId: scannedVariant.variantId,
+            variantName: scannedVariant.variantName,
+            productName: productData.productName,
+            sku: productData.sku,
+            imageUrl: productData.imageUrl
+          }}
+          onTransferSuccess={() => {
+            loadKardex();
+            if (hasCostPermission) {
+              loadPendingCostEntries();
+            }
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import { Save, X, Trash2, Pencil, FileSpreadsheet, FileText, Plus, ArrowLeft, ArrowRight, RefreshCw, Eye, Unlock, Lock, DollarSign, Coins, Camera, Upload, ScanBarcode } from "lucide-react";
+import { Save, X, Trash2, Pencil, FileSpreadsheet, FileText, Plus, ArrowLeft, ArrowRight, ArrowRightLeft, RefreshCw, Eye, Unlock, Lock, DollarSign, Coins, Camera, Upload, ScanBarcode } from "lucide-react";
 import { ComerziaButton } from "./ComerziaButton";
 
 // Tipos para pasar props extra (como onClick)
@@ -379,6 +379,18 @@ export const BtnScanIcon = ({ type = "button", ...props }: BaseBtnProps) => (
         isIconOnly 
         icon={<ScanBarcode size={16} />} 
         tooltip="Escanear código con cámara"
+        {...props} 
+    />
+);
+
+// 25. BOTÓN TRANSFERENCIA RÁPIDA (Primario + ArrowRightLeft)
+export const BtnTransfer = ({ label = "Transferencia Rápida", responsive = false, type = "button", ...props }: BaseBtnProps) => (
+    <ComerziaButton 
+        type={type}
+        variant="primary" 
+        label={label} 
+        icon={<ArrowRightLeft size={18} />} 
+        responsive={responsive}
         {...props} 
     />
 );
