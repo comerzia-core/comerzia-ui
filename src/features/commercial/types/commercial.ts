@@ -384,11 +384,25 @@ export interface BulkProductUploadRequest {
   autoGenerateInternalBarcodes: boolean;
 }
 
+export interface BulkUploadRowError {
+  rowNumber: number;
+  productName: string;
+  variantName: string;
+  barcode?: string | null;
+  errorCode: string;
+  errorMessage: string;
+}
+
 export interface BulkUploadSummaryResponse {
+  totalRowsProcessed: number;
+  successfulRows: number;
+  failedRows: number;
   totalProductsCreated: number;
   totalVariantsCreated: number;
+  totalVariantsUpdated: number;
   missingBarcodesCount: number;
   missingImagesCount: number;
+  errors?: BulkUploadRowError[] | null;
 }
 
 export interface ProductVariantEnrichmentResponse {

@@ -145,7 +145,22 @@ export const BulkUploadModal = ({ isOpen, onClose, onSuccess }: Props) => {
     const rawMsg = err?.response?.data?.message || err?.message || '';
     const msgStr = typeof rawMsg === 'string' ? rawMsg.trim() : '';
 
-    // 1. Missing mandatory columns/data at row X: ...
+    // 1. Missing header row at row 3
+    if (/missing header row/i.test(msgStr) || /header row at row 3/i.test(msgStr)) {
+      return 'Formato de archivo inválido: no se encontró la fila de cabeceras en la fila 3 de la plantilla.';
+    }
+
+    // 2. Empty file
+    if (/the uploaded excel file is empty/i.test(msgStr) || /empty file/i.test(msgStr) || /archivo.*vac[íi]o/i.test(msgStr)) {
+      return 'El archivo Excel seleccionado está vacío.';
+    }
+
+    // 3. No data rows
+    if (/no data rows/i.test(msgStr) || /sin filas de datos/i.test(msgStr)) {
+      return 'El archivo Excel no contiene filas de datos para procesar a partir de la fila 4.';
+    }
+
+    // 4. Missing mandatory columns/data at row X: ...
     const missingColumnsMatch = msgStr.match(/Missing mandatory (?:columns|data) at row (\d+):\s*(.*)/i);
     if (missingColumnsMatch) {
       const row = missingColumnsMatch[1];
@@ -153,7 +168,7 @@ export const BulkUploadModal = ({ isOpen, onClose, onSuccess }: Props) => {
       return `Faltan columnas obligatorias en la fila ${row}: ${cols}`;
     }
 
-    // 2. Variant 'X' already exists in the system for product 'Y' at row Z
+    // 5. Variant 'X' already exists in the system for product 'Y' at row Z
     const variantExistsMatch = msgStr.match(/Variant\s*['"]([^'"]+)['"]\s*already exists(?:\s+in the system)?\s+for product\s*['"]([^'"]+)['"](?:\s+at row\s*(\d+))?/i);
     if (variantExistsMatch) {
       const variantName = variantExistsMatch[1];
@@ -164,20 +179,15 @@ export const BulkUploadModal = ({ isOpen, onClose, onSuccess }: Props) => {
         : `La variante '${variantName}' ya existe en el sistema para el producto '${prodName}'.`;
     }
 
-    // 3. Variant 'X' already exists for product 'Y' at row Z (patrón alternativo)
+    // 6. Variant 'X' already exists for product 'Y' at row Z (patrón alternativo)
     const variantDuplicateMatch = msgStr.match(/Variant\s*['"]([^'"]+)['"]\s*already exists.*product\s*['"]([^'"]+)['"].*row\s*(\d+)/i);
     if (variantDuplicateMatch) {
       return `La variante '${variantDuplicateMatch[1]}' ya existe para el producto '${variantDuplicateMatch[2]}' (fila ${variantDuplicateMatch[3]}).`;
     }
 
-    // 4. Archivo vacío o formato inválido
-    if (/empty|invalid format/i.test(msgStr)) {
-      return 'El archivo Excel está vacío o tiene un formato no válido.';
-    }
-
-    // 5. Mapeo por estado HTTP
+    // 7. Mapeo por estado HTTP
     if (status === 400) {
-      return msgStr || 'Datos no válidos en el archivo Excel. Verifica el formato.';
+      return msgStr || 'Datos o formato no válidos en el archivo Excel. Verifica la plantilla.';
     }
     if (status === 403) {
       return 'No tienes permisos para realizar la carga masiva.';
@@ -186,6 +196,29 @@ export const BulkUploadModal = ({ isOpen, onClose, onSuccess }: Props) => {
       return 'Error en el servidor al procesar el archivo Excel.';
     }
     return msgStr || 'Error al procesar la carga masiva.';
+  };
+
+  const translateRowErrorCode = (code?: string): string => {
+    switch (code) {
+      case 'DUPLICATE_BARCODE':
+        return 'Código de barras duplicado';
+      case 'INVALID_PRICE':
+        return 'Precio no válido';
+      case 'INVALID_STOCK':
+        return 'Stock no válido';
+      case 'MISSING_MANDATORY_FIELD':
+        return 'Campo obligatorio faltante';
+      case 'PRODUCT_NOT_FOUND':
+        return 'Producto no encontrado';
+      case 'BRAND_NOT_FOUND':
+        return 'Marca no encontrada';
+      case 'CATEGORY_NOT_FOUND':
+        return 'Categoría no encontrada';
+      case 'MEASURE_UNIT_NOT_FOUND':
+        return 'Unidad de medida no encontrada';
+      default:
+        return code || 'Error de validación';
+    }
   };
 
   const handleProcessUpload = async () => {
@@ -479,41 +512,108 @@ export const BulkUploadModal = ({ isOpen, onClose, onSuccess }: Props) => {
 
             {/* Tarjeta de Resumen Posterior a la Carga */}
             {uploadSummary && (
-              <div className="bg-base-100 rounded-2xl border border-success/30 p-4 sm:p-5 shadow-xs space-y-4 animate-fade-in">
-                <div className="flex items-center gap-2 text-success font-bold text-sm sm:text-base">
-                  <CheckCircle2 size={20} />
-                  <span>Resumen de Carga Masiva</span>
+              <div className="bg-base-100 rounded-2xl border border-base-300 p-4 sm:p-5 shadow-xs space-y-4 animate-fade-in">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-base-200 pb-3">
+                  <div className="flex items-center gap-2 text-success font-bold text-sm sm:text-base">
+                    <CheckCircle2 size={20} className="text-success" />
+                    <span>Resultado de la Carga Masiva</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs font-semibold text-base-content/70">
+                    <span>Filas procesadas: <strong className="font-mono text-base-content">{uploadSummary.totalRowsProcessed ?? (uploadSummary.successfulRows + (uploadSummary.failedRows || 0))}</strong></span>
+                    <span>•</span>
+                    <span className="text-success">Exitosas: <strong className="font-mono">{uploadSummary.successfulRows ?? uploadSummary.totalVariantsCreated}</strong></span>
+                    {(uploadSummary.failedRows ?? 0) > 0 && (
+                      <>
+                        <span>•</span>
+                        <span className="text-error">Fallidas: <strong className="font-mono">{uploadSummary.failedRows}</strong></span>
+                      </>
+                    )}
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                {/* Métricas Principales */}
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
                   <div className="bg-base-200/50 p-3 rounded-xl text-center">
-                    <p className="text-[10px] uppercase font-bold text-base-content/50">Productos Creados</p>
-                    <p className="text-xl font-black font-mono text-primary mt-0.5">
+                    <p className="text-[10px] uppercase font-bold text-base-content/50 truncate">Productos Creados</p>
+                    <p className="text-lg sm:text-xl font-black font-mono text-primary mt-0.5">
                       {uploadSummary.totalProductsCreated}
                     </p>
                   </div>
 
                   <div className="bg-base-200/50 p-3 rounded-xl text-center">
-                    <p className="text-[10px] uppercase font-bold text-base-content/50">Variantes Creadas</p>
-                    <p className="text-xl font-black font-mono text-base-content mt-0.5">
+                    <p className="text-[10px] uppercase font-bold text-base-content/50 truncate">Variantes Creadas</p>
+                    <p className="text-lg sm:text-xl font-black font-mono text-base-content mt-0.5">
                       {uploadSummary.totalVariantsCreated}
                     </p>
                   </div>
 
                   <div className="bg-base-200/50 p-3 rounded-xl text-center">
-                    <p className="text-[10px] uppercase font-bold text-base-content/50">Sin Código Real</p>
-                    <p className="text-xl font-black font-mono text-warning mt-0.5">
-                      {uploadSummary.missingBarcodesCount}
+                    <p className="text-[10px] uppercase font-bold text-base-content/50 truncate">Variantes Actualizadas</p>
+                    <p className="text-lg sm:text-xl font-black font-mono text-success mt-0.5">
+                      {uploadSummary.totalVariantsUpdated ?? 0}
                     </p>
                   </div>
 
                   <div className="bg-base-200/50 p-3 rounded-xl text-center">
-                    <p className="text-[10px] uppercase font-bold text-base-content/50">Sin Imagen</p>
-                    <p className="text-xl font-black font-mono text-info mt-0.5">
+                    <p className="text-[10px] uppercase font-bold text-base-content/50 truncate">Sin Código Físico</p>
+                    <p className="text-lg sm:text-xl font-black font-mono text-warning mt-0.5">
+                      {uploadSummary.missingBarcodesCount}
+                    </p>
+                  </div>
+
+                  <div className="bg-base-200/50 p-3 rounded-xl text-center col-span-2 sm:col-span-1">
+                    <p className="text-[10px] uppercase font-bold text-base-content/50 truncate">Sin Foto</p>
+                    <p className="text-lg sm:text-xl font-black font-mono text-info mt-0.5">
                       {uploadSummary.missingImagesCount}
                     </p>
                   </div>
                 </div>
+
+                {/* Tabla de Errores por Fila si existieron */}
+                {uploadSummary.errors && uploadSummary.errors.length > 0 && (
+                  <div className="bg-error/5 border border-error/20 rounded-xl p-3.5 space-y-2.5">
+                    <div className="flex items-center gap-1.5 text-error font-bold text-xs uppercase tracking-wider">
+                      <AlertTriangle size={15} /> Errores detectados en filas ({uploadSummary.errors.length})
+                    </div>
+                    
+                    <div className="overflow-x-auto max-h-48 custom-scrollbar border border-error/10 rounded-lg bg-base-100">
+                      <table className="table table-xs w-full">
+                        <thead className="bg-error/10 text-error-content sticky top-0">
+                          <tr>
+                            <th className="w-14 text-center">Fila</th>
+                            <th>Producto / Variante</th>
+                            <th>Código</th>
+                            <th>Motivo del Error</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-base-200">
+                          {uploadSummary.errors.map((errItem, idx) => (
+                            <tr key={idx} className="hover:bg-base-200/40">
+                              <td className="text-center font-mono font-bold text-base-content/70">
+                                {errItem.rowNumber}
+                              </td>
+                              <td>
+                                <div className="font-bold text-xs text-base-content">{errItem.productName}</div>
+                                <div className="text-[11px] text-base-content/60">{errItem.variantName}</div>
+                              </td>
+                              <td className="font-mono text-xs text-base-content/70">
+                                {errItem.barcode || '-'}
+                              </td>
+                              <td>
+                                <span className="badge badge-error badge-outline badge-xs font-semibold mb-1 block w-fit">
+                                  {translateRowErrorCode(errItem.errorCode)}
+                                </span>
+                                <span className="text-[11px] text-base-content/80 block leading-tight">
+                                  {errItem.errorMessage}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
 
                 {(uploadSummary.missingBarcodesCount > 0 || uploadSummary.missingImagesCount > 0) && (
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 border-t border-base-200">
