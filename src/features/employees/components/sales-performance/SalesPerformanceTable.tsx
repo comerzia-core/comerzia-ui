@@ -167,7 +167,7 @@ export const SalesPerformanceTable: React.FC<Props> = ({
             {formatMoney(item.grossSales)}
           </span>
           <span className="text-[10px] text-base-content/50 font-sans block">
-            {item.totalTransactions} tickets
+            {item.totalTransactions} ventas
           </span>
         </div>
       )
@@ -223,7 +223,7 @@ export const SalesPerformanceTable: React.FC<Props> = ({
       )
     },
     {
-      header: 'Tickets / Ops',
+      header: 'Ventas / Ops',
       className: 'text-center',
       render: item => (
         <div className="text-center font-mono text-xs">
@@ -231,7 +231,7 @@ export const SalesPerformanceTable: React.FC<Props> = ({
             {item.totalTransactions} ops
           </span>
           <span className="text-[10px] text-base-content/50 block font-sans">
-            Ticket: {formatMoney(item.averageTicket)}
+            Venta Prom.: {formatMoney(item.averageTicket)}
           </span>
         </div>
       )
@@ -413,11 +413,11 @@ export const SalesPerformanceTable: React.FC<Props> = ({
                 </div>
               </div>
 
-              {/* PIE DE TARJETA CON TICKETS Y BOTÓN DE RADIOGRAFÍA */}
+              {/* PIE DE TARJETA CON VENTAS Y BOTÓN DE RADIOGRAFÍA */}
               <div className="pl-6 pt-2 border-t border-base-200 flex items-center justify-between text-xs">
                 <span className="inline-flex items-center gap-1 text-base-content/60 font-mono text-[11px]">
                   <Receipt size={12} className="text-primary/70 shrink-0" />
-                  {item.totalTransactions} tickets • {item.totalUnitsSold} uds
+                  {item.totalTransactions} ventas • {item.totalUnitsSold} uds
                 </span>
 
                 <ComerziaButton

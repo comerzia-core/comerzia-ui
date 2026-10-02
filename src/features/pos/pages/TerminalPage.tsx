@@ -241,7 +241,7 @@ export const TerminalPage = () => {
               <TrendingDown size={20} />
             </div>
             <div className="min-w-0">
-              <p className="text-base-content/50 text-[11px] font-semibold uppercase tracking-wider truncate">Egresos</p>
+              <p className="text-base-content/50 text-[11px] font-semibold uppercase tracking-wider truncate">Gastos</p>
               <h3 className="text-sm sm:text-base font-bold font-mono text-error truncate">
                 {currencyCode} {(summary.totalOutflows || 0).toFixed(2)}
               </h3>

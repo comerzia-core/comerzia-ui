@@ -99,7 +99,7 @@ export const ShiftDetailsModal = ({ isOpen, onClose, shiftId }: Props) => {
   };
 
   const renderMovementType = (movementType: { code?: number; label: string }) => {
-    const isOutflow = movementType.code === 2 || movementType.label.toLowerCase().includes('egreso') || movementType.label.toLowerCase().includes('outflow');
+    const isOutflow = movementType.code === 2 || movementType.label.toLowerCase().includes('egreso') || movementType.label.toLowerCase().includes('gasto') || movementType.label.toLowerCase().includes('outflow');
     const isReturn = movementType.code === 3 || movementType.label.toLowerCase().includes('devoluc') || movementType.label.toLowerCase().includes('return');
     
     if (isOutflow) {
@@ -152,7 +152,7 @@ export const ShiftDetailsModal = ({ isOpen, onClose, shiftId }: Props) => {
     { 
       header: 'Monto', 
       render: row => {
-        const isOutflow = row.movementType.code === 2 || row.movementType.label.toLowerCase().includes('egreso');
+        const isOutflow = row.movementType.code === 2 || row.movementType.label.toLowerCase().includes('egreso') || row.movementType.label.toLowerCase().includes('gasto');
         return (
           <span className={`font-bold font-mono ${isOutflow ? 'text-error' : 'text-success'}`}>
             {isOutflow ? '-' : '+'}{currency} {row.amount.toFixed(2)}
@@ -315,7 +315,7 @@ export const ShiftDetailsModal = ({ isOpen, onClose, shiftId }: Props) => {
               <span className="text-xl sm:text-2xl font-bold text-success font-mono">{currency} {report.totalInflows.toFixed(2)}</span>
             </div>
             <div className="bg-base-100 shadow-sm border border-error/20 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
-              <span className="text-xs font-bold text-error/70 uppercase tracking-wider mb-1">Total Egresos</span>
+              <span className="text-xs font-bold text-error/70 uppercase tracking-wider mb-1">Total Gastos</span>
               <span className="text-xl sm:text-2xl font-bold text-error font-mono">{currency} {report.totalOutflows.toFixed(2)}</span>
             </div>
           </div>
@@ -434,7 +434,7 @@ export const ShiftDetailsModal = ({ isOpen, onClose, shiftId }: Props) => {
                     </p>
                   ) : (
                     movementsData.map((m) => {
-                      const isOutflow = m.movementType.code === 2 || m.movementType.label.toLowerCase().includes('egreso');
+                      const isOutflow = m.movementType.code === 2 || m.movementType.label.toLowerCase().includes('egreso') || m.movementType.label.toLowerCase().includes('gasto');
                       return (
                         <div key={m.id} className="bg-base-100 p-4 rounded-2xl border border-base-300 shadow-md space-y-2 text-xs hover:border-primary/30 transition-colors">
                           <div className="flex justify-between items-start">

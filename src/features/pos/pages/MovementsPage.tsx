@@ -283,7 +283,7 @@ export const MovementsPage = () => {
               Movimientos de Caja
             </h1>
             <p className="text-xs sm:text-sm text-base-content/70 mt-0.5 leading-relaxed">
-              Registro y control de ingresos y egresos manuales de efectivo
+              Registro y control de ingresos y gastos manuales de efectivo
             </p>
           </div>
         </div>

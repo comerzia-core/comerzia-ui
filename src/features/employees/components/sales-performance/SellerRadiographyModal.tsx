@@ -368,7 +368,7 @@ export const SellerRadiographyModal: React.FC<Props> = ({
                         <div className="mt-3 pt-2 border-t border-base-200 flex items-center justify-between text-xs font-mono">
                           <span className="inline-flex items-center gap-1 text-base-content/60">
                             <Receipt size={12} />
-                            {b.transactionsCount} tickets
+                            {b.transactionsCount} ventas
                           </span>
 
                           <span

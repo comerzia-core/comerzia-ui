@@ -490,12 +490,12 @@ export const DashboardPage = () => {
                   </span>
                 </div>
 
-                {/* KPI 4: Ticket Promedio */}
+                {/* KPI 4: Venta Promedio */}
                 <div className="card bg-base-100 p-4 rounded-2xl border border-base-200 shadow-xs flex flex-col justify-between">
                   <div>
                     <div className="flex items-center justify-between gap-1">
                       <span className="text-xs font-bold text-violet-500 uppercase tracking-wider">
-                        Ticket Promedio
+                        Venta Promedio
                       </span>
                       <div className="w-8 h-8 rounded-xl bg-violet-500/10 text-violet-500 flex items-center justify-center shrink-0">
                         <CreditCard size={16} />

@@ -78,14 +78,14 @@ export const PersonalStatsBanner: React.FC<Props> = ({ stats, currencyCode }) =>
             </span>
           </div>
 
-          {/* Métrica 2: Tickets */}
+          {/* Métrica 2: Ventas */}
           <div className="bg-sky-500/5 hover:bg-sky-500/10 border border-sky-500/25 p-3 sm:p-3.5 rounded-2xl shadow-xs transition-all duration-200 text-left min-w-[130px] sm:min-w-[145px]">
             <div className="flex items-center gap-1.5 mb-1.5">
               <div className="w-6 h-6 rounded-lg bg-sky-500/15 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
                 <Receipt size={13} />
               </div>
               <span className="text-[11px] font-bold text-sky-600 dark:text-sky-400 uppercase tracking-wider block">
-                Tickets
+                Ventas
               </span>
             </div>
             <div className="flex items-baseline gap-1 mt-0.5">

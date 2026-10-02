@@ -88,7 +88,7 @@ export const BranchComparisonSection: React.FC<Props> = ({
                 Operaciones
               </span>
               <span className="text-sm sm:text-base font-black font-mono text-base-content block truncate mt-0.5">
-                {branch.transactionsCount} tickets
+                {branch.transactionsCount} ventas
               </span>
             </div>
           )}
@@ -99,7 +99,7 @@ export const BranchComparisonSection: React.FC<Props> = ({
       <div className="mt-3.5 pt-2.5 border-t border-base-300/60 flex items-center justify-between text-xs font-mono">
         <span className="inline-flex items-center gap-1.5 text-base-content/60 font-medium">
           <Receipt size={13} className="text-base-content/40" />
-          {branch.transactionsCount} tickets
+          {branch.transactionsCount} ventas
         </span>
 
         {hasFinancialPermission && branch.marginPercentage !== null && (

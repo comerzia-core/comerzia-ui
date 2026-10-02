@@ -34,7 +34,7 @@ export const MovementModal = ({ isOpen, onClose, onSuccess, shiftId, movementToE
   const [shakeKey, setShakeKey] = useState(0);
 
   const [form, setForm] = useState({
-    movementType: '201', // 201: INFLOW (Ingreso), 202: OUTFLOW (Egreso)
+    movementType: '201', // 201: INFLOW (Ingreso), 202: OUTFLOW (Gasto)
     paymentType: '',
     amount: '',
     observation: ''
@@ -159,7 +159,7 @@ export const MovementModal = ({ isOpen, onClose, onSuccess, shiftId, movementToE
           />
         )}
 
-        {/* Selector de Tipo (Ingreso / Egreso) */}
+        {/* Selector de Tipo (Ingreso / Gasto) */}
         <div>
           <label className="label">
             <span className="label-text font-semibold text-base-content/80">
@@ -190,7 +190,7 @@ export const MovementModal = ({ isOpen, onClose, onSuccess, shiftId, movementToE
               </div>
             </button>
 
-            {/* EGRESO (202) */}
+            {/* GASTO (202) */}
             <button
               type="button"
               onClick={() => setForm({ ...form, movementType: '202' })}
@@ -208,7 +208,7 @@ export const MovementModal = ({ isOpen, onClose, onSuccess, shiftId, movementToE
                 <ArrowUpRight size={20} />
               </div>
               <div className="text-left">
-                <div className="font-bold text-sm">Egreso</div>
+                <div className="font-bold text-sm">Gasto</div>
                 <div className="text-xs opacity-75">Salida de dinero</div>
               </div>
             </button>

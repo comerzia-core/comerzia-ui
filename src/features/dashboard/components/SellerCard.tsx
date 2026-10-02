@@ -136,7 +136,7 @@ export const SellerCard: React.FC<Props> = ({
         {/* Grilla 3 columnas de actividad operativa */}
         <div className="grid grid-cols-3 gap-2 text-center text-xs font-mono">
           <div className="bg-base-200/30 p-2 rounded-xl border border-base-200/50">
-            <span className="text-[10px] text-base-content/50 block font-sans">Tickets</span>
+            <span className="text-[10px] text-base-content/50 block font-sans">Ventas</span>
             <strong className="text-base-content font-bold block mt-0.5">
               {seller.totalTransactions}
             </strong>
@@ -148,7 +148,7 @@ export const SellerCard: React.FC<Props> = ({
             </strong>
           </div>
           <div className="bg-base-200/30 p-2 rounded-xl border border-base-200/50">
-            <span className="text-[10px] text-base-content/50 block font-sans">Ticket Prom.</span>
+            <span className="text-[10px] text-base-content/50 block font-sans">Venta Prom.</span>
             <strong className="text-base-content font-bold block mt-0.5 truncate">
               {formatMoney(seller.averageTicket)}
             </strong>

@@ -141,7 +141,7 @@ export const TeamPerformanceSummaryKpis: React.FC<Props> = ({
         </span>
       </div>
 
-      {/* KPI 4: Volumen Operativo (Tickets y Unidades) */}
+      {/* KPI 4: Volumen Operativo (Ventas y Unidades) */}
       <div className="card bg-base-100 p-4 rounded-2xl border border-base-200 shadow-xs flex flex-col justify-between">
         <div>
           <div className="flex items-center justify-between gap-1">
@@ -156,7 +156,7 @@ export const TeamPerformanceSummaryKpis: React.FC<Props> = ({
             <span className="text-base sm:text-lg lg:text-xl font-black font-mono text-base-content tracking-tight block">
               {summary.totalTeamTransactions}{' '}
               <span className="text-xs font-normal text-base-content/60 font-sans">
-                tickets
+                ventas
               </span>
             </span>
           </div>

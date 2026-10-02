@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { SalesCatalogItem } from '../types/sales';
+import { roundToTwo } from '../../../utils/currency';
 
 export interface CartItem extends SalesCatalogItem {
   quantity: number;
@@ -43,10 +44,10 @@ export const useCartStore = create<CartStore>((set, get) => ({
 
     // Validación de descuento máximo unitario permitido
     const maxDiscount = (product.discountPrice != null && product.discountPrice < product.salePrice)
-      ? Number((product.salePrice - product.discountPrice).toFixed(2))
+      ? roundToTwo(product.salePrice - product.discountPrice)
       : 0;
 
-    let validDiscount = discountAmount;
+    let validDiscount = roundToTwo(discountAmount);
     if (validDiscount > maxDiscount) {
       validDiscount = maxDiscount;
     }
@@ -144,7 +145,7 @@ export const useCartStore = create<CartStore>((set, get) => ({
 
     // Límite de descuento: solo si discountPrice != null y discountPrice < salePrice
     const maxDiscount = (item.discountPrice != null && item.discountPrice < item.salePrice)
-      ? Number((item.salePrice - item.discountPrice).toFixed(2))
+      ? roundToTwo(item.salePrice - item.discountPrice)
       : 0;
 
     if (maxDiscount <= 0) {
@@ -156,7 +157,7 @@ export const useCartStore = create<CartStore>((set, get) => ({
       return { success: false, message: 'Este tipo de precio no admite descuentos manuales.' };
     }
 
-    let validDiscount = discountAmount;
+    let validDiscount = roundToTwo(discountAmount);
     let warningMsg: string | undefined;
 
     if (validDiscount < 0) {
@@ -184,7 +185,7 @@ export const useCartStore = create<CartStore>((set, get) => ({
     const totalUnits = item.quantity * factor;
 
     const maxDiscountUnit = (item.discountPrice != null && item.discountPrice < item.salePrice)
-      ? Number((item.salePrice - item.discountPrice).toFixed(2))
+      ? roundToTwo(item.salePrice - item.discountPrice)
       : 0;
 
     if (maxDiscountUnit <= 0) {
@@ -196,8 +197,8 @@ export const useCartStore = create<CartStore>((set, get) => ({
       return { success: false, message: 'Este tipo de precio no admite descuentos manuales.' };
     }
 
-    const maxTotalDiscount = Number((maxDiscountUnit * totalUnits).toFixed(2));
-    let validTotal = totalDiscountAmount;
+    const maxTotalDiscount = roundToTwo(maxDiscountUnit * totalUnits);
+    let validTotal = roundToTwo(totalDiscountAmount);
     let warningMsg: string | undefined;
 
     if (validTotal < 0) {
@@ -207,7 +208,7 @@ export const useCartStore = create<CartStore>((set, get) => ({
       warningMsg = `El descuento total máximo permitido es ${maxTotalDiscount.toFixed(2)}.`;
     }
 
-    const unitDiscount = totalUnits > 0 ? validTotal / totalUnits : 0;
+    const unitDiscount = totalUnits > 0 ? roundToTwo(validTotal / totalUnits) : 0;
 
     set({
       items: items.map((i) =>
@@ -264,22 +265,28 @@ export const useCartStore = create<CartStore>((set, get) => ({
   },
 
   getSubtotal: () => {
-    return get().items.reduce((total, item) => {
-      const factor = item.equivalenceFactor || 1;
-      return total + item.salePrice * item.quantity * factor;
-    }, 0);
+    return roundToTwo(
+      get().items.reduce((total, item) => {
+        const factor = item.equivalenceFactor || 1;
+        const lineSubtotal = roundToTwo(item.salePrice * item.quantity * factor);
+        return total + lineSubtotal;
+      }, 0)
+    );
   },
 
   getDiscountedAmount: () => {
-    return get().items.reduce((total, item) => {
-      const factor = item.equivalenceFactor || 1;
-      return total + item.discountAmount * item.quantity * factor;
-    }, 0);
+    return roundToTwo(
+      get().items.reduce((total, item) => {
+        const factor = item.equivalenceFactor || 1;
+        const lineDiscount = roundToTwo(item.discountAmount * item.quantity * factor);
+        return total + lineDiscount;
+      }, 0)
+    );
   },
 
   getTotal: () => {
     const subtotal = get().getSubtotal();
     const discount = get().getDiscountedAmount();
-    return Math.max(0, subtotal - discount);
+    return roundToTwo(Math.max(0, subtotal - discount));
   }
 }));

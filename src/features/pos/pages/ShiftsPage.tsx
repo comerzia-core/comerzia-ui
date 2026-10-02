@@ -134,7 +134,7 @@ export const ShiftsPage = () => {
                   </div>
                   <div>
                     <p className="text-[11px] text-base-content/50 font-medium mb-0.5 flex items-center gap-1">
-                      <TrendingDown size={12} className="text-error" /> Egresos
+                      <TrendingDown size={12} className="text-error" /> Gastos
                     </p>
                     <p className="text-xs sm:text-sm font-bold text-error">
                       {currency} {shift.totalOutflows ? shift.totalOutflows.toFixed(2) : '0.00'}

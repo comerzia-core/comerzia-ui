@@ -9,6 +9,7 @@ import { CommercialProductSearchBar } from '../../commercial/components/Commerci
 import { ComerziaButton } from '../../../components/ui/ComerziaButton';
 import type { CartItem } from '../store/useCartStore';
 import { AlertCircle, ArrowRight, ShoppingCart, Store, ChevronDown, ChevronUp, Trash2, Tag, X, Monitor } from 'lucide-react';
+import { roundToTwo } from '../../../utils/currency';
 
 interface QuantityControlProps {
   item: CartItem;
@@ -115,10 +116,10 @@ const ProductDiscountControl = ({
   const factor = item.equivalenceFactor || 1;
   const totalUnits = item.quantity * factor;
   const maxUnitDiscount = (item.discountPrice != null && item.discountPrice < item.salePrice)
-    ? Math.max(0, item.salePrice - item.discountPrice)
+    ? roundToTwo(item.salePrice - item.discountPrice)
     : 0;
-  const maxTotalDiscount = maxUnitDiscount * totalUnits;
-  const currentTotalDiscount = item.discountAmount * totalUnits;
+  const maxTotalDiscount = roundToTwo(maxUnitDiscount * totalUnits);
+  const currentTotalDiscount = roundToTwo(item.discountAmount * totalUnits);
 
   const [val, setVal] = useState<string>(() => {
     if (mode === 'UNIT') {
@@ -146,7 +147,7 @@ const ProductDiscountControl = ({
   };
 
   const handleCommit = () => {
-    const num = parseFloat(val) || 0;
+    const num = roundToTwo(parseFloat(val) || 0);
     if (mode === 'UNIT') {
       const res = updateDiscount(item.productVariantId, num);
       const updatedItem = useCartStore.getState().items.find(i => i.productVariantId === item.productVariantId);
@@ -160,7 +161,7 @@ const ProductDiscountControl = ({
       const res = updateTotalDiscount(item.productVariantId, num);
       const updatedItem = useCartStore.getState().items.find(i => i.productVariantId === item.productVariantId);
       if (updatedItem) {
-        const updatedTot = updatedItem.discountAmount * updatedItem.quantity * (updatedItem.equivalenceFactor || 1);
+        const updatedTot = roundToTwo(updatedItem.discountAmount * updatedItem.quantity * (updatedItem.equivalenceFactor || 1));
         setVal(updatedTot === 0 ? '' : Number(updatedTot.toFixed(2)).toString());
       }
       if (!res.success && res.message) {
@@ -388,7 +389,7 @@ export const NewSalePage = () => {
               equivalenceFactor: factor,
               activePrices: productResponse.activePrices,
               quantity: d.receiptQuantity || 1,
-              discountAmount: (d.lineTotalDiscount || 0) / (d.receiptQuantity || 1) / factor
+              discountAmount: roundToTwo((d.lineTotalDiscount || 0) / (d.receiptQuantity || 1) / factor)
             });
           }
         }
@@ -572,12 +573,12 @@ export const NewSalePage = () => {
 
     try {
       const payload = {
-        expectedTotalAmount: getTotal(),
+        expectedTotalAmount: roundToTwo(getTotal()),
         details: items.map(i => ({
           productVariantId: i.productVariantId,
           priceTypeId: i.priceTypeId,
           receiptQuantity: i.quantity,
-          lineDiscountAmount: i.discountAmount
+          lineDiscountAmount: roundToTwo(i.discountAmount || 0)
         }))
       };
 
@@ -715,12 +716,12 @@ export const NewSalePage = () => {
                   const factor = item.equivalenceFactor || 1;
                   const totalUnits = item.quantity * factor;
                   const maxDiscount = (item.discountPrice != null && item.discountPrice < item.salePrice)
-                    ? item.salePrice - item.discountPrice
+                    ? roundToTwo(item.salePrice - item.discountPrice)
                     : 0;
                   const hasDiscountLimit = maxDiscount > 0;
-                  const totalDiscount = item.discountAmount * totalUnits;
-                  const subtotal = item.salePrice * totalUnits;
-                  const finalTotal = subtotal - totalDiscount;
+                  const totalDiscount = roundToTwo(item.discountAmount * totalUnits);
+                  const subtotal = roundToTwo(item.salePrice * totalUnits);
+                  const finalTotal = roundToTwo(Math.max(0, subtotal - totalDiscount));
                   const isExpanded = !!expandedItems[item.productVariantId];
 
                   return (
@@ -871,12 +872,12 @@ export const NewSalePage = () => {
                       const factor = item.equivalenceFactor || 1;
                       const totalUnits = item.quantity * factor;
                       const maxDiscount = (item.discountPrice != null && item.discountPrice < item.salePrice)
-                        ? item.salePrice - item.discountPrice
+                        ? roundToTwo(item.salePrice - item.discountPrice)
                         : 0;
                       const hasDiscountLimit = maxDiscount > 0;
-                      const totalDiscount = item.discountAmount * totalUnits;
-                      const subtotal = item.salePrice * totalUnits;
-                      const finalTotal = subtotal - totalDiscount;
+                      const totalDiscount = roundToTwo(item.discountAmount * totalUnits);
+                      const subtotal = roundToTwo(item.salePrice * totalUnits);
+                      const finalTotal = roundToTwo(Math.max(0, subtotal - totalDiscount));
 
                       return (
                         <tr key={`desktop-${item.productVariantId}-${item.priceTypeId}`} className="hover border-b border-base-200/50">

@@ -131,11 +131,11 @@ export const SellerPodium: React.FC<Props> = ({
             {formatMoney(seller.totalGrossSales)}
           </span>
 
-          {/* Resumen de tickets y unidades */}
+          {/* Resumen de ventas y unidades */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 mt-1 text-[10px] sm:text-[11px] text-base-content/60 font-mono whitespace-nowrap">
             <span className="inline-flex items-center gap-0.5 whitespace-nowrap">
               <Receipt size={10} className="shrink-0" />
-              {seller.totalTransactions} tickets
+              {seller.totalTransactions} ventas
             </span>
             <span className="hidden sm:inline">•</span>
             <span className="inline-flex items-center gap-0.5 whitespace-nowrap">
@@ -173,10 +173,10 @@ export const SellerPodium: React.FC<Props> = ({
             </span>
           </div>
 
-          {/* Ticket promedio en la parte superior del pedestal */}
+          {/* Venta promedio en la parte superior del pedestal */}
           <div className="relative z-10 w-full text-center">
             <span className="text-[9px] sm:text-[10px] text-base-content/60 block uppercase tracking-wider font-semibold">
-              Ticket Promedio
+              Venta Promedio
             </span>
             <span className="text-xs sm:text-sm font-bold font-mono text-base-content">
               {formatMoney(seller.averageTicket)}
