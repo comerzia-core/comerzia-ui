@@ -13,7 +13,6 @@ import {
   Store, 
   Package, 
   Layers, 
-  Barcode, 
   ShieldCheck,
   AlertCircle
 } from 'lucide-react';
