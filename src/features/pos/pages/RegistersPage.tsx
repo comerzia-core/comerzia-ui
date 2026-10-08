@@ -5,9 +5,12 @@ import { branchService } from '../../organization/services/branchService';
 import type { CashRegisterResponse } from '../types/pos';
 import type { BranchResponse } from '../../organization/types/branch';
 import { BtnCreate } from '../../../components/ui/CrudButtons';
+import { ComerziaButton } from '../../../components/ui/ComerziaButton';
 import { RegisterModal } from '../components/RegisterModal';
 import { useToast } from '../../../context/ToastContext';
-import { Monitor, MapPin, History, Pencil, Building2 } from 'lucide-react';
+import { usePermission } from '../../../hooks/usePermission';
+import { PERMISSIONS } from '../../../config/permissions';
+import { Monitor, MapPin, History, Pencil, Building2, Printer } from 'lucide-react';
 import { ComerziaBadge } from '../../../components/ui/ComerziaBadge';
 import { ComerziaSelect } from '../../../components/ui/ComerziaSelect';
 import { ComerziaContextMenu, ContextMenuItem } from '../../../components/ui/ComerziaContextMenu';
@@ -15,6 +18,8 @@ import { ComerziaContextMenu, ContextMenuItem } from '../../../components/ui/Com
 export const RegistersPage = () => {
   const navigate = useNavigate();
   const { error: toastError } = useToast();
+  const { can } = usePermission();
+  const canViewPrinters = can(PERMISSIONS.HARDWARE.PRINTERS_VIEW) || can(PERMISSIONS.HARDWARE.DEVICES_READ);
 
   const [registers, setRegisters] = useState<CashRegisterResponse[]>([]);
   const [branches, setBranches] = useState<BranchResponse[]>([]);
@@ -198,10 +203,26 @@ export const RegistersPage = () => {
                 >
                   {register.name}
                 </h3>
-                <p className="text-xs sm:text-sm text-base-content/60 font-medium flex items-center gap-1.5 mt-2">
-                  <MapPin size={14} className="text-base-content/40 shrink-0 sm:w-4 sm:h-4" />
-                  <span className="truncate">{register.branchName || 'Sin sucursal'}</span>
-                </p>
+                <div className="flex items-center justify-between mt-2 pt-2 border-t border-base-200/60">
+                  <p className="text-xs sm:text-sm text-base-content/60 font-medium flex items-center gap-1.5 truncate">
+                    <MapPin size={14} className="text-base-content/40 shrink-0 sm:w-4 sm:h-4" />
+                    <span className="truncate">{register.branchName || 'Sin sucursal'}</span>
+                  </p>
+                  {canViewPrinters && (
+                    <ComerziaButton
+                      type="button"
+                      variant="ghost"
+                      label="Impresora"
+                      icon={<Printer size={13} />}
+                      title="Configurar impresora de tickets de esta caja"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate('/pos/printers?tab=devices');
+                      }}
+                      className="btn-xs shrink-0"
+                    />
+                  )}
+                </div>
               </div>
             </div>
           ))}
@@ -227,6 +248,15 @@ export const RegistersPage = () => {
                 }
               }}
             />
+            {canViewPrinters && (
+              <ContextMenuItem
+                icon={Printer}
+                label="Impresora Asociada"
+                onClick={() => {
+                  navigate('/pos/printers?tab=devices');
+                }}
+              />
+            )}
             <ContextMenuItem
               icon={Pencil}
               label="Modificar"

@@ -17,7 +17,9 @@ import {
   ShoppingBag,
   Trash2,
   AlertTriangle,
-  UserCheck
+  UserCheck,
+  Printer,
+  CheckCircle2
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../../../stores/useAuthStore';
@@ -28,7 +30,10 @@ import { RegisterSaleCustomerModal } from '../../sales/components/RegisterSaleCu
 import { SaleDetailsModal } from '../../sales/components/SaleDetailsModal';
 import { ComerziaModal } from '../../../components/ui/ComerziaModal';
 import { ComerziaButton } from '../../../components/ui/ComerziaButton';
-import { BtnCancel, BtnModalYes } from '../../../components/ui/CrudButtons';
+import { ComerziaSwitch } from '../../../components/ui/ComerziaSwitch';
+import { BtnCancel, BtnModalYes, BtnPrint } from '../../../components/ui/CrudButtons';
+import { hardwareService } from '../services/hardwareService';
+import { HwPrintJobTypeCode } from '../types/hardware';
 
 export const TerminalPage = () => {
   const [summary, setSummary] = useState<ShiftSummaryResponse | null>(null);
@@ -60,14 +65,51 @@ export const TerminalPage = () => {
   const canProcessPayment = hasPermission('SAL_PROCESS_PAYMENT');
   const canCancelSale = hasPermission('SAL_SALES_CANCEL');
 
+  // Hardware & Impresión de Tickets
+  const [isPrinterOnline, setIsPrinterOnline] = useState<boolean | null>(null);
+  const [paidSaleForReceipt, setPaidSaleForReceipt] = useState<SaleResponse | null>(null);
+  const [autoPrintTicket, setAutoPrintTicket] = useState<boolean>(
+    () => localStorage.getItem('auto_print_receipt') === 'true'
+  );
+
   const currencyCode = userProfile?.companySettings?.currencyCode || 'USD';
 
   useEffect(() => {
     if (canAccessTerminal) {
       loadSummary();
       loadPendingSales();
+      checkPrinterStatus();
     }
   }, []);
+
+  const checkPrinterStatus = async () => {
+    try {
+      const data = await hardwareService.getAgents();
+      const online = (data.content || []).some(a => a.isConnected);
+      setIsPrinterOnline(online);
+    } catch {
+      setIsPrinterOnline(false);
+    }
+  };
+
+  const printReceiptJob = async (sale: SaleResponse) => {
+    try {
+      await hardwareService.createPrintJob({
+        jobType: HwPrintJobTypeCode.RECEIPT_PRINT,
+        payload: {
+          saleId: sale.id,
+          invoiceNumber: sale.saleNumber,
+          customer: sale.customer?.fullName || sale.customer?.firstName || 'Consumidor Final',
+          total: sale.totalAmount,
+          openDrawer: true,
+        },
+      });
+      toastSuccess(`Ticket #${sale.saleNumber || ''} enviado a la impresora.`);
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } } };
+      toastError(errorObj.response?.data?.message || 'Error al imprimir ticket.');
+    }
+  };
 
   const loadSummary = async () => {
     // Si no es cajero, no consultamos turno activo ni mostramos arqueo
@@ -115,9 +157,17 @@ export const TerminalPage = () => {
   };
 
   const handlePaymentSuccess = (_paidSaleId: string, _paidSaleNumber?: string) => {
+    const sale = selectedSaleToPay;
     loadSummary();
     loadPendingSales();
-    setRegisterCustomerSale(selectedSaleToPay);
+    if (sale) {
+      if (autoPrintTicket) {
+        printReceiptJob(sale);
+        setRegisterCustomerSale(sale);
+      } else {
+        setPaidSaleForReceipt(sale);
+      }
+    }
   };
 
   // Cancelar venta pendiente
@@ -195,6 +245,24 @@ export const TerminalPage = () => {
             <p className="text-xs sm:text-sm text-base-content/60 mt-0.5">
               Gestión y cobro de pedidos pendientes del turno
             </p>
+          </div>
+        </div>
+
+        {/* Indicador de Estado de la Tickera */}
+        <div className="flex items-center gap-2">
+          <div
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-semibold ${
+              isPrinterOnline
+                ? 'bg-success/10 border-success/20 text-success'
+                : 'bg-error/10 border-error/20 text-error'
+            }`}
+            title={isPrinterOnline ? 'Tickera térmica en línea y operativa' : 'Tickera fuera de línea o sin agente conectado'}
+          >
+            <Printer size={15} />
+            <span className={`w-2 h-2 rounded-full ${isPrinterOnline ? 'bg-success animate-pulse' : 'bg-error'}`} />
+            <span className="hidden sm:inline">
+              {isPrinterOnline ? 'Tickera en línea' : 'Tickera desconectada'}
+            </span>
           </div>
         </div>
       </div>
@@ -447,6 +515,76 @@ export const TerminalPage = () => {
           </div>
         </div>
       </ComerziaModal>
+
+      {/* Modal: Éxito de Cobro e Impresión de Ticket */}
+      {paidSaleForReceipt && (
+        <ComerziaModal
+          isOpen={!!paidSaleForReceipt}
+          onClose={() => {
+            const sale = paidSaleForReceipt;
+            setPaidSaleForReceipt(null);
+            setRegisterCustomerSale(sale);
+          }}
+          title={
+            <div className="flex items-center gap-2 text-success">
+              <CheckCircle2 size={22} />
+              <span className="font-bold text-lg text-base-content">¡Cobro Completado con Éxito!</span>
+            </div>
+          }
+          size="sm"
+        >
+          <div className="space-y-4">
+            <div className="p-4 bg-success/10 rounded-2xl border border-success/20 text-center">
+              <p className="text-xs text-base-content/60 font-semibold uppercase tracking-wider">Venta Registrada</p>
+              <h3 className="text-2xl font-black font-mono text-base-content mt-0.5">
+                {paidSaleForReceipt.saleNumber ? `#${paidSaleForReceipt.saleNumber}` : 'Finalizada'}
+              </h3>
+              <p className="text-sm font-bold text-success font-mono mt-1">
+                {currencyCode} {paidSaleForReceipt.totalAmount.toFixed(2)}
+              </p>
+            </div>
+
+            {/* Switch para imprimir automáticamente */}
+            <div className="p-3 bg-base-200/50 rounded-xl border border-base-200 flex items-center justify-between">
+              <span className="text-xs text-base-content/80 font-medium">
+                Imprimir ticket automáticamente al cobrar
+              </span>
+              <ComerziaSwitch
+                checked={autoPrintTicket}
+                onChange={() => {
+                  const newVal = !autoPrintTicket;
+                  setAutoPrintTicket(newVal);
+                  localStorage.setItem('auto_print_receipt', String(newVal));
+                }}
+              />
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2 pt-3 border-t border-base-200">
+              <BtnCancel
+                label="Cerrar"
+                onClick={() => {
+                  const sale = paidSaleForReceipt;
+                  setPaidSaleForReceipt(null);
+                  setRegisterCustomerSale(sale);
+                }}
+                responsive={true}
+                className="w-full sm:w-1/2"
+              />
+              <BtnPrint
+                label="Imprimir Ticket"
+                onClick={async () => {
+                  await printReceiptJob(paidSaleForReceipt);
+                  const sale = paidSaleForReceipt;
+                  setPaidSaleForReceipt(null);
+                  setRegisterCustomerSale(sale);
+                }}
+                responsive={true}
+                className="w-full sm:w-1/2"
+              />
+            </div>
+          </div>
+        </ComerziaModal>
+      )}
     </div>
   );
 };

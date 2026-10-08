@@ -3,21 +3,22 @@ import { usePermission } from "../hooks/usePermission";
 import { AccessDeniedPage } from "../features/errors/pages/AccessDeniedPage";
 
 interface Props {
-    code: string; // El código del permiso requerido (ej: 'SEC_VIEW')
+    code?: string; // El código del permiso requerido (ej: 'SEC_VIEW')
+    codes?: string[]; // Array de permisos (canAny)
 }
 
-export const PermissionGuard = ({ code }: Props) => {
-    const { can } = usePermission();
+export const PermissionGuard = ({ code, codes }: Props) => {
+    const { can, canAny } = usePermission();
 
-    // Si NO tiene el permiso, lo mandamos al dashboard o a una página 403
-    if (!can(code)) {
-        // Opción A: Redirigir al dashboard
-        // return <Navigate to="/dashboard" replace />;
-        
-        // Opción B (Mejor): Mostrar componente de "Acceso Denegado"
+    const hasAccess = codes && codes.length > 0
+        ? canAny(codes)
+        : code
+        ? can(code)
+        : true;
+
+    if (!hasAccess) {
         return <AccessDeniedPage />;
     }
 
-    // Si TIENE permiso, renderiza la ruta hija
     return <Outlet />;
 };

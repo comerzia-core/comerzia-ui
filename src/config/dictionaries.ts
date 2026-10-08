@@ -21,6 +21,12 @@ export const DICTIONARIES = {
     // SALES
     SALE_STATUS: 'sale-status',
     CUSTOMER_TYPE: 'customer-type',
+    // HARDWARE
+    HW_AGENT_STATUS: 'hw-agent-status',
+    HW_DEVICE_TYPE: 'hw-device-type',
+    HW_DEVICE_STATUS: 'hw-device-status',
+    HW_PRINT_JOB_TYPE: 'hw-print-job-type',
+    HW_PRINT_JOB_STATUS: 'hw-print-job-status',
 } as const;
 
 // Este type mágico extrae los valores ("user-status", "plan-type", etc.)

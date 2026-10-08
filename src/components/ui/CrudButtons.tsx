@@ -1,4 +1,4 @@
-import { Save, X, Trash2, Pencil, FileSpreadsheet, FileText, Plus, ArrowLeft, ArrowRight, ArrowRightLeft, RefreshCw, Eye, Unlock, Lock, DollarSign, Coins, Camera, Upload, ScanBarcode } from "lucide-react";
+import { Save, X, Trash2, Pencil, FileSpreadsheet, FileText, Plus, ArrowLeft, ArrowRight, ArrowRightLeft, RefreshCw, Eye, Unlock, Lock, DollarSign, Coins, Camera, Upload, ScanBarcode, Printer, Laptop } from "lucide-react";
 import { ComerziaButton } from "./ComerziaButton";
 
 // Tipos para pasar props extra (como onClick)
@@ -394,3 +394,52 @@ export const BtnTransfer = ({ label = "Transferencia Rápida", responsive = fals
         {...props} 
     />
 );
+
+// 26. BOTÓN IMPRIMIR (Primario + Printer)
+export const BtnPrint = ({ label = "Imprimir", responsive = false, type = "button", ...props }: BaseBtnProps) => (
+    <ComerziaButton 
+        type={type}
+        variant="primary" 
+        label={label} 
+        icon={<Printer size={18} />} 
+        responsive={responsive}
+        {...props} 
+    />
+);
+
+// 26.1 BOTÓN IMPRIMIR ICONO (Redondo para Tablas)
+export const BtnPrintIcon = ({ type = "button", tooltip = "Imprimir", ...props }: BaseBtnProps & { tooltip?: string }) => (
+    <ComerziaButton 
+        type={type}
+        variant="primary" 
+        isIconOnly 
+        icon={<Printer size={16} />} 
+        tooltip={tooltip}
+        {...props} 
+    />
+);
+
+// 27. BOTÓN VINCULAR TERMINAL (Primario/Create + Laptop)
+export const BtnPairTerminal = ({ label = "Vincular Terminal", responsive = false, type = "button", ...props }: BaseBtnProps) => (
+    <ComerziaButton 
+        type={type}
+        variant="create" 
+        label={label} 
+        icon={<Laptop size={18} />} 
+        responsive={responsive}
+        {...props} 
+    />
+);
+
+// 28. BOTÓN ACTUALIZAR / RECARGAR (Neutral + RefreshCw)
+export const BtnRefresh = ({ label = "Actualizar", responsive = true, type = "button", ...props }: BaseBtnProps) => (
+    <ComerziaButton 
+        type={type}
+        variant="neutral" 
+        label={label} 
+        icon={<RefreshCw size={16} />} 
+        responsive={responsive}
+        {...props} 
+    />
+);
+

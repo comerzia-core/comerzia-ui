@@ -9,6 +9,7 @@ import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
 import { useToast } from '../../../context/ToastContext';
 import { ComerziaContextMenu, ContextMenuItem } from '../../../components/ui/ComerziaContextMenu';
 import { EditProductModal } from './EditProductModal';
+import { PrintProductLabelsModal } from './PrintProductLabelsModal';
 import { getCatalogErrorMessage } from '../utils/catalogErrorMessages';
 import { 
   Pencil, 
@@ -18,8 +19,11 @@ import {
   ChevronRight, 
   ChevronsLeft, 
   ChevronsRight, 
-  Package 
+  Package,
+  Barcode
 } from 'lucide-react';
+
+import { PERMISSIONS } from '../../../config/permissions';
 
 interface Props {
   searchTerm?: string;
@@ -47,10 +51,12 @@ export const ProductTable = ({
 
   const { hasPermission } = useAuthStore();
   const canManage = hasPermission('COM_CATALOG_MANAGE');
+  const canPrint = hasPermission(PERMISSIONS.HARDWARE.PRINT_EXECUTE);
   const { error: toastError, success: toastSuccess } = useToast();
 
   const [productToEdit, setProductToEdit] = useState<ProductResponse | null>(null);
   const [productToDelete, setProductToDelete] = useState<ProductResponse | null>(null);
+  const [productForLabels, setProductForLabels] = useState<ProductResponse | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Menú contextual (Desktop: coordenadas del mouse; Mobile: centrado en pantalla con telón)
@@ -358,6 +364,17 @@ export const ProductTable = ({
                 }
               }}
             />
+            {canPrint && (
+              <ContextMenuItem 
+                icon={Barcode}
+                label="Imprimir Etiquetas de Código de Barras"
+                onClick={() => {
+                  if (contextMenu.product) {
+                    setProductForLabels(contextMenu.product);
+                  }
+                }}
+              />
+            )}
             {canManage && (
               <>
                 <ContextMenuItem 
@@ -390,6 +407,11 @@ export const ProductTable = ({
         onClose={() => setSelectedProductId(null)}
         productId={selectedProductId || ''}
         productName={selectedProductName}
+      />
+      <PrintProductLabelsModal
+        isOpen={!!productForLabels}
+        onClose={() => setProductForLabels(null)}
+        product={productForLabels}
       />
       <EditProductModal
         isOpen={!!productToEdit}

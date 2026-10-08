@@ -33,8 +33,11 @@ import {
   ChevronsLeft,
   ChevronLeft,
   ChevronRight,
-  ChevronsRight
+  ChevronsRight,
+  Printer
 } from 'lucide-react';
+import { hardwareService } from '../../pos/services/hardwareService';
+import { HwPrintJobTypeCode } from '../../pos/types/hardware';
 
 export const SalesHistoryPage = () => {
   const navigate = useNavigate();
@@ -275,6 +278,26 @@ export const SalesHistoryPage = () => {
   // Ver detalles completos de la venta
   const handleViewDetails = (sale: SaleResponse) => {
     setSelectedSaleDetails(sale);
+  };
+
+  // Reimprimir ticket térmico de venta
+  const handleReprintTicket = async (sale: SaleResponse) => {
+    try {
+      await hardwareService.createPrintJob({
+        jobType: HwPrintJobTypeCode.RECEIPT_PRINT,
+        payload: {
+          saleId: sale.id,
+          invoiceNumber: sale.saleNumber,
+          customer: sale.customer?.fullName || sale.customer?.firstName || 'Consumidor Final',
+          total: sale.totalAmount,
+          openDrawer: false,
+        },
+      });
+      toastSuccess(`Ticket de venta #${sale.saleNumber || ''} enviado a la cola de impresión.`);
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } } };
+      toastError(errorObj.response?.data?.message || 'Error al reimprimir el ticket');
+    }
   };
 
   // Abrir Menú Contextual en PC (Clic Derecho con coordenadas)
@@ -804,23 +827,34 @@ export const SalesHistoryPage = () => {
             )}
 
             {/* Si la venta está COMPLETED (602) o PARTIALLY_REFUNDED (605) */}
-            {(getStatusCode(contextMenu.sale.saleStatus) === 602 || getStatusCode(contextMenu.sale.saleStatus) === 605) && canReturn && (
-              <ContextMenuItem
-                icon={RotateCcw}
-                label="Procesar Devolución"
-                isExternalLink={!contextMenu.isCentered}
-                onClick={() => {
-                  if (contextMenu.sale?.saleNumber) {
-                    const path = `/sales/returns/${encodeURIComponent(contextMenu.sale.saleNumber)}`;
-                    setContextMenu(prev => ({ ...prev, isOpen: false }));
-                    if (contextMenu.isCentered) {
-                      navigate(path);
-                    } else {
-                      window.open(path, '_blank');
-                    }
-                  }
-                }}
-              />
+            {(getStatusCode(contextMenu.sale.saleStatus) === 602 || getStatusCode(contextMenu.sale.saleStatus) === 605) && (
+              <>
+                <ContextMenuItem
+                  icon={Printer}
+                  label="Reimprimir Ticket"
+                  onClick={() => {
+                    if (contextMenu.sale) handleReprintTicket(contextMenu.sale);
+                  }}
+                />
+                {canReturn && (
+                  <ContextMenuItem
+                    icon={RotateCcw}
+                    label="Procesar Devolución"
+                    isExternalLink={!contextMenu.isCentered}
+                    onClick={() => {
+                      if (contextMenu.sale?.saleNumber) {
+                        const path = `/sales/returns/${encodeURIComponent(contextMenu.sale.saleNumber)}`;
+                        setContextMenu(prev => ({ ...prev, isOpen: false }));
+                        if (contextMenu.isCentered) {
+                          navigate(path);
+                        } else {
+                          window.open(path, '_blank');
+                        }
+                      }
+                    }}
+                  />
+                )}
+              </>
             )}
           </>
         )}

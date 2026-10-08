@@ -22,6 +22,7 @@ import { ShiftsPage } from "../features/pos/pages/ShiftsPage";
 import { MovementsPage } from "../features/pos/pages/MovementsPage";
 import { RegistersPage } from "../features/pos/pages/RegistersPage";
 import { CashRegisterHistoryView } from "../features/pos/pages/CashRegisterHistoryView";
+import { PrintersPage } from "../features/pos/pages/PrintersPage";
 
 // --- COMMERCIAL ---
 import { CatalogPage } from "../features/commercial/pages/CatalogPage";
@@ -92,6 +93,9 @@ export const AppRouter = () => {
             <Route path="/pos/movements" element={<MovementsPage />} />
             <Route path="/pos/registers" element={<RegistersPage />} />
             <Route path="/pos/registers/:registerId/history" element={<CashRegisterHistoryView />} />
+            <Route element={<PermissionGuard code="HW_PRINTERS_VIEW" />}>
+              <Route path="/pos/printers" element={<PrintersPage />} />
+            </Route>
 
             {/* --- SALES MODULES --- */}
             <Route path="/sales/new" element={<NewSalePage />} />
