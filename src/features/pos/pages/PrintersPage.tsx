@@ -16,6 +16,7 @@ import { PrintJobList } from '../components/hardware/PrintJobList';
 import { PairAgentModal } from '../components/hardware/PairAgentModal';
 import { EditAgentModal } from '../components/hardware/EditAgentModal';
 import { DeviceModal } from '../components/hardware/DeviceModal';
+import { PrinterRollCalibrationModal } from '../components/hardware/PrinterRollCalibrationModal';
 import { TestPrintModal } from '../components/hardware/TestPrintModal';
 import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
 import { BtnRefresh } from '../../../components/ui/CrudButtons';
@@ -93,6 +94,7 @@ export const PrintersPage = () => {
   const [agentToDelete, setAgentToDelete] = useState<HwAgentResponse | null>(null);
   const [isDeletingAgent, setIsDeletingAgent] = useState(false);
 
+  const [deviceToCalibrate, setDeviceToCalibrate] = useState<HwDeviceResponse | null>(null);
   const [isDeviceModalOpen, setIsDeviceModalOpen] = useState(false);
   const [deviceToEdit, setDeviceToEdit] = useState<HwDeviceResponse | null>(null);
   const [deviceToDelete, setDeviceToDelete] = useState<HwDeviceResponse | null>(null);
@@ -458,6 +460,7 @@ export const PrintersPage = () => {
           agents={agents}
           isLoading={isLoadingDevices}
           onRefresh={loadDevices}
+          onCalibrateRoll={device => setDeviceToCalibrate(device)}
           onCreateDevice={() => {
             setDeviceToEdit(null);
             setIsDeviceModalOpen(true);
@@ -518,6 +521,8 @@ export const PrintersPage = () => {
         onSuccess={loadDevices}
       />
 
+      {deviceToCalibrate && canViewRolls && <PrinterRollCalibrationModal key={deviceToCalibrate.id} deviceId={deviceToCalibrate.id}
+        onClose={() => { setDeviceToCalibrate(null); void loadDevices(); }} onUpdated={() => { void loadDevices(); }} />}
       <TestPrintModal
         isOpen={!!deviceForTest}
         onClose={() => setDeviceForTest(null)}

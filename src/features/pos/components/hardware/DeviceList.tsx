@@ -28,6 +28,7 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Ruler,
 } from 'lucide-react';
 
 interface Props {
@@ -40,6 +41,7 @@ interface Props {
   onDeleteDevice: (device: HwDeviceResponse) => void;
   onTestPrint: (device: HwDeviceResponse) => void;
   onSetDefault: (device: HwDeviceResponse) => void;
+  onCalibrateRoll: (device: HwDeviceResponse) => void;
 }
 
 export const DeviceList = ({
@@ -51,6 +53,7 @@ export const DeviceList = ({
   onDeleteDevice,
   onTestPrint,
   onSetDefault,
+  onCalibrateRoll,
 }: Props) => {
   const { can } = usePermission();
   const canManageDevices = can(PERMISSIONS.HARDWARE.DEVICES_MANAGE);
@@ -186,6 +189,11 @@ export const DeviceList = ({
           </div>
         );
       },
+    },
+    {
+      header: 'Rollo instalado',
+      render: row => <div className="text-xs space-y-1"><span className="font-semibold">{row.loadedRollName || 'Sin registrar'}</span>
+        {row.loadedRollName && <p className={row.rollVerifiedAt ? 'text-success' : 'text-warning'}>{row.rollVerifiedAt ? 'Avance confirmado' : 'Pendiente de confirmar'}</p>}</div>,
     },
     {
       header: 'Terminal',
@@ -363,6 +371,8 @@ export const DeviceList = ({
                   </div>
                 </div>
 
+                {isBarcode && <p className="pl-[26px] text-xs text-base-content/70">Rollo: {device.loadedRollName || 'Sin registrar'}
+                  {device.loadedRollName && (device.rollVerifiedAt ? ' · Avance confirmado' : ' · Pendiente de confirmar')}</p>}
                 {/* CONTENIDO SECUNDARIO CON SANGRÍA DE 26px */}
                 <div className="pl-[26px] flex flex-col gap-1 text-xs text-base-content/70">
                   <div className="flex items-center gap-1.5">
@@ -463,6 +473,11 @@ export const DeviceList = ({
       >
         {contextMenu.item && (
           <>
+            {canManageDevices && Number(contextMenu.item.deviceType) === HwDeviceTypeCode.BARCODE_PRINTER && (
+              <ContextMenuItem icon={Ruler} label="Cambiar rollo / Calibrar" onClick={() => {
+                if (contextMenu.item) onCalibrateRoll(contextMenu.item);
+              }} />
+            )}
             {canPrintExecute && (
               <ContextMenuItem
                 icon={Printer}

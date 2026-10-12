@@ -131,6 +131,12 @@ export const hardwareService = {
   // COLA Y TRABAJOS DE IMPRESIÓN (PRINT JOBS)
   // ==========================================
 
+  calibrateRoll: async (deviceId: string, rollSizeId: string): Promise<HwPrintJobResponse> =>
+    (await api.post<HwPrintJobResponse>(`/tenant/hardware/devices/${deviceId}/calibrations`, { rollSizeId })).data,
+
+  confirmRoll: async (deviceId: string, jobId: string): Promise<HwDeviceResponse> =>
+    (await api.post<HwDeviceResponse>(`/tenant/hardware/devices/${deviceId}/calibrations/${jobId}/confirmation`, { feedAligned: true })).data,
+
   createPrintJob: async (data: CreatePrintJobRequest): Promise<HwPrintJobResponse> => {
     const response = await api.post<HwPrintJobResponse>('/tenant/hardware/print-jobs', data);
     return response.data;

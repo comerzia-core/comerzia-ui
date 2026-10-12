@@ -1,9 +1,10 @@
 import { BarcodeFormat, DecodeHintType, MultiFormatReader, NotFoundException, ChecksumException, FormatException } from "@zxing/library";
 
-// Mantener los formatos y la configuración del lector que funciona en producción.
+// Conservar el lector de producción y admitir los QR de etiquetas pequeñas.
 export const DEFAULT_BARCODE_FORMATS: BarcodeFormat[] = [
   BarcodeFormat.EAN_13, BarcodeFormat.EAN_8, BarcodeFormat.CODE_128, BarcodeFormat.CODE_39,
   BarcodeFormat.UPC_A, BarcodeFormat.UPC_E, BarcodeFormat.ITF, BarcodeFormat.CODABAR,
+  BarcodeFormat.QR_CODE,
 ];
 
 export function createBarcodeHints(formats: BarcodeFormat[] = DEFAULT_BARCODE_FORMATS) {

@@ -1,11 +1,13 @@
 import api from '../../../lib/axios';
 import type { SelectOption } from '../../../types/dictionary';
 import type { HwPrintJobResponse } from '../types/hardware';
-import type { RollSize, SaveRollSizeRequest, LabelContent, LabelPreview, PreviewLabelRequest, LabelPage } from '../types/labels';
+import type { RollSize, SaveRollSizeRequest, LabelContent, LabelPreview, PreviewLabelRequest, LabelPage, LabelPrintOptions } from '../types/labels';
 
 const base = '/tenant/hardware';
 
 export const labelService = {
+  getRoll: async (id: string, signal?: AbortSignal): Promise<RollSize> =>
+    (await api.get<RollSize>(`${base}/roll-sizes/${id}`, { signal })).data,
   getRolls: async (search: string, page: number, size: number): Promise<LabelPage<RollSize>> =>
     (await api.get<LabelPage<RollSize>>(`${base}/roll-sizes`, { params: { search, page, size, sort: 'name,asc' } })).data,
   saveRoll: async (id: string | null, request: SaveRollSizeRequest): Promise<RollSize> =>
@@ -13,6 +15,8 @@ export const labelService = {
   deleteRoll: async (id: string): Promise<void> => { await api.delete(`${base}/roll-sizes/${id}`); },
   content: async (variantId: string, signal?: AbortSignal): Promise<LabelContent> =>
     (await api.get<LabelContent>(`${base}/product-labels/content/${variantId}`, { signal })).data,
+  options: async (variantId: string, rollSizeId: string, signal?: AbortSignal): Promise<LabelPrintOptions> =>
+    (await api.get<LabelPrintOptions>(`${base}/product-labels/options`, { params: { variantId, rollSizeId }, signal })).data,
   preview: async (request: PreviewLabelRequest, signal?: AbortSignal): Promise<LabelPreview> =>
     (await api.post<LabelPreview>(`${base}/product-labels/preview`, request, { signal })).data,
   print: async (previewId: string, deviceId: string, quantity: number): Promise<HwPrintJobResponse> =>

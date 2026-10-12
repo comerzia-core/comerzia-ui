@@ -1,4 +1,4 @@
-import { Save, X, Trash2, Pencil, FileSpreadsheet, FileText, Plus, ArrowLeft, ArrowRight, ArrowRightLeft, RefreshCw, Eye, Unlock, Lock, DollarSign, Coins, Camera, Upload, ScanBarcode, Printer, Laptop, Flashlight, FlashlightOff } from "lucide-react";
+import { Save, X, Trash2, Pencil, FileSpreadsheet, FileText, Plus, ArrowLeft, ArrowRight, ArrowRightLeft, RefreshCw, Eye, Unlock, Lock, DollarSign, Coins, Camera, Upload, ScanBarcode, Printer, Laptop, Flashlight, FlashlightOff, Settings2 } from "lucide-react";
 import { ComerziaButton } from "./ComerziaButton";
 
 // Tipos para pasar props extra (como onClick)
@@ -473,4 +473,9 @@ export const BtnScannerCamera = ({ switched, className = "", ...props }: BaseBtn
         className={`${scannerControlClass} ${className}`}
         {...props}
     />
+);
+
+// Acción de configuración de hardware; la lógica permanece en el módulo que la usa.
+export const BtnCalibrate = ({ label = "Calibrar rollo", responsive = true, ...props }: BaseBtnProps) => (
+    <ComerziaButton variant="primary" label={label} icon={<Settings2 size={18} />} responsive={responsive} {...props} />
 );

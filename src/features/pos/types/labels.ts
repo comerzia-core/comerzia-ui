@@ -4,6 +4,8 @@ export interface RollSize {
   widthMm: number;
   heightMm: number;
   gapMm: number;
+  columns: number;
+  columnGapMm: number;
   active: boolean;
 }
 
@@ -28,12 +30,24 @@ export interface PreviewLabelRequest {
   includeName: boolean;
 }
 
+export interface LabelPrintOptions {
+  codeFormat: string;
+  codeFormatLabel: string;
+  logoAllowed: boolean;
+  priceAllowed: boolean;
+  nameAllowed: boolean;
+  message: string | null;
+}
+
 export interface LabelPreview {
   previewId: string;
   imageDataUrl: string;
   widthMm: number;
   heightMm: number;
   gapMm: number;
+  columns: number;
+  columnGapMm: number;
+  totalWidthMm: number;
   rotation: number;
   displayName: string;
   expiresAt: string;

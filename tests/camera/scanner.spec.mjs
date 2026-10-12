@@ -102,20 +102,22 @@ test("Camera and flashlight controls sit inside the image and toggle illuminatio
   await expect(page.getByRole("button", { name: "Apagar luz" })).toHaveAttribute("aria-pressed","true");
 });
 
-for (const [filename, expectedCode] of [["barcode7003000100006.json","7003000100006"],["label31x57.json","12345678"]]) {
-  test("A live camera frame emits barcode " + expectedCode + " once and releases the camera", async ({ page }) => {
+for (const [filename, expectedCode] of [["barcode7003000100006.json","7003000100006"],["label31x57.json","12345678"],["label30x20-qr.json","7003000100006"]]) {
+  test("A live camera frame from " + filename + " emits " + expectedCode + " once and releases the camera", async ({ page }) => {
     const fixture = JSON.parse(readFileSync(new URL("../../../comerzia/build/label-validation/" + filename,import.meta.url),"utf8"));
     await page.goto("/tests/camera/index.html");
     await expectLiveVideo(page);
     await page.evaluate(fixture => {
       const packed = Uint8Array.from(atob(fixture.bitmapBase64), char => char.charCodeAt(0));
       const canvas = document.createElement("canvas");
-      canvas.width = fixture.heightDots; canvas.height = fixture.widthDots;
+      const rotated = fixture.codeFormat !== "QR_CODE";
+      canvas.width = rotated ? fixture.heightDots : fixture.widthDots; canvas.height = rotated ? fixture.widthDots : fixture.heightDots;
       const context = canvas.getContext("2d");
       const image = context.createImageData(canvas.width,canvas.height);
       for (let y=0;y<canvas.height;y++) for (let x=0;x<canvas.width;x++) {
-        const physicalX = fixture.widthDots-1-y;
-        const value = packed[x*fixture.widthBytes+(physicalX>>3)] & (0x80>>(physicalX%8)) ? 255 : 0;
+        const physicalX = rotated ? fixture.widthDots-1-y : x;
+        const physicalY = rotated ? x : y;
+        const value = packed[physicalY*fixture.widthBytes+(physicalX>>3)] & (0x80>>(physicalX%8)) ? 255 : 0;
         const offset=(y*canvas.width+x)*4;
         image.data[offset]=value; image.data[offset+1]=value; image.data[offset+2]=value; image.data[offset+3]=255;
       }

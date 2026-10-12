@@ -6,7 +6,8 @@ import { useAuthStore } from '../../../stores/useAuthStore';
 import { labelService, getLabelError } from '../../pos/services/labelService';
 import { hardwareService } from '../../pos/services/hardwareService';
 import { HwPrintJobStatusCode, type HwPrintJobResponse, type HwDeviceResponse } from '../../pos/types/hardware';
-import type { LabelContent, LabelPreview } from '../../pos/types/labels';
+import type { LabelContent, LabelPreview, LabelPrintOptions } from '../../pos/types/labels';
+import { getLabelQuantityError } from '../../pos/utils/labelRolls';
 
 export const useProductLabelPrinting = (productId: string) => {
   const profile = useAuthStore(state => state.userProfile);
@@ -18,12 +19,14 @@ export const useProductLabelPrinting = (productId: string) => {
   const rollOptions = options[DICTIONARIES.LABEL_ROLL_SIZE];
   const printerOptions = options[DICTIONARIES.LABEL_PRINTER];
   const [variantId, setVariantId] = useState('');
-  const [rollSizeId, setRollSizeId] = useState('');
+  const [rollSizeId, setSelectedRollSizeId] = useState('');
   const [deviceId, setDeviceId] = useState('');
-  const [quantity, setQuantity] = useState('1');
-  const [includeLogo, setIncludeLogo] = useState(false);
-  const [includePrice, setIncludePrice] = useState(false);
-  const [includeName, setIncludeName] = useState(true);
+  const [quantitySelection, setQuantitySelection] = useState<{ rollId: string; value: string } | null>(null);
+  const setRollSizeId = (value: string) => { setSelectedRollSizeId(value); setQuantitySelection(null); };
+  const [logoChoice, setIncludeLogo] = useState(false);
+  const [priceChoice, setIncludePrice] = useState(false);
+  const [nameChoice, setIncludeName] = useState(true);
+  const [optionsResult, setOptionsResult] = useState<{ key: string; data: LabelPrintOptions } | null>(null);
   const [content, setContent] = useState<LabelContent | null>(null);
   const [previewResult, setPreviewResult] = useState<{ key: string; data: LabelPreview } | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
@@ -37,9 +40,17 @@ export const useProductLabelPrinting = (productId: string) => {
   const currentVariantId = variantOptions.some(option => String(option.value) === variantId) ? variantId : String(variantOptions[0]?.value || '');
   const currentRollId = rollOptions.some(option => String(option.value) === rollSizeId) ? rollSizeId : String(rollOptions[0]?.value || '');
   const currentDeviceId = printerOptions.some(option => String(option.value) === deviceId) ? deviceId : String(printerOptions[0]?.value || '');
+  const currentContent = content?.variantId === currentVariantId ? content : null;
+  const optionsKey = JSON.stringify([currentVariantId, currentRollId, refreshKey]);
+  const printOptions = optionsResult?.key === optionsKey ? optionsResult.data : null;
+  const includeLogo = logoChoice && Boolean(currentContent?.logoAvailable && printOptions?.logoAllowed);
+  const includePrice = priceChoice && Boolean(currentContent?.priceAvailable && printOptions?.priceAllowed);
+  const includeName = nameChoice && Boolean(printOptions?.nameAllowed);
   const selectionKey = JSON.stringify([currentVariantId, currentRollId, includeLogo, includePrice, includeName, refreshKey]);
   const preview = previewResult?.key === selectionKey ? previewResult.data : null;
-  const currentContent = content?.variantId === currentVariantId ? content : null;
+  const columns = preview?.columns ?? 1;
+  const quantity = quantitySelection?.rollId === currentRollId ? quantitySelection.value : String(columns);
+  const setQuantity = (value: string) => setQuantitySelection({ rollId: currentRollId, value });
 
   useEffect(() => {
     if (!currentDeviceId) return;
@@ -66,7 +77,17 @@ export const useProductLabelPrinting = (productId: string) => {
   }, [currentVariantId, isLoadingLookups, refreshKey]);
 
   useEffect(() => {
-    if (!currentContent || !currentRollId || isLoadingLookups) return;
+    if (!currentVariantId || !currentRollId || isLoadingLookups) return;
+    const controller = new AbortController();
+    setError('');
+    labelService.options(currentVariantId, currentRollId, controller.signal)
+      .then(data => { if (!controller.signal.aborted) setOptionsResult({ key: optionsKey, data }); })
+      .catch((error: unknown) => { if (!axios.isCancel(error)) setError(getLabelError(error, 'No se pudo validar el diseño de la etiqueta.')); });
+    return () => controller.abort();
+  }, [currentVariantId, currentRollId, optionsKey, isLoadingLookups]);
+
+  useEffect(() => {
+    if (!currentContent || !currentRollId || !printOptions || isLoadingLookups) { setIsPreviewLoading(false); return; }
     const controller = new AbortController();
     setIsPreviewLoading(true); setError('');
     const timer = window.setTimeout(() => {
@@ -76,7 +97,7 @@ export const useProductLabelPrinting = (productId: string) => {
         .finally(() => { if (!controller.signal.aborted) setIsPreviewLoading(false); });
     }, 250);
     return () => { window.clearTimeout(timer); controller.abort(); };
-  }, [currentContent, currentRollId, currentVariantId, includeLogo, includePrice, includeName, selectionKey, isLoadingLookups]);
+  }, [currentContent, currentRollId, currentVariantId, includeLogo, includePrice, includeName, selectionKey, isLoadingLookups, printOptions]);
 
   useEffect(() => {
     if (!job || [HwPrintJobStatusCode.COMPLETED, HwPrintJobStatusCode.FAILED, HwPrintJobStatusCode.CANCELLED].some(status => status === Number(job.status))) return;
@@ -90,10 +111,22 @@ export const useProductLabelPrinting = (productId: string) => {
 
   const currentDevice = device?.id === currentDeviceId ? device : null;
   const printerReady = Boolean(currentDevice?.reachable && currentDevice?.ready && currentDevice.lastCheckedAt && Date.parse(currentDevice.lastCheckedAt) >= Date.now() - 90000);
-  const quantityValid = /^\d+$/.test(quantity) && Number(quantity) >= 1 && Number(quantity) <= 1000;
+  const rollReady = !currentDevice?.calibrationJobId || Boolean(Number(currentDevice.calibrationStatus) === HwPrintJobStatusCode.COMPLETED
+    && currentDevice.rollVerifiedAt && currentDevice.loadedRollSizeId === currentRollId);
+  const rollMessage = !currentDevice ? null : !currentDevice.loadedRollSizeId
+    ? 'No hay un rollo registrado. Si cambiaste el formato, calibra antes de imprimir.'
+    : currentDevice.loadedRollSizeId !== currentRollId
+      ? `El tamaño elegido no coincide con el rollo registrado: ${currentDevice.loadedRollName || 'otro tamaño'}. Cambia y calibra el rollo antes de imprimir.`
+      : !rollReady ? 'La calibración o la confirmación del avance con FEED están pendientes.' : null;
+  const reloadDevice = async () => {
+    try { if (currentDeviceId) setDevice(await hardwareService.getDeviceById(currentDeviceId)); }
+    catch (error: unknown) { setError(getLabelError(error, 'No se pudo actualizar el rollo de la impresora.')); }
+  };
+  const quantityError = preview ? getLabelQuantityError(quantity, columns) : undefined;
+  const quantityValid = preview !== null && quantityError === undefined;
   const print = async () => {
     if (submitLock.current) return;
-    if (!quantityValid || !preview || !currentDeviceId || !printerReady) { setShakeKey(value => value + 1); setError('Seleccione rollo e impresora y revise la previsualización. La cantidad debe estar entre 1 y 1000.'); return; }
+    if (!quantityValid || !preview || !currentDeviceId || !printerReady || !rollReady) { setShakeKey(value => value + 1); setError(quantityError || rollMessage || 'Seleccione rollo e impresora y revise la previsualización.'); return; }
     submitLock.current = true; setIsSubmitting(true); setError('');
     try { setJob(await labelService.print(preview.previewId, currentDeviceId, Number(quantity))); }
     catch (error: unknown) { setError(getLabelError(error, 'No se pudo enviar la impresión.')); }
@@ -103,10 +136,13 @@ export const useProductLabelPrinting = (productId: string) => {
   return {
     variantOptions, rollOptions, printerOptions, isLoadingLookups,
     variantId: currentVariantId, rollSizeId: currentRollId, deviceId: currentDeviceId,
-    setVariantId, setRollSizeId, setDeviceId, quantity, setQuantity, quantityValid,
+    setVariantId, setRollSizeId, setDeviceId, quantity, setQuantity, quantityValid, quantityError, columns,
+    maximumQuantity: Math.floor(1000 / columns) * columns,
+    rowCount: quantityValid ? Number(quantity) / columns : null,
     includeLogo, setIncludeLogo, includePrice, setIncludePrice, includeName, setIncludeName,
-    content: currentContent, device: currentDevice, printerReady, preview, isPreviewLoading, isSubmitting, job, shakeKey,
+    content: currentContent, printOptions, device: currentDevice, printerReady, preview, isPreviewLoading, isSubmitting, job, shakeKey,
     error: lookupError ? getLabelError(lookupError, 'No se pudieron cargar los tamaños o las impresoras.') : error,
+    rollReady, rollMessage, updateDevice: setDevice, reloadDevice,
     print, refreshPreview: () => { setPreviewResult(null); setRefreshKey(value => value + 1); void reloadLookups(); },
   };
 };

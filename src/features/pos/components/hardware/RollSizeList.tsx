@@ -34,7 +34,9 @@ export const RollSizeList = ({
   const columns: Column<RollSize>[] = [
     { header: 'Nombre', accessorKey: 'name' },
     { header: 'Ancho × alto', render: item => `${item.widthMm} × ${item.heightMm} mm` },
-    { header: 'GAP', render: item => `${item.gapMm} mm` },
+    { header: 'GAP entre filas', render: item => `${item.gapMm} mm` },
+    { header: 'Columnas', accessorKey: 'columns' },
+    { header: 'Separación entre columnas', render: item => `${item.columnGapMm} mm` },
     { header: 'Habilitado', render: item => <ComerziaSwitch checked={item.active} disabled={rolls.isSaving} onChange={() => { void rolls.save(item.id, { ...item, active: !item.active }); }} /> },
   ];
   const closeMenu = () => setMenu(current => ({ ...current, item: null }));
@@ -54,6 +56,7 @@ export const RollSizeList = ({
       {rolls.isLoading ? <span className="loading loading-spinner" /> : rolls.items.map(item => <article key={item.id} onClick={() => setMenu({ item, x: 0, y: 0, centered: true })} className="bg-base-100 p-3.5 rounded-2xl border border-base-200 shadow-xs cursor-pointer">
         <div className="flex items-center justify-between gap-2"><span className="font-semibold">{item.name}</span><span className={item.active ? 'text-success text-xs' : 'text-base-content/50 text-xs'}>{item.active ? 'Habilitado' : 'Deshabilitado'}</span></div>
         <p className="text-xs flex items-center gap-2 mt-2"><Ruler size={14} />{item.widthMm} × {item.heightMm} mm · GAP {item.gapMm} mm</p>
+        <p className="text-xs mt-1">{item.columns} columnas · Separación horizontal {item.columnGapMm} mm</p>
       </article>)}
       {!rolls.isLoading && !rolls.items.length && <p className="text-sm text-base-content/60">No se encontraron tamaños.</p>}
       <div className="flex items-center justify-between gap-2 whitespace-nowrap text-xs"><span>{rolls.totalElements} registros · Página {rolls.page + 1} de {Math.max(1, rolls.totalPages)}</span><div className="flex gap-1"><BtnBack label="Anterior" disabled={rolls.page === 0 || rolls.isLoading} onClick={() => rolls.setPage(rolls.page - 1)} /><BtnNext label="Siguiente" disabled={rolls.page + 1 >= rolls.totalPages || rolls.isLoading} onClick={() => rolls.setPage(rolls.page + 1)} /></div></div>
@@ -68,9 +71,12 @@ export const RollSizeList = ({
     <ComerziaModal isOpen={isEditorOpen} onClose={() => setIsEditorOpen(false)} title={editing ? 'Editar tamaño de rollo' : 'Nuevo tamaño de rollo'} size="sm" actions={<div className="flex gap-2 justify-end"><BtnCancel disabled={rolls.isSaving} onClick={() => setIsEditorOpen(false)} /><BtnSave onClick={save} isLoading={rolls.isSaving} /></div>}>
       <div className="space-y-3">
         <ComerziaInput label="Nombre" maxLength={100} value={form.name} onChange={event => setForm(current => ({ ...current, name: event.target.value }))} isRequired error={errors.name} shakeKey={shakeKey} />
-        <ComerziaInput label="Ancho (mm)" type="number" min={12} max={108} step={1} value={form.widthMm} onChange={event => setForm(current => ({ ...current, widthMm: event.target.value }))} isRequired error={errors.widthMm} shakeKey={shakeKey} />
-        <ComerziaInput label="Alto (mm)" type="number" min={12} max={200} step={1} value={form.heightMm} onChange={event => setForm(current => ({ ...current, heightMm: event.target.value }))} isRequired error={errors.heightMm} shakeKey={shakeKey} />
-        <ComerziaInput label="GAP (mm)" type="number" min={0} max={20} step={1} value={form.gapMm} onChange={event => setForm(current => ({ ...current, gapMm: event.target.value }))} isRequired error={errors.gapMm} shakeKey={shakeKey} />
+        <ComerziaInput label="Ancho de cada etiqueta (mm)" type="number" min={12} max={108} step={1} value={form.widthMm} onChange={event => setForm(current => ({ ...current, widthMm: event.target.value }))} isRequired error={errors.widthMm} shakeKey={shakeKey} />
+        <ComerziaInput label="Alto de cada etiqueta (mm)" type="number" min={12} max={200} step={1} value={form.heightMm} onChange={event => setForm(current => ({ ...current, heightMm: event.target.value }))} isRequired error={errors.heightMm} shakeKey={shakeKey} />
+        <ComerziaInput label="GAP entre filas (mm)" type="number" min={0} max={20} step={1} value={form.gapMm} onChange={event => setForm(current => ({ ...current, gapMm: event.target.value }))} isRequired error={errors.gapMm} shakeKey={shakeKey} />
+        <ComerziaInput label="Columnas" type="number" min={1} max={9} step={1} value={form.columns} onChange={event => setForm(current => ({ ...current, columns: event.target.value, columnGapMm: event.target.value === '1' ? '0' : current.columnGapMm }))} isRequired error={errors.columns} shakeKey={shakeKey} />
+        <ComerziaInput label="Separación entre columnas (mm)" type="number" min={0} max={20} step={0.01} value={form.columnGapMm} onChange={event => setForm(current => ({ ...current, columnGapMm: event.target.value }))} disabled={Number(form.columns) === 1} isRequired error={errors.columnGapMm} shakeKey={shakeKey} />
+        <p className="text-xs text-base-content/70">Ancho total: {Number.isFinite(editor.totalWidthMm) ? editor.totalWidthMm : '—'} mm (máximo 108 mm). Las separaciones entre filas y columnas son independientes.</p>
         <label className="flex items-center gap-2 text-sm"><ComerziaSwitch checked={form.active} onChange={() => setForm(current => ({ ...current, active: !current.active }))} />Habilitado para impresión</label>
         {rolls.error && <p role="alert" className="text-sm text-error">{rolls.error}</p>}
       </div>

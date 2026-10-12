@@ -24,6 +24,7 @@ export const HwPrintJobTypeCode = {
   LABEL_PRINT: 1131,
   RECEIPT_PRINT: 1132,
   OPEN_DRAWER: 1133,
+  PRINTER_CALIBRATION: 1134,
 } as const;
 
 export const HwPrintJobStatusCode = {
@@ -39,7 +40,7 @@ export const HwPrintJobStatusCode = {
 export type HwAgentStatus = number | 'PENDING' | 'ACTIVE' | 'DISABLED' | 'REVOKED';
 export type HwDeviceType = number | 'BARCODE_PRINTER' | 'RECEIPT_PRINTER';
 export type HwDeviceStatus = number | 'ACTIVE' | 'INACTIVE';
-export type HwPrintJobType = number | 'LABEL_PRINT' | 'RECEIPT_PRINT' | 'OPEN_DRAWER';
+export type HwPrintJobType = number | 'LABEL_PRINT' | 'RECEIPT_PRINT' | 'OPEN_DRAWER' | 'PRINTER_CALIBRATION';
 export type HwPrintJobStatus = number | 'PENDING' | 'SENT' | 'PRINTING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
 
 // --- AGENTS DTOs ---
@@ -127,6 +128,13 @@ export interface HwDeviceResponse {
   ready?: boolean | null;
   readinessMessage?: string | null;
   lastCheckedAt?: string | null;
+  calibrationSupported?: boolean | null;
+  loadedRollSizeId?: string | null;
+  loadedRollName?: string | null;
+  calibrationJobId?: string | null;
+  calibrationStatus?: number | string | null;
+  lastCalibratedAt?: string | null;
+  rollVerifiedAt?: string | null;
 }
 
 export interface PageHwDeviceResponse {
