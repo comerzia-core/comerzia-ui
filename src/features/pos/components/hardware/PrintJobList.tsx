@@ -468,8 +468,7 @@ export const PrintJobList = ({
             )}
             {canPrintExecute &&
               (Number(contextMenu.item.status) === HwPrintJobStatusCode.PENDING ||
-                Number(contextMenu.item.status) === HwPrintJobStatusCode.SENT ||
-                Number(contextMenu.item.status) === HwPrintJobStatusCode.PRINTING) && (
+                Number(contextMenu.item.status) === HwPrintJobStatusCode.SENT) && (
               <ContextMenuItem
                 icon={XCircle}
                 label="Cancelar trabajo"

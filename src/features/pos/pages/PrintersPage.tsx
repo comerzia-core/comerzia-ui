@@ -22,70 +22,69 @@ import { BtnRefresh } from '../../../components/ui/CrudButtons';
 import { useToast } from '../../../context/ToastContext';
 import { usePermission } from '../../../hooks/usePermission';
 import { PERMISSIONS } from '../../../config/permissions';
-import { Printer, Laptop, History, ShieldAlert } from 'lucide-react';
+import { Printer, Laptop, History, ShieldAlert, Ruler } from 'lucide-react';
+import { RollSizeList } from '../components/hardware/RollSizeList';
+import { labelService } from '../services/labelService';
+import { useAuthStore } from '../../../stores/useAuthStore';
 
 export const PrintersPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { success: toastSuccess, error: toastError } = useToast();
   const { canAny } = usePermission();
+  const isOwner = useAuthStore(state => state.userProfile?.roles.includes('OWNER') ?? false);
+  const [rollRefreshKey, setRollRefreshKey] = useState(0);
+  const canViewRolls = isOwner && canAny([PERMISSIONS.HARDWARE.DEVICES_MANAGE]);
 
-  const canViewAgents = canAny([
+  const canViewAgents = isOwner && canAny([
     PERMISSIONS.HARDWARE.AGENTS_READ,
     PERMISSIONS.HARDWARE.AGENTS_MANAGE,
     PERMISSIONS.HARDWARE.PRINTERS_VIEW,
   ]);
 
-  const canViewDevices = canAny([
+  const canViewDevices = isOwner && canAny([
     PERMISSIONS.HARDWARE.DEVICES_READ,
     PERMISSIONS.HARDWARE.DEVICES_MANAGE,
     PERMISSIONS.HARDWARE.PRINTERS_VIEW,
   ]);
 
-  const canViewJobs = canAny([
+  const canViewJobs = isOwner && canAny([
     PERMISSIONS.HARDWARE.PRINT_JOBS_READ,
     PERMISSIONS.HARDWARE.PRINT_EXECUTE,
     PERMISSIONS.HARDWARE.PRINTERS_VIEW,
   ]);
 
-  const showTabs = [canViewAgents, canViewDevices, canViewJobs].filter(Boolean).length > 1;
+  const showTabs = [canViewAgents, canViewDevices, canViewJobs, canViewRolls].filter(Boolean).length > 1;
 
-  const getDefaultTab = (): 'agents' | 'devices' | 'jobs' => {
+  const getDefaultTab = (): 'agents' | 'devices' | 'jobs' | 'rolls' => {
     if (canViewAgents) return 'agents';
     if (canViewDevices) return 'devices';
     if (canViewJobs) return 'jobs';
+    if (canViewRolls) return 'rolls';
     return 'agents';
   };
 
   const tabParam = searchParams.get('tab');
-  const getInitialTab = (): 'agents' | 'devices' | 'jobs' => {
+  const getInitialTab = (): 'agents' | 'devices' | 'jobs' | 'rolls' => {
+    if (tabParam === 'rolls' && canViewRolls) return 'rolls';
     if (tabParam === 'devices' && canViewDevices) return 'devices';
     if (tabParam === 'jobs' && canViewJobs) return 'jobs';
     if (tabParam === 'agents' && canViewAgents) return 'agents';
     return getDefaultTab();
   };
 
-  const [activeTab, setActiveTab] = useState<'agents' | 'devices' | 'jobs'>(getInitialTab);
-
-  // Sincronizar tab si cambian los permisos
-  useEffect(() => {
-    if (!canViewAgents && canViewDevices) {
-      setActiveTab('devices');
-    } else if (!canViewAgents && !canViewDevices && canViewJobs) {
-      setActiveTab('jobs');
-    } else if (canViewAgents) {
-      setActiveTab('agents');
-    }
-  }, [canViewAgents, canViewDevices, canViewJobs]);
+  const [activeTab, setActiveTab] = useState<'agents' | 'devices' | 'jobs' | 'rolls'>(getInitialTab);
 
   // Estados de datos
   const [agents, setAgents] = useState<HwAgentResponse[]>([]);
   const [devices, setDevices] = useState<HwDeviceResponse[]>([]);
   const [jobs, setJobs] = useState<HwPrintJobResponse[]>([]);
+  const [rollsCount, setRollsCount] = useState(0);
 
   // Estados de carga
   const [isLoadingAgents, setIsLoadingAgents] = useState(false);
   const [isLoadingDevices, setIsLoadingDevices] = useState(false);
   const [isLoadingJobs, setIsLoadingJobs] = useState(false);
+  const [isLoadingRolls, setIsLoadingRolls] = useState(false);
 
   // Estados de modales
   const [isPairModalOpen, setIsPairModalOpen] = useState(false);
@@ -103,7 +102,9 @@ export const PrintersPage = () => {
 
   // Sincronizar tab con URL query params y permisos
   useEffect(() => {
-    if (tabParam === 'devices' && canViewDevices) {
+    if (tabParam === 'rolls' && canViewRolls) {
+      setActiveTab('rolls');
+    } else if (tabParam === 'devices' && canViewDevices) {
       setActiveTab('devices');
     } else if (tabParam === 'agents' && canViewAgents) {
       setActiveTab('agents');
@@ -113,9 +114,9 @@ export const PrintersPage = () => {
       const fallback = getDefaultTab();
       setActiveTab(fallback);
     }
-  }, [tabParam, canViewAgents, canViewDevices, canViewJobs]);
+  }, [tabParam, canViewAgents, canViewDevices, canViewJobs, canViewRolls]);
 
-  const handleTabChange = (tab: 'agents' | 'devices' | 'jobs') => {
+  const handleTabChange = (tab: 'agents' | 'devices' | 'jobs' | 'rolls') => {
     setActiveTab(tab);
     setSearchParams({ tab });
   };
@@ -124,7 +125,20 @@ export const PrintersPage = () => {
     if (canViewAgents) loadAgents();
     if (canViewDevices) loadDevices();
     if (canViewJobs) loadJobs();
-  }, [canViewAgents, canViewDevices, canViewJobs]);
+    if (canViewRolls) loadRollsCount();
+  }, [canViewAgents, canViewDevices, canViewJobs, canViewRolls]);
+
+  const loadRollsCount = async () => {
+    setIsLoadingRolls(true);
+    try {
+      const data = await labelService.getRolls('', 0, 1);
+      setRollsCount(data.totalElements || 0);
+    } catch {
+      // No alert required on background badge count
+    } finally {
+      setIsLoadingRolls(false);
+    }
+  };
 
   const loadAgents = async () => {
     setIsLoadingAgents(true);
@@ -268,10 +282,16 @@ export const PrintersPage = () => {
   // TRABAJOS: Reintentar
   const handleRetryJob = async (job: HwPrintJobResponse) => {
     try {
+      const payload: unknown = typeof job.payload === 'string' ? JSON.parse(job.payload) : job.payload;
+      if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw new Error('Invalid print payload');
+      if ('renderVersion' in payload) {
+        toastError('Revise la salida física y prepare una nueva previsualización desde el catálogo antes de reimprimir.');
+        return;
+      }
       await hardwareService.createPrintJob({
         deviceId: job.deviceId,
         jobType: Number(job.jobType),
-        payload: typeof job.payload === 'object' ? job.payload : {},
+        payload: payload as Record<string, unknown>,
       });
       toastSuccess('Trabajo reenviado a la cola de impresión.');
       loadJobs();
@@ -284,7 +304,8 @@ export const PrintersPage = () => {
   const isCurrentTabLoading =
     (activeTab === 'agents' && isLoadingAgents) ||
     (activeTab === 'devices' && isLoadingDevices) ||
-    (activeTab === 'jobs' && isLoadingJobs);
+    (activeTab === 'jobs' && isLoadingJobs) ||
+    (activeTab === 'rolls' && isLoadingRolls);
 
   return (
     <div className="space-y-6 w-full animate-fade-in">
@@ -305,9 +326,16 @@ export const PrintersPage = () => {
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <BtnRefresh
             onClick={() => {
-              if (activeTab === 'agents') loadAgents();
-              else if (activeTab === 'devices') loadDevices();
-              else loadJobs();
+              if (activeTab === 'rolls') {
+                setRollRefreshKey(value => value + 1);
+                loadRollsCount();
+              } else if (activeTab === 'agents') {
+                loadAgents();
+              } else if (activeTab === 'devices') {
+                loadDevices();
+              } else {
+                loadJobs();
+              }
             }}
             isLoading={isCurrentTabLoading}
             label="Actualizar"
@@ -355,7 +383,6 @@ export const PrintersPage = () => {
                 </span>
               </button>
             )}
-
             {canViewJobs && (
               <button
                 type="button"
@@ -373,23 +400,42 @@ export const PrintersPage = () => {
                 </span>
               </button>
             )}
+
+            {canViewRolls && (
+              <button
+                type="button"
+                onClick={() => handleTabChange('rolls')}
+                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+                  activeTab === 'rolls'
+                    ? 'border-primary text-primary bg-primary/5 rounded-t-xl'
+                    : 'border-transparent text-base-content/60 hover:text-base-content'
+                }`}
+              >
+                <Ruler size={16} />
+                <span>Tamaños de Rollos</span>
+                <span className={`badge badge-sm font-mono font-bold ${activeTab === 'rolls' ? 'badge-primary text-primary-content' : 'badge-neutral'}`}>
+                  {rollsCount}
+                </span>
+              </button>
+            )}
+
           </div>
         </div>
       )}
 
       {/* 3. CASO SIN PERMISOS */}
-      {!canViewAgents && !canViewDevices && !canViewJobs && (
+      {!canViewAgents && !canViewDevices && !canViewJobs && !canViewRolls && (
         <div className="card bg-base-100 p-12 text-center border border-base-200 rounded-3xl flex flex-col items-center justify-center gap-2">
           <ShieldAlert size={36} className="text-warning" />
           <h3 className="font-bold text-base text-base-content">Acceso Restringido</h3>
           <p className="text-xs text-base-content/60 max-w-md">
-            No cuentas con los permisos requeridos para gestionar terminales de impresión, dispositivos o la cola de trabajos.
+            No cuentas con los permisos requeridos para gestionar terminales de impresión, dispositivos, cola de trabajos o rollos de etiquetas.
           </p>
         </div>
       )}
 
       {/* 4. CONTENIDO DE LA PESTAÑA ACTIVA */}
-      {canViewAgents && (activeTab === 'agents' || (!canViewDevices && !canViewJobs)) && (
+      {canViewAgents && activeTab === 'agents' && (
         <AgentTerminalList
           agents={agents}
           isLoading={isLoadingAgents}
@@ -406,7 +452,7 @@ export const PrintersPage = () => {
         />
       )}
 
-      {canViewDevices && (activeTab === 'devices' || (!canViewAgents && !canViewJobs)) && (
+      {canViewDevices && activeTab === 'devices' && (
         <DeviceList
           devices={devices}
           agents={agents}
@@ -426,13 +472,20 @@ export const PrintersPage = () => {
         />
       )}
 
-      {canViewJobs && (activeTab === 'jobs' || (!canViewAgents && !canViewDevices)) && (
+      {canViewJobs && activeTab === 'jobs' && (
         <PrintJobList
           jobs={jobs}
           isLoading={isLoadingJobs}
           onRefresh={loadJobs}
           onRetryJob={handleRetryJob}
           onCancelJob={handleCancelJob}
+        />
+      )}
+
+      {canViewRolls && activeTab === 'rolls' && (
+        <RollSizeList
+          refreshKey={rollRefreshKey}
+          onTotalChange={setRollsCount}
         />
       )}
 

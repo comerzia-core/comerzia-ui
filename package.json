@@ -7,7 +7,9 @@
     "dev": "vite --host",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:barcodes": "node --test tests/barcodeScanning.test.mjs",
+    "test:camera": "playwright test --config playwright.camera.config.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -28,6 +30,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@playwright/test": "^1.64.0",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.5",
     "@types/react-datepicker": "^6.2.0",

@@ -122,6 +122,11 @@ export interface HwDeviceResponse {
   status: number | string;
   createdAt: string;
   updatedAt: string;
+  reachable?: boolean | null;
+  statusKnown?: boolean | null;
+  ready?: boolean | null;
+  readinessMessage?: string | null;
+  lastCheckedAt?: string | null;
 }
 
 export interface PageHwDeviceResponse {

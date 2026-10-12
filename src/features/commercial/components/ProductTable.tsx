@@ -49,9 +49,9 @@ export const ProductTable = ({
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [selectedProductName, setSelectedProductName] = useState<string>('');
 
-  const { hasPermission } = useAuthStore();
+  const { hasPermission, hasRole } = useAuthStore();
   const canManage = hasPermission('COM_CATALOG_MANAGE');
-  const canPrint = hasPermission(PERMISSIONS.HARDWARE.PRINT_EXECUTE);
+  const canPrint = hasRole('OWNER') && hasPermission(PERMISSIONS.HARDWARE.PRINT_EXECUTE);
   const { error: toastError, success: toastSuccess } = useToast();
 
   const [productToEdit, setProductToEdit] = useState<ProductResponse | null>(null);

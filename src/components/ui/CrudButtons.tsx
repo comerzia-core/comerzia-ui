@@ -1,4 +1,4 @@
-import { Save, X, Trash2, Pencil, FileSpreadsheet, FileText, Plus, ArrowLeft, ArrowRight, ArrowRightLeft, RefreshCw, Eye, Unlock, Lock, DollarSign, Coins, Camera, Upload, ScanBarcode, Printer, Laptop } from "lucide-react";
+import { Save, X, Trash2, Pencil, FileSpreadsheet, FileText, Plus, ArrowLeft, ArrowRight, ArrowRightLeft, RefreshCw, Eye, Unlock, Lock, DollarSign, Coins, Camera, Upload, ScanBarcode, Printer, Laptop, Flashlight, FlashlightOff } from "lucide-react";
 import { ComerziaButton } from "./ComerziaButton";
 
 // Tipos para pasar props extra (como onClick)
@@ -442,4 +442,35 @@ export const BtnRefresh = ({ label = "Actualizar", responsive = true, type = "bu
         {...props} 
     />
 );
-
+
+
+export const BtnTab = ({ label, ...props }: BaseBtnProps) => <ComerziaButton variant="ghost" label={label} {...props} />;
+
+
+// Control de iluminación manual para evitar reflejos sobre etiquetas brillantes.
+const scannerControlClass = "btn-sm !min-w-0 !px-3.5 !py-2 rounded-xl text-xs font-bold backdrop-blur-md";
+
+export const BtnFlashlight = ({ enabled, overlay = false, className = "", ...props }: BaseBtnProps & { enabled: boolean; overlay?: boolean }) => (
+    <ComerziaButton
+        type="button"
+        variant={enabled ? "warning" : overlay ? "overlay" : "neutral"}
+        label={overlay ? (enabled ? "Flash: ON" : "Flash: OFF") : (enabled ? "Apagar luz" : "Encender luz")}
+        aria-label={enabled ? "Apagar luz" : "Encender luz"}
+        icon={enabled ? <FlashlightOff size={16} /> : <Flashlight size={16} className={overlay ? "text-warning" : ""} />}
+        aria-pressed={enabled}
+        className={`${overlay ? scannerControlClass : ""} ${className}`}
+        {...props}
+    />
+);
+
+export const BtnScannerCamera = ({ switched, className = "", ...props }: BaseBtnProps & { switched: boolean }) => (
+    <ComerziaButton
+        type="button"
+        variant={switched ? "warning" : "overlay"}
+        label="Girar Cámara"
+        aria-label="Cambiar cámara"
+        icon={<RefreshCw size={15} className={`transition-transform duration-300 ${switched ? "rotate-180" : "text-warning"}`} />}
+        className={`${scannerControlClass} ${className}`}
+        {...props}
+    />
+);

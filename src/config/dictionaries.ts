@@ -21,6 +21,9 @@ export const DICTIONARIES = {
     // SALES
     SALE_STATUS: 'sale-status',
     CUSTOMER_TYPE: 'customer-type',
+    LABEL_ROLL_SIZE: 'label-roll-size',
+    LABEL_PRINTER: 'label-printer',
+    LABEL_VARIANT: 'label-variant',
     // HARDWARE
     HW_AGENT_STATUS: 'hw-agent-status',
     HW_DEVICE_TYPE: 'hw-device-type',
