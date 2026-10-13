@@ -449,7 +449,7 @@ export const AgentTerminalList = ({
                 {contextMenu.item.pairingCode && onViewPin && (
                   <ContextMenuItem
                     icon={KeyRound}
-                    label="Ver Código PIN de Enlace"
+                    label="Ver PIN"
                     onClick={() => {
                       if (contextMenu.item && onViewPin) onViewPin(contextMenu.item);
                     }}
@@ -458,7 +458,7 @@ export const AgentTerminalList = ({
                 {onRegenerateCode && (
                   <ContextMenuItem
                     icon={RotateCcw}
-                    label="Regenerar Código PIN (15 min)"
+                    label="Regenerar PIN"
                     onClick={() => {
                       if (contextMenu.item && onRegenerateCode) onRegenerateCode(contextMenu.item);
                     }}

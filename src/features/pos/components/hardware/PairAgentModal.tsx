@@ -128,7 +128,7 @@ export const PairAgentModal = ({ isOpen, onClose, onSuccess, initialAgent }: Pro
           onClick={handleSubmit}
           isLoading={isLoading}
           responsive={true}
-          label="Generar PIN"
+          label="Vincular"
           className="flex-1 sm:flex-none sm:w-auto min-w-0"
         />
       </div>
@@ -152,7 +152,7 @@ export const PairAgentModal = ({ isOpen, onClose, onSuccess, initialAgent }: Pro
         <div className="flex items-center gap-2 text-primary">
           <Laptop size={22} className="shrink-0" />
           <span>
-            {step === 'form' ? 'Nueva Terminal de Impresión' : 'Código de Enlace Generado'}
+            {step === 'form' ? 'Nueva Terminal' : 'PIN de Enlace'}
           </span>
         </div>
       }
@@ -211,7 +211,7 @@ export const PairAgentModal = ({ isOpen, onClose, onSuccess, initialAgent }: Pro
           {/* Tarjeta Destacada del PIN */}
           <div className="p-5 bg-base-200/70 border-2 border-primary/30 rounded-2xl flex flex-col items-center justify-center gap-3 text-center shadow-xs">
             <span className="text-xs uppercase font-bold tracking-wider text-base-content/60">
-              Código de Vinculación PIN
+              PIN de Enlace
             </span>
             <div className="text-3xl sm:text-4xl font-mono font-extrabold text-primary tracking-widest selection:bg-primary selection:text-white">
               {formatPin(createdAgent?.pairingCode)}
@@ -221,7 +221,7 @@ export const PairAgentModal = ({ isOpen, onClose, onSuccess, initialAgent }: Pro
               type="button"
               variant={copied ? 'success' : 'neutral'}
               icon={copied ? <Check size={15} /> : <Copy size={15} />}
-              label={copied ? '¡Código Copiado!' : 'Copiar Código'}
+              label={copied ? '¡Copiado!' : 'Copiar PIN'}
               onClick={handleCopyCode}
               className="btn-sm mt-1"
             />

@@ -2,7 +2,7 @@ import { Ruler } from 'lucide-react';
 import { ComerziaModal } from '../../../../components/ui/ComerziaModal';
 import { ComerziaSelect } from '../../../../components/ui/ComerziaSelect';
 import { ComerziaSwitch } from '../../../../components/ui/ComerziaSwitch';
-import { BtnCalibrate, BtnCancel, BtnRefresh, BtnSave } from '../../../../components/ui/CrudButtons';
+import { BtnCalibrate, BtnCancel, BtnSave } from '../../../../components/ui/CrudButtons';
 import { formatDateForUser } from '../../../../utils/date';
 import { usePrinterRollCalibration } from '../../hooks/usePrinterRollCalibration';
 import { HwPrintJobStatusCode, type HwDeviceResponse } from '../../types/hardware';
@@ -64,11 +64,11 @@ export const PrinterRollCalibrationModal = ({ deviceId, onClose, onUpdated, init
       </div>}
       {calibration.job?.errorMessage && <p role="alert" className="text-sm text-error">{calibration.job.errorMessage}</p>}
       {calibration.error && <p role="alert" className="text-sm text-error">{calibration.error}</p>}
-      <div className="flex flex-wrap gap-2">
-        <BtnRefresh label="Actualizar tamaños" onClick={calibration.refreshRolls} disabled={calibration.pending || calibration.isSubmitting} />
-        {[HwPrintJobStatusCode.PENDING, HwPrintJobStatusCode.SENT].some(status => status === Number(device?.calibrationStatus))
-          && <BtnCancel label="Cancelar calibración pendiente" onClick={() => { void calibration.cancel(); }} disabled={calibration.isSubmitting} />}
-      </div>
+      {[HwPrintJobStatusCode.PENDING, HwPrintJobStatusCode.SENT].some(status => status === Number(device?.calibrationStatus)) && (
+        <div className="flex flex-wrap gap-2">
+          <BtnCancel label="Cancelar calibración" onClick={() => { void calibration.cancel(); }} disabled={calibration.isSubmitting} />
+        </div>
+      )}
     </div>
   </ComerziaModal>;
 };
