@@ -43,9 +43,6 @@ export const ComerziaBarcodeScanner = (props: Props) => {
           </div>
         )}
       </div>
-      <p className="text-xs text-base-content/70 text-center">
-        Mantén visible todo el código y sus márgenes blancos. Para barras, colócalas en horizontal; para QR, incluye todo el cuadrado. Aleja un poco la etiqueta si no enfoca.
-      </p>
     </div>
   );
 };

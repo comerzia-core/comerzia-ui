@@ -147,7 +147,7 @@ export const DeviceModal = ({
   };
 
   const modalActions = (
-    <div className="flex flex-row items-center gap-2 w-full sm:justify-end">
+    <div className="flex flex-row items-center justify-center sm:justify-end gap-2 w-full">
       <BtnCancel onClick={onClose} disabled={isLoading} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
       <BtnSave onClick={handleSubmit} isLoading={isLoading} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
     </div>

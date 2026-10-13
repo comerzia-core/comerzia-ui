@@ -13,14 +13,30 @@ export const PrinterRollCalibrationModal = ({ deviceId, onClose, onUpdated, init
   const calibration = usePrinterRollCalibration(deviceId, initialRollSizeId);
   const { device, roll } = calibration;
   return <ComerziaModal isOpen onClose={onClose} size="md" title={<><Ruler size={21} />Cambiar rollo / Calibrar</>}
-    actions={<>
-      <BtnCancel label="Cerrar" onClick={onClose} />
-      {calibration.canConfirm ? <BtnSave label="Confirmar avance correcto" disabled={!calibration.feedAligned || calibration.isSubmitting}
-        isLoading={calibration.isSubmitting} onClick={() => { void calibration.confirm().then(next => { if (next) onUpdated?.(next); }); }} />
-        : <BtnCalibrate label="Calibrar rollo" isLoading={calibration.isSubmitting}
-          disabled={calibration.pending || calibration.isSubmitting || !calibration.printerReady || !roll || roll.gapMm === 0}
-          onClick={() => { void calibration.calibrate().then(next => { if (next) onUpdated?.(next); }); }} />}
-    </>}>
+    actions={
+      <div className="flex flex-row items-center justify-center sm:justify-end gap-2 w-full">
+        <BtnCancel label="Cerrar" onClick={onClose} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
+        {calibration.canConfirm ? (
+          <BtnSave
+            label="Confirmar"
+            disabled={!calibration.feedAligned || calibration.isSubmitting}
+            isLoading={calibration.isSubmitting}
+            onClick={() => { void calibration.confirm().then(next => { if (next) onUpdated?.(next); }); }}
+            responsive={true}
+            className="flex-1 sm:flex-none sm:w-auto min-w-0"
+          />
+        ) : (
+          <BtnCalibrate
+            label="Calibrar"
+            isLoading={calibration.isSubmitting}
+            disabled={calibration.pending || calibration.isSubmitting || !calibration.printerReady || !roll || roll.gapMm === 0}
+            onClick={() => { void calibration.calibrate().then(next => { if (next) onUpdated?.(next); }); }}
+            responsive={true}
+            className="flex-1 sm:flex-none sm:w-auto min-w-0"
+          />
+        )}
+      </div>
+    }>
     <div className="space-y-4">
       <p className="font-semibold">{device?.name || 'Consultando impresora…'}</p>
       <p className="text-sm text-base-content/70">Espera a que la impresora termine sus trabajos, coloca el rollo y ajusta las guías antes de calibrar. La impresora avanzará papel para medirlo, sin imprimir. Hazlo al cambiar de formato; después imprime normalmente.</p>

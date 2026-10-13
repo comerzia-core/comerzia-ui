@@ -475,7 +475,7 @@ export const PrintJobList = ({
             </div>
           }
           actions={
-            <div className="flex justify-end w-full">
+            <div className="flex flex-row items-center justify-center sm:justify-end gap-2 w-full">
               <BtnCancel
                 label="Cerrar"
                 onClick={() => setDetailJob(null)}

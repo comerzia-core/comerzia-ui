@@ -84,7 +84,7 @@ export const ComerziaModal = ({ isOpen, onClose, title, children, actions, size 
 
                 {/* Footer */}
                 {actions && (
-                    <div className={`modal-action ${bgClasses} ${compact ? "px-4 py-3 sm:px-6 shrink-0" : "px-6 py-4"} mt-0 border-t ${borderClass} flex justify-end gap-2`}>
+                    <div className={`modal-action ${bgClasses} ${compact ? "px-4 py-3 sm:px-6 shrink-0" : "px-6 py-4"} mt-0 border-t ${borderClass} flex justify-center sm:justify-end gap-2`}>
                         {actions}
                     </div>
                 )}

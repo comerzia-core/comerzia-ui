@@ -23,11 +23,11 @@ import { useRollSizeEditor } from '../../hooks/useRollSizeEditor';
 import type { RollSize } from '../../types/labels';
 
 interface RollSizeListProps {
-  refreshKey: number;
+  refreshKey?: number;
   onTotalChange?: (count: number) => void;
 }
 
-export const RollSizeList = ({ refreshKey, onTotalChange }: RollSizeListProps) => {
+export const RollSizeList = ({ refreshKey = 0, onTotalChange }: RollSizeListProps) => {
   const rolls = useRollSizes(refreshKey);
 
   // Sincronizar el contador total con la vista principal
@@ -354,9 +354,19 @@ export const RollSizeList = ({ refreshKey, onTotalChange }: RollSizeListProps) =
         title={editing ? 'Editar Tamaño de Rollo' : 'Nuevo Tamaño de Rollo'}
         size="sm"
         actions={
-          <div className="flex gap-2 justify-end">
-            <BtnCancel disabled={rolls.isSaving} onClick={() => setIsEditorOpen(false)} />
-            <BtnSave onClick={save} isLoading={rolls.isSaving} />
+          <div className="flex flex-row items-center justify-center sm:justify-end gap-2 w-full">
+            <BtnCancel
+              disabled={rolls.isSaving}
+              onClick={() => setIsEditorOpen(false)}
+              responsive={true}
+              className="flex-1 sm:flex-none sm:w-auto min-w-0"
+            />
+            <BtnSave
+              onClick={save}
+              isLoading={rolls.isSaving}
+              responsive={true}
+              className="flex-1 sm:flex-none sm:w-auto min-w-0"
+            />
           </div>
         }
       >

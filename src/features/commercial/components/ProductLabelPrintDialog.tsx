@@ -25,10 +25,25 @@ export const ProductLabelPrintDialog = ({ product, onClose }: { product: Product
   const locked = printing.isSubmitting || printing.job !== null;
   return (
     <><ComerziaModal isOpen onClose={() => { if (isCalibrationOpen) setIsCalibrationOpen(false); else onClose(); }} size="md" compact title={<span className="flex items-center gap-2"><Barcode size={22} className="shrink-0" />Imprimir etiquetas</span>}
-      actions={<div className="grid grid-cols-2 sm:flex gap-2 sm:justify-end w-full">
-        <BtnCancel responsive={false} className="min-h-11" onClick={onClose} disabled={printing.isSubmitting} label={printing.job ? 'Cerrar' : 'Cancelar'} />
-        <BtnPrint responsive={false} className="min-h-11" onClick={printing.print} isLoading={printing.isSubmitting} disabled={locked || !printing.preview || printing.isPreviewLoading || !printing.quantityValid || !printing.deviceId || !printing.printerReady || !printing.rollReady} label="Imprimir" />
-      </div>}>
+      actions={
+        <div className="flex flex-row items-center justify-center sm:justify-end gap-2 w-full">
+          <BtnCancel
+            responsive={true}
+            className="flex-1 sm:flex-none sm:w-auto min-w-0"
+            onClick={onClose}
+            disabled={printing.isSubmitting}
+            label={printing.job ? 'Cerrar' : 'Cancelar'}
+          />
+          <BtnPrint
+            responsive={true}
+            className="flex-1 sm:flex-none sm:w-auto min-w-0"
+            onClick={printing.print}
+            isLoading={printing.isSubmitting}
+            disabled={locked || !printing.preview || printing.isPreviewLoading || !printing.quantityValid || !printing.deviceId || !printing.printerReady || !printing.rollReady}
+            label="Imprimir"
+          />
+        </div>
+      }>
       <div className="space-y-3 min-w-0">
         <p className="text-sm font-medium truncate" title={product.name}>{product.name}</p>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -43,7 +58,7 @@ export const ProductLabelPrintDialog = ({ product, onClose }: { product: Product
         </p>}
         {printing.rollMessage && <div className="rounded-xl border border-warning/40 p-3 space-y-2">
           <p role="status" className="text-sm text-warning">{printing.rollMessage}</p>
-          {printing.device && canCalibrate && <BtnCalibrate label="Cambiar rollo / Calibrar" disabled={locked} onClick={() => setIsCalibrationOpen(true)} />}
+          {printing.device && canCalibrate && <BtnCalibrate label="Calibrar" disabled={locked} onClick={() => setIsCalibrationOpen(true)} />}
         </div>}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-1 text-sm">
           <label className="flex items-center gap-2 min-h-11"><ComerziaSwitch checked={printing.includeLogo} onChange={() => printing.setIncludeLogo(!printing.includeLogo)} disabled={locked || !printing.content?.logoAvailable || !printing.printOptions?.logoAllowed} />Logo</label>

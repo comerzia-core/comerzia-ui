@@ -137,31 +137,27 @@ export const TestPrintModal = ({ isOpen, onClose, device, onJobCreated }: Props)
   };
 
   const modalActions = (
-    <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2 w-full">
-      {!isBarcodePrinter ? (
+    <div className="flex flex-row flex-wrap sm:flex-nowrap items-center justify-center sm:justify-end gap-2 w-full">
+      {!isBarcodePrinter && (
         <ComerziaButton
           type="button"
           variant="ghost"
-          label="Probar Gaveta"
+          label="Gaveta"
           icon={<Vault size={16} />}
           onClick={handleOpenDrawerTest}
           disabled={isLoading}
           responsive={true}
           className="flex-1 sm:flex-none sm:w-auto min-w-0"
         />
-      ) : (
-        <div />
       )}
-      <div className="flex items-center gap-2 flex-1 sm:flex-none justify-end">
-        <BtnCancel onClick={onClose} disabled={isLoading} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
-        <BtnPrint
-          onClick={handleTestPrint}
-          isLoading={isLoading}
-          responsive={true}
-          label="Imprimir Prueba"
-          className="flex-1 sm:flex-none sm:w-auto min-w-0"
-        />
-      </div>
+      <BtnCancel onClick={onClose} disabled={isLoading} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
+      <BtnPrint
+        onClick={handleTestPrint}
+        isLoading={isLoading}
+        responsive={true}
+        label="Imprimir"
+        className="flex-1 sm:flex-none sm:w-auto min-w-0"
+      />
     </div>
   );
 

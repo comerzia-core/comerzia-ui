@@ -122,21 +122,21 @@ export const PairAgentModal = ({ isOpen, onClose, onSuccess, initialAgent }: Pro
 
   const modalActions =
     step === 'form' ? (
-      <div className="flex flex-row items-center gap-2 w-full sm:justify-end">
+      <div className="flex flex-row items-center justify-center sm:justify-end gap-2 w-full">
         <BtnCancel onClick={handleClose} disabled={isLoading} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
         <BtnSave
           onClick={handleSubmit}
           isLoading={isLoading}
           responsive={true}
-          label="Generar Código de Enlace"
+          label="Generar PIN"
           className="flex-1 sm:flex-none sm:w-auto min-w-0"
         />
       </div>
     ) : (
-      <div className="flex flex-row items-center gap-2 w-full sm:justify-end">
+      <div className="flex flex-row items-center justify-center sm:justify-end gap-2 w-full">
         <ComerziaButton
           variant="primary"
-          label="Entendido / Finalizar"
+          label="Finalizar"
           onClick={handleClose}
           responsive={true}
           className="w-full sm:w-auto"

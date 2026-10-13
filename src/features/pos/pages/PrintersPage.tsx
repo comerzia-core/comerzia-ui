@@ -19,7 +19,6 @@ import { DeviceModal } from '../components/hardware/DeviceModal';
 import { PrinterRollCalibrationModal } from '../components/hardware/PrinterRollCalibrationModal';
 import { TestPrintModal } from '../components/hardware/TestPrintModal';
 import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
-import { BtnRefresh } from '../../../components/ui/CrudButtons';
 import { useToast } from '../../../context/ToastContext';
 import { usePermission } from '../../../hooks/usePermission';
 import { PERMISSIONS } from '../../../config/permissions';
@@ -33,7 +32,6 @@ export const PrintersPage = () => {
   const { success: toastSuccess, error: toastError } = useToast();
   const { canAny } = usePermission();
   const isOwner = useAuthStore(state => state.userProfile?.roles.includes('OWNER') ?? false);
-  const [rollRefreshKey, setRollRefreshKey] = useState(0);
   const canViewRolls = isOwner && canAny([PERMISSIONS.HARDWARE.DEVICES_MANAGE]);
 
   const canViewAgents = isOwner && canAny([
@@ -85,7 +83,6 @@ export const PrintersPage = () => {
   const [isLoadingAgents, setIsLoadingAgents] = useState(false);
   const [isLoadingDevices, setIsLoadingDevices] = useState(false);
   const [isLoadingJobs, setIsLoadingJobs] = useState(false);
-  const [isLoadingRolls, setIsLoadingRolls] = useState(false);
 
   // Estados de modales
   const [isPairModalOpen, setIsPairModalOpen] = useState(false);
@@ -131,14 +128,11 @@ export const PrintersPage = () => {
   }, [canViewAgents, canViewDevices, canViewJobs, canViewRolls]);
 
   const loadRollsCount = async () => {
-    setIsLoadingRolls(true);
     try {
       const data = await labelService.getRolls('', 0, 1);
       setRollsCount(data.totalElements || 0);
     } catch {
       // No alert required on background badge count
-    } finally {
-      setIsLoadingRolls(false);
     }
   };
 
@@ -293,12 +287,6 @@ export const PrintersPage = () => {
     }
   };
 
-  const isCurrentTabLoading =
-    (activeTab === 'agents' && isLoadingAgents) ||
-    (activeTab === 'devices' && isLoadingDevices) ||
-    (activeTab === 'jobs' && isLoadingJobs) ||
-    (activeTab === 'rolls' && isLoadingRolls);
-
   return (
     <div className="space-y-6 w-full animate-fade-in">
       {/* 1. HEADER DE LA PÁGINA */}
@@ -313,26 +301,6 @@ export const PrintersPage = () => {
               Administración de terminales físicas, tickeras de cobro y etiquetadoras.
             </p>
           </div>
-        </div>
-        {/* Botonera de cabecera */}
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <BtnRefresh
-            onClick={() => {
-              if (activeTab === 'rolls') {
-                setRollRefreshKey(value => value + 1);
-                loadRollsCount();
-              } else if (activeTab === 'agents') {
-                loadAgents();
-              } else if (activeTab === 'devices') {
-                loadDevices();
-              } else {
-                loadJobs();
-              }
-            }}
-            isLoading={isCurrentTabLoading}
-            label="Actualizar"
-            className="w-full sm:w-auto"
-          />
         </div>
       </div>
 
@@ -478,7 +446,6 @@ export const PrintersPage = () => {
 
       {canViewRolls && activeTab === 'rolls' && (
         <RollSizeList
-          refreshKey={rollRefreshKey}
           onTotalChange={setRollsCount}
         />
       )}
