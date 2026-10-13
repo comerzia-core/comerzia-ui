@@ -37,6 +37,8 @@ export interface LabelPrintOptions {
   priceAllowed: boolean;
   nameAllowed: boolean;
   message: string | null;
+  numbersVisible: boolean;
+  codeModuleDots: number;
 }
 
 export interface LabelPreview {

@@ -4,7 +4,7 @@ import { ComerziaBadge } from '../../../../components/ui/ComerziaBadge';
 import { ComerziaContextMenu, ContextMenuItem } from '../../../../components/ui/ComerziaContextMenu';
 import { ComerziaInput } from '../../../../components/ui/ComerziaInput';
 import { BtnPairTerminal } from '../../../../components/ui/CrudButtons';
-import { formatDateForUser } from '../../../../utils/date';
+import { formatDateForUser, formatTimeForUser } from '../../../../utils/date';
 import { useLoadDictionaries } from '../../../../hooks/useLoadDictionaries';
 import { usePermission } from '../../../../hooks/usePermission';
 import { DICTIONARIES } from '../../../../config/dictionaries';
@@ -111,7 +111,6 @@ export const AgentTerminalList = ({
     return (
       agent.name.toLowerCase().includes(q) ||
       (agent.machineName && agent.machineName.toLowerCase().includes(q)) ||
-      (agent.agentUuid && agent.agentUuid.toLowerCase().includes(q)) ||
       (agent.branchName && agent.branchName.toLowerCase().includes(q))
     );
   });
@@ -171,7 +170,11 @@ export const AgentTerminalList = ({
                 <p className="font-semibold text-sm text-base-content">{row.name}</p>
                 {row.pairingCode && isPending && (
                   <span
-                    title="Código PIN de enlace (expira en 15 min)"
+                    title={
+                      row.pairingExpiresAt
+                        ? `Código PIN de enlace (expira a las ${formatTimeForUser(row.pairingExpiresAt)})`
+                        : 'Código PIN de enlace'
+                    }
                     className="badge badge-warning/15 border border-warning/30 text-warning font-mono text-[10px] font-bold px-1.5 py-0.5"
                   >
                     PIN: {formatPin(row.pairingCode)}
@@ -180,7 +183,7 @@ export const AgentTerminalList = ({
               </div>
               <p className="text-xs text-base-content/60 flex items-center gap-1 mt-0.5 font-mono">
                 <Cpu size={12} className="text-primary/70 shrink-0" />
-                {row.machineName || row.agentUuid || 'Sin host identificado'}
+                {row.machineName || 'Sin host identificado'}
               </p>
             </div>
           </div>
@@ -315,14 +318,17 @@ export const AgentTerminalList = ({
                         <span className="badge badge-error badge-xs font-semibold py-0.5">Desconectado</span>
                       )}
                       {agent.pairingCode && (Number(agent.status) === HwAgentStatusCode.PENDING || String(agent.status) === 'PENDING') && (
-                        <span className="badge badge-warning/15 border border-warning/30 text-warning font-mono text-[10px] font-bold py-0.5">
+                        <span
+                          title={agent.pairingExpiresAt ? `Expira a las ${formatTimeForUser(agent.pairingExpiresAt)}` : undefined}
+                          className="badge badge-warning/15 border border-warning/30 text-warning font-mono text-[10px] font-bold py-0.5"
+                        >
                           PIN: {formatPin(agent.pairingCode)}
                         </span>
                       )}
                     </div>
                     <p className="text-xs font-mono text-base-content/60 inline-flex items-center gap-1 mt-0.5 whitespace-nowrap">
                       <Cpu size={12} className="text-primary/70 shrink-0" />
-                      {agent.machineName || agent.agentUuid || 'Sin host'}
+                      {agent.machineName || 'Sin host'}
                     </p>
                   </div>
                 </div>

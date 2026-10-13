@@ -9,7 +9,7 @@ export const labelService = {
   getRoll: async (id: string, signal?: AbortSignal): Promise<RollSize> =>
     (await api.get<RollSize>(`${base}/roll-sizes/${id}`, { signal })).data,
   getRolls: async (search: string, page: number, size: number): Promise<LabelPage<RollSize>> =>
-    (await api.get<LabelPage<RollSize>>(`${base}/roll-sizes`, { params: { search, page, size, sort: 'name,asc' } })).data,
+    (await api.get<LabelPage<RollSize>>(`${base}/roll-sizes`, { params: { search, page, size, sort: 'widthMm,asc' } })).data,
   saveRoll: async (id: string | null, request: SaveRollSizeRequest): Promise<RollSize> =>
     (id ? await api.put<RollSize>(`${base}/roll-sizes/${id}`, request) : await api.post<RollSize>(`${base}/roll-sizes`, request)).data,
   deleteRoll: async (id: string): Promise<void> => { await api.delete(`${base}/roll-sizes/${id}`); },

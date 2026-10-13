@@ -10,9 +10,10 @@ interface Props {
     size?: "sm" | "md" | "lg" | "xl";
     closeOnOutsideClick?: boolean;
     variant?: "form" | "view";
+    compact?: boolean;
 }
 
-export const ComerziaModal = ({ isOpen, onClose, title, children, actions, size = "md", closeOnOutsideClick = false, variant = "form" }: Props) => {
+export const ComerziaModal = ({ isOpen, onClose, title, children, actions, size = "md", closeOnOutsideClick = false, variant = "form", compact = false }: Props) => {
     
     // 1. MANEJO DE TECLA ESC (Manual, ya que quitamos el dialog nativo)
     useEffect(() => {
@@ -56,33 +57,34 @@ export const ComerziaModal = ({ isOpen, onClose, title, children, actions, size 
         >
             
             <div 
-                className={`modal-box ${sizeClasses[size]} p-0 overflow-hidden ${bgClasses} shadow-2xl relative border ${borderClass}`}
+                className={`modal-box ${sizeClasses[size]} p-0 overflow-hidden ${compact ? "flex flex-col !max-h-[92dvh]" : ""} ${bgClasses} shadow-2xl relative border ${borderClass}`}
                 role="dialog"
                 aria-modal="true"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className={`${headerBgClass} px-6 py-4 flex justify-between items-center border-b ${borderClass}`}>
-                    <div className="font-bold text-lg text-base-content flex items-center gap-2">
+                <div className={`${headerBgClass} ${compact ? "px-4 py-3 sm:px-6 shrink-0" : "px-6 py-4"} flex justify-between items-center border-b ${borderClass}`}>
+                    <div className="font-bold text-lg text-base-content flex items-center gap-2 min-w-0">
                         {title}
                     </div>
                     <button 
                         type="button"
                         onClick={onClose} 
-                        className="btn btn-sm btn-circle btn-ghost hover:bg-base-300"
+                        aria-label="Cerrar ventana"
+                        className={`btn btn-circle btn-ghost hover:bg-base-300 shrink-0 ${compact ? "min-h-11 min-w-11" : "btn-sm"}`}
                     >
                         <X size={20} />
                     </button>
                 </div>
 
                 {/* Body */}
-                <div className="p-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+                <div className={`${compact ? "p-4 sm:p-6 min-h-0 overscroll-contain" : "p-6 max-h-[70vh]"} overflow-y-auto custom-scrollbar`}>
                     {children}
                 </div>
 
                 {/* Footer */}
                 {actions && (
-                    <div className={`modal-action ${bgClasses} px-6 py-4 mt-0 border-t ${borderClass} flex justify-end gap-2`}>
+                    <div className={`modal-action ${bgClasses} ${compact ? "px-4 py-3 sm:px-6 shrink-0" : "px-6 py-4"} mt-0 border-t ${borderClass} flex justify-end gap-2`}>
                         {actions}
                     </div>
                 )}

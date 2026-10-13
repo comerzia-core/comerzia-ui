@@ -63,17 +63,14 @@ export interface UpdateHwAgentRequest {
 
 export interface HwAgentResponse {
   id: string;
-  branchId: string;
   branchName: string;
   name: string;
-  agentUuid: string | null;
   machineName: string | null;
   status: number | string;
   pairingCode?: string | null;
   pairingExpiresAt?: string | null;
   lastSeen: string | null;
   isConnected: boolean;
-  createdAt: string;
   updatedAt: string;
 }
 
@@ -121,8 +118,6 @@ export interface HwDeviceResponse {
   port: number | null;
   isDefault: boolean;
   status: number | string;
-  createdAt: string;
-  updatedAt: string;
   reachable?: boolean | null;
   statusKnown?: boolean | null;
   ready?: boolean | null;
@@ -197,18 +192,13 @@ export interface CreatePrintJobRequest {
 
 export interface HwPrintJobResponse {
   id: string;
-  branchId: string;
-  agentId: string;
   agentName: string;
   deviceId: string | null;
   deviceName: string | null;
-  requestedByEmployeeId: string;
   requestedByEmployeeName: string;
   jobType: number | string;
   status: number | string;
-  payload: Record<string, unknown> | string;
   errorMessage: string | null;
-  createdAt: string;
   updatedAt: string;
 }
 

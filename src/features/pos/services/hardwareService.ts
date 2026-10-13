@@ -175,6 +175,9 @@ export const hardwareService = {
     return response.data;
   },
 
+  retryPrintJob: async (id: string): Promise<HwPrintJobResponse> =>
+    (await api.post<HwPrintJobResponse>(`/tenant/hardware/print-jobs/${id}/retry`)).data,
+
   cancelPrintJob: async (id: string): Promise<void> => {
     await api.post(`/tenant/hardware/print-jobs/${id}/cancel`);
   },

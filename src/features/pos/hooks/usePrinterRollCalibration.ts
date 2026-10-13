@@ -6,6 +6,7 @@ import { hardwareService } from '../services/hardwareService';
 import { getLabelError, labelService } from '../services/labelService';
 import { HwPrintJobStatusCode, type HwDeviceResponse, type HwPrintJobResponse } from '../types/hardware';
 import type { RollSize } from '../types/labels';
+import { normalizeUtcString } from '../../../utils/date';
 
 export const usePrinterRollCalibration = (deviceId: string, initialRollSizeId?: string) => {
   const profile = useAuthStore(state => state.userProfile);
@@ -34,7 +35,7 @@ export const usePrinterRollCalibration = (deviceId: string, initialRollSizeId?: 
     : String(rollOptions[0]?.value || '');
   const canConfirm = awaitingConfirmation && selectedRollId === device?.loadedRollSizeId;
   const printerReady = Boolean(device?.calibrationSupported && device.reachable && device.ready && device.lastCheckedAt
-    && Date.parse(device.lastCheckedAt) >= Date.now() - 90000);
+    && Date.parse(normalizeUtcString(device.lastCheckedAt)) >= Date.now() - 90000);
 
   const refresh = async () => {
     const revision = ++requestRevision.current;

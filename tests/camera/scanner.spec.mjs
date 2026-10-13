@@ -102,7 +102,7 @@ test("Camera and flashlight controls sit inside the image and toggle illuminatio
   await expect(page.getByRole("button", { name: "Apagar luz" })).toHaveAttribute("aria-pressed","true");
 });
 
-for (const [filename, expectedCode] of [["barcode7003000100006.json","7003000100006"],["label31x57.json","12345678"],["label30x20-qr.json","7003000100006"]]) {
+for (const [filename, expectedCode] of [["barcode7003000100006.json","7003000100006"],["label31x57.json","12345678"],["label30x20-qr.json","7003000100006"],["label32x12-qr.json","7003000100006"]]) {
   test("A live camera frame from " + filename + " emits " + expectedCode + " once and releases the camera", async ({ page }) => {
     const fixture = JSON.parse(readFileSync(new URL("../../../comerzia/build/label-validation/" + filename,import.meta.url),"utf8"));
     await page.goto("/tests/camera/index.html");

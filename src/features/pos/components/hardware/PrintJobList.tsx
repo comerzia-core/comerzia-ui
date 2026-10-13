@@ -4,7 +4,6 @@ import { ComerziaBadge } from '../../../../components/ui/ComerziaBadge';
 import { ComerziaContextMenu, ContextMenuItem } from '../../../../components/ui/ComerziaContextMenu';
 import { ComerziaInput } from '../../../../components/ui/ComerziaInput';
 import { ComerziaSelect } from '../../../../components/ui/ComerziaSelect';
-import { formatDateForUser } from '../../../../utils/date';
 import { useLoadDictionaries } from '../../../../hooks/useLoadDictionaries';
 import { usePermission } from '../../../../hooks/usePermission';
 import { DICTIONARIES } from '../../../../config/dictionaries';
@@ -17,7 +16,6 @@ import {
 import {
   FileText,
   Printer,
-  Calendar,
   AlertCircle,
   RotateCcw,
   XCircle,
@@ -210,7 +208,6 @@ export const PrintJobList = ({
           </div>
           <div>
             <p className="font-semibold text-sm text-base-content">{getJobTypeLabel(row.jobType)}</p>
-            <p className="text-xs text-base-content/60 font-mono">ID: {row.id.slice(0, 8)}...</p>
           </div>
         </div>
       ),
@@ -244,15 +241,7 @@ export const PrintJobList = ({
         />
       ),
     },
-    {
-      header: 'Fecha',
-      render: row => (
-        <div className="flex items-center gap-1 text-xs text-base-content/70">
-          <Calendar size={12} className="text-base-content/40 shrink-0" />
-          <span>{row.createdAt ? formatDateForUser(row.createdAt) : '-'}</span>
-        </div>
-      ),
-    },
+
   ];
 
   return (
@@ -331,10 +320,6 @@ export const PrintJobList = ({
                     <h3 className="text-sm font-semibold text-base-content leading-tight truncate">
                       {getJobTypeLabel(job.jobType)}
                     </h3>
-                    <p className="text-xs font-mono text-base-content/60 inline-flex items-center gap-1 mt-0.5 whitespace-nowrap">
-                      <FileText size={12} className="text-primary/70 shrink-0" />
-                      ID: {job.id.slice(0, 8)}...
-                    </p>
                   </div>
                 </div>
                 <div className="shrink-0">
@@ -356,10 +341,6 @@ export const PrintJobList = ({
               {/* PIE DE TARJETA CON SANGRÍA DE 26px */}
               <div className="pl-[26px] pt-1.5 border-t border-base-100 flex items-center justify-between text-[11px] text-base-content/60">
                 <span>Por: <strong className="font-medium text-base-content/80">{job.requestedByEmployeeName || 'Sistema'}</strong></span>
-                <span className="flex items-center gap-1">
-                  <Calendar size={12} className="text-base-content/40 shrink-0" />
-                  {job.createdAt ? formatDateForUser(job.createdAt) : '-'}
-                </span>
               </div>
             </article>
           ))
@@ -527,6 +508,12 @@ export const PrintJobList = ({
                 <span className="text-base-content/60 block">Terminal:</span>
                 <span className="font-semibold text-base-content">{detailJob.agentName}</span>
               </div>
+              <div className="p-3 bg-base-200/50 rounded-xl">
+                <span className="text-base-content/60 block">Solicitante:</span>
+                <span className="font-semibold text-base-content">
+                  {detailJob.requestedByEmployeeName || 'Sistema'}
+                </span>
+              </div>
             </div>
 
             {detailJob.errorMessage && (
@@ -538,18 +525,7 @@ export const PrintJobList = ({
               </div>
             )}
 
-            {detailJob.payload && (
-              <div>
-                <span className="text-xs font-semibold text-base-content/70 block mb-1">
-                  Contenido / Payload enviado:
-                </span>
-                <pre className="p-3 bg-base-200 rounded-xl text-[11px] font-mono overflow-x-auto max-h-48 whitespace-pre-wrap">
-                  {typeof detailJob.payload === 'object'
-                    ? JSON.stringify(detailJob.payload, null, 2)
-                    : String(detailJob.payload)}
-                </pre>
-              </div>
-            )}
+
           </div>
         </ComerziaModal>
       )}

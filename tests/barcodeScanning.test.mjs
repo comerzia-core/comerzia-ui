@@ -78,3 +78,23 @@ for (const scale of [1, 0.75, 0.5]) {
   });
 }
 
+
+for (const scale of [1, 0.75]) {
+  test("Compact QR from each printed column is read at camera scale " + scale, () => {
+    const qr = JSON.parse(readFileSync(new URL("../../comerzia/build/label-validation/label32x12-qr-3columns.json", import.meta.url), "utf8"));
+    const packed = Buffer.from(qr.bitmapBase64, "base64");
+    assert.equal(qr.numbersVisible, false); assert.equal(qr.codeModuleDots, 3);
+    for (let column = 0; column < qr.columns; column++) {
+      const offset = Math.round(column * (qr.width + qr.columnGapMm) * 203 / 25.4);
+      const labelWidth = Math.round(qr.width * 203 / 25.4);
+      const w = Math.round(labelWidth * scale), h = Math.round(qr.heightDots * scale);
+      const data = new Uint8ClampedArray(w * h);
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const px = offset + Math.min(labelWidth - 1, Math.floor(x / scale)), py = Math.min(qr.heightDots - 1, Math.floor(y / scale));
+        data[y * w + x] = packed[py * qr.widthBytes + (px >> 3)] & (0x80 >> (px % 8)) ? 255 : 0;
+      }
+      const result = createBarcodeReader().decodeWithState(bitmap(data, w, h));
+      assert.equal(result.getText(), "7003000100006"); assert.equal(result.getBarcodeFormat(), BarcodeFormat.QR_CODE);
+    }
+  });
+}

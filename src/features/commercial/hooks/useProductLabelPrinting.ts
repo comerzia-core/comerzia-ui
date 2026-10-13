@@ -19,10 +19,9 @@ export const useProductLabelPrinting = (productId: string) => {
   const rollOptions = options[DICTIONARIES.LABEL_ROLL_SIZE];
   const printerOptions = options[DICTIONARIES.LABEL_PRINTER];
   const [variantId, setVariantId] = useState('');
-  const [rollSizeId, setSelectedRollSizeId] = useState('');
+  const [rollSelection, setRollSelection] = useState<{ deviceId: string; value: string } | null>(null);
   const [deviceId, setDeviceId] = useState('');
   const [quantitySelection, setQuantitySelection] = useState<{ rollId: string; value: string } | null>(null);
-  const setRollSizeId = (value: string) => { setSelectedRollSizeId(value); setQuantitySelection(null); };
   const [logoChoice, setIncludeLogo] = useState(false);
   const [priceChoice, setIncludePrice] = useState(false);
   const [nameChoice, setIncludeName] = useState(true);
@@ -38,8 +37,13 @@ export const useProductLabelPrinting = (productId: string) => {
   const [shakeKey, setShakeKey] = useState(0);
   const submitLock = useRef(false);
   const currentVariantId = variantOptions.some(option => String(option.value) === variantId) ? variantId : String(variantOptions[0]?.value || '');
-  const currentRollId = rollOptions.some(option => String(option.value) === rollSizeId) ? rollSizeId : String(rollOptions[0]?.value || '');
   const currentDeviceId = printerOptions.some(option => String(option.value) === deviceId) ? deviceId : String(printerOptions[0]?.value || '');
+  const currentDevice = device?.id === currentDeviceId ? device : null;
+  const calibratedRollId = Number(currentDevice?.calibrationStatus) === HwPrintJobStatusCode.COMPLETED && currentDevice?.rollVerifiedAt
+    ? currentDevice.loadedRollSizeId : null;
+  const preferredRollId = rollSelection?.deviceId === currentDeviceId ? rollSelection.value : calibratedRollId;
+  const currentRollId = rollOptions.some(option => String(option.value) === preferredRollId) ? String(preferredRollId) : String(rollOptions[0]?.value || '');
+  const setRollSizeId = (value: string) => { setRollSelection({ deviceId: currentDeviceId, value }); setQuantitySelection(null); };
   const currentContent = content?.variantId === currentVariantId ? content : null;
   const optionsKey = JSON.stringify([currentVariantId, currentRollId, refreshKey]);
   const printOptions = optionsResult?.key === optionsKey ? optionsResult.data : null;
@@ -109,15 +113,14 @@ export const useProductLabelPrinting = (productId: string) => {
     return () => { stopped = true; window.clearInterval(timer); };
   }, [job]);
 
-  const currentDevice = device?.id === currentDeviceId ? device : null;
   const printerReady = Boolean(currentDevice?.reachable && currentDevice?.ready && currentDevice.lastCheckedAt && Date.parse(currentDevice.lastCheckedAt) >= Date.now() - 90000);
   const rollReady = !currentDevice?.calibrationJobId || Boolean(Number(currentDevice.calibrationStatus) === HwPrintJobStatusCode.COMPLETED
     && currentDevice.rollVerifiedAt && currentDevice.loadedRollSizeId === currentRollId);
   const rollMessage = !currentDevice ? null : !currentDevice.loadedRollSizeId
-    ? 'No hay un rollo registrado. Si cambiaste el formato, calibra antes de imprimir.'
+    ? 'Si cambiaste de rollo, calibra la impresora.'
     : currentDevice.loadedRollSizeId !== currentRollId
-      ? `El tamaño elegido no coincide con el rollo registrado: ${currentDevice.loadedRollName || 'otro tamaño'}. Cambia y calibra el rollo antes de imprimir.`
-      : !rollReady ? 'La calibración o la confirmación del avance con FEED están pendientes.' : null;
+      ? 'El rollo no coincide con el instalado.'
+      : !rollReady ? 'Calibra el rollo y confirma su avance.' : null;
   const reloadDevice = async () => {
     try { if (currentDeviceId) setDevice(await hardwareService.getDeviceById(currentDeviceId)); }
     catch (error: unknown) { setError(getLabelError(error, 'No se pudo actualizar el rollo de la impresora.')); }

@@ -284,17 +284,7 @@ export const PrintersPage = () => {
   // TRABAJOS: Reintentar
   const handleRetryJob = async (job: HwPrintJobResponse) => {
     try {
-      const payload: unknown = typeof job.payload === 'string' ? JSON.parse(job.payload) : job.payload;
-      if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw new Error('Invalid print payload');
-      if ('renderVersion' in payload) {
-        toastError('Revise la salida física y prepare una nueva previsualización desde el catálogo antes de reimprimir.');
-        return;
-      }
-      await hardwareService.createPrintJob({
-        deviceId: job.deviceId,
-        jobType: Number(job.jobType),
-        payload: payload as Record<string, unknown>,
-      });
+      await hardwareService.retryPrintJob(job.id);
       toastSuccess('Trabajo reenviado a la cola de impresión.');
       loadJobs();
     } catch (err: unknown) {
@@ -348,21 +338,21 @@ export const PrintersPage = () => {
 
       {/* 2. SELECTOR DE PESTAÑAS (TABS - Se muestra solo si tiene acceso a más de una sección) */}
       {showTabs && (
-        <div className="flex items-center justify-between border-b border-base-200">
-          <div className="flex items-center gap-2 overflow-x-auto">
+        <div className="border-b border-base-200">
+          <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar scroll-smooth">
             {canViewAgents && (
               <button
                 type="button"
                 onClick={() => handleTabChange('agents')}
-                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+                className={`flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
                   activeTab === 'agents'
                     ? 'border-primary text-primary bg-primary/5 rounded-t-xl'
-                    : 'border-transparent text-base-content/60 hover:text-base-content'
+                    : 'border-transparent text-base-content/60 hover:text-base-content hover:bg-base-200/50 rounded-t-xl'
                 }`}
               >
-                <Laptop size={16} />
+                <Laptop size={15} className="shrink-0" />
                 <span>Terminales Vinculadas</span>
-                <span className={`badge badge-sm font-mono font-bold ${activeTab === 'agents' ? 'badge-primary text-primary-content' : 'badge-neutral'}`}>
+                <span className={`badge badge-sm font-mono font-bold ${activeTab === 'agents' ? 'badge-primary text-primary-content' : 'badge-neutral/80'}`}>
                   {agents.length}
                 </span>
               </button>
@@ -372,32 +362,33 @@ export const PrintersPage = () => {
               <button
                 type="button"
                 onClick={() => handleTabChange('devices')}
-                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+                className={`flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
                   activeTab === 'devices'
                     ? 'border-primary text-primary bg-primary/5 rounded-t-xl'
-                    : 'border-transparent text-base-content/60 hover:text-base-content'
+                    : 'border-transparent text-base-content/60 hover:text-base-content hover:bg-base-200/50 rounded-t-xl'
                 }`}
               >
-                <Printer size={16} />
+                <Printer size={15} className="shrink-0" />
                 <span>Impresoras Configuradas</span>
-                <span className={`badge badge-sm font-mono font-bold ${activeTab === 'devices' ? 'badge-primary text-primary-content' : 'badge-neutral'}`}>
+                <span className={`badge badge-sm font-mono font-bold ${activeTab === 'devices' ? 'badge-primary text-primary-content' : 'badge-neutral/80'}`}>
                   {devices.length}
                 </span>
               </button>
             )}
+
             {canViewJobs && (
               <button
                 type="button"
                 onClick={() => handleTabChange('jobs')}
-                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+                className={`flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
                   activeTab === 'jobs'
                     ? 'border-primary text-primary bg-primary/5 rounded-t-xl'
-                    : 'border-transparent text-base-content/60 hover:text-base-content'
+                    : 'border-transparent text-base-content/60 hover:text-base-content hover:bg-base-200/50 rounded-t-xl'
                 }`}
               >
-                <History size={16} />
+                <History size={15} className="shrink-0" />
                 <span>Cola de Impresión</span>
-                <span className={`badge badge-sm font-mono font-bold ${activeTab === 'jobs' ? 'badge-primary text-primary-content' : 'badge-neutral'}`}>
+                <span className={`badge badge-sm font-mono font-bold ${activeTab === 'jobs' ? 'badge-primary text-primary-content' : 'badge-neutral/80'}`}>
                   {jobs.length}
                 </span>
               </button>
@@ -407,15 +398,15 @@ export const PrintersPage = () => {
               <button
                 type="button"
                 onClick={() => handleTabChange('rolls')}
-                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+                className={`flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
                   activeTab === 'rolls'
                     ? 'border-primary text-primary bg-primary/5 rounded-t-xl'
-                    : 'border-transparent text-base-content/60 hover:text-base-content'
+                    : 'border-transparent text-base-content/60 hover:text-base-content hover:bg-base-200/50 rounded-t-xl'
                 }`}
               >
-                <Ruler size={16} />
+                <Ruler size={15} className="shrink-0" />
                 <span>Tamaños de Rollos</span>
-                <span className={`badge badge-sm font-mono font-bold ${activeTab === 'rolls' ? 'badge-primary text-primary-content' : 'badge-neutral'}`}>
+                <span className={`badge badge-sm font-mono font-bold ${activeTab === 'rolls' ? 'badge-primary text-primary-content' : 'badge-neutral/80'}`}>
                   {rollsCount}
                 </span>
               </button>

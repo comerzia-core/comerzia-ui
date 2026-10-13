@@ -116,9 +116,9 @@ test('a failed calibration is visible and is never confirmed or retried automati
 
 test('catalog blocks a different roll and opens calibration with the selected format', async ({ page }) => {
   const api = await mockCalibration(page); await page.goto('/tests/labels/index.html?view=catalog-calibration');
-  const print = page.getByRole('button', { name: 'Imprimir etiquetas', exact: true });
+  const print = page.getByRole('button', { name: 'Imprimir', exact: true });
   await expect(print).toBeEnabled(); await page.getByRole('combobox').nth(1).selectOption('small');
-  await expect(print).toBeDisabled(); await expect(page.getByText('El tamaño elegido no coincide', { exact: false })).toBeVisible();
+  await expect(print).toBeDisabled(); await expect(page.getByText('El rollo no coincide', { exact: false })).toBeVisible();
   await page.getByRole('button', { name: 'Cambiar rollo / Calibrar', exact: true }).click();
   await expect(calibrationDialog(page).getByRole('combobox')).toHaveValue('small');
   const calibrate = calibrationDialog(page).getByRole('button', { name: 'Calibrar rollo', exact: true });

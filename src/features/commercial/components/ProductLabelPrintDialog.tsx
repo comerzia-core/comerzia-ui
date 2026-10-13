@@ -24,46 +24,50 @@ export const ProductLabelPrintDialog = ({ product, onClose }: { product: Product
   const jobStatus = options[DICTIONARIES.HW_PRINT_JOB_STATUS].find(option => Number(option.value) === Number(printing.job?.status))?.label;
   const locked = printing.isSubmitting || printing.job !== null;
   return (
-    <><ComerziaModal isOpen onClose={() => { if (isCalibrationOpen) setIsCalibrationOpen(false); else onClose(); }} size="md" title={<span className="flex items-center gap-2"><Barcode size={22} />Imprimir etiquetas · {product.name}</span>}
-      actions={<div className="flex gap-2 justify-end w-full">
-        <BtnCancel onClick={onClose} disabled={printing.isSubmitting} label={printing.job ? 'Cerrar' : 'Cancelar'} />
-        <BtnPrint onClick={printing.print} isLoading={printing.isSubmitting} disabled={locked || !printing.preview || printing.isPreviewLoading || !printing.quantityValid || !printing.deviceId || !printing.printerReady || !printing.rollReady} label="Imprimir etiquetas" />
+    <><ComerziaModal isOpen onClose={() => { if (isCalibrationOpen) setIsCalibrationOpen(false); else onClose(); }} size="md" compact title={<span className="flex items-center gap-2"><Barcode size={22} className="shrink-0" />Imprimir etiquetas</span>}
+      actions={<div className="grid grid-cols-2 sm:flex gap-2 sm:justify-end w-full">
+        <BtnCancel responsive={false} className="min-h-11" onClick={onClose} disabled={printing.isSubmitting} label={printing.job ? 'Cerrar' : 'Cancelar'} />
+        <BtnPrint responsive={false} className="min-h-11" onClick={printing.print} isLoading={printing.isSubmitting} disabled={locked || !printing.preview || printing.isPreviewLoading || !printing.quantityValid || !printing.deviceId || !printing.printerReady || !printing.rollReady} label="Imprimir" />
       </div>}>
-      <div className="space-y-4">
-        <ComerziaSelect label="Variante" options={printing.variantOptions} value={printing.variantId} onChange={event => printing.setVariantId(event.target.value)} isLoading={printing.isLoadingLookups} disabled={locked} />
-        <ComerziaSelect label="Tamaño del rollo" options={printing.rollOptions} value={printing.rollSizeId} onChange={event => printing.setRollSizeId(event.target.value)} isLoading={printing.isLoadingLookups} disabled={locked} isRequired shakeKey={printing.shakeKey} />
-        {!printing.isLoadingLookups && printing.rollOptions.length === 0 && <p className="text-sm text-warning">Habilite un tamaño de rollo en Impresoras → Tamaños de rollos.</p>}
-        <ComerziaSelect label="Impresora" options={printing.printerOptions} value={printing.deviceId} onChange={event => printing.setDeviceId(event.target.value)} isLoading={printing.isLoadingLookups} disabled={locked} isRequired shakeKey={printing.shakeKey} />
+      <div className="space-y-3 min-w-0">
+        <p className="text-sm font-medium truncate" title={product.name}>{product.name}</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <ComerziaSelect label="Variante" options={printing.variantOptions} value={printing.variantId} onChange={event => printing.setVariantId(event.target.value)} isLoading={printing.isLoadingLookups} disabled={locked} />
+          <ComerziaSelect label="Tamaño del rollo" options={printing.rollOptions} value={printing.rollSizeId} onChange={event => printing.setRollSizeId(event.target.value)} isLoading={printing.isLoadingLookups} disabled={locked} isRequired shakeKey={printing.shakeKey} />
+          {!printing.isLoadingLookups && printing.rollOptions.length === 0 && <p className="text-sm text-warning">Habilita un rollo en Impresoras.</p>}
+          <ComerziaSelect label="Impresora" options={printing.printerOptions} value={printing.deviceId} onChange={event => printing.setDeviceId(event.target.value)} isLoading={printing.isLoadingLookups} disabled={locked} isRequired shakeKey={printing.shakeKey} />
+        </div>
         {printing.device && <p role="status" className={`text-xs ${printing.device.ready ? 'text-base-content/70' : 'text-warning'}`}>
-          {!printing.printerReady ? 'La impresora no está lista o el agente debe actualizar su estado.' : printing.device.readinessMessage || 'El agente aún no verificó la conexión de esta impresora.'}
-          {printing.device.reachable && !printing.device.statusKnown && ' Revise que tenga papel y la tapa esté cerrada antes de imprimir.'}
+          {!printing.printerReady ? (printing.device.statusKnown && printing.device.readinessMessage || 'Revisa la conexión de la impresora.') : 'Conexión verificada.'}
+          {printing.device.reachable && !printing.device.statusKnown && ' Comprueba papel y tapa.'}
         </p>}
         {printing.rollMessage && <div className="rounded-xl border border-warning/40 p-3 space-y-2">
           <p role="status" className="text-sm text-warning">{printing.rollMessage}</p>
           {printing.device && canCalibrate && <BtnCalibrate label="Cambiar rollo / Calibrar" disabled={locked} onClick={() => setIsCalibrationOpen(true)} />}
         </div>}
-        <div className="flex flex-wrap gap-5 text-sm">
-          <label className="flex items-center gap-2"><ComerziaSwitch checked={printing.includeLogo} onChange={() => printing.setIncludeLogo(!printing.includeLogo)} disabled={locked || !printing.content?.logoAvailable || !printing.printOptions?.logoAllowed} />Logo</label>
-          <label className="flex items-center gap-2"><ComerziaSwitch checked={printing.includePrice} onChange={() => printing.setIncludePrice(!printing.includePrice)} disabled={locked || !printing.content?.priceAvailable || !printing.printOptions?.priceAllowed} />Precio</label>
-          <label className="flex items-center gap-2"><ComerziaSwitch checked={printing.includeName} onChange={() => printing.setIncludeName(!printing.includeName)} disabled={locked || !printing.printOptions?.nameAllowed} />Nombre del producto</label>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-1 text-sm">
+          <label className="flex items-center gap-2 min-h-11"><ComerziaSwitch checked={printing.includeLogo} onChange={() => printing.setIncludeLogo(!printing.includeLogo)} disabled={locked || !printing.content?.logoAvailable || !printing.printOptions?.logoAllowed} />Logo</label>
+          <label className="flex items-center gap-2 min-h-11"><ComerziaSwitch checked={printing.includePrice} onChange={() => printing.setIncludePrice(!printing.includePrice)} disabled={locked || !printing.content?.priceAvailable || !printing.printOptions?.priceAllowed} />Precio</label>
+          <label className="flex items-center gap-2 min-h-11"><ComerziaSwitch checked={printing.includeName} onChange={() => printing.setIncludeName(!printing.includeName)} disabled={locked || !printing.printOptions?.nameAllowed} />Nombre del producto</label>
         </div>
-        {printing.printOptions && <p className="text-xs text-base-content/70">Formato: {printing.printOptions.codeFormatLabel}.{printing.printOptions.message && ` ${printing.printOptions.message}`}</p>}
-        {printing.content?.priceMessage && <p className="text-xs text-warning">{printing.content.priceMessage}</p>}
-        {printing.content && !printing.content.logoAvailable && <p className="text-xs text-base-content/60">Cargue el logo de tickets en la configuración de su empresa para incluirlo.</p>}
+        {printing.content && (!printing.content.logoAvailable || !printing.content.priceAvailable) && <p className="text-xs text-base-content/60">
+          {[!printing.content.logoAvailable && 'Sin logo cargado', !printing.content.priceAvailable && 'Sin precio vigente'].filter(Boolean).join(' · ')}
+        </p>}
         <ComerziaInput label="Cantidad total de etiquetas" type="number" min={printing.columns} max={printing.maximumQuantity} step={printing.columns} value={printing.quantity} onChange={event => printing.setQuantity(event.target.value)} disabled={locked || !printing.preview} isRequired shakeKey={printing.shakeKey} error={printing.quantityError} />
-        {printing.preview && <p className="text-xs text-base-content/70">{printing.columns} etiquetas por fila. Cantidades permitidas: {printing.columns}, {printing.columns * 2}, {printing.columns * 3}…{printing.rowCount !== null && ` Se imprimirán ${printing.rowCount} filas (${printing.quantity} etiquetas).`}</p>}
-        <div className="rounded-2xl border border-base-200 bg-base-200/40 p-4 space-y-3">
-          <div className="flex items-center justify-between gap-2"><span className="font-semibold text-sm">Previsualización de impresión</span><BtnRefresh label="Actualizar" onClick={printing.refreshPreview} disabled={locked} isLoading={printing.isPreviewLoading} /></div>
+        {printing.preview && <p className="text-xs text-base-content/70">{printing.columns > 1 ? `Múltiplos de ${printing.columns}` : 'Etiquetas individuales'}{printing.rowCount !== null && ` · ${printing.rowCount} ${printing.rowCount === 1 ? 'fila' : 'filas'}`}</p>}
+        <div className="rounded-2xl border border-base-200 bg-base-200/40 p-3 space-y-2">
+          <div className="flex items-center justify-between gap-2"><span className="font-semibold text-sm">Vista previa</span><BtnRefresh className="min-h-11" label="Actualizar" onClick={printing.refreshPreview} disabled={locked} isLoading={printing.isPreviewLoading} /></div>
           {printing.isPreviewLoading ? <div className="text-center py-8"><span className="loading loading-spinner text-primary" /></div> : printing.preview ? <>
             <img src={printing.preview.imageDataUrl} alt={`Etiqueta: ${printing.preview.displayName || printing.content?.barcode}`} className="mx-auto bg-white border border-base-300 max-w-full" style={{ maxHeight: 320, imageRendering: 'pixelated' }} />
-            <p className="text-xs text-center text-base-content/70">Cada etiqueta: {printing.preview.widthMm} × {printing.preview.heightMm} mm · {printing.preview.columns} columnas · Ancho total {printing.preview.totalWidthMm} mm · GAP filas {printing.preview.gapMm} mm · Separación columnas {printing.preview.columnGapMm} mm{printing.preview.rotation === 90 ? ' · Giro automático 90° por etiqueta' : ''}</p>
-          </> : <p className="text-sm text-base-content/60 text-center py-6">Seleccione una variante y un rollo para revisar la etiqueta.</p>}
+            {printing.printOptions && <p className="text-xs text-center text-base-content/60">{printing.printOptions.codeFormatLabel}{printing.printOptions.numbersVisible === false && ' · Sin números'}</p>}
+          </> : <p className="text-sm text-base-content/60 text-center py-6">Selecciona una variante y un rollo.</p>}
         </div>
+        {printing.printOptions?.codeFormat === 'QR_CODE' && printing.printOptions.codeModuleDots <= 3 && <p className="text-xs text-warning">Prueba la lectura antes de imprimir un lote.</p>}
         {printing.error && <p role="alert" className="text-sm text-error">{printing.error}</p>}
         {printing.job && <div role="status" className="alert text-sm flex flex-col items-start gap-1">
-          <span>Trabajo de impresión: {jobStatus || 'Consultando estado…'}</span>
+          <span>Impresión: {jobStatus || 'Consultando estado…'}</span>
           {printing.job.errorMessage && <span className="text-error">{printing.job.errorMessage}</span>}
-          <span className="text-xs text-base-content/70">El estado completado confirma que el agente transmitió la etiqueta. Revise la salida en la impresora.</span>
+          <span className="text-xs text-base-content/70">Revisa las etiquetas en la impresora.</span>
         </div>}
       </div>
     </ComerziaModal>

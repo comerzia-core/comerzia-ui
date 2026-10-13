@@ -9,6 +9,7 @@ import { branchService } from '../../../organization/services/branchService';
 import { useToast } from '../../../../context/ToastContext';
 import type { HwAgentResponse } from '../../types/hardware';
 import { Laptop, Copy, Check, Clock, Info, ShieldCheck } from 'lucide-react';
+import { formatTimeForUser } from '../../../../utils/date';
 
 interface Props {
   isOpen: boolean;
@@ -229,7 +230,11 @@ export const PairAgentModal = ({ isOpen, onClose, onSuccess, initialAgent }: Pro
           {/* Indicador de Vigencia */}
           <div className="flex items-center justify-center gap-1.5 text-xs text-warning font-medium">
             <Clock size={14} className="shrink-0" />
-            <span>Este código expira en 15 minutos</span>
+            <span>
+              {createdAgent?.pairingExpiresAt
+                ? `Código válido hasta las ${formatTimeForUser(createdAgent.pairingExpiresAt)}`
+                : 'Este código expira en 15 minutos'}
+            </span>
           </div>
 
           {/* Instrucciones Claras */}

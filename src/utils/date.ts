@@ -1,6 +1,48 @@
 import { useAuthStore } from '../stores/useAuthStore';
 
 /**
+ * Normalizes an incoming date string so that ISO strings without offset are explicitly parsed as UTC.
+ */
+export const normalizeUtcString = (utcString: string): string => {
+    let s = utcString.trim();
+    if (s.includes(' ') && !s.includes('T')) {
+        s = s.replace(' ', 'T');
+    }
+    if (s.includes('T') && !s.endsWith('Z') && !/[+-]\d{2}(:\d{2})?$/.test(s)) {
+        s = `${s}Z`;
+    }
+    return s;
+};
+
+/**
+ * Returns a validated IANA timezone candidate:
+ * 1. Explicit override
+ * 2. User's companySettings.timezone
+ * 3. Browser resolved timezone
+ * 4. Fallback to 'UTC'
+ */
+export const getEffectiveTimezone = (timezoneOverride?: string): string => {
+    const profile = useAuthStore.getState().userProfile;
+    const candidates = [
+        timezoneOverride,
+        profile?.companySettings?.timezone,
+        Intl.DateTimeFormat().resolvedOptions().timeZone,
+        'UTC',
+    ];
+    for (const candidate of candidates) {
+        if (candidate && typeof candidate === 'string' && candidate.trim()) {
+            try {
+                Intl.DateTimeFormat(undefined, { timeZone: candidate.trim() });
+                return candidate.trim();
+            } catch {
+                // Continue to next candidate if invalid
+            }
+        }
+    }
+    return 'UTC';
+};
+
+/**
  * Formats a UTC ISO string into a localized timezone.
  * Uses timezoneOverride if provided, otherwise falls back to the user's companySettings,
  * and finally to the browser's timezone.
@@ -8,15 +50,13 @@ import { useAuthStore } from '../stores/useAuthStore';
 export const formatDateForUser = (utcString: string | null | undefined, timezoneOverride?: string): string => {
     if (!utcString) return '-';
 
-    // Obtenemos el perfil directamente del store
-    const profile = useAuthStore.getState().userProfile;
-    
-    // Calculamos el timezone: 1. Override explícito, 2. Perfil del Usuario, 3. Navegador
-    const tz = timezoneOverride || profile?.companySettings?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const tz = getEffectiveTimezone(timezoneOverride);
 
     try {
-        const date = new Date(utcString);
-        
+        const normalized = normalizeUtcString(utcString);
+        const date = new Date(normalized);
+        if (isNaN(date.getTime())) return utcString;
+
         return new Intl.DateTimeFormat('es-ES', {
             timeZone: tz,
             year: 'numeric',
@@ -24,11 +64,11 @@ export const formatDateForUser = (utcString: string | null | undefined, timezone
             day: '2-digit',
             hour: '2-digit',
             minute: '2-digit',
-            hour12: true
+            hour12: true,
         }).format(date);
     } catch (error) {
-        console.error("Error formatting date:", error);
-        return utcString; // Retorno de seguridad
+        console.error('Error formatting date:', error);
+        return utcString;
     }
 };
 
@@ -38,20 +78,21 @@ export const formatDateForUser = (utcString: string | null | undefined, timezone
 export const formatTimeForUser = (utcString: string | null | undefined, timezoneOverride?: string): string => {
     if (!utcString) return '-';
 
-    const profile = useAuthStore.getState().userProfile;
-    const tz = timezoneOverride || profile?.companySettings?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const tz = getEffectiveTimezone(timezoneOverride);
 
     try {
-        const date = new Date(utcString);
-        
+        const normalized = normalizeUtcString(utcString);
+        const date = new Date(normalized);
+        if (isNaN(date.getTime())) return utcString;
+
         return new Intl.DateTimeFormat('es-ES', {
             timeZone: tz,
             hour: '2-digit',
             minute: '2-digit',
-            hour12: true
+            hour12: true,
         }).format(date);
     } catch (error) {
-        console.error("Error formatting time:", error);
+        console.error('Error formatting time:', error);
         return utcString;
     }
 };

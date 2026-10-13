@@ -5,6 +5,7 @@ import { ComerziaContextMenu, ContextMenuItem } from '../../../../components/ui/
 import { ComerziaInput } from '../../../../components/ui/ComerziaInput';
 import { ComerziaSelect } from '../../../../components/ui/ComerziaSelect';
 import { BtnCreate } from '../../../../components/ui/CrudButtons';
+import { formatDateForUser } from '../../../../utils/date';
 import { useLoadDictionaries } from '../../../../hooks/useLoadDictionaries';
 import { usePermission } from '../../../../hooks/usePermission';
 import { DICTIONARIES } from '../../../../config/dictionaries';
@@ -192,8 +193,24 @@ export const DeviceList = ({
     },
     {
       header: 'Rollo instalado',
-      render: row => <div className="text-xs space-y-1"><span className="font-semibold">{row.loadedRollName || 'Sin registrar'}</span>
-        {row.loadedRollName && <p className={row.rollVerifiedAt ? 'text-success' : 'text-warning'}>{row.rollVerifiedAt ? 'Avance confirmado' : 'Pendiente de confirmar'}</p>}</div>,
+      render: row => (
+        <div className="text-xs space-y-1">
+          <span className="font-semibold text-base-content">{row.loadedRollName || 'Sin registrar'}</span>
+          {row.loadedRollName && (
+            <p
+              title={row.rollVerifiedAt ? `Verificado: ${formatDateForUser(row.rollVerifiedAt)}` : undefined}
+              className={row.rollVerifiedAt ? 'text-success font-medium' : 'text-warning font-medium'}
+            >
+              {row.rollVerifiedAt ? 'Avance confirmado' : 'Pendiente de confirmar'}
+            </p>
+          )}
+          {row.lastCalibratedAt && !row.rollVerifiedAt && (
+            <p className="text-[11px] text-base-content/60">
+              Calibrado: {formatDateForUser(row.lastCalibratedAt)}
+            </p>
+          )}
+        </div>
+      ),
     },
     {
       header: 'Terminal',
@@ -253,7 +270,7 @@ export const DeviceList = ({
       {/* 2. BARRA DE BÚSQUEDA Y FILTROS */}
       <div className="card bg-base-100 p-4 rounded-2xl shadow-xs border border-base-200">
         <div className="flex flex-col lg:flex-row justify-between gap-3 lg:items-center">
-          <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto flex-1 flex-wrap">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto flex-1 flex-wrap">
             {/* Input de Búsqueda */}
             <div className="w-full sm:w-72">
               <ComerziaInput
@@ -371,8 +388,23 @@ export const DeviceList = ({
                   </div>
                 </div>
 
-                {isBarcode && <p className="pl-[26px] text-xs text-base-content/70">Rollo: {device.loadedRollName || 'Sin registrar'}
-                  {device.loadedRollName && (device.rollVerifiedAt ? ' · Avance confirmado' : ' · Pendiente de confirmar')}</p>}
+                {isBarcode && (
+                  <div className="pl-[26px] text-xs text-base-content/70 space-y-0.5">
+                    <p>
+                      Rollo: <strong>{device.loadedRollName || 'Sin registrar'}</strong>
+                      {device.loadedRollName && (
+                        <span className={device.rollVerifiedAt ? ' text-success font-medium' : ' text-warning font-medium'}>
+                          {device.rollVerifiedAt ? ' · Avance confirmado' : ' · Pendiente de confirmar'}
+                        </span>
+                      )}
+                    </p>
+                    {device.lastCalibratedAt && !device.rollVerifiedAt && (
+                      <p className="text-[11px] text-base-content/50">
+                        Última calibración: {formatDateForUser(device.lastCalibratedAt)}
+                      </p>
+                    )}
+                  </div>
+                )}
                 {/* CONTENIDO SECUNDARIO CON SANGRÍA DE 26px */}
                 <div className="pl-[26px] flex flex-col gap-1 text-xs text-base-content/70">
                   <div className="flex items-center gap-1.5">
