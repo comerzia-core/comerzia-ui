@@ -1,3 +1,5 @@
+import { ComerziaRowNumber } from '../../../components/ui/ComerziaRowNumber';
+import { ProductVariantImage } from './ProductVariantImage';
 import { isTransientRefreshFailure } from '../../realtime/utils/refreshErrors';
 import { useRealtimeRefresh } from '../../realtime/hooks/useRealtimeRefresh';
 import { useState, useEffect, useMemo } from 'react';
@@ -17,7 +19,6 @@ import { ComerziaContextMenu, ContextMenuItem } from '../../../components/ui/Com
 import { Edit, Trash2, DollarSign, Search, ArrowRightLeft, History, Eye, Barcode } from 'lucide-react';
 import { getCatalogErrorMessage } from '../utils/catalogErrorMessages';
 import { useUrlParams } from '../../../hooks/useUrlState';
-import { getThumbnailUrl } from '../../../utils/image';
 
 interface Props {
   isOpen: boolean;
@@ -128,19 +129,10 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
           className={`w-10 h-10 rounded-lg bg-base-200 overflow-hidden border border-base-300 transition-transform ${
             row.imageUrl ? 'cursor-pointer hover:scale-105 shadow-xs' : ''
           }`}
-          onClick={() => {
-            if (row.imageUrl) {
-              setViewingImage({
-                isOpen: true,
-                url: row.imageUrl,
-                title: `${productName} - ${row.name}`
-              });
-            }
-          }}
-          title={row.imageUrl ? "Clic para ver imagen" : undefined}
+          title={row.imageUrl ? "Doble clic o doble toque para ampliar" : undefined}
         >
           {row.imageUrl ? (
-            <img src={getThumbnailUrl(row.imageUrl)} alt={row.name} loading="lazy" className="w-full h-full object-cover" />
+            <ProductVariantImage src={row.imageUrl} alt={row.name} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-base-content/30 text-[10px]">Sin img</div>
           )}
@@ -211,7 +203,7 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
             </div>
           ) : (
             <div className="space-y-2.5">
-              {data.map((variant) => (
+              {data.map((variant, index) => (
                 <div
                   key={variant.id}
                   onClick={() => {
@@ -224,21 +216,12 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
                   className="bg-base-100 p-3.5 rounded-2xl border border-base-200 shadow-xs space-y-2 text-xs select-none cursor-pointer hover:border-primary/40 active:scale-[0.99] transition-all"
                 >
                   <div className="flex items-center gap-3">
+                    <ComerziaRowNumber value={index + 1} />
                     <div 
                       className="w-14 h-14 rounded-xl bg-base-200 overflow-hidden border border-base-300 shrink-0"
-                      onClick={(e) => {
-                        if (variant.imageUrl) {
-                          e.stopPropagation();
-                          setViewingImage({
-                            isOpen: true,
-                            url: variant.imageUrl,
-                            title: `${productName} - ${variant.name}`
-                          });
-                        }
-                      }}
                     >
                       {variant.imageUrl ? (
-                        <img src={getThumbnailUrl(variant.imageUrl)} alt={variant.name} loading="lazy" className="w-full h-full object-cover" />
+                        <ProductVariantImage src={variant.imageUrl} alt={variant.name} className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-base-content/30 text-[10px]">Sin img</div>
                       )}

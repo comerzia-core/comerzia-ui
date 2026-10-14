@@ -1,3 +1,5 @@
+import { ComerziaRowNumber } from '../../../components/ui/ComerziaRowNumber';
+import { ProductVariantImage } from '../components/ProductVariantImage';
 import { isTransientRefreshFailure } from '../../realtime/utils/refreshErrors';
 import { useRealtimeRefresh } from '../../realtime/hooks/useRealtimeRefresh';
 // src/features/commercial/pages/StockValuationPage.tsx
@@ -21,7 +23,6 @@ import { ComerziaDonutChart, ComerziaBarChart } from '../../../components/ui/cha
 import { useToast } from '../../../context/ToastContext';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { useAuthStore } from '../../../stores/useAuthStore';
-import { getThumbnailUrl } from '../../../utils/image';
 import {
   Coins,
   Store,
@@ -371,12 +372,7 @@ const DONUT_PALETTE = [
       render: row => (
         <div className="flex items-center gap-3">
           {row.imageUrl ? (
-            <img
-              src={getThumbnailUrl(row.imageUrl)}
-              alt={row.productName}
-              loading="lazy"
-              className="w-10 h-10 rounded-xl object-cover border border-base-200 shrink-0"
-            />
+            <ProductVariantImage src={row.imageUrl} alt={row.productName} className="w-10 h-10 rounded-xl object-cover border border-base-200 shrink-0" />
           ) : (
             <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
               <Package size={18} />
@@ -941,7 +937,7 @@ const DONUT_PALETTE = [
               columns={columns}
               isLoading={isLoadingReport}
               pagination={pagination}
-              showRowNumbers={false}
+              showRowNumbers={true}
             />
           </div>
 
@@ -958,7 +954,7 @@ const DONUT_PALETTE = [
               </div>
             ) : (
               <div className="space-y-3">
-                {reportData.map(row => {
+                {reportData.map((row, index) => {
                   const profit = Number(row.potentialProfit) || 0;
                   const margin = Number(row.marginPercentage) || 0;
                   const badgeVariant = getMarginBadgeVariant(margin);
@@ -970,6 +966,8 @@ const DONUT_PALETTE = [
                     >
                       {/* Cabecera: Producto, Variante y Badge de Margen */}
                       <div className="flex items-start justify-between gap-2">
+                        <ComerziaRowNumber value={page * size + index + 1} />
+                        <ProductVariantImage src={row.imageUrl} alt={`${row.productName} · ${row.variantName}`} />
                         <div className="min-w-0 flex-1">
                           <h3 className="font-bold text-sm text-base-content leading-snug truncate">
                             {row.productName}

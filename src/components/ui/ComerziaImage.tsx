@@ -72,6 +72,7 @@ export const ComerziaImage: React.FC<ComerziaImageProps> = ({
       alt={alt}
       title={title}
       loading={loading}
+      decoding="async"
       className={className}
       onClick={onClick}
       onError={() => {

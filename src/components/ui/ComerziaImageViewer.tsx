@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { createPortal } from 'react-dom';
 import { ComerziaModal } from "./ComerziaModal";
 import { ImageOff, Loader2 } from "lucide-react";
 import { getFullImageUrl } from "../../utils/image";
@@ -14,6 +15,7 @@ interface Props {
 export const ComerziaImageViewer = ({ isOpen, onClose, imageUrl, title, altText }: Props) => {
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Reseteamos estados cada vez que se abre una nueva imagen
   useEffect(() => {
@@ -23,9 +25,38 @@ export const ComerziaImageViewer = ({ isOpen, onClose, imageUrl, title, altText 
     }
   }, [isOpen, imageUrl]);
 
+  // El visor anidado recibe Escape antes que el modal de venta o catálogo que lo contiene.
+  useEffect(() => {
+    if (!isOpen) return;
+    const previousFocus = document.activeElement;
+    const focusable = () => Array.from(containerRef.current?.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])') || []).filter(element => element.getClientRects().length);
+    focusable()[0]?.focus();
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === 'Tab') {
+        const elements = focusable();
+        if (!elements.length) return;
+        const current = elements.indexOf(document.activeElement as HTMLElement);
+        const next = current === -1 ? 0 : (current + (event.shiftKey ? -1 : 1) + elements.length) % elements.length;
+        event.preventDefault(); event.stopImmediatePropagation(); elements[next].focus();
+        return;
+      }
+      if (event.key !== 'Escape') return;
+      event.stopImmediatePropagation();
+      onClose();
+    };
+    window.addEventListener('keydown', escape, true);
+    return () => {
+      window.removeEventListener('keydown', escape, true);
+      if (previousFocus instanceof HTMLElement && previousFocus.isConnected) previousFocus.focus();
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
+    // El toque que abre el portal no debe cerrar el buscador que contiene la miniatura.
+    <div ref={containerRef} onMouseDown={(event) => event.stopPropagation()}>
     <ComerziaModal
       isOpen={isOpen}
       onClose={onClose}
@@ -36,7 +67,7 @@ export const ComerziaImageViewer = ({ isOpen, onClose, imageUrl, title, altText 
       <div className="flex flex-col items-center justify-center min-h-[300px] bg-base-200/30 rounded-xl overflow-hidden relative border border-base-200">
         
         {/* 1. Estado de Carga (Spinner) */}
-        {isLoading && !hasError && (
+        {imageUrl && isLoading && !hasError && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-base-content/50 bg-base-100/60 z-10 backdrop-blur-xs">
             <Loader2 className="animate-spin text-primary" size={32} />
             <span className="text-xs font-bold animate-pulse">Cargando imagen...</span>
@@ -56,6 +87,7 @@ export const ComerziaImageViewer = ({ isOpen, onClose, imageUrl, title, altText 
           <img
             src={getFullImageUrl(imageUrl)}
             alt={altText || title}
+            decoding="async"
             className={`w-full h-auto object-contain max-h-[60vh] rounded-lg shadow-sm transition-opacity duration-300 ${
               isLoading ? "opacity-0" : "opacity-100"
             }`}
@@ -78,6 +110,7 @@ export const ComerziaImageViewer = ({ isOpen, onClose, imageUrl, title, altText 
         {title}
       </div>
     </ComerziaModal>
+    </div>, document.body
   );
 };
 

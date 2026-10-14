@@ -1,3 +1,5 @@
+import { ComerziaRowNumber } from '../../../components/ui/ComerziaRowNumber';
+import { ProductVariantImage } from '../components/ProductVariantImage';
 import { isTransientRefreshFailure } from '../../realtime/utils/refreshErrors';
 import { useRealtimeRefresh } from '../../realtime/hooks/useRealtimeRefresh';
 import { useState, useEffect, useMemo } from 'react';
@@ -25,7 +27,6 @@ import { useDebounce } from '../../../hooks/useDebounce';
 import { DICTIONARIES } from '../../../config/dictionaries';
 import { useLoadDictionaries } from '../../../hooks/useLoadDictionaries';
 import { useAuthStore } from '../../../stores/useAuthStore';
-import { getThumbnailUrl } from '../../../utils/image';
 import {
   Boxes,
   Store,
@@ -380,7 +381,8 @@ export const StockReportsPage = () => {
       .map(r => ({
         variantId: r.variantId,
         productName: r.productName,
-        variantName: r.variantName
+        variantName: r.variantName,
+        imageUrl: r.imageUrl
       }));
   }, [reportData, selectedVariantIds]);
 
@@ -424,41 +426,12 @@ export const StockReportsPage = () => {
   // Configuración de columnas para ComerziaTable
   const columns: Column<ReplenishmentReportRowItem>[] = [
     {
-      header: (
-        <div className="flex items-center justify-center">
-          <ComerziaCheckbox
-            checked={reportData.length > 0 && selectedVariantIds.length === reportData.length}
-            indeterminate={selectedVariantIds.length > 0 && selectedVariantIds.length < reportData.length}
-            onChange={checked => handleSelectAll(checked)}
-            title="Seleccionar todos los productos de la página"
-            size="md"
-          />
-        </div>
-      ),
-      className: 'w-12 text-center',
-      render: row => (
-        <div className="flex items-center justify-center" onClick={e => e.stopPropagation()}>
-          <ComerziaCheckbox
-            checked={selectedVariantIds.includes(row.variantId)}
-            onChange={() => handleToggleSelectRow(row.variantId)}
-            title={`Seleccionar ${row.productName}`}
-            size="md"
-          />
-        </div>
-      )
-    },
-    {
       header: 'Producto / Variante',
       className: 'min-w-[240px]',
       render: row => (
         <div className="flex items-center gap-3">
           {row.imageUrl ? (
-            <img
-              src={getThumbnailUrl(row.imageUrl)}
-              alt={row.productName}
-              loading="lazy"
-              className="w-10 h-10 object-cover rounded-xl border border-base-200 shrink-0 bg-base-200/50"
-            />
+            <ProductVariantImage src={row.imageUrl} alt={row.productName} className="w-10 h-10 object-cover rounded-xl border border-base-200 shrink-0 bg-base-200/50" />
           ) : (
             <div className="w-10 h-10 rounded-xl bg-base-200 flex items-center justify-center text-base-content/40 shrink-0 border border-base-200">
               <Package size={20} />
@@ -484,6 +457,30 @@ export const StockReportsPage = () => {
               )}
             </div>
           </div>
+        </div>
+      )
+    },
+    {
+      header: (
+        <div className="flex items-center justify-center">
+          <ComerziaCheckbox
+            checked={reportData.length > 0 && selectedVariantIds.length === reportData.length}
+            indeterminate={selectedVariantIds.length > 0 && selectedVariantIds.length < reportData.length}
+            onChange={checked => handleSelectAll(checked)}
+            title="Seleccionar todos los productos de la página"
+            size="md"
+          />
+        </div>
+      ),
+      className: 'w-12 text-center',
+      render: row => (
+        <div className="flex items-center justify-center" onClick={e => e.stopPropagation()}>
+          <ComerziaCheckbox
+            checked={selectedVariantIds.includes(row.variantId)}
+            onChange={() => handleToggleSelectRow(row.variantId)}
+            title={`Seleccionar ${row.productName}`}
+            size="md"
+          />
         </div>
       )
     },
@@ -956,7 +953,7 @@ export const StockReportsPage = () => {
           columns={columns}
           isLoading={isLoadingReport}
           pagination={pagination}
-          showRowNumbers={false}
+          showRowNumbers={true}
         />
       </div>
 
@@ -973,7 +970,7 @@ export const StockReportsPage = () => {
           </div>
         ) : (
           <div className="space-y-3">
-            {reportData.map(row => {
+            {reportData.map((row, index) => {
               const { label, variant } = getStatusInfo(row.status);
               const edit = inlineEdits[row.variantId] || { minStock: row.minStock, idealStock: row.idealStock };
               const isSelected = selectedVariantIds.includes(row.variantId);
@@ -990,12 +987,15 @@ export const StockReportsPage = () => {
                   {/* Fila 1: Checkbox, Nombre, Variante y Badge */}
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                      <ComerziaRowNumber value={page * size + index + 1} />
+                      <ProductVariantImage src={row.imageUrl} alt={`${row.productName} · ${row.variantName}`} />
                       <ComerziaCheckbox
                         checked={isSelected}
                         onChange={() => handleToggleSelectRow(row.variantId)}
                         size="md"
                         className="mt-0.5 shrink-0"
                       />
+
                       <div className="min-w-0 flex-1">
                         <h3 className="font-bold text-sm text-base-content leading-snug truncate">
                           {row.productName}

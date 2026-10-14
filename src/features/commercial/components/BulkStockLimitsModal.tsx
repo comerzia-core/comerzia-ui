@@ -1,3 +1,5 @@
+import { ProductVariantImage } from './ProductVariantImage';
+import { ComerziaRowNumber } from '../../../components/ui/ComerziaRowNumber';
 // src/features/commercial/components/BulkStockLimitsModal.tsx
 import { useState, useEffect } from 'react';
 import { ComerziaModal } from '../../../components/ui/ComerziaModal';
@@ -11,6 +13,7 @@ interface SelectedVariantItem {
   variantId: string;
   productName: string;
   variantName: string;
+  imageUrl?: string | null;
 }
 
 interface Props {
@@ -184,6 +187,8 @@ export const BulkStockLimitsModal = ({
                 key={`${item.variantId}-${idx}`}
                 className="flex items-center justify-between text-xs py-1 px-2 rounded-lg bg-base-100 border border-base-200/60"
               >
+                <ComerziaRowNumber value={idx + 1} />
+                <ProductVariantImage src={item.imageUrl} alt={`${item.productName} - ${item.variantName}`} />
                 <span className="font-medium text-base-content truncate max-w-[200px] sm:max-w-[260px]">
                   {item.productName}
                 </span>

@@ -38,62 +38,34 @@ export type CloudinaryPreset = keyof typeof CLOUDINARY_PRESETS;
  * Verifica si una URL dada pertenece a un recurso de Cloudinary con ruta /image/upload/.
  */
 export const isCloudinaryUrl = (url?: string | null): boolean => {
-  if (!url || typeof url !== 'string') return false;
-  return url.includes('res.cloudinary.com') && url.includes('/image/upload/');
+  if (!url) return false;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'https:' && parsed.hostname === 'res.cloudinary.com' &&
+      !parsed.username && !parsed.password && /^\/[^/]+\/image\/upload\//.test(parsed.pathname);
+  } catch { return false; }
 };
 
-/**
- * Transforma URLs de Cloudinary aplicando estrictamente uno de los 3 Presets Oficiales de Comerzia.
- *
- * Características:
- * - 100% Idempotente: Si la URL ya tiene una transformación previa o el mismo preset,
- *   la reemplaza limpiamente sin acumular parámetros ni duplicar transformaciones.
- * - Resiliente: Si la URL es nula, vacía, local (blob:, data:) o externa, la devuelve intacta.
- * - Caché CDN: Al usar únicamente los 3 presets oficiales, Cloudinary reutiliza la versión en caché
- *   consumiendo 0 créditos de transformación en visitas recurrentes.
- */
-export const getOptimizedImageUrl = (
-  url?: string | null,
-  preset: CloudinaryPreset = 'card'
-): string => {
-  if (!url || typeof url !== 'string') return '';
-
-  // Tratamiento seguro de origen: Si no es de Cloudinary, retornar tal cual
-  if (!isCloudinaryUrl(url)) {
-    return url;
-  }
-
-  const transformation = CLOUDINARY_PRESETS[preset] || CLOUDINARY_PRESETS.card;
-  const uploadToken = '/image/upload/';
-  const uploadIndex = url.indexOf(uploadToken);
-
-  if (uploadIndex === -1) return url;
-
-  const prefix = url.slice(0, uploadIndex + uploadToken.length);
-  const rest = url.slice(uploadIndex + uploadToken.length);
-
-  // Idempotencia: Si ya cuenta exactamente con la transformación deseada, retornar directo
-  if (rest.startsWith(`${transformation}/`)) {
-    return url;
-  }
-
-  // Caso A: Con versión (ej: .../upload/[transf]/v12345/products/arroz.jpg)
-  // Limpia cualquier transformación previa entre /upload/ y /v12345/
-  const versionRegex = /^(?:(?:[a-z]{1,4}_[^/]+|[a-z]{1,2}-[a-z0-9]+)\/)*(v\d+\/.+)$/i;
-  const versionMatch = rest.match(versionRegex);
-  if (versionMatch) {
-    return `${prefix}${transformation}/${versionMatch[1]}`;
-  }
-
-  // Caso B: Sin versión pero con transformaciones previas (ej: .../upload/w_100,h_100/products/arroz.jpg)
-  const nonVersionTransformRegex = /^(?:[a-z]{1,4}_[^/]+\/)+(.+)$/i;
-  const nonVersionMatch = rest.match(nonVersionTransformRegex);
-  if (nonVersionMatch) {
-    return `${prefix}${transformation}/${nonVersionMatch[1]}`;
-  }
-
-  // Caso C: URL base limpia sin transformaciones previas
-  return `${prefix}${transformation}/${rest}`;
+/** URL estable por recurso y preset: permite reutilizar la caché HTTP del navegador y la CDN. */
+export const getOptimizedImageUrl = (url?: string | null, preset: CloudinaryPreset = 'card'): string => {
+  if (!url) return '';
+  if (!isCloudinaryUrl(url)) return url;
+  const parsed = new URL(url);
+  const token = '/image/upload/';
+  const index = parsed.pathname.indexOf(token) + token.length;
+  const parts = parsed.pathname.slice(index).split('/');
+  // Una firma o un token autoriza una URL concreta; no se puede modificar sin volver a firmarla.
+  if (parts[0].startsWith('s--') || parsed.search) return url;
+  const transformation = CLOUDINARY_PRESETS[preset];
+  if (parts[0] === transformation) return url;
+  // Solo eliminamos parámetros reconocidos, nunca carpetas arbitrarias de un public_id.
+  const isTransformation = (part: string) => part.split(',').every(parameter =>
+    /^(?:w|h|q|dpr)_\d+(?:\.\d+)?$/.test(parameter) ||
+    /^c_(?:thumb|limit|fill|fit|pad|crop|scale|lfill|lpad|mfit|mpad)$/.test(parameter) ||
+    /^(?:f_(?:auto|webp|avif|jpg|png)|q_auto(?::[a-z]+)?|g_(?:auto|center|face|faces))$/.test(parameter));
+  while (parts.length > 1 && isTransformation(parts[0])) parts.shift();
+  parsed.pathname = parsed.pathname.slice(0, index) + transformation + '/' + parts.join('/');
+  return parsed.href;
 };
 
 /**
@@ -169,7 +141,7 @@ const loadImageFromFile = (file: File): Promise<HTMLImageElement | ImageBitmap> 
  * - Emplea WebP por defecto (o JPEG balanceado) para máxima ligereza sin saturar la red ni la cuota.
  * - No bloquea la UI y preserva la transparencia cuando el formato lo permite.
  */
-export const compressImageFile = async (
+const compressImageOnce = async (
   file: File,
   options: CompressImageOptions = {}
 ): Promise<File> => {
@@ -219,8 +191,8 @@ export const compressImageFile = async (
 
     if (originalWidth > maxDimension || originalHeight > maxDimension) {
       const scaleRatio = Math.min(maxDimension / originalWidth, maxDimension / originalHeight);
-      targetWidth = Math.round(originalWidth * scaleRatio);
-      targetHeight = Math.round(originalHeight * scaleRatio);
+      targetWidth = Math.max(1, Math.round(originalWidth * scaleRatio));
+      targetHeight = Math.max(1, Math.round(originalHeight * scaleRatio));
     }
 
     // Crear canvas para el redimensionamiento
@@ -258,10 +230,10 @@ export const compressImageFile = async (
       canvas.toBlob((b) => resolve(b), format, quality);
     });
 
-    // Fallback: Si el navegador no soporta WebP en toBlob, exportar en JPEG
+    // Fallback: Si el navegador no soporta WebP en toBlob, exportar en PNG para conservar transparencia
     if (!blob && format === 'image/webp') {
       blob = await new Promise<Blob | null>((resolve) => {
-        canvas.toBlob((b) => resolve(b), 'image/jpeg', quality);
+        canvas.toBlob((b) => resolve(b), 'image/png');
       });
     }
 
@@ -272,7 +244,7 @@ export const compressImageFile = async (
     // Si aún supera el objetivo deseado (> 300 KB), realizar un segundo pase con menor calidad (0.68)
     if (blob.size > targetMaxSizeBytes) {
       const secondPassBlob = await new Promise<Blob | null>((resolve) => {
-        canvas.toBlob((b) => resolve(b), blob?.type || format, 0.68);
+        canvas.toBlob((b) => resolve(b), blob?.type || format, Math.min(quality, 0.68));
       });
       if (secondPassBlob && secondPassBlob.size < blob.size) {
         blob = secondPassBlob;
@@ -281,10 +253,12 @@ export const compressImageFile = async (
 
     // Generar el nuevo archivo con la extensión correspondiente
     const chosenType = blob.type || format;
-    const extension = chosenType === 'image/webp' ? '.webp' : '.jpg';
+    const extension = chosenType === 'image/webp' ? '.webp' : chosenType === 'image/png' ? '.png' : '.jpg';
     const baseName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
     const newFileName = `${baseName}${extension}`;
 
+    // No aumentar el peso de un archivo que ya cumple el límite de dimensiones.
+    if (blob.size >= file.size && originalWidth <= maxDimension && originalHeight <= maxDimension) return file;
     return new File([blob], newFileName, {
       type: chosenType,
       lastModified: Date.now(),
@@ -294,4 +268,23 @@ export const compressImageFile = async (
     console.warn('Image optimization skipped due to browser error, uploading original file:', error);
     return file;
   }
+};
+
+// Referencias débiles: no retienen archivos al cerrar formularios. Comparten también el trabajo en curso.
+const compressionCache = new WeakMap<File, Map<string, Promise<File>>>();
+export const compressImageFile = (file: File, options: CompressImageOptions = {}): Promise<File> => {
+  const key = JSON.stringify([options.maxDimension ?? 1600, options.quality ?? 0.82,
+    options.format ?? 'image/webp', options.targetMaxSizeBytes ?? 300 * 1024]);
+  const cached = compressionCache.get(file)?.get(key);
+  if (cached) return cached;
+  const jobs = compressionCache.get(file) ?? new Map<string, Promise<File>>();
+  const job = compressImageOnce(file, options).then(result => {
+    const completed = compressionCache.get(result) ?? new Map<string, Promise<File>>();
+    completed.set(key, Promise.resolve(result));
+    compressionCache.set(result, completed);
+    return result;
+  });
+  jobs.set(key, job);
+  compressionCache.set(file, jobs);
+  return job;
 };

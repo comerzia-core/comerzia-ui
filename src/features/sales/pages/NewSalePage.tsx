@@ -1,3 +1,4 @@
+import { ProductVariantImage } from '../../commercial/components/ProductVariantImage';
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../../stores/useAuthStore';
@@ -379,6 +380,7 @@ export const NewSalePage = () => {
             newCartItems.push({
               productVariantId: d.productVariantId,
               productName: d.productName,
+              imageUrl: d.imageUrl,
               variantName: d.variantName || d.productName,
               sku: productResponse.sku,
               barCode: '',
@@ -446,6 +448,7 @@ export const NewSalePage = () => {
     const catalogItem: SalesCatalogItem = {
       productVariantId: product.variantId,
       productName: product.name,
+      imageUrl: product.imageUrl,
       variantName: product.nameVariant,
       sku: product.sku,
       barCode: '',
@@ -739,6 +742,7 @@ export const NewSalePage = () => {
                       <div className="flex items-center justify-between gap-2 min-w-0">
                         <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
                           <span className="badge badge-xs badge-ghost font-mono shrink-0">{idx + 1}</span>
+                          <ProductVariantImage src={item.imageUrl} alt={`${item.productName} · ${item.variantName}`} />
                           <div className="min-w-0 flex-1 truncate whitespace-nowrap text-xs sm:text-sm">
                             <span className="font-bold text-base-content">
                               {item.productName}
@@ -889,9 +893,12 @@ export const NewSalePage = () => {
                         <tr key={`desktop-${item.productVariantId}-${item.priceTypeId}`} className="hover border-b border-base-200/50">
                           <td className="font-mono text-xs text-base-content/50">{idx + 1}</td>
                           <td>
-                            <div className="flex flex-col gap-1 min-w-[150px]">
-                              <span className="font-semibold text-sm leading-tight">{item.productName} | {item.variantName}</span>
-                              <span className="text-[11px] text-base-content/50 font-mono">SKU: {item.sku}</span>
+                            <div className="flex items-center gap-2">
+                              <ProductVariantImage src={item.imageUrl} alt={`${item.productName} - ${item.variantName}`} />
+                              <div className="flex flex-col gap-1 min-w-[150px]">
+                                <span className="font-semibold text-sm leading-tight">{item.productName} | {item.variantName}</span>
+                                <span className="text-[11px] text-base-content/50 font-mono">SKU: {item.sku}</span>
+                              </div>
                             </div>
                           </td>
                           <td>

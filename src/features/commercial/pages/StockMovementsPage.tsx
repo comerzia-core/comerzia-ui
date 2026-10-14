@@ -1,3 +1,4 @@
+import { ProductVariantImage } from '../components/ProductVariantImage';
 import { isTransientRefreshFailure } from '../../realtime/utils/refreshErrors';
 import { useState, useEffect, useMemo } from 'react';
 import { useUrlParams } from '../../../hooks/useUrlState';
@@ -48,7 +49,6 @@ import { ValuateStockModal } from '../components/ValuateStockModal';
 import { InventoryReportModal } from '../components/InventoryReportModal';
 import { QuickStockTransferModal } from '../components/QuickStockTransferModal';
 import { formatDateForUser } from '../../../utils/date';
-import { getThumbnailUrl } from '../../../utils/image';
 
 const CurrencyCell = ({ amount, currencyCode = 'USD' }: { amount: number, currencyCode?: string }) => {
   const safeAmount = Number(amount) || 0;
@@ -582,15 +582,7 @@ export const StockMovementsPage = () => {
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-base-200/80 border border-base-300 overflow-hidden shrink-0 flex items-center justify-center">
             {row.imageUrl ? (
-              <img
-                src={getThumbnailUrl(row.imageUrl)}
-                alt={row.productName}
-                loading="lazy"
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  (e.target as HTMLElement).style.display = 'none';
-                }}
-              />
+              <ProductVariantImage src={row.imageUrl} alt={row.productName} className="w-full h-full object-cover" />
             ) : (
               <Package className="w-4 h-4 text-base-content/40" />
             )}
@@ -710,11 +702,7 @@ export const StockMovementsPage = () => {
             <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
               <div className="w-10 h-10 rounded-xl bg-base-200/60 border border-base-300 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
                 {productData.imageUrl ? (
-                  <img
-                    src={getThumbnailUrl(productData.imageUrl)}
-                    alt={productData.productName}
-                    className="w-full h-full object-cover"
-                  />
+                  <ProductVariantImage src={productData.imageUrl} alt={productData.productName} className="w-full h-full object-cover" />
                 ) : (
                   <Package size={20} className="text-primary" />
                 )}
@@ -1447,6 +1435,7 @@ export const StockMovementsPage = () => {
                             <span className="text-xs font-bold text-base-content/40 w-4 text-center shrink-0 mt-0.5">
                               {pendingCostPage * pendingCostSize + index + 1}
                             </span>
+                            <ProductVariantImage src={entry.imageUrl} alt={`${entry.productName} - ${entry.variantName}`} />
                             <div className="min-w-0 flex-1">
                               <h3 className="text-sm font-bold text-base-content leading-snug truncate">
                                 {entry.productName}

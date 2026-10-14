@@ -1,3 +1,4 @@
+import { ComerziaRowNumber } from '../../../components/ui/ComerziaRowNumber';
 import { useRealtimeRefresh } from '../../realtime/hooks/useRealtimeRefresh';
 import { useState, useEffect } from 'react';
 import { ComerziaModal } from '../../../components/ui/ComerziaModal';
@@ -10,6 +11,7 @@ import { formatDateForUser } from '../../../utils/date';
 import { ShoppingBag, Wallet } from 'lucide-react';
 import { useLoadDictionaries } from '../../../hooks/useLoadDictionaries';
 import { DICTIONARIES } from '../../../config/dictionaries';
+import { ProductVariantImage } from '../../commercial/components/ProductVariantImage';
 
 interface Props {
   isOpen: boolean;
@@ -73,9 +75,12 @@ export const SaleDetailsModal = ({ isOpen, onClose, sale }: Props) => {
     {
       header: 'Producto / Variante',
       render: (row) => (
-        <div className="truncate max-w-sm">
+        <div className="flex items-center gap-2 max-w-sm">
+          <ProductVariantImage src={row.imageUrl} alt={`${row.productName} · ${row.variantName || ''}`} />
+          <div className="min-w-0 truncate">
           <span className="font-bold text-base-content">{row.productName || 'Producto'}</span>
           {row.variantName && <span className="text-primary font-semibold ml-1.5">· {row.variantName}</span>}
+          </div>
         </div>
       )
     },
@@ -235,6 +240,8 @@ export const SaleDetailsModal = ({ isOpen, onClose, sale }: Props) => {
                       <div key={detail.id || idx} className="bg-base-100 p-3 rounded-xl border border-base-200 space-y-2 text-xs shadow-xs">
                         {/* Fila Única: Nombre de Producto · Variante y Total */}
                         <div className="flex justify-between items-center gap-2">
+                          <ComerziaRowNumber value={idx + 1} />
+                          <ProductVariantImage src={detail.imageUrl} alt={`${detail.productName} · ${detail.variantName || ''}`} />
                           <div className="min-w-0 flex-1 truncate whitespace-nowrap">
                             <span className="font-bold text-xs text-base-content">
                               {detail.productName || 'Producto'}

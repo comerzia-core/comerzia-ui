@@ -1,3 +1,5 @@
+import { getThumbnailUrl } from '../../../../utils/image';
+import { ProductVariantImage } from '../../../commercial/components/ProductVariantImage';
 // src/features/employees/components/sales-performance/SellerRadiographyModal.tsx
 import React, { useState, useEffect } from 'react';
 import { ComerziaModal } from '../../../../components/ui/ComerziaModal';
@@ -12,7 +14,6 @@ import {
   UserCheck,
   UserX
 } from 'lucide-react';
-import { getThumbnailUrl } from '../../../../utils/image';
 
 interface Props {
   isOpen: boolean;
@@ -116,11 +117,7 @@ export const SellerRadiographyModal: React.FC<Props> = ({
           <div className="card bg-base-100 p-4 sm:p-5 rounded-2xl border border-base-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3.5">
               {detail.photoUrl ? (
-                <img
-                  src={getThumbnailUrl(detail.photoUrl)}
-                  alt={detail.sellerName}
-                  className="w-14 h-14 rounded-2xl object-cover ring-2 ring-primary/20 shrink-0"
-                />
+                <img src={getThumbnailUrl(detail.photoUrl)} alt={detail.sellerName} loading="lazy" className="w-14 h-14 rounded-2xl object-cover ring-2 ring-primary/20 shrink-0" />
               ) : (
                 <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-bold text-xl shrink-0">
                   {detail.sellerName
@@ -212,7 +209,7 @@ export const SellerRadiographyModal: React.FC<Props> = ({
                   <table className="table table-sm text-xs whitespace-nowrap">
                     <thead>
                       <tr className="bg-base-200/50 text-base-content/70">
-                        <th className="whitespace-nowrap">Producto</th>
+                        <th>#</th><th className="whitespace-nowrap">Producto</th>
                         <th className="text-center whitespace-nowrap">Cant.</th>
                         <th className="text-right whitespace-nowrap">Venta Bruta</th>
                         <th className="text-right whitespace-nowrap">Descuentos</th>
@@ -223,17 +220,13 @@ export const SellerRadiographyModal: React.FC<Props> = ({
                       </tr>
                     </thead>
                     <tbody>
-                      {detail.topProducts.map(prod => (
+                      {detail.topProducts.map((prod, index) => (
                         <tr key={prod.variantId} className="hover:bg-base-200/30 transition-colors">
+                          <td>{index + 1}</td>
                           <td className="whitespace-nowrap">
                             <div className="flex items-center gap-2.5">
                               {prod.imageUrl ? (
-                                <img
-                                  src={getThumbnailUrl(prod.imageUrl)}
-                                  alt={prod.productName}
-                                  loading="lazy"
-                                  className="w-8 h-8 rounded-lg object-cover ring-1 ring-base-300 shrink-0"
-                                />
+                                <ProductVariantImage src={prod.imageUrl} alt={prod.productName} className="w-8 h-8 rounded-lg object-cover ring-1 ring-base-300 shrink-0" />
                               ) : (
                                 <div className="w-8 h-8 rounded-lg bg-base-200 flex items-center justify-center text-base-content/40 shrink-0">
                                   <Package size={14} />

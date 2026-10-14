@@ -1,9 +1,10 @@
+import { ComerziaImageSearchOption } from '../../../components/ui/ComerziaImageSearchOption';
+import { ProductVariantImage } from './ProductVariantImage';
 import { useRealtimeRefresh } from '../../realtime/hooks/useRealtimeRefresh';
 import { useState, useEffect, useRef } from 'react';
-import { Search, Package } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { salesService } from '../../sales/services/salesService';
 import type { SalesCatalogSuggestionResponse } from '../../sales/types/sales';
-import { getThumbnailUrl } from '../../../utils/image';
 import { BarcodeScannerModal } from '../../../components/ui/BarcodeScannerModal';
 import { BtnScan } from '../../../components/ui/CrudButtons';
 
@@ -182,43 +183,10 @@ export const CommercialProductSearchBar = ({
       {isOpen && suggestions.length > 0 && (
         <div className="absolute top-full left-0 right-0 mt-2 bg-base-100 border border-base-200 rounded-2xl shadow-2xl z-50 max-h-[60vh] sm:max-h-80 overflow-y-auto overscroll-contain animate-fade-in">
           <ul className="p-2 space-y-1">
-            {suggestions.map((sug) => (
-              <li key={sug.variantId} className="list-none">
-                <button
-                  type="button"
-                  onClick={() => handleSelectSuggestion(sug)}
-                  className="w-full text-left p-2.5 sm:p-3 rounded-xl transition-all duration-150 hover:bg-primary/10 hover:border-primary/20 border border-transparent flex items-center gap-3 sm:gap-3.5 group min-h-[44px]"
-                >
-                  {/* Thumbnail de la Variante */}
-                  <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-lg bg-base-200/80 border border-base-300 overflow-hidden shrink-0 flex items-center justify-center relative">
-                    {sug.imageUrl ? (
-                      <img
-                        src={getThumbnailUrl(sug.imageUrl)}
-                        alt={sug.label}
-                        loading="lazy"
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                        onError={(e) => {
-                          (e.target as HTMLElement).style.display = 'none';
-                        }}
-                      />
-                    ) : (
-                      <Package className="w-5 h-5 text-base-content/30 group-hover:text-primary transition-colors" />
-                    )}
-                  </div>
-
-                  {/* Detalle: Nombre y Descripción */}
-                  <div className="min-w-0 flex-1 flex flex-col justify-center">
-                    <span className="font-bold text-base sm:text-lg text-base-content group-hover:text-primary transition-colors block break-words leading-tight">
-                      {sug.label}
-                    </span>
-                    {sug.description && (
-                      <span className="text-xs sm:text-sm text-base-content/70 truncate mt-0.5">
-                        {sug.description}
-                      </span>
-                    )}
-                  </div>
-                </button>
-              </li>
+            {suggestions.map((sug, index) => (
+              <ComerziaImageSearchOption key={sug.variantId} number={index + 1} label={sug.label}
+                description={sug.description} onSelect={() => handleSelectSuggestion(sug)}
+                image={<ProductVariantImage src={sug.imageUrl} alt={sug.label} className="w-full h-full" />} />
             ))}
           </ul>
           {suggestions.length === 15 && (

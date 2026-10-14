@@ -4,6 +4,7 @@ import { MAX_FILE_SIZE_BYTES, MAX_FILE_SIZE_MB, ALLOWED_IMAGE_TYPES } from "../.
 import { useToast } from "../../context/ToastContext";
 import { BtnChange, BtnRemove, BtnCamera, BtnGallery } from "./CrudButtons";
 import { compressImageFile, getCardImageUrl } from "../../utils/image";
+import { ComerziaZoomableImage } from './ComerziaZoomableImage';
 
 export interface SingleImageValue {
   file?: File;
@@ -18,6 +19,7 @@ interface Props {
   shakeKey?: number;
   compact?: boolean;
   helperText?: string;
+  enableImageZoom?: boolean;
 }
 
 export const ComerziaSingleImageUploader = ({
@@ -27,7 +29,8 @@ export const ComerziaSingleImageUploader = ({
   error,
   shakeKey,
   compact = false,
-  helperText
+  helperText,
+  enableImageZoom = false
 }: Props) => {
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -101,20 +104,21 @@ export const ComerziaSingleImageUploader = ({
             compact ? 'h-40 sm:h-44' : 'h-52 sm:h-60'
           }`}
         >
-          <img
+          {enableImageZoom ? <ComerziaZoomableImage src={value.preview} alt={label || 'Imagen seleccionada'}
+            preset="card" className="w-full h-full bg-base-200/40 p-1" fit="contain" /> : <img
             src={getCardImageUrl(value.preview)}
             alt="Preview"
             className="w-full h-full object-contain bg-base-200/40 p-1"
-          />
+          />}
 
           {/* Overlay con acciones visibles en móvil y por hover en desktop */}
-          <div className="absolute inset-0 bg-black/40 sm:bg-black/50 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 sm:gap-2 p-2">
+          <div className={`absolute ${enableImageZoom ? 'inset-x-0 bottom-0 pointer-events-none' : 'inset-0'} bg-black/40 sm:bg-black/50 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 sm:gap-2 p-2`}>
             <BtnCamera
               type="button"
               onClick={openCamera}
               label="Foto"
               responsive={true}
-              className="btn-sm !min-w-0 !px-2.5 sm:!px-3 shadow-md gap-1.5"
+              className="pointer-events-auto btn-sm !min-w-0 !px-2.5 sm:!px-3 shadow-md gap-1.5"
               title="Tomar nueva foto con la cámara"
             />
 
@@ -122,7 +126,7 @@ export const ComerziaSingleImageUploader = ({
               type="button"
               onClick={openGallery}
               responsive={true}
-              className="btn-sm !min-w-0 !px-2.5 sm:!px-3 shadow-md gap-1.5"
+              className="pointer-events-auto btn-sm !min-w-0 !px-2.5 sm:!px-3 shadow-md gap-1.5"
               title="Elegir otra imagen de la galería"
             />
 
@@ -130,7 +134,7 @@ export const ComerziaSingleImageUploader = ({
               type="button"
               onClick={handleRemove}
               responsive={true}
-              className="btn-sm !min-w-0 !px-2.5 sm:!px-3 shadow-md gap-1.5"
+              className="pointer-events-auto btn-sm !min-w-0 !px-2.5 sm:!px-3 shadow-md gap-1.5"
               title="Quitar imagen"
             />
           </div>

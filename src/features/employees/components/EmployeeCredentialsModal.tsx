@@ -43,7 +43,7 @@ export const EmployeeCredentialsModal = ({ isOpen, onClose, data }: Props) => {
                         variant="primary" 
                         label="Cerrar" 
                         onClick={onClose} 
-                        responsive={true}
+                        responsive={false}
                         className="w-full sm:w-auto"
                     />
                 </div>

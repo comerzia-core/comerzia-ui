@@ -16,6 +16,7 @@ export interface SalesProductResponse {
   nameVariant: string;
   availableStock: number;
   activePrices: ActivePriceResponse[];
+  imageUrl?: string | null;
 }
 
 export interface SalesCatalogSuggestionResponse {
@@ -39,6 +40,7 @@ export interface SalesCatalogItem {
   discountPrice?: number | null;
   equivalenceFactor: number;
   activePrices: ActivePriceResponse[];
+  imageUrl?: string | null;
 }
 
 export interface SaleDetailRequest {
@@ -83,6 +85,7 @@ export interface SaleDetailResponse {
   lineTotalSuggested?: number;
   lineTotalDiscount?: number;
   lineTotalFinal?: number;
+  imageUrl?: string | null;
 }
 
 export interface SalePaymentResponse {

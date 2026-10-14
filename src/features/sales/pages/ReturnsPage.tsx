@@ -1,3 +1,5 @@
+import { ComerziaRowNumber } from '../../../components/ui/ComerziaRowNumber';
+import { ProductVariantImage } from '../../commercial/components/ProductVariantImage';
 import { useRealtimeRefresh } from '../../realtime/hooks/useRealtimeRefresh';
 import { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
@@ -537,7 +539,7 @@ export const ReturnsPage = () => {
                 <table className="table table-sm w-full text-xs">
                   <thead>
                     <tr className="border-b border-base-200 text-base-content/70 font-semibold text-[11px] uppercase">
-                      <th>Producto</th>
+                      <th>#</th><th>Imagen</th><th>Producto</th>
                       <th className="text-center">Comprado</th>
                       <th className="text-right">Precio Unit.</th>
                       <th className="text-center w-44">Cant. a Devolver</th>
@@ -545,7 +547,7 @@ export const ReturnsPage = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-base-200/60">
-                    {(activeSale.details || []).map((d: SaleDetailResponse) => {
+                    {(activeSale.details || []).map((d: SaleDetailResponse, index) => {
                       const factor = d.equivalenceFactor || 1;
                       const purchasedQty = d.receiptQuantity ?? 1;
 
@@ -565,6 +567,7 @@ export const ReturnsPage = () => {
 
                       return (
                         <tr key={`desktop-return-${d.id}`} className="hover:bg-base-200/30 transition-colors">
+                          <td>{index + 1}</td><td><ProductVariantImage src={d.imageUrl} alt={`${d.productName} · ${d.variantName || ''}`} /></td>
                           <td>
                             <div className="space-y-0.5 max-w-[260px]">
                               <div className="flex items-baseline gap-1.5 flex-wrap" title={`${d.productName || 'Producto'}${d.variantName ? ` - ${d.variantName}` : ''}`}>
@@ -673,7 +676,7 @@ export const ReturnsPage = () => {
 
               {/* VISTA MOBILE: CARDS MINIMALISTAS */}
               <div className="block md:hidden space-y-2.5">
-                {(activeSale.details || []).map((d: SaleDetailResponse) => {
+                {(activeSale.details || []).map((d: SaleDetailResponse, index) => {
                   const factor = d.equivalenceFactor || 1;
                   const purchasedQty = d.receiptQuantity ?? 1;
 
@@ -692,6 +695,8 @@ export const ReturnsPage = () => {
                   return (
                     <div key={`mobile-return-${d.id}`} className="p-3 rounded-xl bg-base-100 border border-base-200 shadow-xs space-y-2.5">
                       <div className="flex justify-between items-start gap-2">
+                        <ComerziaRowNumber value={index + 1} />
+                        <ProductVariantImage src={d.imageUrl} alt={`${d.productName} · ${d.variantName || ''}`} />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-baseline gap-1 flex-wrap">
                             <span className="font-semibold text-xs text-base-content">

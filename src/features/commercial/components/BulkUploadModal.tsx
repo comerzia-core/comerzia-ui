@@ -1,3 +1,5 @@
+import { ComerziaRowNumber } from '../../../components/ui/ComerziaRowNumber';
+import { ProductVariantImage } from './ProductVariantImage';
 import { useState, useEffect, useRef } from 'react';
 import { ComerziaModal } from '../../../components/ui/ComerziaModal';
 import { ComerziaButton } from '../../../components/ui/ComerziaButton';
@@ -8,7 +10,6 @@ import { commercialService } from '../services/commercialService';
 import { uploadFile } from '../../shared/services/storageService';
 import { STORAGE_FOLDERS } from '../../../config/storage';
 import type { BulkUploadSummaryResponse, ProductVariantEnrichmentResponse } from '../types/commercial';
-import { getThumbnailUrl } from '../../../utils/image';
 import { useToast } from '../../../context/ToastContext';
 import { 
   FileSpreadsheet, 
@@ -665,7 +666,7 @@ export const BulkUploadModal = ({ isOpen, onClose, onSuccess }: Props) => {
               </div>
             ) : (
               <div className="space-y-4 w-full overflow-x-hidden">
-                {pendingList.map((item) => {
+                {pendingList.map((item, index) => {
                   const data = editingData[item.id] || { barcode: '', image: null };
                   const isSaving = savingVariantId === item.id;
 
@@ -676,8 +677,11 @@ export const BulkUploadModal = ({ isOpen, onClose, onSuccess }: Props) => {
                     >
                       {/* Cabecera del Item con fondo gris sombreado */}
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-base-200/80 px-4 py-3 border-b border-base-300">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5 flex-wrap">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <ComerziaRowNumber value={index + 1} />
+                          <ProductVariantImage src={data.image?.preview || item.imageUrl} alt={`${item.productName} - ${item.variantName}`} />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="font-bold text-sm text-base-content break-words">
                               {item.productName}
                             </span>
@@ -687,6 +691,7 @@ export const BulkUploadModal = ({ isOpen, onClose, onSuccess }: Props) => {
                           </div>
                         </div>
 
+                        </div>
                         {/* Badges de Estado */}
                         <div className="flex items-center gap-1.5 flex-wrap shrink-0">
                           {item.missingBarcode && (
@@ -753,6 +758,7 @@ export const BulkUploadModal = ({ isOpen, onClose, onSuccess }: Props) => {
                           {item.missingImage ? (
                             <div className="bg-base-200/40 rounded-xl p-3 border border-base-300/80 shadow-2xs">
                               <ComerziaSingleImageUploader
+                                enableImageZoom
                                 label="Foto de la Variante"
                                 value={data.image}
                                 compact={true}
@@ -769,18 +775,6 @@ export const BulkUploadModal = ({ isOpen, onClose, onSuccess }: Props) => {
                             </div>
                           ) : (
                             <div className="flex items-center gap-3 p-3 rounded-xl bg-success/5 border border-success/30 shadow-2xs">
-                              {item.imageUrl ? (
-                                <img 
-                                  src={getThumbnailUrl(item.imageUrl)} 
-                                  alt={item.variantName} 
-                                  loading="lazy"
-                                  className="w-12 h-12 rounded-lg object-cover border border-success/30 shrink-0 bg-base-100" 
-                                />
-                              ) : (
-                                <div className="w-12 h-12 rounded-lg bg-base-200 flex items-center justify-center shrink-0 border border-base-300">
-                                  <ImageIcon size={20} className="text-base-content/40" />
-                                </div>
-                              )}
                               <div className="flex flex-col min-w-0 flex-1">
                                 <span className="text-[10px] font-semibold uppercase text-base-content/60 tracking-wide">
                                   Foto de la Variante

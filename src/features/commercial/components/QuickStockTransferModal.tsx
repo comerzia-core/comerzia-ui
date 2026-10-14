@@ -1,3 +1,4 @@
+import { ProductVariantImage } from './ProductVariantImage';
 import React, { useState, useEffect, useMemo } from 'react';
 import { ComerziaModal } from '../../../components/ui/ComerziaModal';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
@@ -7,7 +8,6 @@ import { useAuthStore } from '../../../stores/useAuthStore';
 import { useToast } from '../../../context/ToastContext';
 import { commercialService } from '../services/commercialService';
 import type { StockTransferBranchResponse } from '../types/commercial';
-import { getThumbnailUrl } from '../../../utils/image';
 import { 
   ArrowRightLeft, 
   Store, 
@@ -272,11 +272,7 @@ export const QuickStockTransferModal: React.FC<QuickStockTransferModalProps> = (
         <div className="bg-base-200/50 p-3.5 rounded-2xl border border-base-200 flex items-center gap-3">
           <div className="w-12 h-12 rounded-xl bg-base-100 border border-base-300 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
             {productVariant.imageUrl ? (
-              <img
-                src={getThumbnailUrl(productVariant.imageUrl)}
-                alt={productVariant.productName}
-                className="w-full h-full object-cover"
-              />
+              <ProductVariantImage src={productVariant.imageUrl} alt={productVariant.productName} className="w-full h-full object-cover" />
             ) : (
               <Package size={22} className="text-base-content/40" />
             )}

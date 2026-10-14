@@ -234,6 +234,7 @@ export const EditVariantModal = ({ isOpen, onClose, onSuccess, productId, produc
         )}
 
         <ComerziaSingleImageUploader
+          enableImageZoom
           label="Imagen de la Variante (Opcional)"
           value={selectedImage}
           onChange={setSelectedImage}

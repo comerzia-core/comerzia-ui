@@ -1,3 +1,4 @@
+import { ProductVariantImage } from '../components/ProductVariantImage';
 import { useRealtimeRefresh } from '../../realtime/hooks/useRealtimeRefresh';
 import { useState, useEffect } from 'react';
 import { useUrlParams } from '../../../hooks/useUrlState';
@@ -6,10 +7,8 @@ import type { ScannerProductResponse } from '../types/commercial';
 import { useToast } from '../../../context/ToastContext';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { ComerziaBadge } from '../../../components/ui/ComerziaBadge';
-import { ComerziaImageViewer } from '../../../components/ui/ComerziaImageViewer';
 import { CommercialProductSearchBar } from '../components/CommercialProductSearchBar';
 import { ImageOff, Store, Tag, Layers, ZoomIn, PackageSearch } from 'lucide-react';
-import { getCardImageUrl, getThumbnailUrl } from '../../../utils/image';
 
 export const StockQueryPage = () => {
   const { getParam, setParams } = useUrlParams();
@@ -18,11 +17,6 @@ export const StockQueryPage = () => {
   const [productData, setProductData] = useState<ScannerProductResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [shakeKey, setShakeKey] = useState(0);
-  const [viewingImage, setViewingImage] = useState<{ isOpen: boolean; url: string; title: string }>({
-    isOpen: false,
-    url: '',
-    title: ''
-  });
   const { error: toastError } = useToast();
   const { userProfile } = useAuthStore();
   const currencyCode = userProfile?.companySettings?.currencyCode || 'USD';
@@ -95,25 +89,12 @@ export const StockQueryPage = () => {
                 className={`w-24 h-24 sm:w-28 sm:h-28 bg-base-200/80 rounded-2xl flex-shrink-0 overflow-hidden border border-base-300 relative group ${
                   scannedVariant.imageUrl ? 'cursor-pointer' : ''
                 }`}
-                onClick={() => {
-                  if (scannedVariant.imageUrl) {
-                    setViewingImage({
-                      isOpen: true,
-                      url: scannedVariant.imageUrl,
-                      title: `${productData.productName} - ${scannedVariant.variantName}`
-                    });
-                  }
-                }}
-                title={scannedVariant.imageUrl ? "Clic para ampliar imagen" : undefined}
+                title={scannedVariant.imageUrl ? "Doble clic o doble toque para ampliar" : undefined}
               >
                 {scannedVariant.imageUrl ? (
                   <>
-                    <img
-                      src={getCardImageUrl(scannedVariant.imageUrl)}
-                      alt={scannedVariant.variantName}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                    />
-                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                    <ProductVariantImage src={scannedVariant.imageUrl} alt={scannedVariant.variantName} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" preset="card" />
+                    <div className="pointer-events-none absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
                       <ZoomIn size={22} />
                     </div>
                   </>
@@ -294,14 +275,10 @@ export const StockQueryPage = () => {
                     }}
                     className="flex items-center gap-3 p-3.5 bg-base-200/50 hover:bg-base-200/90 hover:border-primary/50 border border-base-200 rounded-2xl cursor-pointer active:scale-[0.99] transition-all group"
                   >
+                    <span className="text-xs text-base-content/50">{idx + 1}</span>
                     <div className="w-10 h-10 sm:w-12 sm:h-12 bg-base-100 rounded-xl overflow-hidden border border-base-300 flex items-center justify-center shrink-0">
                       {variant.imageUrl ? (
-                        <img
-                          src={getThumbnailUrl(variant.imageUrl)}
-                          alt={variant.variantName}
-                          loading="lazy"
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                        />
+                        <ProductVariantImage src={variant.imageUrl} alt={variant.variantName} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                       ) : (
                         <ImageOff className="h-5 w-5 text-base-content/30" />
                       )}
@@ -319,12 +296,6 @@ export const StockQueryPage = () => {
         </div>
       )}
 
-      <ComerziaImageViewer
-        isOpen={viewingImage.isOpen}
-        onClose={() => setViewingImage({ ...viewingImage, isOpen: false })}
-        imageUrl={viewingImage.url}
-        title={viewingImage.title}
-      />
     </div>
   );
 };
