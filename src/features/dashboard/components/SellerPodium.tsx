@@ -2,6 +2,7 @@
 import React from 'react';
 import type { DashboardSellerRankingResponse } from '../types/dashboard';
 import { Crown, Medal, Award, Receipt, ShoppingBag } from 'lucide-react';
+import { getThumbnailUrl } from '../../../utils/image';
 
 interface Props {
   topSellers: DashboardSellerRankingResponse[];
@@ -108,8 +109,9 @@ export const SellerPodium: React.FC<Props> = ({
           <div className="relative mb-2">
             {seller.photoUrl ? (
               <img
-                src={seller.photoUrl}
+                src={getThumbnailUrl(seller.photoUrl)}
                 alt={seller.sellerName}
+                loading="lazy"
                 className={`${config.avatarSize} rounded-full object-cover ${config.ringColor} bg-base-100`}
               />
             ) : (

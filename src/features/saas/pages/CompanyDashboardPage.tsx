@@ -5,7 +5,7 @@ import type { SaasCompanyDetailResponse } from "../types/company";
 import { CompanyBranchesTab } from "../components/companies/tabs/CompanyBranchesTab";
 import { CompanyEmployeesTab } from "../components/companies/tabs/CompanyEmployeesTab";
 import { CompanySubscriptionsTab } from "../components/companies/tabs/CompanySubscriptionsTab";
-// import { formatDateForUser } from "../../../utils/date"; 
+import { getCardImageUrl, getThumbnailUrl } from "../../../utils/image"; 
 
 export const CompanyDashboardPage = () => {
     const { id } = useParams<{ id: string }>();
@@ -49,7 +49,7 @@ export const CompanyDashboardPage = () => {
                     <div className="avatar">
                         <div className="w-14 sm:w-16 rounded-xl border border-base-300">
                             {company.saasCompanySettingsResponse?.companyLogoUrl ? (
-                                <img src={company.saasCompanySettingsResponse.companyLogoUrl} alt="Logo" />
+                                <img src={getCardImageUrl(company.saasCompanySettingsResponse.companyLogoUrl)} alt="Logo" />
                             ) : (
                                 <div className="bg-base-200 w-full h-full flex items-center justify-center font-bold text-base-content/50">
                                     {company.legalName.substring(0, 2).toUpperCase()}
@@ -128,7 +128,7 @@ export const CompanyDashboardPage = () => {
                                     <span className="block text-xs font-semibold text-base-content/60 uppercase tracking-wider mb-1">Logo para Tickets</span>
                                     {company.saasCompanySettingsResponse?.ticketLogoUrl ? (
                                         <div className="flex items-center gap-2 mt-1">
-                                            <img src={company.saasCompanySettingsResponse.ticketLogoUrl} alt="Logo Ticket" className="h-8 object-contain rounded border border-base-300 bg-base-100 p-0.5" />
+                                            <img src={getThumbnailUrl(company.saasCompanySettingsResponse.ticketLogoUrl)} alt="Logo Ticket" className="h-8 object-contain rounded border border-base-300 bg-base-100 p-0.5" />
                                             <span className="text-xs text-success font-medium">Configurado</span>
                                         </div>
                                     ) : (

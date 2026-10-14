@@ -9,6 +9,7 @@ import { useAuthStore } from '../../../stores/useAuthStore';
 import { useLoadDictionaries } from '../../../hooks/useLoadDictionaries';
 import { DICTIONARIES } from '../../../config/dictionaries';
 import { Banknote, QrCode, Split, CheckCircle, ImageOff } from 'lucide-react';
+import { getCardImageUrl } from '../../../utils/image';
 
 interface Props {
   isOpen: boolean;
@@ -377,7 +378,7 @@ export const PaySaleModal = ({ isOpen, onClose, sale, shiftId, onPaymentSuccess 
               {companyQrUrl ? (
                 <div className="bg-white p-3 sm:p-4 rounded-2xl border border-base-300 shadow-md inline-flex items-center justify-center">
                   <img
-                    src={companyQrUrl}
+                    src={getCardImageUrl(companyQrUrl)}
                     alt="QR de Cobro"
                     className="w-52 h-52 sm:w-60 sm:h-60 md:w-72 md:h-72 lg:w-80 lg:h-80 max-h-[42vh] object-contain rounded-lg"
                   />

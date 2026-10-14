@@ -2,6 +2,7 @@
 import React from 'react';
 import type { DashboardSellerRankingResponse } from '../types/dashboard';
 import { TrendingUp } from 'lucide-react';
+import { getThumbnailUrl } from '../../../utils/image';
 
 interface Props {
   seller: DashboardSellerRankingResponse;
@@ -91,8 +92,9 @@ export const SellerCard: React.FC<Props> = ({
           <div className="flex items-center gap-3 min-w-0">
             {seller.photoUrl ? (
               <img
-                src={seller.photoUrl}
+                src={getThumbnailUrl(seller.photoUrl)}
                 alt={seller.sellerName}
+                loading="lazy"
                 className="w-11 h-11 rounded-full object-cover ring-2 ring-base-300 shrink-0"
               />
             ) : (

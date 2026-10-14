@@ -23,6 +23,7 @@ import { ComerziaBcgMatrixChart, ComerziaLineChart } from '../../../components/u
 import { useToast } from '../../../context/ToastContext';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { useAuthStore } from '../../../stores/useAuthStore';
+import { getThumbnailUrl } from '../../../utils/image';
 import {
   BrainCircuit,
   Store,
@@ -439,8 +440,9 @@ export const DemandForecastingPage = () => {
         <div className="flex items-center gap-3">
           {row.imageUrl ? (
             <img
-              src={row.imageUrl}
+              src={getThumbnailUrl(row.imageUrl)}
               alt={row.productName}
+              loading="lazy"
               className="w-10 h-10 rounded-xl object-cover border border-base-200 shrink-0"
             />
           ) : (

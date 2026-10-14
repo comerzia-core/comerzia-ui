@@ -8,6 +8,7 @@ import { commercialService } from '../services/commercialService';
 import { uploadFile } from '../../shared/services/storageService';
 import { STORAGE_FOLDERS } from '../../../config/storage';
 import type { BulkUploadSummaryResponse, ProductVariantEnrichmentResponse } from '../types/commercial';
+import { getThumbnailUrl } from '../../../utils/image';
 import { useToast } from '../../../context/ToastContext';
 import { 
   FileSpreadsheet, 
@@ -770,8 +771,9 @@ export const BulkUploadModal = ({ isOpen, onClose, onSuccess }: Props) => {
                             <div className="flex items-center gap-3 p-3 rounded-xl bg-success/5 border border-success/30 shadow-2xs">
                               {item.imageUrl ? (
                                 <img 
-                                  src={item.imageUrl} 
+                                  src={getThumbnailUrl(item.imageUrl)} 
                                   alt={item.variantName} 
+                                  loading="lazy"
                                   className="w-12 h-12 rounded-lg object-cover border border-success/30 shrink-0 bg-base-100" 
                                 />
                               ) : (

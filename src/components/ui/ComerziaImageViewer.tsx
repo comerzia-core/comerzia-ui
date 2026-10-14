@@ -1,7 +1,7 @@
-// src/components/ui/ComerziaImageViewer.tsx
 import { useState, useEffect } from "react";
 import { ComerziaModal } from "./ComerziaModal";
 import { ImageOff, Loader2 } from "lucide-react";
+import { getFullImageUrl } from "../../utils/image";
 
 interface Props {
   isOpen: boolean;
@@ -54,7 +54,7 @@ export const ComerziaImageViewer = ({ isOpen, onClose, imageUrl, title, altText 
         {/* 3. La Imagen Real */}
         {imageUrl ? (
           <img
-            src={imageUrl}
+            src={getFullImageUrl(imageUrl)}
             alt={altText || title}
             className={`w-full h-auto object-contain max-h-[60vh] rounded-lg shadow-sm transition-opacity duration-300 ${
               isLoading ? "opacity-0" : "opacity-100"

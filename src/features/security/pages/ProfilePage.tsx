@@ -21,6 +21,7 @@ import { STORAGE_FOLDERS } from '../../../config/storage';
 import { DICTIONARIES } from '../../../config/dictionaries';
 import { useLoadDictionaries } from '../../../hooks/useLoadDictionaries';
 import { useToast } from '../../../context/ToastContext';
+import { getCardImageUrl } from '../../../utils/image';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
 import { ComerziaSelect } from '../../../components/ui/ComerziaSelect';
 import { ComerziaSingleImageUploader, type SingleImageValue } from '../../../components/ui/ComerziaSingleImageUploader';
@@ -402,7 +403,7 @@ export const ProfilePage = () => {
                 <div className="avatar placeholder ring-4 ring-base-100 rounded-2xl shadow-sm bg-base-100 shrink-0">
                   <div className="bg-primary/10 text-primary ring-1 ring-primary/20 rounded-2xl w-20 h-20 flex items-center justify-center overflow-hidden">
                     {currentAvatarUrl ? (
-                      <img src={currentAvatarUrl} alt={profile.fullName} className="w-full h-full object-cover" />
+                      <img src={getCardImageUrl(currentAvatarUrl)} alt={profile.fullName} className="w-full h-full object-cover" />
                     ) : (
                       <span className="text-2xl font-bold">{initials}</span>
                     )}

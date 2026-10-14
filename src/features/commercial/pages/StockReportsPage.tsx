@@ -25,6 +25,7 @@ import { useDebounce } from '../../../hooks/useDebounce';
 import { DICTIONARIES } from '../../../config/dictionaries';
 import { useLoadDictionaries } from '../../../hooks/useLoadDictionaries';
 import { useAuthStore } from '../../../stores/useAuthStore';
+import { getThumbnailUrl } from '../../../utils/image';
 import {
   Boxes,
   Store,
@@ -453,8 +454,9 @@ export const StockReportsPage = () => {
         <div className="flex items-center gap-3">
           {row.imageUrl ? (
             <img
-              src={row.imageUrl}
+              src={getThumbnailUrl(row.imageUrl)}
               alt={row.productName}
+              loading="lazy"
               className="w-10 h-10 object-cover rounded-xl border border-base-200 shrink-0 bg-base-200/50"
             />
           ) : (

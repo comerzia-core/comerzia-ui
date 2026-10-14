@@ -9,6 +9,7 @@ import {
   BtnModalYes,
   BtnModalNo
 } from "../ui/CrudButtons";
+import { getThumbnailUrl } from "../../utils/image";
 
 export const Header = () => {
   const userProfile = useAuthStore((state) => state.userProfile);
@@ -117,7 +118,7 @@ export const Header = () => {
             >
               <div className="bg-neutral text-neutral-content rounded-full w-10">
                 {userProfile?.imageUrl ? (
-                  <img src={userProfile.imageUrl} alt="Avatar" />
+                  <img src={getThumbnailUrl(userProfile.imageUrl)} alt="Avatar" />
                 ) : (
                   <span className="text-xl">{initials}</span>
                 )}

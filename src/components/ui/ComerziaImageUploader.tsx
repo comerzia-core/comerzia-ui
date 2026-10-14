@@ -7,6 +7,7 @@ import {
     MAX_IMAGES_PER_PRODUCT 
 } from "../../config/storage";
 import { useToast } from "../../context/ToastContext";
+import { compressImageFile, getCardImageUrl } from "../../utils/image";
 
 export interface ImageItem {
     id: string; 
@@ -28,7 +29,7 @@ export const ComerziaImageUploader = ({ images, onChange, error, shakeKey }: Pro
     const cameraInputRef = useRef<HTMLInputElement>(null);
     const { error: toastError, success: toastSuccess } = useToast();
 
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
             const files = Array.from(e.target.files);
             
@@ -36,28 +37,39 @@ export const ComerziaImageUploader = ({ images, onChange, error, shakeKey }: Pro
             let skippedCount = 0;
             let invalidTypeCount = 0;
 
-            files.forEach(file => {
+            const MAX_PRE_COMPRESSION_BYTES = 25 * 1024 * 1024; // 25 MB
+
+            for (const file of files) {
                 // 1. Validar Tipo
                 if (!ALLOWED_IMAGE_TYPES.includes(file.type) && !file.type.startsWith('image/')) {
                     invalidTypeCount++;
-                    return;
+                    continue;
                 }
 
-                // 2. Validar Tamaño (Max 5MB)
-                if (file.size > MAX_FILE_SIZE_BYTES) {
+                // 2. Límite de seguridad
+                if (file.size > MAX_PRE_COMPRESSION_BYTES) {
                     skippedCount++;
-                    return;
+                    continue;
                 }
 
-                // Si pasa, lo preparamos
+                // 3. Optimización en el cliente antes de la subida (150 - 300 KB, máx 1600px)
+                const optimizedFile = await compressImageFile(file);
+
+                // 4. Validar Tamaño final contra el límite de 5MB
+                if (optimizedFile.size > MAX_FILE_SIZE_BYTES) {
+                    skippedCount++;
+                    continue;
+                }
+
+                // Si pasa, lo preparamos con el archivo optimizado
                 validNewItems.push({
-                    id: URL.createObjectURL(file),
-                    preview: URL.createObjectURL(file),
-                    file: file,
+                    id: URL.createObjectURL(optimizedFile),
+                    preview: URL.createObjectURL(optimizedFile),
+                    file: optimizedFile,
                     isCover: false,
-                    name: file.name
+                    name: optimizedFile.name
                 });
-            });
+            }
 
             // 3. Validar Cantidad Total (Actuales + Nuevas Válidas)
             const currentTotal = images.length;
@@ -223,7 +235,7 @@ export const ComerziaImageUploader = ({ images, onChange, error, shakeKey }: Pro
                     <div key={img.id} className={`flex items-center gap-3 p-2 rounded-lg border ${img.isCover ? 'border-primary bg-primary/5' : 'border-base-200 bg-base-100'}`}>
                         
                         <div className="relative w-16 h-16 shrink-0 rounded-md overflow-hidden bg-base-300">
-                            <img src={img.preview} alt="preview" className="w-full h-full object-cover" />
+                            <img src={getCardImageUrl(img.preview)} alt="preview" className="w-full h-full object-cover" />
                         </div>
 
                         <div className="flex-1 min-w-0">

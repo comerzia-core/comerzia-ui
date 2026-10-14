@@ -5,6 +5,7 @@ import { uploadFile } from '../../shared/services/storageService';
 import { STORAGE_FOLDERS } from '../../../config/storage';
 import { useToast } from '../../../context/ToastContext';
 import { formatDateForUser } from '../../../utils/date';
+import { getCardImageUrl } from '../../../utils/image';
 import { ComerziaSwitch } from '../../../components/ui/ComerziaSwitch';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
 import { ComerziaSingleImageUploader, type SingleImageValue } from '../../../components/ui/ComerziaSingleImageUploader';
@@ -257,7 +258,7 @@ export const CompanyProfilePage = () => {
                 <div className="avatar">
                   <div className="w-16 h-16 rounded-xl border border-base-300 bg-base-200 flex items-center justify-center">
                     {profileData.companyLogoUrl ? (
-                      <img src={profileData.companyLogoUrl} alt="Logo" className="object-cover" />
+                      <img src={getCardImageUrl(profileData.companyLogoUrl)} alt="Logo" className="object-cover" />
                     ) : (
                       <span className="text-xl font-bold text-base-content/40">
                         {profileData.legalName.substring(0, 2).toUpperCase()}

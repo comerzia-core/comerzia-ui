@@ -9,6 +9,7 @@ import { ComerziaBadge } from '../../../components/ui/ComerziaBadge';
 import { ComerziaImageViewer } from '../../../components/ui/ComerziaImageViewer';
 import { CommercialProductSearchBar } from '../components/CommercialProductSearchBar';
 import { ImageOff, Store, Tag, Layers, ZoomIn, PackageSearch } from 'lucide-react';
+import { getCardImageUrl, getThumbnailUrl } from '../../../utils/image';
 
 export const StockQueryPage = () => {
   const { getParam, setParams } = useUrlParams();
@@ -108,7 +109,7 @@ export const StockQueryPage = () => {
                 {scannedVariant.imageUrl ? (
                   <>
                     <img
-                      src={scannedVariant.imageUrl}
+                      src={getCardImageUrl(scannedVariant.imageUrl)}
                       alt={scannedVariant.variantName}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                     />
@@ -296,8 +297,9 @@ export const StockQueryPage = () => {
                     <div className="w-10 h-10 sm:w-12 sm:h-12 bg-base-100 rounded-xl overflow-hidden border border-base-300 flex items-center justify-center shrink-0">
                       {variant.imageUrl ? (
                         <img
-                          src={variant.imageUrl}
+                          src={getThumbnailUrl(variant.imageUrl)}
                           alt={variant.variantName}
+                          loading="lazy"
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                         />
                       ) : (

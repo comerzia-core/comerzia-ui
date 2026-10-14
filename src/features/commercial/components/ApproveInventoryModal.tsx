@@ -5,6 +5,7 @@ import { BtnCancel, BtnSave } from '../../../components/ui/CrudButtons';
 import { commercialService } from '../services/commercialService';
 import { useToast } from '../../../context/ToastContext';
 import type { InventoryResponse } from '../types/commercial';
+import { getCardImageUrl } from '../../../utils/image';
 
 interface Props {
   isOpen: boolean;
@@ -67,7 +68,7 @@ export const ApproveInventoryModal = ({ isOpen, onClose, inventory, onSuccess }:
           <div className="bg-base-200/60 p-3 rounded-xl border border-base-300 space-y-2">
             <h4 className="font-bold text-xs uppercase opacity-50">Evidencia Fotográfica</h4>
             <div className="h-44 rounded-lg overflow-hidden bg-base-100 flex items-center justify-center border border-base-300/60 p-1">
-              <img src={inventory.imageUrl} alt="Evidencia de Conteo" className="h-full object-contain" />
+              <img src={getCardImageUrl(inventory.imageUrl)} alt="Evidencia de Conteo" className="h-full object-contain" />
             </div>
           </div>
         )}

@@ -109,7 +109,7 @@ export const ComerziaProductSearch = ({ onProductSelect, onError }: ComerziaProd
                   <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-base-200/70 border border-base-300/80 overflow-hidden shrink-0 flex items-center justify-center relative">
                     {sug.imageUrl ? (
                       <img
-                        src={getThumbnailUrl(sug.imageUrl, 120)}
+                        src={getThumbnailUrl(sug.imageUrl)}
                         alt={sug.label}
                         loading="lazy"
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"

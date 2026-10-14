@@ -6,6 +6,7 @@ import type { InventoryResponse } from '../types/commercial';
 import { useToast } from '../../../context/ToastContext';
 import { ClipboardList, Calendar, User, FileText, Image as ImageIcon } from 'lucide-react';
 import { formatDateForUser } from '../../../utils/date';
+import { getCardImageUrl } from '../../../utils/image';
 
 interface Props {
   isOpen: boolean;
@@ -153,7 +154,7 @@ export const InventoryReportModal = ({ isOpen, onClose, inventoryId }: Props) =>
                 <ImageIcon size={16} className="text-primary" /> Evidencia Fotográfica
               </div>
               <div className="rounded-xl overflow-hidden border border-base-300 shadow-sm max-h-64 flex justify-center bg-base-100">
-                <img src={inventory.imageUrl} alt="Evidencia de inventario" className="object-contain max-h-64" />
+                <img src={getCardImageUrl(inventory.imageUrl)} alt="Evidencia de inventario" className="object-contain max-h-64" />
               </div>
             </div>
           )}

@@ -4,6 +4,7 @@ import { IconRenderer } from "../ui/IconRenderer";
 import { ChevronLeft, ChevronRight } from "lucide-react"; // ✅ Importar Flechas
 import { useCompanyContext } from "../../hooks/useCompanyContext";
 import { useMobileDrawerSwipe } from "../../hooks/useMobileDrawerSwipe";
+import { getThumbnailUrl } from "../../utils/image";
 
 export const closeMobileDrawer = () => {
     const drawerCheckbox = document.getElementById("my-drawer") as HTMLInputElement | null;
@@ -180,7 +181,7 @@ export const SidebarMenu = ({ menuTree, isLoading, isCollapsed, toggleCollapse }
             >
                 {logoUrl ? (
                     <img 
-                        src={logoUrl} 
+                        src={getThumbnailUrl(logoUrl)} 
                         alt={commercialName} 
                         className="w-8 h-8 rounded-lg object-cover shadow-sm shrink-0" 
                     />

@@ -1,5 +1,5 @@
-// src/features/shared/services/storageService.ts
 import api from '../../../lib/axios';
+import { compressImageFile } from '../../../utils/image';
 
 interface UploadResponse {
   url: string;
@@ -10,8 +10,11 @@ export const uploadFile = async (
   folder: string,
   customName?: string
 ): Promise<string> => {
+  // Optimización previa al envío: Acondicionar la imagen en el cliente (150 - 300 KB, máx 1600px)
+  const fileToUpload = await compressImageFile(file);
+
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append('file', fileToUpload);
 
   let sanitizedCustomName: string | undefined;
   if (customName) {

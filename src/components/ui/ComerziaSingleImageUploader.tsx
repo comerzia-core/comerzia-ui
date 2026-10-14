@@ -1,9 +1,9 @@
-// src/components/ui/ComerziaSingleImageUploader.tsx
 import { useRef } from "react";
 import { ImagePlus, FileImage, AlertCircle, Camera } from "lucide-react";
 import { MAX_FILE_SIZE_BYTES, MAX_FILE_SIZE_MB, ALLOWED_IMAGE_TYPES } from "../../config/storage";
 import { useToast } from "../../context/ToastContext";
 import { BtnChange, BtnRemove, BtnCamera, BtnGallery } from "./CrudButtons";
+import { compressImageFile, getCardImageUrl } from "../../utils/image";
 
 export interface SingleImageValue {
   file?: File;
@@ -33,7 +33,7 @@ export const ComerziaSingleImageUploader = ({
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const { error: toastError } = useToast();
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
 
@@ -43,16 +43,26 @@ export const ComerziaSingleImageUploader = ({
         return;
       }
 
-      // 2. Validar Tamaño
-      if (file.size > MAX_FILE_SIZE_BYTES) {
+      // 2. Límite de seguridad para evitar saturar memoria en archivos anormalmente grandes (>25MB)
+      const MAX_PRE_COMPRESSION_BYTES = 25 * 1024 * 1024;
+      if (file.size > MAX_PRE_COMPRESSION_BYTES) {
+        toastError("La imagen original es demasiado pesada (máximo 25MB para fotos).");
+        return;
+      }
+
+      // 3. Optimización en el cliente antes de la subida (150 - 300 KB, máx 1600px)
+      const optimizedFile = await compressImageFile(file);
+
+      // 4. Validar que cumpla con el límite de backend (5MB)
+      if (optimizedFile.size > MAX_FILE_SIZE_BYTES) {
         toastError(`La imagen supera el límite de ${MAX_FILE_SIZE_MB}MB.`);
         return;
       }
 
       // Crear objeto local con preview
       onChange({
-        file: file,
-        preview: URL.createObjectURL(file)
+        file: optimizedFile,
+        preview: URL.createObjectURL(optimizedFile)
       });
     }
     // Reset inputs
@@ -92,7 +102,7 @@ export const ComerziaSingleImageUploader = ({
           }`}
         >
           <img
-            src={value.preview}
+            src={getCardImageUrl(value.preview)}
             alt="Preview"
             className="w-full h-full object-contain bg-base-200/40 p-1"
           />

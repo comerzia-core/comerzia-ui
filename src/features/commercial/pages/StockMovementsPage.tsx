@@ -583,7 +583,7 @@ export const StockMovementsPage = () => {
           <div className="w-9 h-9 rounded-lg bg-base-200/80 border border-base-300 overflow-hidden shrink-0 flex items-center justify-center">
             {row.imageUrl ? (
               <img
-                src={getThumbnailUrl(row.imageUrl, 80)}
+                src={getThumbnailUrl(row.imageUrl)}
                 alt={row.productName}
                 loading="lazy"
                 className="w-full h-full object-cover"

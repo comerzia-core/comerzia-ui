@@ -17,6 +17,7 @@ import { ComerziaContextMenu, ContextMenuItem } from '../../../components/ui/Com
 import { Edit, Trash2, DollarSign, Search, ArrowRightLeft, History, Eye, Barcode } from 'lucide-react';
 import { getCatalogErrorMessage } from '../utils/catalogErrorMessages';
 import { useUrlParams } from '../../../hooks/useUrlState';
+import { getThumbnailUrl } from '../../../utils/image';
 
 interface Props {
   isOpen: boolean;
@@ -139,7 +140,7 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
           title={row.imageUrl ? "Clic para ver imagen" : undefined}
         >
           {row.imageUrl ? (
-            <img src={row.imageUrl} alt={row.name} className="w-full h-full object-cover" />
+            <img src={getThumbnailUrl(row.imageUrl)} alt={row.name} loading="lazy" className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-base-content/30 text-[10px]">Sin img</div>
           )}
@@ -237,7 +238,7 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
                       }}
                     >
                       {variant.imageUrl ? (
-                        <img src={variant.imageUrl} alt={variant.name} className="w-full h-full object-cover" />
+                        <img src={getThumbnailUrl(variant.imageUrl)} alt={variant.name} loading="lazy" className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-base-content/30 text-[10px]">Sin img</div>
                       )}

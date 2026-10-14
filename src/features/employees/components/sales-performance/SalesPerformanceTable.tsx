@@ -12,6 +12,7 @@ import {
   ChevronRight,
   ChevronsRight
 } from 'lucide-react';
+import { getThumbnailUrl } from '../../../../utils/image';
 
 interface Props {
   data: SellerPerformanceAuditResponse[];
@@ -125,8 +126,9 @@ export const SalesPerformanceTable: React.FC<Props> = ({
         <div className="flex items-center gap-3">
           {item.photoUrl ? (
             <img
-              src={item.photoUrl}
+              src={getThumbnailUrl(item.photoUrl)}
               alt={item.sellerName}
+              loading="lazy"
               className="w-10 h-10 rounded-full object-cover ring-2 ring-base-300 shrink-0"
             />
           ) : (
@@ -326,8 +328,9 @@ export const SalesPerformanceTable: React.FC<Props> = ({
                   </span>
                   {item.photoUrl ? (
                     <img
-                      src={item.photoUrl}
+                      src={getThumbnailUrl(item.photoUrl)}
                       alt={item.sellerName}
+                      loading="lazy"
                       className="w-10 h-10 rounded-full object-cover ring-1 ring-base-300 shrink-0"
                     />
                   ) : (

@@ -12,6 +12,7 @@ import {
   UserCheck,
   UserX
 } from 'lucide-react';
+import { getThumbnailUrl } from '../../../../utils/image';
 
 interface Props {
   isOpen: boolean;
@@ -116,7 +117,7 @@ export const SellerRadiographyModal: React.FC<Props> = ({
             <div className="flex items-center gap-3.5">
               {detail.photoUrl ? (
                 <img
-                  src={detail.photoUrl}
+                  src={getThumbnailUrl(detail.photoUrl)}
                   alt={detail.sellerName}
                   className="w-14 h-14 rounded-2xl object-cover ring-2 ring-primary/20 shrink-0"
                 />
@@ -228,8 +229,9 @@ export const SellerRadiographyModal: React.FC<Props> = ({
                             <div className="flex items-center gap-2.5">
                               {prod.imageUrl ? (
                                 <img
-                                  src={prod.imageUrl}
+                                  src={getThumbnailUrl(prod.imageUrl)}
                                   alt={prod.productName}
+                                  loading="lazy"
                                   className="w-8 h-8 rounded-lg object-cover ring-1 ring-base-300 shrink-0"
                                 />
                               ) : (
