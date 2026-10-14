@@ -1,6 +1,6 @@
 import { isTransientRefreshFailure } from '../../realtime/utils/refreshErrors';
 import { useRealtimeRefresh } from '../../realtime/hooks/useRealtimeRefresh';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ComerziaModal } from '../../../components/ui/ComerziaModal';
 import { ComerziaTable, type Column, type TablePaginationConfig } from '../../../components/ui/ComerziaTable';
@@ -16,6 +16,7 @@ import { useToast } from '../../../context/ToastContext';
 import { ComerziaContextMenu, ContextMenuItem } from '../../../components/ui/ComerziaContextMenu';
 import { Edit, Trash2, DollarSign, Search, ArrowRightLeft, History, Eye, Barcode } from 'lucide-react';
 import { getCatalogErrorMessage } from '../utils/catalogErrorMessages';
+import { useUrlParams } from '../../../hooks/useUrlState';
 
 interface Props {
   isOpen: boolean;
@@ -30,6 +31,12 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
   });
 
   const navigate = useNavigate();
+  const { getParam, setParams } = useUrlParams();
+
+  // URL state: IDs son strings ofuscados
+  const urlPricesVariantId = getParam('pricesVariant');
+  const urlEditVariantId = getParam('editVariant');
+
   const [data, setData] = useState<ProductVariantResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [page, setPage] = useState(0);
@@ -43,11 +50,21 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
   const canManageStock = hasPermission('COM_STOCK_MANAGE');
   const { error: toastError, success: toastSuccess } = useToast();
 
-  const [variantToEdit, setVariantToEdit] = useState<ProductVariantResponse | null>(null);
   const [variantToDelete, setVariantToDelete] = useState<ProductVariantResponse | null>(null);
-  const [variantToPrices, setVariantToPrices] = useState<ProductVariantResponse | null>(null);
   const [isCreatingVariant, setIsCreatingVariant] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Derivar variantes seleccionadas desde la URL
+  const selectedVariantToPrices = useMemo(() => {
+    if (!urlPricesVariantId) return null;
+    return data.find(v => v.id === urlPricesVariantId) || null;
+  }, [data, urlPricesVariantId]);
+
+  const selectedVariantToEdit = useMemo(() => {
+    if (!urlEditVariantId) return null;
+    return data.find(v => v.id === urlEditVariantId) || null;
+  }, [data, urlEditVariantId]);
+
   const [viewingImage, setViewingImage] = useState<{ isOpen: boolean; url: string; title: string }>({
     isOpen: false,
     url: '',
@@ -314,7 +331,12 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
           <ContextMenuItem 
             icon={DollarSign}
             label="Ver Precios"
-            onClick={() => { setVariantToPrices(contextMenu.row); setContextMenu({ ...contextMenu, isOpen: false }); }} 
+            onClick={() => {
+              if (contextMenu.row) {
+                setParams({ pricesVariant: contextMenu.row.id }, { replace: false });
+                setContextMenu({ ...contextMenu, isOpen: false });
+              }
+            }} 
           />
         )}
         {canManage && (
@@ -322,7 +344,12 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
             <ContextMenuItem 
               icon={Edit}
               label="Editar Variante"
-              onClick={() => { setVariantToEdit(contextMenu.row); setContextMenu({ ...contextMenu, isOpen: false }); }} 
+              onClick={() => {
+                if (contextMenu.row) {
+                  setParams({ editVariant: contextMenu.row.id }, { replace: false });
+                  setContextMenu({ ...contextMenu, isOpen: false });
+                }
+              }} 
             />
             <ContextMenuItem 
               icon={Trash2}
@@ -335,18 +362,18 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
       </ComerziaContextMenu>
 
       <VariantPricesModal
-        isOpen={!!variantToPrices}
-        onClose={() => setVariantToPrices(null)}
-        variantId={variantToPrices?.id || ''}
-        variantName={variantToPrices?.name || ''}
+        isOpen={Boolean(urlPricesVariantId)}
+        onClose={() => setParams({ pricesVariant: null }, { replace: false })}
+        variantId={urlPricesVariantId || ''}
+        variantName={selectedVariantToPrices?.name || ''}
       />
       <EditVariantModal
-        isOpen={!!variantToEdit || isCreatingVariant}
+        isOpen={Boolean(urlEditVariantId) || isCreatingVariant}
         onClose={() => {
-          setVariantToEdit(null);
+          setParams({ editVariant: null }, { replace: false });
           setIsCreatingVariant(false);
         }}
-        variant={variantToEdit}
+        variant={selectedVariantToEdit}
         productId={productId}
         productName={productName}
         onSuccess={loadData}

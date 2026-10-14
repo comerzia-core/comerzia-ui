@@ -1,6 +1,6 @@
 import { useRealtimeRefresh } from '../../realtime/hooks/useRealtimeRefresh';
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useUrlParams } from '../../../hooks/useUrlState';
 import { commercialService } from '../services/commercialService';
 import type { ScannerProductResponse } from '../types/commercial';
 import { useToast } from '../../../context/ToastContext';
@@ -11,13 +11,9 @@ import { CommercialProductSearchBar } from '../components/CommercialProductSearc
 import { ImageOff, Store, Tag, Layers, ZoomIn, PackageSearch } from 'lucide-react';
 
 export const StockQueryPage = () => {
-  useRealtimeRefresh(['STOCK', 'PRODUCT', 'CATEGORY'], async () => {
-    if (productData?.scannedVariant.barCode) {
-      setProductData(await commercialService.scanBarcode(productData.scannedVariant.barCode));
-    }
-  });
+  const { getParam, setParams } = useUrlParams();
+  const urlBarcode = getParam('barcode');
 
-  const [searchParams] = useSearchParams();
   const [productData, setProductData] = useState<ScannerProductResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [shakeKey, setShakeKey] = useState(0);
@@ -30,20 +26,28 @@ export const StockQueryPage = () => {
   const { userProfile } = useAuthStore();
   const currencyCode = userProfile?.companySettings?.currencyCode || 'USD';
 
-  useEffect(() => {
-    // Check for barcode in URL
-    const urlBarcode = searchParams.get('barcode');
-    if (urlBarcode) {
-      executeScan(urlBarcode);
+  useRealtimeRefresh(['STOCK', 'PRODUCT', 'CATEGORY'], async () => {
+    if (productData?.scannedVariant.barCode) {
+      setProductData(await commercialService.scanBarcode(productData.scannedVariant.barCode));
     }
-  }, [searchParams]);
+  });
 
-  const executeScan = async (codeToScan: string) => {
+  useEffect(() => {
+    // Sincronizar lectura del código de barras en la URL
+    if (urlBarcode && (!productData || productData.scannedVariant.barCode !== urlBarcode)) {
+      executeScan(urlBarcode, false);
+    }
+  }, [urlBarcode, productData]);
+
+  const executeScan = async (codeToScan: string, updateUrl = true) => {
     setIsLoading(true);
     setProductData(null);
     try {
       const res = await commercialService.scanBarcode(codeToScan.trim());
       setProductData(res);
+      if (updateUrl) {
+        setParams({ barcode: codeToScan.trim() }, { replace: false });
+      }
     } catch (err: any) {
       toastError(err.response?.data?.message || 'Producto no encontrado');
       setShakeKey(prev => prev + 1);

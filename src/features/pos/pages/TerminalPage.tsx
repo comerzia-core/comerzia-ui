@@ -1,10 +1,11 @@
 import { isTransientRefreshFailure } from '../../realtime/utils/refreshErrors';
 import { useRealtimeRefresh } from '../../realtime/hooks/useRealtimeRefresh';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { posService } from '../services/posService';
 import { salesService } from '../../sales/services/salesService';
 import type { ShiftSummaryResponse } from '../types/pos';
 import type { SaleResponse } from '../../sales/types/sales';
+import { useUrlParams } from '../../../hooks/useUrlState';
 import { 
   ShoppingCart, 
   AlertCircle, 
@@ -38,6 +39,9 @@ import { hardwareService } from '../services/hardwareService';
 import { HwPrintJobTypeCode } from '../types/hardware';
 
 export const TerminalPage = () => {
+  const { getParam, setParams } = useUrlParams();
+  const urlSaleDetailId = getParam('saleDetail');
+
   useRealtimeRefresh(['SALE', 'POS'], async () => {
     if (canAccessTerminal) await Promise.all([loadSummary(true), loadPendingSales(true)]);
   });
@@ -50,9 +54,14 @@ export const TerminalPage = () => {
   const [pendingSales, setPendingSales] = useState<SaleResponse[]>([]);
   const [isLoadingSales, setIsLoadingSales] = useState(false);
 
+  // Derivar detalle de venta según la URL (los IDs son strings ofuscados)
+  const selectedSaleDetail = useMemo(() => {
+    if (!urlSaleDetailId) return null;
+    return pendingSales.find(s => s.id === urlSaleDetailId) || null;
+  }, [pendingSales, urlSaleDetailId]);
+
   // Modals State
   const [selectedSaleToPay, setSelectedSaleToPay] = useState<SaleResponse | null>(null);
-  const [selectedSaleDetail, setSelectedSaleDetail] = useState<SaleResponse | null>(null);
   const [registerCustomerSale, setRegisterCustomerSale] = useState<SaleResponse | null>(null);
 
   // Modal Cancelar Venta
@@ -453,7 +462,7 @@ export const TerminalPage = () => {
                       icon={<Eye size={14} />}
                       fullWidth
                       className="btn-sm border border-base-200 text-base-content/70 hover:bg-base-200 hover:text-base-content"
-                      onClick={() => setSelectedSaleDetail(sale)}
+                      onClick={() => setParams({ saleDetail: sale.id }, { replace: false })}
                     />
 
                     {/* Botón Cancelar Venta */}
@@ -497,8 +506,8 @@ export const TerminalPage = () => {
 
       {/* Modal: Ver Detalle de Items de la Venta */}
       <SaleDetailsModal
-        isOpen={!!selectedSaleDetail}
-        onClose={() => setSelectedSaleDetail(null)}
+        isOpen={Boolean(urlSaleDetailId)}
+        onClose={() => setParams({ saleDetail: null }, { replace: false })}
         sale={selectedSaleDetail}
       />
 

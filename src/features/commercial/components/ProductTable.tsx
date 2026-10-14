@@ -1,6 +1,6 @@
 import { isTransientRefreshFailure } from '../../realtime/utils/refreshErrors';
 import { useRealtimeRefresh } from '../../realtime/hooks/useRealtimeRefresh';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { commercialService } from '../services/commercialService';
 import { ComerziaTable, type Column, type TablePaginationConfig } from '../../../components/ui/ComerziaTable';
 import { ComerziaBadge } from '../../../components/ui/ComerziaBadge';
@@ -13,6 +13,7 @@ import { ComerziaContextMenu, ContextMenuItem } from '../../../components/ui/Com
 import { EditProductModal } from './EditProductModal';
 import { PrintProductLabelsModal } from './PrintProductLabelsModal';
 import { getCatalogErrorMessage } from '../utils/catalogErrorMessages';
+import { useUrlParams } from '../../../hooks/useUrlState';
 import { 
   Pencil, 
   Trash2, 
@@ -46,13 +47,20 @@ export const ProductTable = ({
     await loadData(true);
   });
 
+  const { getParam, setParams } = useUrlParams();
+
+  // URL state: IDs son strings ofuscados
+  const urlProductId = getParam('product');
+  const urlPrintProductId = getParam('printProduct');
+  const urlEditProductId = getParam('editProduct');
+  const urlPage = getParam('page');
+  const page = urlPage ? Math.max(0, parseInt(urlPage, 10)) : 0;
+
   const [data, setData] = useState<ProductResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [page, setPage] = useState(0);
   const [size, setSize] = useState(5);
   const [totalElements, setTotalElements] = useState(0);
 
-  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [selectedProductName, setSelectedProductName] = useState<string>('');
 
   const { hasPermission, hasRole } = useAuthStore();
@@ -60,10 +68,26 @@ export const ProductTable = ({
   const canPrint = hasRole('OWNER') && hasPermission(PERMISSIONS.HARDWARE.PRINT_EXECUTE);
   const { error: toastError, success: toastSuccess } = useToast();
 
-  const [productToEdit, setProductToEdit] = useState<ProductResponse | null>(null);
   const [productToDelete, setProductToDelete] = useState<ProductResponse | null>(null);
-  const [productForLabels, setProductForLabels] = useState<ProductResponse | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Derivar objetos seleccionados a partir de los IDs en la URL
+  const productForLabels = useMemo(() => {
+    if (!urlPrintProductId) return null;
+    return data.find(p => p.id === urlPrintProductId) || null;
+  }, [data, urlPrintProductId]);
+
+  const productToEdit = useMemo(() => {
+    if (!urlEditProductId) return null;
+    return data.find(p => p.id === urlEditProductId) || null;
+  }, [data, urlEditProductId]);
+
+  const selectedProduct = useMemo(() => {
+    if (!urlProductId) return null;
+    return data.find(p => p.id === urlProductId) || null;
+  }, [data, urlProductId]);
+
+  const activeProductName = selectedProduct?.name || selectedProductName || '';
 
   // Menú contextual (Desktop: coordenadas del mouse; Mobile: centrado en pantalla con telón)
   const [contextMenu, setContextMenu] = useState<{
@@ -104,9 +128,11 @@ export const ProductTable = ({
     });
   };
 
-  // Reset page to 0 when filters or search change
+  // Reset page a 0 en la URL cuando los filtros o búsqueda cambian
   useEffect(() => {
-    setPage(0);
+    if (page !== 0) {
+      setParams({ page: null }, { replace: true });
+    }
   }, [categoryId, segmentId, brandId, searchTerm]);
 
   useEffect(() => {
@@ -207,7 +233,9 @@ export const ProductTable = ({
     pageSize: size,
     totalElements,
     totalPages,
-    onPageChange: setPage,
+    onPageChange: (newPage) => {
+      setParams({ page: newPage > 0 ? String(newPage) : null }, { replace: true });
+    },
     onPageSizeChange: setSize
   };
 
@@ -293,7 +321,7 @@ export const ProductTable = ({
                   value={size}
                   onChange={(e) => {
                     setSize(Number(e.target.value));
-                    setPage(0);
+                    setParams({ page: null }, { replace: true });
                   }}
                   className="select select-bordered select-xs text-[11px] sm:text-xs font-semibold bg-base-100 h-6 min-h-6 px-1.5"
                 >
@@ -314,7 +342,7 @@ export const ProductTable = ({
                 type="button"
                 aria-label="Primera página"
                 disabled={page === 0 || isLoading}
-                onClick={() => setPage(0)}
+                onClick={() => setParams({ page: null }, { replace: true })}
                 className="w-8 h-8 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
               >
                 <ChevronsLeft className="w-4 h-4" />
@@ -323,7 +351,7 @@ export const ProductTable = ({
                 type="button"
                 aria-label="Página anterior"
                 disabled={page === 0 || isLoading}
-                onClick={() => setPage(Math.max(0, page - 1))}
+                onClick={() => setParams({ page: page > 1 ? String(page - 1) : null }, { replace: true })}
                 className="w-8 h-8 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
               >
                 <ChevronLeft className="w-4 h-4" />
@@ -332,7 +360,7 @@ export const ProductTable = ({
                 type="button"
                 aria-label="Página siguiente"
                 disabled={page >= totalPages - 1 || isLoading}
-                onClick={() => setPage(page + 1)}
+                onClick={() => setParams({ page: String(page + 1) }, { replace: true })}
                 className="w-8 h-8 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
               >
                 <ChevronRight className="w-4 h-4" />
@@ -341,7 +369,7 @@ export const ProductTable = ({
                 type="button"
                 aria-label="Última página"
                 disabled={page >= totalPages - 1 || isLoading}
-                onClick={() => setPage(totalPages - 1)}
+                onClick={() => setParams({ page: String(totalPages - 1) }, { replace: true })}
                 className="w-8 h-8 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
               >
                 <ChevronsRight className="w-4 h-4" />
@@ -366,8 +394,8 @@ export const ProductTable = ({
               label="Ver Variantes"
               onClick={() => {
                 if (contextMenu.product) {
-                  setSelectedProductId(contextMenu.product.id);
                   setSelectedProductName(contextMenu.product.name);
+                  setParams({ product: contextMenu.product.id }, { replace: false });
                 }
               }}
             />
@@ -377,7 +405,7 @@ export const ProductTable = ({
                 label="Imprimir Etiquetas de Código de Barras"
                 onClick={() => {
                   if (contextMenu.product) {
-                    setProductForLabels(contextMenu.product);
+                    setParams({ printProduct: contextMenu.product.id }, { replace: false });
                   }
                 }}
               />
@@ -389,7 +417,7 @@ export const ProductTable = ({
                   label="Modificar Producto"
                   onClick={() => { 
                     if (contextMenu.product) {
-                      setProductToEdit(contextMenu.product); 
+                      setParams({ editProduct: contextMenu.product.id }, { replace: false });
                     }
                   }} 
                 />
@@ -410,19 +438,19 @@ export const ProductTable = ({
       </ComerziaContextMenu>
 
       <ProductVariantsModal 
-        isOpen={!!selectedProductId}
-        onClose={() => setSelectedProductId(null)}
-        productId={selectedProductId || ''}
-        productName={selectedProductName}
+        isOpen={Boolean(urlProductId)}
+        onClose={() => setParams({ product: null, pricesVariant: null, editVariant: null }, { replace: false })}
+        productId={urlProductId || ''}
+        productName={activeProductName}
       />
       <PrintProductLabelsModal
-        isOpen={!!productForLabels}
-        onClose={() => setProductForLabels(null)}
+        isOpen={Boolean(urlPrintProductId)}
+        onClose={() => setParams({ printProduct: null }, { replace: false })}
         product={productForLabels}
       />
       <EditProductModal
-        isOpen={!!productToEdit}
-        onClose={() => setProductToEdit(null)}
+        isOpen={Boolean(urlEditProductId)}
+        onClose={() => setParams({ editProduct: null }, { replace: false })}
         product={productToEdit}
         onSuccess={loadData}
       />

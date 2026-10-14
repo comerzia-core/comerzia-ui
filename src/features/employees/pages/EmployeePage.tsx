@@ -1,5 +1,5 @@
 // src/features/employees/pages/EmployeePage.tsx
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Users } from 'lucide-react';
 import { EmployeeModal } from '../components/EmployeeModal';
 import { EmployeeTable } from '../components/EmployeeTable';
@@ -18,6 +18,7 @@ import { useAuthStore } from '../../../stores/useAuthStore';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { branchService } from '../../organization/services/branchService';
 import type { TenantActiveBranchResponse } from '../../organization/types/branch';
+import { useUrlParams } from '../../../hooks/useUrlState';
 
 type EmployeeActionType = 'DELETE' | null;
 
@@ -27,25 +28,28 @@ export const EmployeePage = () => {
   const canModifyRoles = hasPermission('SEC_ROLES_READ');
   const canManageEmployees = hasPermission('HUM_EMPLOYEES_MANAGE');
 
+  const { getParam, setParams } = useUrlParams();
+
+  // URL state: IDs son strings ofuscados
+  const urlDetailId = getParam('detail');
+  const urlSearch = getParam('search') || '';
+  const urlBranch = getParam('branch') || '';
+  const urlPage = getParam('page');
+  const page = urlPage ? Math.max(0, parseInt(urlPage, 10)) : 0;
+
   const [data, setData] = useState<PageResponse<EmployeeSummaryResponse> | null>(null);
-  const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(5);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(urlSearch);
   const debouncedSearch = useDebounce(search, 350);
 
-  const [selectedBranchId, setSelectedBranchId] = useState('');
+  const selectedBranchId = urlBranch;
   const [activeBranches, setActiveBranches] = useState<TenantActiveBranchResponse[]>([]);
   const [isLoadingBranches, setIsLoadingBranches] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const isFirstRender = useRef(true);
-
   // Modales
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeSummaryResponse | null>(null);
-
-  const [detailModalOpen, setDetailModalOpen] = useState(false);
-  const [selectedDetailId, setSelectedDetailId] = useState<string | null>(null);
 
   // Modal para modificar roles
   const [isRolesModalOpen, setIsRolesModalOpen] = useState(false);
@@ -60,6 +64,24 @@ export const EmployeePage = () => {
 
   const { success, error } = useToast();
 
+  // Sincronizar input local con URL si la URL cambia por navegación externa
+  useEffect(() => {
+    if (urlSearch !== search) {
+      setSearch(urlSearch);
+    }
+  }, [urlSearch]);
+
+  // Sincronizar debouncedSearch con URL
+  useEffect(() => {
+    const cleanSearch = debouncedSearch.trim();
+    if (cleanSearch !== urlSearch) {
+      // Si tiene 3+ caracteres o está vacío, sincronizamos a la URL
+      if (cleanSearch.length === 0 || cleanSearch.length >= 3) {
+        setParams({ search: cleanSearch.length >= 3 ? cleanSearch : null, page: null }, { replace: true });
+      }
+    }
+  }, [debouncedSearch, urlSearch, setParams]);
+
   // Cargar sucursales activas si el usuario tiene el permiso
   useEffect(() => {
     if (hasBranchesPermission) {
@@ -71,14 +93,10 @@ export const EmployeePage = () => {
     }
   }, [hasBranchesPermission]);
 
-  // Validación de mínimo 3 caracteres para búsqueda o vacío para traer todos
-  const searchTrimmed = debouncedSearch.trim();
-  const isSearchValid = searchTrimmed.length === 0 || searchTrimmed.length >= 3;
-
   const loadData = async (
     targetPage = page,
     targetSize = pageSize,
-    q = searchTrimmed.length >= 3 ? searchTrimmed : undefined,
+    q = urlSearch.trim().length >= 3 ? urlSearch.trim() : undefined,
     branchId = selectedBranchId
   ) => {
     setIsLoading(true);
@@ -88,7 +106,7 @@ export const EmployeePage = () => {
         targetSize,
         ['branchName,asc', 'fullName,asc'],
         q,
-        branchId
+        branchId || undefined
       );
       setData(response);
     } catch (err) {
@@ -99,42 +117,19 @@ export const EmployeePage = () => {
     }
   };
 
-  // Carga ante cambios en filtros de búsqueda o sucursal
+  // Cargar datos ante cambios en los parámetros de la URL
   useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      loadData(page, pageSize, undefined, selectedBranchId);
-      return;
-    }
-
-    // Si tiene 1 o 2 caracteres, no hacemos el llamado hasta que llegue a 3 o se limpie
-    if (!isSearchValid) {
-      return;
-    }
-
-    const queryToSearch = searchTrimmed.length >= 3 ? searchTrimmed : undefined;
-    setPage(0);
-    loadData(0, pageSize, queryToSearch, selectedBranchId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearch, selectedBranchId]);
-
-  // Cargar datos ante cambios de paginación
-  useEffect(() => {
-    if (isFirstRender.current) return;
-    if (!isSearchValid) return;
-
-    const queryToSearch = searchTrimmed.length >= 3 ? searchTrimmed : undefined;
+    const queryToSearch = urlSearch.trim().length >= 3 ? urlSearch.trim() : undefined;
     loadData(page, pageSize, queryToSearch, selectedBranchId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, pageSize]);
+  }, [page, pageSize, urlSearch, selectedBranchId]);
 
   const handlePageChange = (newPage: number) => {
-    setPage(newPage);
+    setParams({ page: newPage > 0 ? String(newPage) : null }, { replace: true });
   };
 
   const handlePageSizeChange = (newSize: number) => {
     setPageSize(newSize);
-    setPage(0);
+    setParams({ page: null }, { replace: true });
   };
 
   const handleCreate = () => {
@@ -153,8 +148,7 @@ export const EmployeePage = () => {
   };
 
   const handleViewDetails = (employee: EmployeeSummaryResponse) => {
-    setSelectedDetailId(employee.id);
-    setDetailModalOpen(true);
+    setParams({ detail: employee.id }, { replace: false });
   };
 
   const handleDeleteRequest = (employee: EmployeeSummaryResponse) => {
@@ -250,7 +244,9 @@ export const EmployeePage = () => {
                 placeholder="Todas las sucursales"
                 enableDefaultOption={true}
                 value={selectedBranchId}
-                onChange={e => setSelectedBranchId(e.target.value)}
+                onChange={e => {
+                  setParams({ branch: e.target.value || null, page: null }, { replace: true });
+                }}
                 options={activeBranches.map(b => ({
                   value: b.id,
                   label: b.name
@@ -296,12 +292,9 @@ export const EmployeePage = () => {
 
       {/* MODAL DETALLES DEL EMPLEADO */}
       <EmployeeDetailModal
-        isOpen={detailModalOpen}
-        onClose={() => {
-          setDetailModalOpen(false);
-          setSelectedDetailId(null);
-        }}
-        employeeId={selectedDetailId}
+        isOpen={Boolean(urlDetailId)}
+        onClose={() => setParams({ detail: null }, { replace: false })}
+        employeeId={urlDetailId}
       />
 
       {/* MODAL DE CREDENCIALES GENERADAS */}

@@ -1,7 +1,5 @@
 import { isTransientRefreshFailure } from '../../realtime/utils/refreshErrors';
-import { useRealtimeRefresh } from '../../realtime/hooks/useRealtimeRefresh';
 import { useState, useEffect, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
 import { commercialService } from '../services/commercialService';
 import type { VariantWithPricesResponse, SalePriceResponse, SalePriceHistoryResponse, SalePriceTrendResponse } from '../types/commercial';
 import { useToast } from '../../../context/ToastContext';
@@ -15,16 +13,14 @@ import { ComerziaBadge } from '../../../components/ui/ComerziaBadge';
 import { ComerziaLineChart } from '../../../components/ui/charts';
 import { ComerziaSelect } from '../../../components/ui/ComerziaSelect';
 import { formatDateForUser } from '../../../utils/date';
+import { useUrlParams } from '../../../hooks/useUrlState';
 
 export const PricesPage = () => {
-  useRealtimeRefresh(['PRODUCT'], async () => {
-    if (productData) {
-      setProductData(await commercialService.getPricesByBarcode(productData.barCode));
-      await loadHistoryAndTrend(true);
-    }
-  });
+  const { getParam, setParams } = useUrlParams();
+  const urlBarcode = getParam('barcode');
+  const urlPriceTypeId = getParam('priceType');
+  const urlEditPrices = getParam('editPrices') === 'true';
 
-  const [searchParams] = useSearchParams();
   const [productData, setProductData] = useState<VariantWithPricesResponse | null>(null);
   const [isLoadingScan, setIsLoadingScan] = useState(false);
   const [shakeKey, setShakeKey] = useState(0);
@@ -51,13 +47,16 @@ export const PricesPage = () => {
   // Modal para modificar/asignar precios
   const [isPricesModalOpen, setIsPricesModalOpen] = useState(false);
 
-  const executeScan = useCallback(async (code: string) => {
+  const executeScan = useCallback(async (code: string, updateUrl = true) => {
     setIsLoadingScan(true);
     setProductData(null);
     setSelectedPriceType(null);
     try {
       const res = await commercialService.getPricesByBarcode(code);
       setProductData(res);
+      if (updateUrl) {
+        setParams({ barcode: code, priceType: null }, { replace: false });
+      }
     } catch (err: any) {
       const errorCode = err.response?.data?.errorCode;
       if (errorCode === 'not_found' || err.response?.status === 404) {
@@ -69,14 +68,24 @@ export const PricesPage = () => {
     } finally {
       setIsLoadingScan(false);
     }
-  }, [toastError]);
+  }, [toastError, setParams]);
 
+  // Si hay código de barras en la URL (al cargar o cambiar por navegación del historial)
   useEffect(() => {
-    const urlBarcode = searchParams.get('barcode');
-    if (urlBarcode) {
-      executeScan(urlBarcode);
+    if (urlBarcode && (!productData || productData.barCode !== urlBarcode)) {
+      executeScan(urlBarcode, false);
     }
-  }, [searchParams, executeScan]);
+  }, [urlBarcode, executeScan, productData]);
+
+  // Sincronizar el tipo de precio seleccionado según la URL
+  useEffect(() => {
+    if (urlPriceTypeId && productData?.activePrices) {
+      const found = productData.activePrices.find(p => p.priceTypeId === urlPriceTypeId);
+      if (found) setSelectedPriceType(found);
+    } else if (!urlPriceTypeId) {
+      setSelectedPriceType(null);
+    }
+  }, [urlPriceTypeId, productData]);
 
   const selectedVariantId = productData?.variantId;
   const loadHistoryAndTrend = useCallback(async (background = false) => {
@@ -278,14 +287,20 @@ export const PricesPage = () => {
                 <div className="shrink-0 w-full sm:w-auto">
                   {productData.activePrices && productData.activePrices.length > 0 ? (
                     <BtnUpdatePrices
-                      onClick={() => setIsPricesModalOpen(true)}
+                      onClick={() => {
+                        setIsPricesModalOpen(true);
+                        setParams({ editPrices: 'true' }, { replace: false });
+                      }}
                       label="Modificar Precios"
                       responsive={false}
                       className="w-full sm:w-auto"
                     />
                   ) : (
                     <BtnCreate
-                      onClick={() => setIsPricesModalOpen(true)}
+                      onClick={() => {
+                        setIsPricesModalOpen(true);
+                        setParams({ editPrices: 'true' }, { replace: false });
+                      }}
                       label="Asignar Precios"
                       responsive={false}
                       className="w-full sm:w-auto"
@@ -327,7 +342,10 @@ export const PricesPage = () => {
                           {productData.activePrices.map((price, idx) => (
                             <tr
                               key={price.priceTypeId || idx}
-                              onClick={() => setSelectedPriceType(price)}
+                              onClick={() => {
+                                setSelectedPriceType(price);
+                                setParams({ priceType: price.priceTypeId }, { replace: false });
+                              }}
                               className="group cursor-pointer transition-colors duration-150 border-b border-base-200/60 last:border-none hover:bg-base-200/60"
                               title="Haz clic para consultar historial y tendencia"
                             >
@@ -360,7 +378,10 @@ export const PricesPage = () => {
                         return (
                           <article
                             key={price.priceTypeId || index}
-                            onClick={() => setSelectedPriceType(price)}
+                            onClick={() => {
+                              setSelectedPriceType(price);
+                              setParams({ priceType: price.priceTypeId }, { replace: false });
+                            }}
                             className="group bg-base-100 p-3.5 rounded-2xl border border-base-200 shadow-xs flex flex-col gap-2 select-none cursor-pointer active:scale-[0.99] transition-colors duration-150 hover:border-primary/40 hover:bg-base-200/30"
                           >
                             <div className="flex items-start justify-between gap-2">
@@ -421,7 +442,10 @@ export const PricesPage = () => {
                   <div className="flex items-center gap-2 min-w-0">
                     <button
                       type="button"
-                      onClick={() => setSelectedPriceType(null)}
+                      onClick={() => {
+                        setSelectedPriceType(null);
+                        setParams({ priceType: null }, { replace: false });
+                      }}
                       className="btn btn-ghost btn-xs h-8 px-2 rounded-lg text-base-content/70 hover:text-base-content hover:bg-base-200 gap-1 text-xs font-medium shrink-0 transition-colors border border-base-300"
                       title="Volver al listado de precios vigentes"
                     >
@@ -647,11 +671,14 @@ export const PricesPage = () => {
       {/* Modal de modificación y sincronización de precios */}
       {productData && (
         <ManageVariantPricesModal
-          isOpen={isPricesModalOpen}
-          onClose={() => setIsPricesModalOpen(false)}
+          isOpen={isPricesModalOpen || urlEditPrices}
+          onClose={() => {
+            setIsPricesModalOpen(false);
+            setParams({ editPrices: null }, { replace: false });
+          }}
           onSuccess={() => {
             if (productData.barCode) {
-              executeScan(productData.barCode);
+              executeScan(productData.barCode, false);
             }
           }}
           variantId={productData.variantId}

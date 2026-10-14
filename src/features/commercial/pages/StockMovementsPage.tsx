@@ -1,7 +1,6 @@
 import { isTransientRefreshFailure } from '../../realtime/utils/refreshErrors';
-import { useRealtimeRefresh } from '../../realtime/hooks/useRealtimeRefresh';
 import { useState, useEffect, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useUrlParams } from '../../../hooks/useUrlState';
 import { commercialService } from '../services/commercialService';
 import type {
   ProductVariantIdentityResponse,
@@ -85,11 +84,10 @@ const CurrencyCell = ({ amount, currencyCode = 'USD' }: { amount: number, curren
 };
 
 export const StockMovementsPage = () => {
-  useRealtimeRefresh(['STOCK', 'PRODUCT'], async () => {
-    await Promise.all([loadPendingCostEntries(pendingCostPage, pendingCostSize, true), loadKardex(true)]);
-  });
+  const { getParam, setParams } = useUrlParams();
+  const urlBarcode = getParam('barcode');
+  const urlTab = getParam('tab');
 
-  const [searchParams] = useSearchParams();
   const [productData, setProductData] = useState<ProductVariantIdentityResponse | null>(null);
   const [isLoadingScan, setIsLoadingScan] = useState(false);
   const [shakeKey, setShakeKey] = useState(0);
@@ -127,8 +125,12 @@ export const StockMovementsPage = () => {
     }, 0);
   }, [hasDistributePermission, quantityIn, branchQuantities]);
 
-  // Tabs and Kardex State
-  const [activeTab, setActiveTab] = useState<'entries' | 'adjustments'>('entries');
+  // Tabs and Kardex State (Tab sincronizado con la URL)
+  const activeTab: 'entries' | 'adjustments' = urlTab === 'adjustments' ? 'adjustments' : 'entries';
+  const setActiveTab = (tab: 'entries' | 'adjustments') => {
+    setParams({ tab: tab === 'adjustments' ? 'adjustments' : null }, { replace: true });
+  };
+
   const [filterStockId, setFilterStockId] = useState<string | null>(null);
   const [kardexBranchId, setKardexBranchId] = useState('');
   const [activeBranches, setActiveBranches] = useState<TenantActiveBranchResponse[]>([]);
@@ -184,11 +186,10 @@ export const StockMovementsPage = () => {
   const [isValuateModalOpen, setIsValuateModalOpen] = useState(false);
 
   useEffect(() => {
-    const urlBarcode = searchParams.get('barcode');
     if (urlBarcode) {
-      executeScan(urlBarcode);
+      executeScan(urlBarcode, false);
     }
-  }, [searchParams]);
+  }, [urlBarcode]);
 
   useEffect(() => {
     if (hasCostPermission || hasDistributePermission) {
@@ -274,7 +275,7 @@ export const StockMovementsPage = () => {
     }
   };
 
-  const executeScan = async (codeToScan: string) => {
+  const executeScan = async (codeToScan: string, updateUrl = true) => {
     setIsLoadingScan(true);
     setProductData(null);
     setQuantityIn('');
@@ -285,6 +286,9 @@ export const StockMovementsPage = () => {
     try {
       const res = await commercialService.identifyVariant(codeToScan.trim());
       setProductData(res);
+      if (updateUrl) {
+        setParams({ barcode: codeToScan.trim() }, { replace: false });
+      }
     } catch (err: any) {
       const status = err.response?.status;
       const errorCode = err.response?.data?.errorCode;
@@ -738,6 +742,7 @@ export const StockMovementsPage = () => {
                 onClick={() => {
                   setProductData(null);
                   setFilterStockId(null);
+                  setParams({ barcode: null, tab: null }, { replace: false });
                   loadPendingCostEntries();
                 }}
                 title="Volver a Pendientes"

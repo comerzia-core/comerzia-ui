@@ -1,6 +1,6 @@
 import { isTransientRefreshFailure } from '../../realtime/utils/refreshErrors';
 import { useRealtimeRefresh } from '../../realtime/hooks/useRealtimeRefresh';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { salesService } from '../services/salesService';
 import type { CustomerProfileResponse, SaleResponse } from '../types/sales';
@@ -13,17 +13,16 @@ import { ComerziaButton } from '../../../components/ui/ComerziaButton';
 import { ComerziaContextMenu, ContextMenuItem } from '../../../components/ui/ComerziaContextMenu';
 import { BtnCancel, BtnSave, BtnCreate, BtnModalYes } from '../../../components/ui/CrudButtons';
 import { SaleDetailsModal } from '../components/SaleDetailsModal';
+import { useUrlParams } from '../../../hooks/useUrlState';
 import { Users, Mail, Phone, ShieldAlert, DollarSign, History, Search, Eye, Edit, Trash2, RotateCcw, ChevronRight } from 'lucide-react';
 
 export const CustomersManagementPage = () => {
-  useRealtimeRefresh(['CUSTOMER', 'SALE'], async () => {
-    if (!isFilteredByPhone) await loadCustomers(true);
-    else if (customers[0]?.id) {
-      const customer = await salesService.getCustomerById(customers[0].id);
-      setCustomers([customer]);
-    }
-    if (selectedCustomer && canReadSaleHistory) await loadSalesHistory(selectedCustomer.id, historyPage, true);
-  });
+  const { getParam, setParams } = useUrlParams();
+
+  const urlPhone = getParam('phone') || '';
+  const urlPage = parseInt(getParam('page') || '0', 10) || 0;
+  const urlCustomerId = getParam('customer');
+  const urlSaleDetailId = getParam('saleDetail');
 
   const { userProfile, hasPermission, hasRole } = useAuthStore();
   const { success: toastSuccess, error: toastError, warning: toastWarning } = useToast();
@@ -35,24 +34,60 @@ export const CustomersManagementPage = () => {
 
   const [customers, setCustomers] = useState<CustomerProfileResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState<CustomerProfileResponse | null>(null);
+  const [standaloneCustomer, setStandaloneCustomer] = useState<CustomerProfileResponse | null>(null);
+
+  const selectedCustomer = useMemo(() => {
+    if (!urlCustomerId) return null;
+    return customers.find(c => c.id === urlCustomerId) || standaloneCustomer || null;
+  }, [customers, urlCustomerId, standaloneCustomer]);
+
+  // Si urlCustomerId está en URL pero no está cargado aún en memoria
+  useEffect(() => {
+    if (urlCustomerId && !customers.some(c => c.id === urlCustomerId) && !standaloneCustomer) {
+      salesService.getCustomerById(urlCustomerId)
+        .then(res => setStandaloneCustomer(res))
+        .catch(err => console.error('Error fetching customer by id:', err));
+    }
+  }, [urlCustomerId, customers, standaloneCustomer]);
 
   // Búsqueda por Celular
-  const [searchPhone, setSearchPhone] = useState('');
+  const [searchPhone, setSearchPhone] = useState(urlPhone);
   const [isSearchingPhone, setIsSearchingPhone] = useState(false);
-  const [isFilteredByPhone, setIsFilteredByPhone] = useState(false);
+  const isFilteredByPhone = Boolean(urlPhone);
+
+  // Sincronizar input local si urlPhone cambia por navegación externa
+  useEffect(() => {
+    if (urlPhone !== searchPhone) {
+      setSearchPhone(urlPhone);
+    }
+  }, [urlPhone]);
 
   // Historial de Compras del Cliente Seleccionado
   const [salesHistory, setSalesHistory] = useState<SaleResponse[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [historyPage, setHistoryPage] = useState(0);
   const [historyTotal, setHistoryTotal] = useState(0);
-  const [selectedSaleDetails, setSelectedSaleDetails] = useState<SaleResponse | null>(null);
+
+  // Modal de Detalle de Venta
+  const [standaloneSaleDetail, setStandaloneSaleDetail] = useState<SaleResponse | null>(null);
+
+  const selectedSaleDetails = useMemo(() => {
+    if (!urlSaleDetailId) return null;
+    return salesHistory.find(s => s.id === urlSaleDetailId) || standaloneSaleDetail || null;
+  }, [salesHistory, urlSaleDetailId, standaloneSaleDetail]);
 
   // Paginación de Clientes
-  const [page, setPage] = useState(0);
   const [size, setSize] = useState(10);
   const [totalElements, setTotalElements] = useState(0);
+
+  useRealtimeRefresh(['CUSTOMER', 'SALE'], async () => {
+    if (!isFilteredByPhone) await loadCustomers(urlPage, size, true);
+    else if (customers[0]?.id) {
+      const customer = await salesService.getCustomerById(customers[0].id);
+      setCustomers([customer]);
+    }
+    if (selectedCustomer && canReadSaleHistory) await loadSalesHistory(selectedCustomer.id, historyPage, true);
+  });
 
   // Estado del Menú Contextual
   const [contextMenu, setContextMenu] = useState<{
@@ -89,17 +124,35 @@ export const CustomersManagementPage = () => {
 
   const currency = userProfile?.companySettings?.currencyCode || 'USD';
 
-  // Cargar clientes
+  // Cargar clientes ante cambios de URL o tamaño de página
   useEffect(() => {
-    if (!isFilteredByPhone) {
-      loadCustomers();
+    if (urlPhone) {
+      setIsSearchingPhone(true);
+      salesService.getCustomerByPhone(urlPhone)
+        .then(customer => {
+          if (customer && customer.id) {
+            setCustomers([customer]);
+            setTotalElements(1);
+          } else {
+            setCustomers([]);
+            setTotalElements(0);
+          }
+        })
+        .catch(err => {
+          console.error('Error searching customer by phone:', err);
+          setCustomers([]);
+          setTotalElements(0);
+        })
+        .finally(() => setIsSearchingPhone(false));
+    } else {
+      loadCustomers(urlPage, size);
     }
-  }, [page, size, isFilteredByPhone]);
+  }, [urlPhone, urlPage, size]);
 
-  const loadCustomers = async (background = false) => {
+  const loadCustomers = async (targetPage = urlPage, targetSize = size, background = false) => {
     if (!background) setIsLoading(true);
     try {
-      const res = await salesService.getCustomers(page, size);
+      const res = await salesService.getCustomers(targetPage, targetSize);
       setCustomers(res.content || []);
       setTotalElements(res.totalElements || 0);
     } catch (e) {
@@ -118,34 +171,12 @@ export const CustomersManagementPage = () => {
       toastWarning("Ingresa un número de teléfono/celular para buscar.");
       return;
     }
-
-    setIsSearchingPhone(true);
-    try {
-      const customer = await salesService.getCustomerByPhone(phone);
-      if (customer && customer.id) {
-        setCustomers([customer]);
-        setTotalElements(1);
-        setIsFilteredByPhone(true);
-        toastSuccess(`Cliente encontrado: ${customer.fullName || customer.firstName}`);
-      } else {
-        toastWarning("No se encontró ningún cliente registrado con ese número de teléfono.");
-      }
-    } catch (err: any) {
-      if (err.response?.status === 404) {
-        toastWarning("No se encontró ningún cliente registrado con ese número de teléfono.");
-      } else {
-        toastError("Error al buscar el cliente por teléfono.");
-      }
-    } finally {
-      setIsSearchingPhone(false);
-    }
+    setParams({ phone, page: null }, { replace: true });
   };
 
   const handleClearPhoneFilter = () => {
     setSearchPhone('');
-    setIsFilteredByPhone(false);
-    setPage(0);
-    loadCustomers();
+    setParams({ phone: null, page: null }, { replace: true });
   };
 
   // Cargar Historial de Compras del Cliente
@@ -162,6 +193,16 @@ export const CustomersManagementPage = () => {
     } finally {
       if (!background) setIsLoadingHistory(false);
     }
+  };
+
+  const handleOpenSaleDetails = (sale: SaleResponse) => {
+    setStandaloneSaleDetail(sale);
+    setParams({ saleDetail: sale.id }, { replace: false });
+  };
+
+  const handleCloseSaleDetails = () => {
+    setParams({ saleDetail: null }, { replace: false });
+    setStandaloneSaleDetail(null);
   };
 
   useEffect(() => {
@@ -184,7 +225,8 @@ export const CustomersManagementPage = () => {
 
   // Seleccionar cliente y desplazar suavemente a la ficha
   const handleSelectCustomerAndScroll = (customer: CustomerProfileResponse) => {
-    setSelectedCustomer(customer);
+    setStandaloneCustomer(customer);
+    setParams({ customer: customer.id }, { replace: false });
     setTimeout(() => {
       customerDetailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 120);
@@ -300,7 +342,8 @@ export const CustomersManagementPage = () => {
       toastSuccess("Cliente eliminado del CRM.");
       setDeletingCustomerId(null);
       if (selectedCustomer?.id === deletingCustomerId) {
-        setSelectedCustomer(null);
+        setParams({ customer: null, saleDetail: null }, { replace: false });
+        setStandaloneCustomer(null);
       }
       loadCustomers();
     } catch (err: any) {
@@ -352,12 +395,15 @@ export const CustomersManagementPage = () => {
   ];
 
   const customerPagination: TablePaginationConfig = {
-    currentPage: page,
+    currentPage: urlPage,
     pageSize: size,
     totalElements,
     totalPages: Math.ceil(totalElements / size) || 1,
-    onPageChange: setPage,
-    onPageSizeChange: setSize
+    onPageChange: (newPage) => setParams({ page: newPage > 0 ? String(newPage) : null }, { replace: true }),
+    onPageSizeChange: (newSize) => {
+      setSize(newSize);
+      setParams({ page: null }, { replace: true });
+    }
   };
 
   return (
@@ -434,7 +480,8 @@ export const CustomersManagementPage = () => {
                 isLoading={isLoading}
                 pagination={isFilteredByPhone ? undefined : customerPagination}
                 onRowContextMenu={(e, row) => handleContextMenu(e, row)}
-                rowClassName={(row) => row.id === selectedCustomer?.id ? 'bg-primary/5 font-semibold' : ''}
+                onRowClick={(row) => handleSelectCustomerAndScroll(row)}
+                rowClassName={(row) => row.id === selectedCustomer?.id ? 'bg-primary/5 font-semibold cursor-pointer' : 'cursor-pointer hover:bg-base-200/50'}
               />
             </div>
 
@@ -454,6 +501,7 @@ export const CustomersManagementPage = () => {
                   {customers.map((c) => (
                     <div
                       key={c.id}
+                      onClick={() => handleSelectCustomerAndScroll(c)}
                       onTouchStart={(e) => handleTouchStart(e, c)}
                       onTouchEnd={handleTouchEnd}
                       onTouchMove={handleTouchMove}
@@ -501,18 +549,18 @@ export const CustomersManagementPage = () => {
                       <div className="join">
                         <button
                           className="join-item btn btn-xs"
-                          disabled={page === 0}
-                          onClick={() => setPage(p => Math.max(0, p - 1))}
+                          disabled={urlPage === 0}
+                          onClick={() => setParams({ page: Math.max(0, urlPage - 1) > 0 ? String(urlPage - 1) : null }, { replace: true })}
                         >
                           «
                         </button>
                         <span className="join-item btn btn-xs pointer-events-none">
-                          {page + 1} / {Math.ceil(totalElements / size)}
+                          {urlPage + 1} / {Math.ceil(totalElements / size) || 1}
                         </span>
                         <button
                           className="join-item btn btn-xs"
-                          disabled={(page + 1) * size >= totalElements}
-                          onClick={() => setPage(p => p + 1)}
+                          disabled={(urlPage + 1) * size >= totalElements}
+                          onClick={() => setParams({ page: String(urlPage + 1) }, { replace: true })}
                         >
                           »
                         </button>
@@ -541,7 +589,10 @@ export const CustomersManagementPage = () => {
                     variant="ghost"
                     label="Cerrar Ficha"
                     className="btn-xs text-base-content/60"
-                    onClick={() => setSelectedCustomer(null)}
+                    onClick={() => {
+                      setParams({ customer: null, saleDetail: null }, { replace: false });
+                      setStandaloneCustomer(null);
+                    }}
                   />
                 </div>
 
@@ -592,7 +643,7 @@ export const CustomersManagementPage = () => {
                           {salesHistory.map(sale => (
                             <div
                               key={sale.id}
-                              onClick={() => setSelectedSaleDetails(sale)}
+                              onClick={() => handleOpenSaleDetails(sale)}
                               className="flex justify-between items-center text-xs p-3 bg-base-50 hover:bg-base-200/80 cursor-pointer rounded-xl border border-base-200 transition-all shadow-xs group"
                             >
                               <div>
@@ -706,8 +757,8 @@ export const CustomersManagementPage = () => {
 
       {/* MODAL DETALLES DE VENTA SELECCIONADA EN HISTORIAL */}
       <SaleDetailsModal
-        isOpen={!!selectedSaleDetails}
-        onClose={() => setSelectedSaleDetails(null)}
+        isOpen={Boolean(urlSaleDetailId && selectedSaleDetails)}
+        onClose={handleCloseSaleDetails}
         sale={selectedSaleDetails}
       />
 

@@ -1,6 +1,6 @@
 import { isTransientRefreshFailure } from '../../realtime/utils/refreshErrors';
 import { useRealtimeRefresh } from '../../realtime/hooks/useRealtimeRefresh';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { salesService } from '../services/salesService';
@@ -19,6 +19,7 @@ import { RegisterSaleCustomerModal } from '../components/RegisterSaleCustomerMod
 import { formatDateForUser, type FilterPeriod, PERIOD_OPTIONS, getPeriodDescription } from '../../../utils/date';
 import { useLoadDictionaries } from '../../../hooks/useLoadDictionaries';
 import { DICTIONARIES } from '../../../config/dictionaries';
+import { useUrlParams } from '../../../hooks/useUrlState';
 import {
   AlertTriangle,
   Eye,
@@ -42,9 +43,15 @@ import { hardwareService } from '../../pos/services/hardwareService';
 import { HwPrintJobTypeCode } from '../../pos/types/hardware';
 
 export const SalesHistoryPage = () => {
-  useRealtimeRefresh(['SALE'], async () => {
-    await loadSales(page, size, appliedFilters, true);
-  });
+  const { getParam, setParams } = useUrlParams();
+
+  // Parámetros de URL
+  const urlPeriod = (getParam('period') as FilterPeriod) || 'TODAY';
+  const urlFrom = getParam('from') || '';
+  const urlTo = getParam('to') || '';
+  const urlSeller = getParam('seller') || '';
+  const urlPage = parseInt(getParam('page') || '0', 10) || 0;
+  const urlSaleDetailId = getParam('saleDetail');
 
   const navigate = useNavigate();
   const { userProfile, hasPermission, hasRole } = useAuthStore();
@@ -132,19 +139,27 @@ export const SalesHistoryPage = () => {
   // Lista de vendedores disponibles para el filtro
   const [sellers, setSellers] = useState<SellerResponse[]>([]);
 
-  // Estados de Filtro (por defecto TODAY)
-  const [period, setPeriod] = useState<FilterPeriod>('TODAY');
-  const [customStartDate, setCustomStartDate] = useState(getTodayDateString());
-  const [customEndDate, setCustomEndDate] = useState(getTodayDateString());
-  const [selectedSeller, setSelectedSeller] = useState('');
-  const [appliedFilters, setAppliedFilters] = useState<{
-    startDate?: string;
-    endDate?: string;
-    sellerUsername?: string;
-  } | null>(null);
+  // Estados de Filtro locales para fechas personalizadas
+  const [customStartDate, setCustomStartDate] = useState(urlFrom || getTodayDateString());
+  const [customEndDate, setCustomEndDate] = useState(urlTo || getTodayDateString());
+
+  useEffect(() => {
+    if (urlFrom && urlFrom !== customStartDate) setCustomStartDate(urlFrom);
+    if (urlTo && urlTo !== customEndDate) setCustomEndDate(urlTo);
+  }, [urlFrom, urlTo]);
+
+  // Filtros activos calculados a partir de la URL
+  const activeFilters = useMemo(() => {
+    if (!canFilter) return null;
+    const range = getDateRange(urlPeriod, urlFrom || customStartDate, urlTo || customEndDate);
+    return {
+      startDate: range.start,
+      endDate: range.end,
+      sellerUsername: urlSeller || undefined
+    };
+  }, [canFilter, urlPeriod, urlFrom, urlTo, urlSeller, customStartDate, customEndDate]);
 
   // Paginación Server-Side (Spring Boot 0-indexed)
-  const [page, setPage] = useState(0);
   const [size, setSize] = useState(5);
   const [totalElements, setTotalElements] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
@@ -164,8 +179,13 @@ export const SalesHistoryPage = () => {
     sale: null
   });
 
-  // Modal de Detalle de Venta
-  const [selectedSaleDetails, setSelectedSaleDetails] = useState<SaleResponse | null>(null);
+  // Modal de Detalle de Venta (derivado de URL y respaldo en memoria)
+  const [standaloneSaleDetail, setStandaloneSaleDetail] = useState<SaleResponse | null>(null);
+
+  const selectedSaleDetails = useMemo(() => {
+    if (!urlSaleDetailId) return null;
+    return sales.find(s => s.id === urlSaleDetailId) || standaloneSaleDetail || null;
+  }, [sales, urlSaleDetailId, standaloneSaleDetail]);
 
   // Modal de Detalles del Cliente y Asignación de Cliente
   const [selectedCustomerDetails, setSelectedCustomerDetails] = useState<CustomerProfileResponse | null>(null);
@@ -186,31 +206,27 @@ export const SalesHistoryPage = () => {
     }
   }, [canFilter]);
 
-  // 2. Cargar ventas cuando cambian los parámetros de paginación
-  useEffect(() => {
-    loadSales(page, size, appliedFilters);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, size]);
-
-  const loadSales = async (targetPage = page,
+  const loadSales = async (
+    targetPage = urlPage,
     targetSize = size,
-    activeFilters = appliedFilters,
-    background = false) => {
+    currentFilters = activeFilters,
+    background = false
+  ) => {
     if (!background) setIsLoading(true);
-    const isFiltering = canFilter && activeFilters !== null;
+    const isFiltering = canFilter && currentFilters !== null;
 
     try {
       if (isFiltering) {
-        if (activeFilters.startDate && activeFilters.endDate && activeFilters.startDate > activeFilters.endDate) {
+        if (currentFilters.startDate && currentFilters.endDate && currentFilters.startDate > currentFilters.endDate) {
           toastError("La fecha 'Desde' no puede ser posterior a la fecha 'Hasta'.");
           if (!background) setIsLoading(false);
           return;
         }
 
         const res = await salesService.searchSales({
-          startDate: activeFilters.startDate || undefined,
-          endDate: activeFilters.endDate || undefined,
-          sellerUsername: activeFilters.sellerUsername || undefined,
+          startDate: currentFilters.startDate || undefined,
+          endDate: currentFilters.endDate || undefined,
+          sellerUsername: currentFilters.sellerUsername || undefined,
           page: targetPage,
           size: targetSize
         });
@@ -236,54 +252,68 @@ export const SalesHistoryPage = () => {
     }
   };
 
-  const applyFiltersWithValues = (
-    newPeriod: FilterPeriod,
-    start: string,
-    end: string,
-    seller: string
-  ) => {
-    const range = getDateRange(newPeriod, start, end);
-    if (newPeriod === 'CUSTOM' && range.start && range.end && range.start > range.end) {
-      toastError("La fecha 'Desde' no puede ser posterior a la fecha 'Hasta'.");
-      return;
-    }
-    const newFilters = {
-      startDate: range.start,
-      endDate: range.end,
-      sellerUsername: seller || undefined
-    };
-    setAppliedFilters(newFilters);
-    setPage(0);
-    loadSales(0, size, newFilters);
-  };
+  // 2. Cargar ventas cuando cambian los parámetros de paginación o filtros
+  useEffect(() => {
+    loadSales(urlPage, size, activeFilters);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlPage, size, activeFilters]);
+
+  useRealtimeRefresh(['SALE'], async () => {
+    await loadSales(urlPage, size, activeFilters, true);
+  });
 
   const handlePeriodChange = (newPeriod: FilterPeriod) => {
-    setPeriod(newPeriod);
     if (newPeriod !== 'CUSTOM') {
-      applyFiltersWithValues(newPeriod, customStartDate, customEndDate, selectedSeller);
+      setParams({
+        period: newPeriod !== 'TODAY' ? newPeriod : null,
+        from: null,
+        to: null,
+        page: null
+      }, { replace: true });
+    } else {
+      setParams({
+        period: 'CUSTOM',
+        from: customStartDate,
+        to: customEndDate,
+        page: null
+      }, { replace: true });
     }
   };
 
   const handleSellerChange = (newSeller: string) => {
-    setSelectedSeller(newSeller);
-    if (period !== 'CUSTOM') {
-      applyFiltersWithValues(period, customStartDate, customEndDate, newSeller);
-    }
+    setParams({
+      seller: newSeller || null,
+      page: null
+    }, { replace: true });
   };
 
   const handleApplyFilters = () => {
-    applyFiltersWithValues(period, customStartDate, customEndDate, selectedSeller);
+    if (customStartDate && customEndDate && customStartDate > customEndDate) {
+      toastError("La fecha 'Desde' no puede ser posterior a la fecha 'Hasta'.");
+      return;
+    }
+    setParams({
+      period: 'CUSTOM',
+      from: customStartDate,
+      to: customEndDate,
+      page: null
+    }, { replace: true });
+  };
+
+  const handleViewDetails = (sale: SaleResponse) => {
+    setStandaloneSaleDetail(sale);
+    setParams({ saleDetail: sale.id }, { replace: false });
+  };
+
+  const handleCloseSaleDetails = () => {
+    setParams({ saleDetail: null }, { replace: false });
+    setStandaloneSaleDetail(null);
   };
 
   const getStatusCode = (status: number | { code: number; label: string } | undefined): number => {
     if (typeof status === 'number') return status;
     if (status && typeof status === 'object' && 'code' in status) return status.code;
     return 0;
-  };
-
-  // Ver detalles completos de la venta
-  const handleViewDetails = (sale: SaleResponse) => {
-    setSelectedSaleDetails(sale);
   };
 
   // Reimprimir ticket térmico de venta
@@ -339,7 +369,7 @@ export const SalesHistoryPage = () => {
       await salesService.cancelPendingSale(cancelingSaleId);
       toastSuccess("Venta pendiente cancelada y stock liberado correctamente.");
       setCancelingSaleId(null);
-      loadSales(page, size);
+      loadSales(urlPage, size, activeFilters);
     } catch (err: any) {
       toastError(err.response?.data?.message || "Error al cancelar la venta.");
     } finally {
@@ -471,14 +501,14 @@ export const SalesHistoryPage = () => {
   ].filter(Boolean) as Column<SaleResponse>[];
 
   const pagination: TablePaginationConfig = {
-    currentPage: page,
+    currentPage: urlPage,
     pageSize: size,
     totalElements,
     totalPages,
-    onPageChange: (newPage) => setPage(newPage),
+    onPageChange: (newPage) => setParams({ page: newPage > 0 ? String(newPage) : null }, { replace: true }),
     onPageSizeChange: (newSize) => {
       setSize(newSize);
-      setPage(0);
+      setParams({ page: null }, { replace: true });
     }
   };
 
@@ -511,21 +541,21 @@ export const SalesHistoryPage = () => {
                 <label className="text-xs font-semibold text-base-content/80">
                   Periodo
                 </label>
-                {period !== 'CUSTOM' && (
-                  <span className="text-[11px] text-base-content/50 font-mono font-medium truncate" title={getPeriodDescription(period)}>
-                    {getPeriodDescription(period)}
+                {urlPeriod !== 'CUSTOM' && (
+                  <span className="text-[11px] text-base-content/50 font-mono font-medium truncate" title={getPeriodDescription(urlPeriod)}>
+                    {getPeriodDescription(urlPeriod)}
                   </span>
                 )}
               </div>
               <ComerziaSelect
-                value={period}
+                value={urlPeriod}
                 onChange={(e) => handlePeriodChange(e.target.value as FilterPeriod)}
                 options={PERIOD_OPTIONS}
               />
             </div>
 
             {/* Rango Personalizado (solo cuando period === 'CUSTOM') */}
-            {period === 'CUSTOM' && (
+            {urlPeriod === 'CUSTOM' && (
               <div className="grid grid-cols-2 gap-2 sm:gap-4 flex-1 animate-fade-in">
                 <ComerziaInput
                   label="Fecha Desde"
@@ -550,7 +580,7 @@ export const SalesHistoryPage = () => {
                 </label>
               </div>
               <ComerziaSelect
-                value={selectedSeller}
+                value={urlSeller}
                 onChange={(e) => handleSellerChange(e.target.value)}
                 options={[
                   { value: '', label: 'Todos los vendedores' },
@@ -563,7 +593,7 @@ export const SalesHistoryPage = () => {
             </div>
 
             {/* Botón de acción (Solo para Rango personalizado) */}
-            {period === 'CUSTOM' && (
+            {urlPeriod === 'CUSTOM' && (
               <div className="flex items-center gap-2 shrink-0 animate-fade-in">
                 <ComerziaButton
                   variant="primary"
@@ -632,7 +662,7 @@ export const SalesHistoryPage = () => {
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0 flex-1">
                       <span className="text-xs font-bold text-base-content/40 w-5 text-center shrink-0">
-                        {page * size + index + 1}
+                        {urlPage * size + index + 1}
                       </span>
                       <span className="font-mono text-sm font-bold text-base-content shrink-0">
                         {sale.saleNumber ? `#${sale.saleNumber}` : '-'}
@@ -707,7 +737,7 @@ export const SalesHistoryPage = () => {
                     value={size}
                     onChange={(e) => {
                       setSize(Number(e.target.value));
-                      setPage(0);
+                      setParams({ page: null }, { replace: true });
                     }}
                     className="select select-bordered select-xs text-[11px] sm:text-xs font-semibold bg-base-100 h-6 min-h-6 px-1.5"
                   >
@@ -719,7 +749,7 @@ export const SalesHistoryPage = () => {
                   <span className="whitespace-nowrap">de {totalElements} registros</span>
                 </div>
                 <span className="font-semibold text-base-content/80 whitespace-nowrap shrink-0">
-                  Página {page + 1} de {Math.max(1, totalPages)}
+                  Página {urlPage + 1} de {Math.max(1, totalPages)}
                 </span>
               </div>
 
@@ -727,8 +757,8 @@ export const SalesHistoryPage = () => {
                 <button
                   type="button"
                   aria-label="Primera página"
-                  disabled={page === 0 || isLoading}
-                  onClick={() => setPage(0)}
+                  disabled={urlPage === 0 || isLoading}
+                  onClick={() => setParams({ page: null }, { replace: true })}
                   className="w-8 h-8 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
                 >
                   <ChevronsLeft className="w-4 h-4" />
@@ -736,8 +766,8 @@ export const SalesHistoryPage = () => {
                 <button
                   type="button"
                   aria-label="Página anterior"
-                  disabled={page === 0 || isLoading}
-                  onClick={() => setPage(Math.max(0, page - 1))}
+                  disabled={urlPage === 0 || isLoading}
+                  onClick={() => setParams({ page: Math.max(0, urlPage - 1) > 0 ? String(urlPage - 1) : null }, { replace: true })}
                   className="w-8 h-8 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
                 >
                   <ChevronLeft className="w-4 h-4" />
@@ -745,8 +775,8 @@ export const SalesHistoryPage = () => {
                 <button
                   type="button"
                   aria-label="Página siguiente"
-                  disabled={page >= totalPages - 1 || isLoading}
-                  onClick={() => setPage(page + 1)}
+                  disabled={urlPage >= totalPages - 1 || isLoading}
+                  onClick={() => setParams({ page: String(urlPage + 1) }, { replace: true })}
                   className="w-8 h-8 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
                 >
                   <ChevronRight className="w-4 h-4" />
@@ -754,8 +784,8 @@ export const SalesHistoryPage = () => {
                 <button
                   type="button"
                   aria-label="Última página"
-                  disabled={page >= totalPages - 1 || isLoading}
-                  onClick={() => setPage(totalPages - 1)}
+                  disabled={urlPage >= totalPages - 1 || isLoading}
+                  onClick={() => setParams({ page: String(totalPages - 1) }, { replace: true })}
                   className="w-8 h-8 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 disabled:opacity-30 transition-colors"
                 >
                   <ChevronsRight className="w-4 h-4" />
@@ -868,8 +898,8 @@ export const SalesHistoryPage = () => {
 
       {/* MODAL DETALLES DE VENTA */}
       <SaleDetailsModal
-        isOpen={!!selectedSaleDetails}
-        onClose={() => setSelectedSaleDetails(null)}
+        isOpen={Boolean(urlSaleDetailId && selectedSaleDetails)}
+        onClose={handleCloseSaleDetails}
         sale={selectedSaleDetails}
       />
 
@@ -929,7 +959,7 @@ export const SalesHistoryPage = () => {
           saleId={assigningCustomerSale.id}
           saleNumber={assigningCustomerSale.saleNumber}
           onSuccess={() => {
-            loadSales(page, size);
+            loadSales(urlPage, size, activeFilters);
             setAssigningCustomerSale(null);
           }}
         />

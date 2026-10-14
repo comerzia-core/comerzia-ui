@@ -13,8 +13,17 @@ import { useToast } from '../../../context/ToastContext';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { Filter, ChevronDown, FileSpreadsheet, Search, X } from 'lucide-react';
 import { getCatalogErrorMessage } from '../utils/catalogErrorMessages';
+import { useUrlParams } from '../../../hooks/useUrlState';
 
 export const CatalogPage = () => {
+  const { getParam, setParams } = useUrlParams();
+
+  // Filtros sincronizados con la URL (los IDs son strings ofuscados)
+  const selectedCategoryId = getParam('category') || '';
+  const selectedSegmentId = getParam('segment') || '';
+  const selectedBrandId = getParam('brand') || '';
+  const urlSearch = getParam('q') || '';
+
   useRealtimeRefresh(['CATEGORY'], async () => {
     await loadCategories(true);
     if (selectedCategoryId) await loadSegments(selectedCategoryId, true);
@@ -27,16 +36,12 @@ export const CatalogPage = () => {
   const canBulkUpload = hasPermission('COM_BULK_UPLOAD');
   const canCreateProduct = hasRole('OWNER') || hasRole('BRANCH_MANAGER');
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [searchTerm, setSearchTerm] = useState(urlSearch);
+  const [debouncedSearch, setDebouncedSearch] = useState(urlSearch);
 
   const [categories, setCategories] = useState<CategoryResponse[]>([]);
   const [segments, setSegments] = useState<SegmentResponse[]>([]);
   const [brands, setBrands] = useState<BrandResponse[]>([]);
-
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
-  const [selectedSegmentId, setSelectedSegmentId] = useState<string>('');
-  const [selectedBrandId, setSelectedBrandId] = useState<string>('');
 
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
   const [isLoadingSegments, setIsLoadingSegments] = useState(false);
@@ -54,6 +59,22 @@ export const CatalogPage = () => {
     }, 300);
     return () => clearTimeout(handler);
   }, [searchTerm]);
+
+  // Sincronizar el término debounced con la URL (replace: true para no saturar el historial)
+  useEffect(() => {
+    const cleanSearch = debouncedSearch.trim();
+    if (cleanSearch !== urlSearch) {
+      setParams({ q: cleanSearch.length > 0 ? cleanSearch : null }, { replace: true });
+    }
+  }, [debouncedSearch, urlSearch, setParams]);
+
+  // Si la URL cambia externamente (ej: botón Atrás/Adelante), sincronizar input local
+  useEffect(() => {
+    if (urlSearch !== searchTerm) {
+      setSearchTerm(urlSearch);
+      setDebouncedSearch(urlSearch);
+    }
+  }, [urlSearch]);
 
   useEffect(() => {
     loadCategories();
@@ -78,9 +99,6 @@ export const CatalogPage = () => {
     } else {
       setSegments([]);
     }
-    setSelectedSegmentId('');
-    setSelectedBrandId('');
-    setBrands([]);
   }, [selectedCategoryId, canManage]);
 
   const loadSegments = async (categoryId: string, background = false) => {
@@ -102,7 +120,6 @@ export const CatalogPage = () => {
     } else {
       setBrands([]);
     }
-    setSelectedBrandId('');
   }, [selectedSegmentId, canManage]);
 
   const loadBrands = async (segmentId: string, background = false) => {
@@ -191,7 +208,11 @@ export const CatalogPage = () => {
                   searchTerm ? (
                     <button
                       type="button"
-                      onClick={() => setSearchTerm('')}
+                      onClick={() => {
+                        setSearchTerm('');
+                        setDebouncedSearch('');
+                        setParams({ q: null }, { replace: true });
+                      }}
                       className="btn btn-ghost btn-xs btn-circle text-base-content/50 hover:text-base-content"
                       title="Limpiar búsqueda"
                     >
@@ -211,7 +232,11 @@ export const CatalogPage = () => {
               options={categories.map(c => ({ value: c.id, label: c.name, status: c.status }))}
               value={selectedCategoryId}
               onChange={(val) => {
-                setSelectedCategoryId(val as string);
+                setParams({
+                  category: (val as string) || null,
+                  segment: null,
+                  brand: null
+                }, { replace: true });
               }}
               onCreate={async (name) => {
                 try {
@@ -237,7 +262,9 @@ export const CatalogPage = () => {
                 try {
                   await commercialService.deleteCategory(id as string);
                   setCategories(prev => prev.filter(c => c.id !== id));
-                  if (selectedCategoryId === id) setSelectedCategoryId('');
+                  if (selectedCategoryId === id) {
+                    setParams({ category: null, segment: null, brand: null }, { replace: true });
+                  }
                   toastSuccess("Categoría eliminada");
                 } catch (e: any) {
                   toastError(getCatalogErrorMessage(e, "Error al eliminar la categoría"));
@@ -253,7 +280,10 @@ export const CatalogPage = () => {
               options={segments.map(s => ({ value: s.id, label: s.name, status: s.status }))}
               value={selectedSegmentId}
               onChange={(val) => {
-                setSelectedSegmentId(val as string);
+                setParams({
+                  segment: (val as string) || null,
+                  brand: null
+                }, { replace: true });
               }}
               onCreate={async (name) => {
                 try {
@@ -280,7 +310,9 @@ export const CatalogPage = () => {
                 try {
                   await commercialService.deleteSegment(id as string);
                   setSegments(prev => prev.filter(s => s.id !== id));
-                  if (selectedSegmentId === id) setSelectedSegmentId('');
+                  if (selectedSegmentId === id) {
+                    setParams({ segment: null, brand: null }, { replace: true });
+                  }
                   toastSuccess("Rubro eliminado");
                 } catch (e: any) {
                   toastError(getCatalogErrorMessage(e, "Error al eliminar rubro"));
@@ -296,7 +328,9 @@ export const CatalogPage = () => {
               canManage={canManage}
               options={brands.map(b => ({ value: b.id, label: b.name, status: b.status }))}
               value={selectedBrandId}
-              onChange={(val) => setSelectedBrandId(val as string)}
+              onChange={(val) => {
+                setParams({ brand: (val as string) || null }, { replace: true });
+              }}
               onCreate={async (name) => {
                 try {
                   const newBrand = await commercialService.createBrand(name, selectedSegmentId);
@@ -322,7 +356,9 @@ export const CatalogPage = () => {
                 try {
                   await commercialService.deleteBrand(id as string);
                   setBrands(prev => prev.filter(b => b.id !== id));
-                  if (selectedBrandId === id) setSelectedBrandId('');
+                  if (selectedBrandId === id) {
+                    setParams({ brand: null }, { replace: true });
+                  }
                   toastSuccess("Marca eliminada");
                 } catch (e: any) {
                   toastError(getCatalogErrorMessage(e, "Error al eliminar marca"));
