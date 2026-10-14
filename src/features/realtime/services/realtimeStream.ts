@@ -43,9 +43,11 @@ export function parseRealtimeChange(data: string): RealtimeChange | null {
 
 export class RealtimeHttpError extends Error {
   readonly status: number;
-  constructor(status: number) {
+  readonly code?: string;
+  constructor(status: number, code?: string) {
     super(`Realtime HTTP ${status}`);
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -56,7 +58,14 @@ export async function readRealtimeStream(
     headers: { Authorization: `Bearer ${token}`, Accept: 'text/event-stream, application/json' },
     signal, cache: 'no-store', credentials: 'omit',
   });
-  if (!response.ok) throw new RealtimeHttpError(response.status);
+  if (!response.ok) {
+    let code: string | undefined;
+    try {
+      const data: unknown = await response.json();
+      if (data && typeof data === 'object' && 'code' in data && typeof data.code === 'string') code = data.code;
+    } catch { /* Un error HTTP sin JSON también conserva su estado. */ }
+    throw new RealtimeHttpError(response.status, code);
+  }
   if (!response.headers.get('content-type')?.includes('text/event-stream') || !response.body) {
     throw new Error('Invalid realtime stream response');
   }

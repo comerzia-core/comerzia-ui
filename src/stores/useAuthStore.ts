@@ -6,6 +6,7 @@ import { getMyMenuTree } from '../services/menuService';
 
 interface AuthState {
     token: string | null;
+    sessionNotice: string | null;
     isAuthenticated: boolean;
     userProfile: UserProfile | null;
     menuTree: MenuItem[]; // Usando la interfaz correcta
@@ -13,7 +14,7 @@ interface AuthState {
     
     // Acciones del store
     login: (token: string) => Promise<void>;
-    logout: () => void;
+    logout: (reason?: string) => void;
     initializeSession: () => Promise<void>;
     fetchUserProfile: () => Promise<void>;
     fetchMenuTree: () => Promise<void>;
@@ -27,6 +28,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
     
     return {
         token: storedToken,
+        sessionNotice: sessionStorage.getItem('sessionNotice'),
         isAuthenticated: !!storedToken,
         userProfile: null,
         menuTree: [],
@@ -38,12 +40,34 @@ export const useAuthStore = create<AuthState>((set, get) => {
             
             // Inmediatamente disparamos la orquestación para cargar perfil y menú
             await get().initializeSession();
+            if (get().token === token && get().isSessionReady) {
+                sessionStorage.removeItem('sessionNotice');
+                localStorage.removeItem('sessionRevocationReason');
+                set({ sessionNotice: null });
+            }
         },
 
-        logout: () => {
-            localStorage.removeItem('token');
+        logout: (reason?: string) => {
+            const notices: Record<string, string> = {
+                session_permissions_changed: 'Tus permisos cambiaron. Inicia sesión nuevamente.',
+                session_access_changed: 'Tu acceso cambió. Inicia sesión nuevamente.',
+                session_password_changed: 'Tu contraseña cambió. Inicia sesión nuevamente.',
+            };
+            const candidate = reason ? notices[reason] : undefined;
+            const notice = typeof candidate === 'string' ? candidate : undefined;
+            const stored = localStorage.getItem('token');
+            const ownsStoredSession = stored === get().token;
+            if (notice) sessionStorage.setItem('sessionNotice', notice);
+            else sessionStorage.removeItem('sessionNotice');
+            // Un cierre tardío en otra pestaña no debe borrar el token de un login nuevo.
+            if (!stored || ownsStoredSession) {
+                if (notice && reason) localStorage.setItem('sessionRevocationReason', reason);
+                else localStorage.removeItem('sessionRevocationReason');
+                if (ownsStoredSession) localStorage.removeItem('token');
+            }
             set({ 
-                token: null, 
+                token: null,
+                sessionNotice: notice || null,
                 isAuthenticated: false, 
                 userProfile: null, 
                 menuTree: [], 
@@ -52,6 +76,8 @@ export const useAuthStore = create<AuthState>((set, get) => {
         },
 
         initializeSession: async () => {
+            const token = get().token;
+            if (!token) return;
             try {
                 // Ejecutamos ambas peticiones en paralelo para optimizar el tiempo de carga
                 await Promise.all([
@@ -60,24 +86,26 @@ export const useAuthStore = create<AuthState>((set, get) => {
                 ]);
                 
                 // Si ambas promesas se resuelven, la sesión está lista para renderizar la UI
-                set({ isSessionReady: true });
-            } catch (error) {
-                console.error("Fatal error initializing session:", error);
+                if (get().token === token) set({ isSessionReady: true });
+            } catch {
+                console.error("Session initialization failed.");
                 
                 // Si falla la carga vital, forzamos el cierre de sesión por seguridad
-                get().logout(); 
+                if (get().token === token) get().logout();
             }
         },
 
         fetchUserProfile: async () => {
+            const token = get().token;
             const { data } = await api.get<UserProfile>('/auth/profile');
-            set({ userProfile: data });
+            if (token && get().token === token) set({ userProfile: data });
         },
 
         fetchMenuTree: async () => {
             // Utilizamos el servicio que ya limpia la estructura del backend
-            const tree = await getMyMenuTree(); 
-            set({ menuTree: tree });
+            const token = get().token;
+            const tree = await getMyMenuTree();
+            if (token && get().token === token) set({ menuTree: tree });
         },
 
         hasRole: (role: string) => {

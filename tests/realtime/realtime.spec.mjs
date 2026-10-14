@@ -101,10 +101,10 @@ test('Bearer is sent only in the header and logout closes the stream', async ({ 
   expect(await page.evaluate(() => window.realtimeTest.connections)).toBe(1);
 });
 
-test('no read permissions means no stream', async ({ page }) => {
+test('no business read permissions still allows security notices without business refresh', async ({ page }) => {
   await mockApi(page); await page.goto('/tests/realtime/index.html?view=denied');
   await expect(page.getByLabel('reads')).toHaveText('0');
-  expect(await page.evaluate(() => window.realtimeTest.connections)).toBe(0);
+  expect(await page.evaluate(() => window.realtimeTest.connections)).toBe(1);
 });
 
 for (const status of [401, 403]) test(`HTTP ${status} stops retries with the correct session behavior`, async ({ page }) => {
@@ -255,4 +255,102 @@ for (const code of ['resource_already_exists', 'data_integrity_violation']) test
     await expect(page.getByText('No se pudo guardar el registro.')).toBeVisible();
     await expect(page.getByText('Ya existe una caja con ese nombre en la sucursal.')).toHaveCount(0);
   }
+});
+
+test('a personal security notice clears the token and explains reauthentication', async ({ page }) => {
+  await mockApi(page); await page.goto('/tests/realtime/index.html?view=probe');
+  await expect(page.getByRole('status', { name: 'En vivo' })).toBeVisible();
+  await page.evaluate(() => window.realtimeTest.raw('event: session-revoked\ndata: {"code":"session_permissions_changed"}\n\n'));
+  await expect.poll(() => page.evaluate(() => window.realtimeTest.token())).toBeNull();
+  await expect(page.getByText('Tus permisos cambiaron. Inicia sesión nuevamente.')).toBeVisible();
+  await expect(page.getByRole('button', { name: /Iniciar Sesión/i })).toBeVisible();
+  await page.waitForTimeout(1500);
+  expect(await page.evaluate(() => window.realtimeTest.connections)).toBe(1);
+  await page.reload();
+  // El aviso sobrevive al cambio de ruta o a una recarga, aunque el arnés recrea la sesión de prueba.
+  expect(await page.evaluate(() => sessionStorage.getItem('sessionNotice'))).toBe('Tus permisos cambiaron. Inicia sesión nuevamente.');
+});
+
+test('HTTP 401 from the stream retains the security reason and stops reconnecting', async ({ page }) => {
+  await mockApi(page); await page.goto('/tests/realtime/index.html?view=probe&streamStatus=401&streamCode=session_permissions_changed');
+  await expect.poll(() => page.evaluate(() => window.realtimeTest.token())).toBeNull();
+  await expect(page.getByText('Tus permisos cambiaron. Inicia sesión nuevamente.')).toBeVisible();
+  await page.waitForTimeout(1500);
+  expect(await page.evaluate(() => window.realtimeTest.connections)).toBe(1);
+});
+
+test('a REST rejection revokes the session even without receiving an SSE notice', async ({ page }) => {
+  await mockApi(page); await page.goto('/tests/realtime/index.html?view=register');
+  await page.route('**/api/tenant/branches?**', route => route.fulfill({ json: { content: [{ id: 'branch', name: 'Main branch' }] } }));
+  await page.route('**/api/tenant/cash-registers', route => route.fulfill({ status: 401, json: { code: 'session_permissions_changed' } }));
+  await page.reload();
+  await page.getByPlaceholder('Ej: Caja Principal 01').fill('Cash register');
+  await page.getByRole('combobox').selectOption('branch');
+  await page.getByRole('button', { name: 'Guardar' }).click();
+  await expect.poll(() => page.evaluate(() => window.realtimeTest.token())).toBeNull();
+  await expect(page.getByText('Tus permisos cambiaron. Inicia sesión nuevamente.')).toBeVisible();
+});
+
+test('a late REST 401 from an old token does not close the new session', async ({ page }) => {
+  await mockApi(page);
+  await page.route('**/api/tenant/branches?**', route => route.fulfill({ json: { content: [{ id: 'branch', name: 'Main branch' }] } }));
+  let release;
+  let received = false;
+  const held = new Promise(resolve => { release = resolve; });
+  await page.route('**/api/tenant/cash-registers', async route => {
+    received = true; await held;
+    await route.fulfill({ status: 401, json: { code: 'session_permissions_changed' } });
+  });
+  await page.goto('/tests/realtime/index.html?view=register');
+  await page.getByPlaceholder('Ej: Caja Principal 01').fill('Cash register');
+  await page.getByRole('combobox').selectOption('branch');
+  await page.getByRole('button', { name: 'Guardar' }).click();
+  await expect.poll(() => received).toBe(true);
+  await page.evaluate(() => window.realtimeTest.replaceToken('new-session-token'));
+  release();
+  await expect(page.getByText('No se pudo guardar la caja.')).toBeVisible();
+  expect(await page.evaluate(() => window.realtimeTest.token())).toBe('new-session-token');
+  await expect(page.getByText('Tus permisos cambiaron. Inicia sesión nuevamente.')).toHaveCount(0);
+});
+
+test('security logout propagates to another tab', async ({ page, context }) => {
+  await mockApi(page); await page.goto('/tests/realtime/index.html?view=probe');
+  await page.evaluate(() => localStorage.setItem('token', 'test-bearer-secret'));
+  const second = await context.newPage();
+  try {
+    await mockApi(second); await second.goto('/tests/realtime/index.html?view=probe');
+    await expect(second.getByRole('status', { name: 'En vivo' })).toBeVisible();
+    await page.evaluate(() => window.realtimeTest.raw('event: session-revoked\ndata: {"code":"session_permissions_changed"}\n\n'));
+    await expect.poll(() => second.evaluate(() => window.realtimeTest.token())).toBeNull();
+    await expect(second.getByText('Tus permisos cambiaron. Inicia sesión nuevamente.')).toBeVisible();
+  } finally { await second.close(); }
+});
+
+test('a late cross-tab logout cannot remove a newly persisted token', async ({ page }) => {
+  await mockApi(page); await page.goto('/tests/realtime/index.html?view=probe');
+  await page.evaluate(() => {
+    localStorage.setItem('token', 'new-session-in-another-tab');
+    window.dispatchEvent(new StorageEvent('storage', { key: 'token', oldValue: 'test-bearer-secret', newValue: null }));
+  });
+  await expect.poll(() => page.evaluate(() => window.realtimeTest.token())).toBeNull();
+  expect(await page.evaluate(() => localStorage.getItem('token'))).toBe('new-session-in-another-tab');
+});
+
+test('a late profile response cannot restore a session after logout', async ({ page }) => {
+  await mockApi(page);
+  let received = false;
+  let release;
+  const held = new Promise(resolve => { release = resolve; });
+  await page.route('**/api/auth/profile', async route => {
+    received = true; await held;
+    await route.fulfill({ json: { id: 'old-session-profile' } });
+  });
+  await page.route('**/api/menus/my-tree', route => route.fulfill({ json: [] }));
+  await page.goto('/tests/realtime/index.html?view=probe');
+  await page.evaluate(() => { void window.realtimeTest.initialize(); });
+  await expect.poll(() => received).toBe(true);
+  await page.evaluate(() => window.realtimeTest.logout());
+  release();
+  await page.waitForTimeout(500);
+  expect(await page.evaluate(() => window.realtimeTest.snapshot())).toEqual({ token: null, ready: false, profileId: undefined });
 });

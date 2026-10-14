@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ToastProvider } from '../../src/context/ToastContext';
 import { ShiftsPage } from '../../src/features/pos/pages/ShiftsPage';
 import { RegisterModal } from '../../src/features/pos/components/RegisterModal';
+import { LoginPage } from '../../src/features/auth/pages/LoginPage';
 import { TerminalPage } from '../../src/features/pos/pages/TerminalPage';
 import { ProductTable } from '../../src/features/commercial/components/ProductTable';
 import { RealtimeStatusIndicator } from '../../src/features/realtime/components/RealtimeStatusIndicator';
@@ -21,7 +22,7 @@ declare global {
       connections: number; requests: { url: string; authorization: string | null }[];
       emit: (entity: string, count?: number) => void; close: () => void;
       raw: (text: string) => void; logout: () => void;
-      parser: () => boolean; token: () => string | null;
+      parser: () => boolean; token: () => string | null; replaceToken: (token: string) => void; initialize: () => Promise<void>; snapshot: () => { token: string | null; ready: boolean; profileId: string | undefined };
     };
   }
 }
@@ -41,6 +42,9 @@ const originalFetch = window.fetch.bind(window);
 window.realtimeTest = {
   connections: 0, requests: [],
   token: () => useAuthStore.getState().token,
+  initialize: () => useAuthStore.getState().initializeSession(),
+  snapshot: () => { const state = useAuthStore.getState(); return { token: state.token, ready: state.isSessionReady, profileId: state.userProfile?.id }; },
+  replaceToken: token => { localStorage.setItem('token', token); useAuthStore.setState({ token }); },
   raw: text => stream?.enqueue(encoder.encode(text)),
   emit: (entity, count = 1) => {
     for (let i = 0; i < count; i++) stream?.enqueue(encoder.encode(`event: change\ndata: ${JSON.stringify({
@@ -64,7 +68,7 @@ window.fetch = async (input, init) => {
   window.realtimeTest.connections++;
   window.realtimeTest.requests.push({ url, authorization: new Headers(init?.headers).get('Authorization') });
   const status = Number(new URLSearchParams(window.location.search).get('streamStatus') || 200);
-  if (status !== 200) return new Response('{}', { status, headers: { 'Content-Type': 'application/json' } });
+  if (status !== 200) return new Response(JSON.stringify({ code: new URLSearchParams(window.location.search).get('streamCode') || undefined }), { status, headers: { 'Content-Type': 'application/json' } });
   const body = new ReadableStream<Uint8Array>({
     start(controller) {
       stream = controller;
@@ -89,6 +93,8 @@ function Probe() {
 }
 function Workspace() {
   useRealtimeConnection();
+  const token = useAuthStore(state => state.token);
+  if (!token) return <LoginPage />;
   return <><RealtimeStatusIndicator />{view === 'register' ? <RegisterModal isOpen onClose={() => {}} onSuccess={() => {}} /> : view === 'shifts' ? <ShiftsPage /> : view === 'catalog' ? <ProductTable /> : view === 'probe' || view === 'denied' ? <Probe /> : <TerminalPage />}</>;
 }
 createRoot(document.getElementById('root')!).render(<QueryClientProvider client={client}><BrowserRouter><ToastProvider>

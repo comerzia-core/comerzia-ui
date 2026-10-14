@@ -21,3 +21,11 @@ Las cargas de lectura reciben un parámetro `background` opcional: las recargas 
 Los fallos temporales de red, 429 y 5xx conservan el último resultado válido. Los errores de autorización y las validaciones de negocio mantienen su tratamiento habitual. Las tarjetas nuevas de cobro entran con una animación breve que respeta `prefers-reduced-motion`; las existentes mantienen su identidad y foco.
 
 Las pruebas con respuestas REST demoradas comprueban que permanecen conectados los mismos nodos de tarjetas y filas, que se recuperan cambios al volver a la pestaña y que un formulario de cobro abierto conserva su importe y foco.
+
+## Cambios de permisos y sesiones
+
+El canal admite sesiones autenticadas sin lecturas comerciales para recibir avisos personales `session-revoked`. En estos casos no se disparan recargas comerciales. El servidor conserva el filtrado de cada entidad por permiso, empresa y sucursal.
+
+Ante un aviso personal o un 401 de revocación, se limpian token, perfil, menú y caché, y se muestra el motivo en login. Los 403 conservan su comportamiento de rechazo de acceso. La revocación se propaga entre pestañas; respuestas tardías, perfiles pendientes y cierres de otras pestañas no pueden restaurar una sesión antigua ni borrar un token nuevo.
+
+El backend utiliza versión de JWT y pide reautenticación al cambiar privilegios; no existe renovación silenciosa con el token revocado. Detalles, migración y decisiones: `../../comerzia/docs/sesiones-y-cambios-de-permisos.md` en el repositorio backend.

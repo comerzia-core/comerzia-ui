@@ -17,6 +17,7 @@ type AuthStep = 'LOGIN' | 'CHANGE_PASSWORD';
 export const LoginPage = () => {
     const navigate = useNavigate();
     const loginStore = useAuthStore(state => state.login);
+    const sessionNotice = useAuthStore(state => state.sessionNotice);
 
     // --- ESTADOS DE FLUJO ---
     const [currentStep, setCurrentStep] = useState<AuthStep>('LOGIN');
@@ -178,6 +179,7 @@ export const LoginPage = () => {
             <div className="card w-full max-w-md bg-base-100 shadow-xl border border-base-300">
                 <div className="card-body">
                     
+                    {sessionNotice && <p role="status" className="alert alert-info text-sm">{sessionNotice}</p>}
                     {/* LOGO AREA */}
                     <div className="text-center mb-6">
                         <div className="w-16 h-16 bg-primary text-primary-content rounded-2xl mx-auto flex items-center justify-center mb-4 shadow-lg">

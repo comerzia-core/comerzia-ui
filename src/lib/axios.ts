@@ -38,17 +38,18 @@ api.interceptors.response.use(
             const isAuthRequest = error.config?.url?.includes('/auth/');
 
             if (status === 401) {
-                // Si es un 401 pero viene del login, NO hacemos recarga de página.
-                // Dejamos que el Catch de la vista (LoginPage) maneje y pinte el error.
-                if (!isAuthRequest) {
-                    console.error("Token expired or invalid. Executing automatic logout...");
-                    
-                    // Limpiamos la memoria y forzamos la recarga hacia el login
-                    useAuthStore.getState().logout();
-                    window.location.href = '/login';
+                const current = useAuthStore.getState();
+                const requestBearer = error.config?.headers?.Authorization;
+                const code: unknown = error.response.data?.code;
+                const sessionChanged = typeof code === 'string' && [
+                    'session_permissions_changed', 'session_access_changed', 'session_password_changed',
+                ].includes(code);
+                // Una respuesta de una sesión anterior no debe cerrar una sesión recién iniciada.
+                if (current.token && requestBearer === `Bearer ${current.token}` && (!isAuthRequest || sessionChanged)) {
+                    current.logout(sessionChanged ? code : undefined);
                 }
             }
-            
+
             if (status === 403) {
                 console.error("Access denied by backend configuration.");
             }

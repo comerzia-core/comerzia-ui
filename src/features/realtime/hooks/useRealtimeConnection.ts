@@ -6,7 +6,7 @@ import { readRealtimeStream, parseRealtimeChange, RealtimeHttpError } from '../s
 import { invalidateRealtime, recoverRealtime } from '../services/realtimeInvalidation';
 import type { RealtimeEntity } from '../types/realtime';
 
-const readPermissions = [
+const businessReadPermissions = [
   'SAL_SALES_READ', 'SAL_SALES_READ_ALL', 'SAL_RETURNS_READ', 'SAL_HISTORY_SALE_READ',
   'COM_PRODUCTS_READ', 'COM_CATALOG_READ', 'COM_PRICES_READ', 'SAL_SALES_CREATE',
   'COM_STOCK_READ', 'COM_STOCK_ADJUSTMENT_READ', 'COM_INVENTORIES_READ', 'SAL_CUSTOMERS_READ',
@@ -19,14 +19,25 @@ export function useRealtimeConnection(): void {
   const token = useAuthStore(state => state.token);
   const ready = useAuthStore(state => state.isSessionReady);
   const company = useAuthStore(state => state.userProfile?.companySettings?.id);
+
   const permissions = useAuthStore(state => state.userProfile?.permissions);
-  const allowed = !!company && readPermissions.some(permission => permissions?.includes(permission));
+  const hasBusinessReads = businessReadPermissions.some(permission => permissions?.includes(permission));
   const client = useQueryClient();
   // Limpiar la caché al terminar la sesión o el contexto, sin retirar consultas recién montadas.
   useEffect(() => () => { client.clear(); }, [company, token, client]);
   useEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      const state = useAuthStore.getState();
+      if (event.key === 'token' && event.newValue === null && event.oldValue === state.token) {
+        state.logout(localStorage.getItem('sessionRevocationReason') || undefined);
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+  useEffect(() => {
     const setStatus = useRealtimeStore.getState().setStatus;
-    if (!token || !ready || !allowed) { setStatus('unavailable'); return; }
+    if (!token || !ready) { setStatus('unavailable'); return; }
     let disposed = false;
     let blocked = false;
     let attempts = 0;
@@ -69,7 +80,18 @@ export function useRealtimeConnection(): void {
           if (frame.event === 'connected') {
             attempts = 0;
             setStatus('live');
-            recoverRealtime(client);
+            if (hasBusinessReads) recoverRealtime(client);
+          } else if (frame.event === 'session-revoked') {
+            let code: string | undefined;
+            try {
+              const data: unknown = JSON.parse(frame.data);
+              if (data && typeof data === 'object' && 'code' in data && typeof data.code === 'string') code = data.code;
+            } catch { /* El cierre de seguridad sigue aplicándose aunque el aviso no se pueda leer. */ }
+            blocked = true;
+            const current = useAuthStore.getState();
+            if (current.token === token) current.logout(code);
+            disconnect();
+            setStatus('unavailable');
           } else if (frame.event === 'change') {
             const event = parseRealtimeChange(frame.data);
             if (event) {
@@ -83,7 +105,7 @@ export function useRealtimeConnection(): void {
           && error instanceof RealtimeHttpError && (error.status === 401 || error.status === 403)) {
           blocked = true;
           setStatus('unavailable');
-          if (error.status === 401) useAuthStore.getState().logout();
+          if (error.status === 401 && useAuthStore.getState().token === token) useAuthStore.getState().logout(error.code);
         }
       } finally {
         if (active === controller) {
@@ -115,5 +137,5 @@ export function useRealtimeConnection(): void {
       window.removeEventListener('offline', resume);
       document.removeEventListener('visibilitychange', resume);
     };
-  }, [token, ready, allowed, company, client]);
+  }, [token, ready, company, client, hasBusinessReads]);
 }
