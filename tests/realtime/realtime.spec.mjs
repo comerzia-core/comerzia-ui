@@ -241,3 +241,18 @@ for (const mobile of [false, true]) test(`shift income and expenses refresh with
   await expect(page.getByText('127.00', { exact: false })).toBeVisible();
   expect(await original.evaluate(node => node.isConnected)).toBe(true);
 });
+
+for (const code of ['resource_already_exists', 'data_integrity_violation']) test(`cash register only reports a duplicate name for the domain conflict ${code}`, async ({ page }) => {
+  await mockApi(page);
+  await page.route('**/api/tenant/branches?**', route => route.fulfill({ json: { content: [{ id: 'branch', name: 'Main branch' }] } }));
+  await page.route('**/api/tenant/cash-registers', route => route.fulfill({ status: 409, json: { code, message: 'No se pudo guardar el registro.' } }));
+  await page.goto('/tests/realtime/index.html?view=register');
+  await page.getByPlaceholder('Ej: Caja Principal 01').fill('New cash register');
+  await page.getByRole('combobox').selectOption('branch');
+  await page.getByRole('button', { name: 'Guardar' }).click();
+  if (code === 'resource_already_exists') await expect(page.getByText('Ya existe una caja con ese nombre en la sucursal.')).toBeVisible();
+  else {
+    await expect(page.getByText('No se pudo guardar el registro.')).toBeVisible();
+    await expect(page.getByText('Ya existe una caja con ese nombre en la sucursal.')).toHaveCount(0);
+  }
+});

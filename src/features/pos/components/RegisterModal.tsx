@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { isAxiosError } from 'axios';
 import { ComerziaModal } from '../../../components/ui/ComerziaModal';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
 import { ComerziaSelect } from '../../../components/ui/ComerziaSelect';
@@ -86,10 +87,10 @@ export const RegisterModal = ({ isOpen, onClose, onSuccess, registerToEdit }: Pr
       }
       onSuccess();
       onClose();
-    } catch (err: any) {
-      const status = err.response?.status;
-      const apiMsg = err.response?.data?.message || err.response?.data?.error;
-      if (status === 409) {
+    } catch (err: unknown) {
+      const response = isAxiosError<{ code?: string; message?: string; error?: string }>(err) ? err.response : undefined;
+      const apiMsg = response?.data?.message || response?.data?.error;
+      if (response?.status === 409 && response.data.code === 'resource_already_exists') {
         toastError("Ya existe una caja con ese nombre en la sucursal.");
       } else if (apiMsg) {
         toastError(apiMsg);

@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ToastProvider } from '../../src/context/ToastContext';
 import { ShiftsPage } from '../../src/features/pos/pages/ShiftsPage';
+import { RegisterModal } from '../../src/features/pos/components/RegisterModal';
 import { TerminalPage } from '../../src/features/pos/pages/TerminalPage';
 import { ProductTable } from '../../src/features/commercial/components/ProductTable';
 import { RealtimeStatusIndicator } from '../../src/features/realtime/components/RealtimeStatusIndicator';
@@ -88,7 +89,7 @@ function Probe() {
 }
 function Workspace() {
   useRealtimeConnection();
-  return <><RealtimeStatusIndicator />{view === 'shifts' ? <ShiftsPage /> : view === 'catalog' ? <ProductTable /> : view === 'probe' || view === 'denied' ? <Probe /> : <TerminalPage />}</>;
+  return <><RealtimeStatusIndicator />{view === 'register' ? <RegisterModal isOpen onClose={() => {}} onSuccess={() => {}} /> : view === 'shifts' ? <ShiftsPage /> : view === 'catalog' ? <ProductTable /> : view === 'probe' || view === 'denied' ? <Probe /> : <TerminalPage />}</>;
 }
 createRoot(document.getElementById('root')!).render(<QueryClientProvider client={client}><BrowserRouter><ToastProvider>
   <Workspace />
