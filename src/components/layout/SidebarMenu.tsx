@@ -3,11 +3,13 @@ import type { MenuItem } from "../../features/auth/types";
 import { IconRenderer } from "../ui/IconRenderer";
 import { ChevronLeft, ChevronRight } from "lucide-react"; // ✅ Importar Flechas
 import { useCompanyContext } from "../../hooks/useCompanyContext";
+import { useMobileDrawerSwipe } from "../../hooks/useMobileDrawerSwipe";
 
-const closeMobileDrawer = () => {
+export const closeMobileDrawer = () => {
     const drawerCheckbox = document.getElementById("my-drawer") as HTMLInputElement | null;
     if (drawerCheckbox && drawerCheckbox.checked) {
         drawerCheckbox.checked = false;
+        drawerCheckbox.dispatchEvent(new Event('change'));
     }
 };
 
@@ -158,15 +160,24 @@ interface Props {
 
 export const SidebarMenu = ({ menuTree, isLoading, isCollapsed, toggleCollapse }: Props) => {
     const { commercialName, logoUrl } = useCompanyContext();
+    const { asideRef } = useMobileDrawerSwipe({ drawerId: 'my-drawer' });
+
     if (isLoading) return <div className="p-4 space-y-4">Loading...</div>;
 
     return (
-        <aside className={`
-            bg-base-100 h-full flex flex-col border-r border-base-300 transition-all duration-300 ease-in-out z-40
-            ${isCollapsed ? 'w-20' : 'w-72'} // Ancho dinámico
-        `}>
+        <aside 
+            ref={asideRef}
+            className={`
+                bg-base-100 h-full flex flex-col border-r border-base-300 transition-all duration-300 ease-in-out z-40 touch-pan-y
+                ${isCollapsed ? 'w-20' : 'w-72'} // Ancho dinámico
+            `}
+        >
             {/* 1. HEADER (Logo) */}
-            <div className={`h-16 flex items-center gap-3 px-6 border-b border-base-300 bg-base-200 shrink-0 ${isCollapsed ? 'justify-center px-0' : ''}`}>
+            <NavLink
+                to="/dashboard"
+                onClick={closeMobileDrawer}
+                className={`h-16 flex items-center gap-3 px-6 border-b border-base-300 bg-base-200 shrink-0 cursor-pointer hover:bg-base-300/40 transition-colors ${isCollapsed ? 'justify-center px-0' : ''}`}
+            >
                 {logoUrl ? (
                     <img 
                         src={logoUrl} 
@@ -185,7 +196,7 @@ export const SidebarMenu = ({ menuTree, isLoading, isCollapsed, toggleCollapse }
                         {commercialName}
                     </span>
                 )}
-            </div>
+            </NavLink>
 
             {/* 2. AREA SCROLLABLE */}
             <div className={`
