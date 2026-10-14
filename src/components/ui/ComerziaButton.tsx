@@ -71,10 +71,12 @@ export const ComerziaButton = ({
                 ? "px-3 sm:px-4 min-w-0 sm:min-w-[110px] gap-1.5 sm:gap-2"
                 : "px-4 min-w-[100px] sm:min-w-[120px] gap-2" 
         }
+        ${responsive ? "min-h-11 sm:min-h-0" : ""}
         shadow-sm hover:shadow-md transition-all
         ${(props.disabled || isLoading) ? "opacity-40 grayscale cursor-not-allowed pointer-events-none shadow-none" : ""}
         ${className}
       `} 
+      aria-label={label || tooltip}
       disabled={isLoading || props.disabled}
       {...props}
     >

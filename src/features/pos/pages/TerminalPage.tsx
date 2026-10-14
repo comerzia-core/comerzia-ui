@@ -72,27 +72,31 @@ export const TerminalPage = () => {
     () => localStorage.getItem('auto_print_receipt') === 'true'
   );
 
+  const receiptPrintingEnabled = userProfile?.companySettings?.receiptPrintingEnabled ?? true;
+  const customerRegistrationEnabled = userProfile?.companySettings?.saleCustomerRegistrationEnabled ?? true;
+
   const currencyCode = userProfile?.companySettings?.currencyCode || 'USD';
 
   useEffect(() => {
     if (canAccessTerminal) {
       loadSummary();
       loadPendingSales();
-      checkPrinterStatus();
     }
   }, []);
 
-  const checkPrinterStatus = async () => {
-    try {
-      const data = await hardwareService.getAgents();
-      const online = (data.content || []).some(a => a.isConnected);
-      setIsPrinterOnline(online);
-    } catch {
-      setIsPrinterOnline(false);
-    }
-  };
+  useEffect(() => {
+    if (!canAccessTerminal || !receiptPrintingEnabled) return;
+    let active = true;
+    hardwareService.getAgents().then(data => {
+      if (active) setIsPrinterOnline((data.content || []).some(agent => agent.isConnected));
+    }).catch(() => {
+      if (active) setIsPrinterOnline(false);
+    });
+    return () => { active = false; };
+  }, [canAccessTerminal, receiptPrintingEnabled]);
 
   const printReceiptJob = async (sale: SaleResponse) => {
+    if (!receiptPrintingEnabled) return;
     try {
       await hardwareService.createPrintJob({
         jobType: HwPrintJobTypeCode.RECEIPT_PRINT,
@@ -161,9 +165,11 @@ export const TerminalPage = () => {
     loadSummary();
     loadPendingSales();
     if (sale) {
-      if (autoPrintTicket) {
+      if (!receiptPrintingEnabled) {
+        if (customerRegistrationEnabled) setRegisterCustomerSale(sale);
+      } else if (autoPrintTicket) {
         printReceiptJob(sale);
-        setRegisterCustomerSale(sale);
+        if (customerRegistrationEnabled) setRegisterCustomerSale(sale);
       } else {
         setPaidSaleForReceipt(sale);
       }
@@ -249,7 +255,7 @@ export const TerminalPage = () => {
         </div>
 
         {/* Indicador de Estado de la Tickera */}
-        <div className="flex items-center gap-2">
+        {receiptPrintingEnabled && <div className="flex items-center gap-2">
           <div
             className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-semibold ${
               isPrinterOnline
@@ -264,7 +270,7 @@ export const TerminalPage = () => {
               {isPrinterOnline ? 'Tickera en línea' : 'Tickera desconectada'}
             </span>
           </div>
-        </div>
+        </div>}
       </div>
 
       {/* Summary Cards: Solo para cajeros con turno activo */}
@@ -471,7 +477,7 @@ export const TerminalPage = () => {
       />
 
       {/* Modal: Registrar / Vincular Cliente (Opcional tras pago) */}
-      <RegisterSaleCustomerModal
+      {customerRegistrationEnabled && <RegisterSaleCustomerModal
         isOpen={!!registerCustomerSale}
         onClose={() => setRegisterCustomerSale(null)}
         saleId={registerCustomerSale?.id || null}
@@ -479,7 +485,7 @@ export const TerminalPage = () => {
         onSuccess={() => {
           loadPendingSales();
         }}
-      />
+      />}
 
       {/* Modal: Ver Detalle de Items de la Venta */}
       <SaleDetailsModal
@@ -517,13 +523,13 @@ export const TerminalPage = () => {
       </ComerziaModal>
 
       {/* Modal: Éxito de Cobro e Impresión de Ticket */}
-      {paidSaleForReceipt && (
+      {receiptPrintingEnabled && paidSaleForReceipt && (
         <ComerziaModal
           isOpen={!!paidSaleForReceipt}
           onClose={() => {
             const sale = paidSaleForReceipt;
             setPaidSaleForReceipt(null);
-            setRegisterCustomerSale(sale);
+            if (customerRegistrationEnabled) setRegisterCustomerSale(sale);
           }}
           title={
             <div className="flex items-center gap-2 text-success">
@@ -565,7 +571,7 @@ export const TerminalPage = () => {
                 onClick={() => {
                   const sale = paidSaleForReceipt;
                   setPaidSaleForReceipt(null);
-                  setRegisterCustomerSale(sale);
+                  if (customerRegistrationEnabled) setRegisterCustomerSale(sale);
                 }}
                 responsive={true}
                 className="w-full sm:w-1/2"
@@ -576,7 +582,7 @@ export const TerminalPage = () => {
                   await printReceiptJob(paidSaleForReceipt);
                   const sale = paidSaleForReceipt;
                   setPaidSaleForReceipt(null);
-                  setRegisterCustomerSale(sale);
+                  if (customerRegistrationEnabled) setRegisterCustomerSale(sale);
                 }}
                 responsive={true}
                 className="w-full sm:w-1/2"

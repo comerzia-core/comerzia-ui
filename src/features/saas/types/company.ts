@@ -19,6 +19,8 @@ export interface SaasCompanySettingsResponse {
     ticketFooterText: string;
     defaultMinStock?: number | null;
     defaultIdealStock?: number | null;
+    saleCustomerRegistrationEnabled?: boolean;
+    receiptPrintingEnabled?: boolean;
 }
 
 export interface SaasSubscriptionResponse {

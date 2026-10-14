@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "test:checkout": "playwright test --config playwright.checkout.config.mjs",
     "test:barcodes": "node --test tests/barcodeScanning.test.mjs",
     "test:camera": "playwright test --config playwright.camera.config.mjs",
     "test:labels": "node --test tests/labelRolls.test.mjs",

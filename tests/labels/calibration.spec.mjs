@@ -55,13 +55,13 @@ async function mockCalibration(page, { supported = true, busy = false } = {}) {
 
 test('calibration is manual, sends the selected roll once and requires physical FEED confirmation', async ({ page }) => {
   const api = await mockCalibration(page); await page.goto('/tests/labels/index.html?view=calibration');
-  const dialog = calibrationDialog(page), calibrate = dialog.getByRole('button', { name: 'Calibrar rollo', exact: true });
+  const dialog = calibrationDialog(page), calibrate = dialog.getByRole('button', { name: 'Calibrar', exact: true });
   await expect(calibrate).toBeEnabled(); expect(api.requests).toHaveLength(0);
   await dialog.getByRole('combobox').selectOption('small');
   await expect(dialog.getByText('3 columnas', { exact: false })).toBeVisible(); expect(api.requests).toHaveLength(0);
   await calibrate.click(); await expect(calibrate).toBeDisabled(); expect(api.requests).toEqual([{ rollSizeId: 'small' }]);
   api.complete();
-  const confirm = dialog.getByRole('button', { name: 'Confirmar avance correcto', exact: true });
+  const confirm = dialog.getByRole('button', { name: 'Confirmar', exact: true });
   await expect(confirm).toBeDisabled(); expect(api.confirmations).toHaveLength(0);
   await feedToggle(page).click(); await expect(confirm).toBeEnabled(); await confirm.click();
   await expect(dialog.getByText('Avance confirmado. Puedes imprimir con este rollo.')).toBeVisible();
@@ -71,12 +71,12 @@ test('calibration is manual, sends the selected roll once and requires physical 
 test('closing and reopening resumes the existing calibration without moving paper again', async ({ page }) => {
   const api = await mockCalibration(page); await page.goto('/tests/labels/index.html?view=calibration');
   const dialog = calibrationDialog(page);
-  await expect(dialog.getByRole('button', { name: 'Calibrar rollo', exact: true })).toBeEnabled();
+  await expect(dialog.getByRole('button', { name: 'Calibrar', exact: true })).toBeEnabled();
   await dialog.getByRole('combobox').selectOption('small');
-  await dialog.getByRole('button', { name: 'Calibrar rollo', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Calibrar', exact: true }).click();
   await dialog.getByRole('button', { name: 'Cerrar', exact: true }).click();
   api.complete(); await page.getByRole('button', { name: 'Reabrir calibración' }).click();
-  await expect(calibrationDialog(page).getByRole('button', { name: 'Confirmar avance correcto', exact: true })).toBeDisabled();
+  await expect(calibrationDialog(page).getByRole('button', { name: 'Confirmar', exact: true })).toBeDisabled();
   await expect(calibrationDialog(page).getByRole('combobox')).toHaveValue('small');
   expect(api.requests).toHaveLength(1); expect(api.confirmations).toHaveLength(0);
 });
@@ -84,20 +84,20 @@ test('closing and reopening resumes the existing calibration without moving pape
 test('an old agent disables calibration and an occupied queue shows the backend explanation', async ({ page }) => {
   const old = await mockCalibration(page, { supported: false }); await page.goto('/tests/labels/index.html?view=calibration');
   await expect(page.getByText('Actualiza Comerzia Print Agent', { exact: false })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Calibrar rollo', exact: true })).toBeDisabled(); expect(old.requests).toHaveLength(0);
+  await expect(page.getByRole('button', { name: 'Calibrar', exact: true })).toBeDisabled(); expect(old.requests).toHaveLength(0);
   await page.unroute('**/api/**');
   const busy = await mockCalibration(page, { busy: true }); await page.reload();
-  await expect(page.getByRole('button', { name: 'Calibrar rollo', exact: true })).toBeEnabled();
-  await page.getByRole('button', { name: 'Calibrar rollo', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Calibrar', exact: true })).toBeEnabled();
+  await page.getByRole('button', { name: 'Calibrar', exact: true }).click();
   await expect(page.getByRole('alert')).toHaveText('La impresora tiene trabajos pendientes o en curso.');
   expect(busy.confirmations).toHaveLength(0);
 });
 
 test('an unconfirmed completed calibration allows a different roll only through a new manual request', async ({ page }) => {
   const api = await mockCalibration(page); await page.goto('/tests/labels/index.html?view=calibration');
-  const dialog = calibrationDialog(page), calibrate = dialog.getByRole('button', { name: 'Calibrar rollo', exact: true });
+  const dialog = calibrationDialog(page), calibrate = dialog.getByRole('button', { name: 'Calibrar', exact: true });
   await expect(calibrate).toBeEnabled(); await calibrate.click(); api.complete();
-  const confirm = dialog.getByRole('button', { name: 'Confirmar avance correcto', exact: true });
+  const confirm = dialog.getByRole('button', { name: 'Confirmar', exact: true });
   await expect(confirm).toBeDisabled(); await feedToggle(page).click(); await expect(confirm).toBeEnabled();
   await dialog.getByRole('combobox').selectOption('small');
   await expect(confirm).toHaveCount(0); expect(api.requests).toEqual([{ rollSizeId: 'single' }]);
@@ -108,7 +108,7 @@ test('an unconfirmed completed calibration allows a different roll only through 
 
 test('a failed calibration is visible and is never confirmed or retried automatically', async ({ page }) => {
   const api = await mockCalibration(page); await page.goto('/tests/labels/index.html?view=calibration');
-  const calibrate = page.getByRole('button', { name: 'Calibrar rollo', exact: true });
+  const calibrate = page.getByRole('button', { name: 'Calibrar', exact: true });
   await expect(calibrate).toBeEnabled(); await calibrate.click(); api.fail();
   await expect(page.getByRole('alert')).toHaveText('Las medidas detectadas no coinciden con el rollo.');
   await expect(calibrate).toBeEnabled(); expect(api.requests).toHaveLength(1); expect(api.confirmations).toHaveLength(0);
@@ -119,11 +119,11 @@ test('catalog blocks a different roll and opens calibration with the selected fo
   const print = page.getByRole('button', { name: 'Imprimir', exact: true });
   await expect(print).toBeEnabled(); await page.getByRole('combobox').nth(1).selectOption('small');
   await expect(print).toBeDisabled(); await expect(page.getByText('El rollo no coincide', { exact: false })).toBeVisible();
-  await page.getByRole('button', { name: 'Cambiar rollo / Calibrar', exact: true }).click();
+  await page.getByRole('button', { name: 'Calibrar', exact: true }).click();
   await expect(calibrationDialog(page).getByRole('combobox')).toHaveValue('small');
-  const calibrate = calibrationDialog(page).getByRole('button', { name: 'Calibrar rollo', exact: true });
+  const calibrate = calibrationDialog(page).getByRole('button', { name: 'Calibrar', exact: true });
   await expect(calibrate).toBeEnabled(); await calibrate.click(); api.complete();
-  const confirm = calibrationDialog(page).getByRole('button', { name: 'Confirmar avance correcto', exact: true });
+  const confirm = calibrationDialog(page).getByRole('button', { name: 'Confirmar', exact: true });
   await expect(confirm).toBeDisabled(); await feedToggle(page).click(); await confirm.click();
   await expect(calibrationDialog(page).getByText('Avance confirmado. Puedes imprimir con este rollo.')).toBeVisible();
   await calibrationDialog(page).getByRole('button', { name: 'Cerrar', exact: true }).click();

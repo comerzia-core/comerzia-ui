@@ -35,6 +35,8 @@ export interface CompanySettings {
     companyLogoUrl?: string | null;
     ticketLogoUrl?: string | null;
     companyQrUrl?: string | null;
+    saleCustomerRegistrationEnabled?: boolean;
+    receiptPrintingEnabled?: boolean;
 }
 
 export interface UserProfile {

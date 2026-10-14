@@ -27,6 +27,8 @@ export interface TenantCompanyProfileResponse {
   ticketFooterText: string;
   defaultMinStock?: number | null;
   defaultIdealStock?: number | null;
+  saleCustomerRegistrationEnabled?: boolean;
+  receiptPrintingEnabled?: boolean;
 
   // Subscription
   currentSubscription: TenantSubscriptionResponse;
@@ -43,4 +45,6 @@ export interface UpdateCompanySettingsRequest {
   ticketFooterText: string;
   defaultMinStock?: number | null;
   defaultIdealStock?: number | null;
+  saleCustomerRegistrationEnabled?: boolean;
+  receiptPrintingEnabled?: boolean;
 }

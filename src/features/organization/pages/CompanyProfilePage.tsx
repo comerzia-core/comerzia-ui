@@ -5,6 +5,7 @@ import { uploadFile } from '../../shared/services/storageService';
 import { STORAGE_FOLDERS } from '../../../config/storage';
 import { useToast } from '../../../context/ToastContext';
 import { formatDateForUser } from '../../../utils/date';
+import { ComerziaSwitch } from '../../../components/ui/ComerziaSwitch';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
 import { ComerziaSingleImageUploader, type SingleImageValue } from '../../../components/ui/ComerziaSingleImageUploader';
 import { BtnSave } from '../../../components/ui/CrudButtons';
@@ -37,7 +38,9 @@ export const CompanyProfilePage = () => {
     taxPercentage: 0,
     ticketFooterText: '',
     defaultMinStock: 0,
-    defaultIdealStock: 0
+    defaultIdealStock: 0,
+    saleCustomerRegistrationEnabled: true,
+    receiptPrintingEnabled: true
   });
 
   const loadProfile = async () => {
@@ -62,7 +65,9 @@ export const CompanyProfilePage = () => {
         taxPercentage: data.taxPercentage || 0,
         ticketFooterText: data.ticketFooterText || '',
         defaultMinStock: data.defaultMinStock ?? 0,
-        defaultIdealStock: data.defaultIdealStock ?? 0
+        defaultIdealStock: data.defaultIdealStock ?? 0,
+        saleCustomerRegistrationEnabled: data.saleCustomerRegistrationEnabled ?? true,
+        receiptPrintingEnabled: data.receiptPrintingEnabled ?? true
       });
     } catch (error) {
       console.error('Error loading company profile:', error);
@@ -338,6 +343,25 @@ export const CompanyProfilePage = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 mb-6">
                 
+                <div className="md:col-span-2 space-y-3 mb-3">
+                  <div className="flex items-center justify-between gap-4 rounded-xl border border-base-200 p-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold">Registrar cliente al cobrar</p>
+                      <p className="text-xs text-base-content/60">Mostrar el registro de cliente después del pago.</p>
+                    </div>
+                    <ComerziaSwitch checked={formData.saleCustomerRegistrationEnabled ?? true} disabled={isSaving}
+                      onChange={() => setFormData(prev => ({ ...prev, saleCustomerRegistrationEnabled: !prev.saleCustomerRegistrationEnabled }))} />
+                  </div>
+                  <div className="flex items-center justify-between gap-4 rounded-xl border border-base-200 p-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold">Imprimir factura / ticket al cobrar</p>
+                      <p className="text-xs text-base-content/60">Mostrar la impresión y el estado de la tickera.</p>
+                    </div>
+                    <ComerziaSwitch checked={formData.receiptPrintingEnabled ?? true} disabled={isSaving}
+                      onChange={() => setFormData(prev => ({ ...prev, receiptPrintingEnabled: !prev.receiptPrintingEnabled }))} />
+                  </div>
+                </div>
+
                 {/* Zona Horaria y Moneda (Solo lectura) */}
                 <ComerziaInput 
                   label="Zona Horaria (Predeterminada)" 
