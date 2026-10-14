@@ -337,7 +337,7 @@ export const TerminalPage = () => {
             return (
               <div
                 key={sale.id}
-                className="bg-base-100 rounded-2xl p-4 sm:p-5 shadow-xs border border-base-200 hover:border-primary/40 transition-all flex flex-col justify-between gap-3.5 group"
+                className="bg-base-100 rounded-2xl p-4 sm:p-5 shadow-xs border-2 border-primary hover:shadow-md transition-all flex flex-col justify-between gap-3.5 group"
               >
                 {/* Card Top Header */}
                 <div className="flex justify-between items-start gap-2 border-b border-base-200 pb-2.5">

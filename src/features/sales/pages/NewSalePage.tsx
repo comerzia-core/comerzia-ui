@@ -331,6 +331,7 @@ export const NewSalePage = () => {
   const [selectedBranchId, setSelectedBranchId] = useState<string>('');
   const [isLoadingInit, setIsLoadingInit] = useState(true);
   const [initError, setInitError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
 
@@ -566,11 +567,14 @@ export const NewSalePage = () => {
   };
 
   const handleSendToRegister = async () => {
+    if (isSubmitting) return;
+
     if (items.length === 0) {
       toastError('El carrito está vacío. Agregue al menos un producto.');
       return;
     }
 
+    setIsSubmitting(true);
     try {
       const payload = {
         expectedTotalAmount: roundToTwo(getTotal()),
@@ -595,6 +599,8 @@ export const NewSalePage = () => {
     } catch (err: any) {
       const msg = mapSaleError(err, !!editSale);
       toastError(msg);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -1018,7 +1024,8 @@ export const NewSalePage = () => {
             label={editSale ? 'Actualizar Venta' : 'Enviar a Caja'}
             icon={<ArrowRight size={24} />}
             className="shadow-xl shadow-primary/20 text-base sm:text-lg font-bold py-4 px-8 w-full md:w-auto h-auto rounded-2xl"
-            disabled={items.length === 0}
+            disabled={items.length === 0 || isSubmitting}
+            isLoading={isSubmitting}
             onClick={handleSendToRegister}
           />
         </div>
