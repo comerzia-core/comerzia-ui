@@ -1,3 +1,4 @@
+import { useRealtimeRefresh } from '../../realtime/hooks/useRealtimeRefresh';
 import { useState, useEffect, useRef } from 'react';
 import { Search, Package } from 'lucide-react';
 import { salesService } from '../../sales/services/salesService';
@@ -27,6 +28,15 @@ export const CommercialProductSearchBar = ({
   autoFocus = true,
   className = ''
 }: CommercialProductSearchBarProps) => {
+  useRealtimeRefresh(['PRODUCT', 'STOCK', 'CATEGORY'], async () => {
+    if (!isOpen || term.trim().length < 3) return;
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    const results = await salesService.getSuggestions(term.trim(), controller.signal, branchId);
+    if (!controller.signal.aborted) setSuggestions(results);
+  });
+
   const [term, setTerm] = useState('');
   const [suggestions, setSuggestions] = useState<SalesCatalogSuggestionResponse[]>([]);
   const [isFetchingSuggestions, setIsFetchingSuggestions] = useState(false);

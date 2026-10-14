@@ -1,3 +1,4 @@
+import { RealtimeStatusIndicator } from '../../features/realtime/components/RealtimeStatusIndicator';
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../stores/useAuthStore";
@@ -89,6 +90,7 @@ export const Header = () => {
 
         {/* DERECHA */}
         <div className="flex items-center gap-2 shrink-0">
+          <RealtimeStatusIndicator />
 
           {/* TELÓN DE FONDO (BACKDROP OSCURO Y DIFUMINADO) EN MOBILE */}
           {isDropdownOpen && (

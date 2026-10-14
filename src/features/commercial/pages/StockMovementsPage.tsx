@@ -1,3 +1,5 @@
+import { isTransientRefreshFailure } from '../../realtime/utils/refreshErrors';
+import { useRealtimeRefresh } from '../../realtime/hooks/useRealtimeRefresh';
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { commercialService } from '../services/commercialService';
@@ -83,6 +85,10 @@ const CurrencyCell = ({ amount, currencyCode = 'USD' }: { amount: number, curren
 };
 
 export const StockMovementsPage = () => {
+  useRealtimeRefresh(['STOCK', 'PRODUCT'], async () => {
+    await Promise.all([loadPendingCostEntries(pendingCostPage, pendingCostSize, true), loadKardex(true)]);
+  });
+
   const [searchParams] = useSearchParams();
   const [productData, setProductData] = useState<ProductVariantIdentityResponse | null>(null);
   const [isLoadingScan, setIsLoadingScan] = useState(false);
@@ -201,19 +207,20 @@ export const StockMovementsPage = () => {
     }
   }, [hasActiveBranchesPermission]);
 
-  const loadPendingCostEntries = async (targetPage = pendingCostPage, targetSize = pendingCostSize) => {
+  const loadPendingCostEntries = async (targetPage = pendingCostPage, targetSize = pendingCostSize, background = false) => {
     if (!hasCostPermission) return;
-    setIsLoadingPendingCost(true);
+    if (!background) setIsLoadingPendingCost(true);
     try {
       const res = await commercialService.getPendingCostEntries(targetPage, targetSize);
       setPendingCostData(res.content || []);
       setPendingCostTotalElements(res.totalElements || 0);
       setPendingCostTotalPages(res.totalPages || 0);
     } catch (e) {
+      const preserveData = background && isTransientRefreshFailure(e);
       console.error('Error loading pending cost entries:', e);
-      setPendingCostData([]);
+      if (!preserveData) setPendingCostData([]);
     } finally {
-      setIsLoadingPendingCost(false);
+      if (!background) setIsLoadingPendingCost(false);
     }
   };
 
@@ -231,9 +238,9 @@ export const StockMovementsPage = () => {
     }
   }, [productData?.variantId, activeTab, page, size, filterStockId, kardexBranchId]);
 
-  const loadKardex = async () => {
+  const loadKardex = async (background = false) => {
     if (!scannedVariant) return;
-    setIsLoadingKardex(true);
+    if (!background) setIsLoadingKardex(true);
     try {
       if (activeTab === 'entries') {
         const res = await commercialService.getStockEntries(
@@ -259,10 +266,11 @@ export const StockMovementsPage = () => {
         }
       }
     } catch (e) {
+      const preserveData = background && isTransientRefreshFailure(e);
       console.error(e);
-      setKardexData([]);
+      if (!preserveData) setKardexData([]);
     } finally {
-      setIsLoadingKardex(false);
+      if (!background) setIsLoadingKardex(false);
     }
   };
 

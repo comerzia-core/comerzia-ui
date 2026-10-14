@@ -1,3 +1,5 @@
+import { isTransientRefreshFailure } from '../../realtime/utils/refreshErrors';
+import { useRealtimeRefresh } from '../../realtime/hooks/useRealtimeRefresh';
 import React, { useState, useEffect } from 'react';
 import { commercialService } from '../services/commercialService';
 import { ComerziaTable, type Column, type TablePaginationConfig } from '../../../components/ui/ComerziaTable';
@@ -40,6 +42,10 @@ export const ProductTable = ({
   brandId, 
   refreshKey = 0 
 }: Props) => {
+  useRealtimeRefresh(['PRODUCT', 'CATEGORY'], async () => {
+    await loadData(true);
+  });
+
   const [data, setData] = useState<ProductResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [page, setPage] = useState(0);
@@ -107,8 +113,8 @@ export const ProductTable = ({
     loadData();
   }, [categoryId, segmentId, brandId, searchTerm, page, size, refreshKey, canManage]);
 
-  const loadData = async () => {
-    setIsLoading(true);
+  const loadData = async (background = false) => {
+    if (!background) setIsLoading(true);
     try {
       const activeOnly = canManage ? false : undefined;
       const cleanSearch = searchTerm?.trim();
@@ -126,10 +132,11 @@ export const ProductTable = ({
       setData(res.content);
       setTotalElements(res.totalElements);
     } catch (e) {
+      const preserveData = background && isTransientRefreshFailure(e);
       console.error(e);
-      setData([]);
+      if (!preserveData) setData([]);
     } finally {
-      setIsLoading(false);
+      if (!background) setIsLoading(false);
     }
   };
 

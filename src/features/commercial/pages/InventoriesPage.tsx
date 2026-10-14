@@ -1,3 +1,5 @@
+import { isTransientRefreshFailure } from '../../realtime/utils/refreshErrors';
+import { useRealtimeRefresh } from '../../realtime/hooks/useRealtimeRefresh';
 import { useState, useEffect } from 'react';
 import { commercialService } from '../services/commercialService';
 import { useAuthStore } from '../../../stores/useAuthStore';
@@ -11,6 +13,10 @@ import { formatDateForUser } from '../../../utils/date';
 import { ChevronLeft, ChevronRight, ClipboardList, User } from 'lucide-react';
 
 export const InventoriesPage = () => {
+  useRealtimeRefresh(['STOCK'], async () => {
+    await loadData(true);
+  });
+
   const { userProfile } = useAuthStore();
   const roles = userProfile?.roles || [];
 
@@ -35,8 +41,8 @@ export const InventoriesPage = () => {
     loadData();
   }, [page, size, viewMode]);
 
-  const loadData = async () => {
-    setIsLoading(true);
+  const loadData = async (background = false) => {
+    if (!background) setIsLoading(true);
     try {
       if (viewMode === 'admin') {
         const res = await commercialService.getInventories(page, size);
@@ -48,10 +54,11 @@ export const InventoriesPage = () => {
         setTotalElements(res.totalElements);
       }
     } catch (e) {
+      const preserveData = background && isTransientRefreshFailure(e);
       console.error(e);
-      setData([]);
+      if (!preserveData) setData([]);
     } finally {
-      setIsLoading(false);
+      if (!background) setIsLoading(false);
     }
   };
 

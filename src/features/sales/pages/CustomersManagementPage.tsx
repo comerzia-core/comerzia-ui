@@ -1,3 +1,5 @@
+import { isTransientRefreshFailure } from '../../realtime/utils/refreshErrors';
+import { useRealtimeRefresh } from '../../realtime/hooks/useRealtimeRefresh';
 import { useState, useEffect, useRef } from 'react';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { salesService } from '../services/salesService';
@@ -14,6 +16,15 @@ import { SaleDetailsModal } from '../components/SaleDetailsModal';
 import { Users, Mail, Phone, ShieldAlert, DollarSign, History, Search, Eye, Edit, Trash2, RotateCcw, ChevronRight } from 'lucide-react';
 
 export const CustomersManagementPage = () => {
+  useRealtimeRefresh(['CUSTOMER', 'SALE'], async () => {
+    if (!isFilteredByPhone) await loadCustomers(true);
+    else if (customers[0]?.id) {
+      const customer = await salesService.getCustomerById(customers[0].id);
+      setCustomers([customer]);
+    }
+    if (selectedCustomer && canReadSaleHistory) await loadSalesHistory(selectedCustomer.id, historyPage, true);
+  });
+
   const { userProfile, hasPermission, hasRole } = useAuthStore();
   const { success: toastSuccess, error: toastError, warning: toastWarning } = useToast();
 
@@ -85,16 +96,17 @@ export const CustomersManagementPage = () => {
     }
   }, [page, size, isFilteredByPhone]);
 
-  const loadCustomers = async () => {
-    setIsLoading(true);
+  const loadCustomers = async (background = false) => {
+    if (!background) setIsLoading(true);
     try {
       const res = await salesService.getCustomers(page, size);
       setCustomers(res.content || []);
       setTotalElements(res.totalElements || 0);
     } catch (e) {
-      toastError("Error al cargar la lista de clientes.");
+      const preserveData = background && isTransientRefreshFailure(e);
+      if (!preserveData) toastError("Error al cargar la lista de clientes.");
     } finally {
-      setIsLoading(false);
+      if (!background) setIsLoading(false);
     }
   };
 
@@ -137,17 +149,18 @@ export const CustomersManagementPage = () => {
   };
 
   // Cargar Historial de Compras del Cliente
-  const loadSalesHistory = async (customerId: string, pageNum = 0) => {
+  const loadSalesHistory = async (customerId: string, pageNum = 0, background = false) => {
     if (!canReadSaleHistory) return;
-    setIsLoadingHistory(true);
+    if (!background) setIsLoadingHistory(true);
     try {
       const res = await salesService.getCustomerSalesHistory(customerId, pageNum, 5);
       setSalesHistory(res.content || []);
       setHistoryTotal(res.totalElements || 0);
     } catch (e) {
-      toastError("Error al recuperar el historial de ventas del cliente.");
+      const preserveData = background && isTransientRefreshFailure(e);
+      if (!preserveData) toastError("Error al recuperar el historial de ventas del cliente.");
     } finally {
-      setIsLoadingHistory(false);
+      if (!background) setIsLoadingHistory(false);
     }
   };
 

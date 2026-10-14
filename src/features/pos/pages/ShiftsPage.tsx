@@ -1,3 +1,5 @@
+import { isTransientRefreshFailure } from '../../realtime/utils/refreshErrors';
+import { useRealtimeRefresh } from '../../realtime/hooks/useRealtimeRefresh';
 // src/features/pos/pages/ShiftsPage.tsx
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '../../../stores/useAuthStore';
@@ -11,6 +13,10 @@ import { useToast } from '../../../context/ToastContext';
 import { formatDateForUser } from '../../../utils/date';
 
 export const ShiftsPage = () => {
+  useRealtimeRefresh(['POS'], async () => {
+    await loadShifts(true);
+  });
+
   const { userProfile } = useAuthStore();
   const isCashier = userProfile?.roles.includes('CASHIER');
   const { error: toastError } = useToast();
@@ -31,8 +37,8 @@ export const ShiftsPage = () => {
     loadShifts();
   }, []);
 
-  const loadShifts = async () => {
-    setIsLoading(true);
+  const loadShifts = async (background = false) => {
+    if (!background) setIsLoading(true);
     try {
       if (isOwner || isManager) {
         const data = await posService.getAllActiveShiftSummaries();
@@ -42,15 +48,17 @@ export const ShiftsPage = () => {
           const data = await posService.getMyActiveShiftSummary();
           setShifts(data ? [data] : []);
         } catch (err: any) {
+      const preserveData = background && isTransientRefreshFailure(err);
           // Silenciosamente capturamos sin toast info
-          setShifts([]);
+          if (!preserveData) setShifts([]);
         }
       }
     } catch (error) {
+      const preserveData = background && isTransientRefreshFailure(error);
       console.error('Error loading active shifts:', error);
-      toastError('No se pudieron cargar los turnos activos.');
+      if (!preserveData) toastError('No se pudieron cargar los turnos activos.');
     } finally {
-      setIsLoading(false);
+      if (!background) setIsLoading(false);
     }
   };
 

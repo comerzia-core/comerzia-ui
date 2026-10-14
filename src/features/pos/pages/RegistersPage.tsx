@@ -1,3 +1,5 @@
+import { isTransientRefreshFailure } from '../../realtime/utils/refreshErrors';
+import { useRealtimeRefresh } from '../../realtime/hooks/useRealtimeRefresh';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { posService } from '../services/posService';
@@ -16,6 +18,10 @@ import { ComerziaSelect } from '../../../components/ui/ComerziaSelect';
 import { ComerziaContextMenu, ContextMenuItem } from '../../../components/ui/ComerziaContextMenu';
 
 export const RegistersPage = () => {
+  useRealtimeRefresh(['POS'], async () => {
+    await loadRegisters(true);
+  });
+
   const navigate = useNavigate();
   const { error: toastError } = useToast();
   const { can } = usePermission();
@@ -62,8 +68,8 @@ export const RegistersPage = () => {
     }
   };
 
-  const loadRegisters = async () => {
-    setIsLoading(true);
+  const loadRegisters = async (background = false) => {
+    if (!background) setIsLoading(true);
     try {
       const data = await posService.getAllCashRegisters(0, 100, ['b.name,asc', 'c.name,asc']);
       const allRegisters = data.content || [];
@@ -72,10 +78,11 @@ export const RegistersPage = () => {
         : allRegisters;
       setRegisters(filtered);
     } catch (error) {
+      const preserveData = background && isTransientRefreshFailure(error);
       console.error('Error loading cash registers:', error);
-      toastError('No se pudieron cargar las cajas registradoras.');
+      if (!preserveData) toastError('No se pudieron cargar las cajas registradoras.');
     } finally {
-      setIsLoading(false);
+      if (!background) setIsLoading(false);
     }
   };
 

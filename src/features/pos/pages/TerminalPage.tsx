@@ -1,3 +1,5 @@
+import { isTransientRefreshFailure } from '../../realtime/utils/refreshErrors';
+import { useRealtimeRefresh } from '../../realtime/hooks/useRealtimeRefresh';
 import { useEffect, useState } from 'react';
 import { posService } from '../services/posService';
 import { salesService } from '../../sales/services/salesService';
@@ -36,6 +38,10 @@ import { hardwareService } from '../services/hardwareService';
 import { HwPrintJobTypeCode } from '../types/hardware';
 
 export const TerminalPage = () => {
+  useRealtimeRefresh(['SALE', 'POS'], async () => {
+    if (canAccessTerminal) await Promise.all([loadSummary(true), loadPendingSales(true)]);
+  });
+
   const [summary, setSummary] = useState<ShiftSummaryResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -115,20 +121,21 @@ export const TerminalPage = () => {
     }
   };
 
-  const loadSummary = async () => {
+  const loadSummary = async (background = false) => {
     // Si no es cajero, no consultamos turno activo ni mostramos arqueo
     if (!isCashierRole) {
       setSummary(null);
       setError(null);
-      setIsLoading(false);
+      if (!background) setIsLoading(false);
       return;
     }
 
-    setIsLoading(true);
-    setError(null);
+    if (!background) setIsLoading(true);
+    if (!background) setError(null);
     try {
       const data = await posService.getMyActiveShiftSummary();
       setSummary(data);
+      setError(null);
     } catch (err: any) {
       console.error("Error al cargar resumen del turno:", err);
       if (
@@ -139,31 +146,32 @@ export const TerminalPage = () => {
         err.response?.data?.message?.includes("active shift")
       ) {
         setError("Aún no tienes un turno asignado. Ve a Turnos y Arqueos para abrir tu caja.");
-      } else {
+      } else if (!background || !isTransientRefreshFailure(err)) {
         setError("Ocurrió un error al cargar la terminal.");
       }
     } finally {
-      setIsLoading(false);
+      if (!background) setIsLoading(false);
     }
   };
 
-  const loadPendingSales = async () => {
-    setIsLoadingSales(true);
+  const loadPendingSales = async (background = false) => {
+    if (!background) setIsLoadingSales(true);
     try {
       const data = await salesService.getPendingSales();
       setPendingSales(data || []);
     } catch (err) {
+      const preserveData = background && isTransientRefreshFailure(err);
       console.error("Error al cargar ventas pendientes:", err);
-      setPendingSales([]);
+      if (!preserveData) setPendingSales([]);
     } finally {
-      setIsLoadingSales(false);
+      if (!background) setIsLoadingSales(false);
     }
   };
 
   const handlePaymentSuccess = (_paidSaleId: string, _paidSaleNumber?: string) => {
     const sale = selectedSaleToPay;
-    loadSummary();
-    loadPendingSales();
+    loadSummary(true);
+    loadPendingSales(true);
     if (sale) {
       if (!receiptPrintingEnabled) {
         if (customerRegistrationEnabled) setRegisterCustomerSale(sale);
@@ -184,7 +192,7 @@ export const TerminalPage = () => {
       await salesService.cancelPendingSale(cancelingSale.id);
       toastSuccess(`Venta ${cancelingSale.saleNumber ? `#${cancelingSale.saleNumber}` : ''} cancelada correctamente.`);
       setCancelingSale(null);
-      loadPendingSales();
+      loadPendingSales(true);
     } catch (err: any) {
       const msg = err.response?.data?.message || "Error al cancelar la venta pendiente.";
       toastError(msg);
@@ -343,7 +351,7 @@ export const TerminalPage = () => {
             return (
               <div
                 key={sale.id}
-                className="bg-base-100 rounded-2xl p-4 sm:p-5 shadow-xs border-2 border-primary hover:shadow-md transition-all flex flex-col justify-between gap-3.5 group"
+                className="realtime-sale-enter bg-base-100 rounded-2xl p-4 sm:p-5 shadow-xs border-2 border-primary hover:shadow-md transition-shadow flex flex-col justify-between gap-3.5 group"
               >
                 {/* Card Top Header */}
                 <div className="flex justify-between items-start gap-2 border-b border-base-200 pb-2.5">
@@ -483,7 +491,7 @@ export const TerminalPage = () => {
         saleId={registerCustomerSale?.id || null}
         saleNumber={registerCustomerSale?.saleNumber}
         onSuccess={() => {
-          loadPendingSales();
+          loadPendingSales(true);
         }}
       />}
 

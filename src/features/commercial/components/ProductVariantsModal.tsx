@@ -1,3 +1,5 @@
+import { isTransientRefreshFailure } from '../../realtime/utils/refreshErrors';
+import { useRealtimeRefresh } from '../../realtime/hooks/useRealtimeRefresh';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ComerziaModal } from '../../../components/ui/ComerziaModal';
@@ -23,6 +25,10 @@ interface Props {
 }
 
 export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }: Props) => {
+  useRealtimeRefresh(['PRODUCT'], async () => {
+    if (isOpen && productId) await loadData(true);
+  });
+
   const navigate = useNavigate();
   const [data, setData] = useState<ProductVariantResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -55,18 +61,19 @@ export const ProductVariantsModal = ({ isOpen, onClose, productId, productName }
     }
   }, [isOpen, productId, page, size, canManage]);
 
-  const loadData = async () => {
-    setIsLoading(true);
+  const loadData = async (background = false) => {
+    if (!background) setIsLoading(true);
     try {
       const activeOnly = canManage ? false : undefined;
       const res = await commercialService.getVariantsByProduct(productId, page, size, activeOnly);
       setData(res.content);
       setTotalElements(res.totalElements);
     } catch (e) {
+      const preserveData = background && isTransientRefreshFailure(e);
       console.error(e);
-      setData([]);
+      if (!preserveData) setData([]);
     } finally {
-      setIsLoading(false);
+      if (!background) setIsLoading(false);
     }
   };
 

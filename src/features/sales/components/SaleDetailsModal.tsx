@@ -1,3 +1,4 @@
+import { useRealtimeRefresh } from '../../realtime/hooks/useRealtimeRefresh';
 import { useState, useEffect } from 'react';
 import { ComerziaModal } from '../../../components/ui/ComerziaModal';
 import { ComerziaTable, type Column } from '../../../components/ui/ComerziaTable';
@@ -17,6 +18,10 @@ interface Props {
 }
 
 export const SaleDetailsModal = ({ isOpen, onClose, sale }: Props) => {
+  useRealtimeRefresh(['SALE'], async () => {
+    if (isOpen && sale?.id) setDetails(await salesService.getSaleDetails(sale.id));
+  });
+
   const { userProfile, hasRole } = useAuthStore();
   const isOwner = hasRole('OWNER');
   const currencyCode = userProfile?.companySettings?.currencyCode || 'USD';

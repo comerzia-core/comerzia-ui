@@ -1,3 +1,5 @@
+import { isTransientRefreshFailure } from '../../realtime/utils/refreshErrors';
+import { useRealtimeRefresh } from '../../realtime/hooks/useRealtimeRefresh';
 import { useState, useEffect } from 'react';
 import { ComerziaTable, type Column, type TablePaginationConfig } from '../../../components/ui/ComerziaTable';
 import { BtnCreate } from '../../../components/ui/CrudButtons';
@@ -30,6 +32,10 @@ import {
 import { formatDateForUser } from '../../../utils/date';
 
 export const MovementsPage = () => {
+  useRealtimeRefresh(['POS', 'SALE'], async () => {
+    await Promise.all([loadMovements(true), loadActiveShift()]);
+  });
+
   const { error: toastError, success: toastSuccess } = useToast();
 
   const [movements, setMovements] = useState<MovementResponse[]>([]);
@@ -110,18 +116,19 @@ export const MovementsPage = () => {
     }
   };
 
-  const loadMovements = async () => {
-    setIsLoading(true);
+  const loadMovements = async (background = false) => {
+    if (!background) setIsLoading(true);
     try {
       const data = await posService.getMovements(page, size, undefined, true);
       setMovements(data.content || []);
       setTotalElements(data.totalElements || 0);
       setTotalPages(data.totalPages || 0);
     } catch (error) {
+      const preserveData = background && isTransientRefreshFailure(error);
       console.error('Error loading movements:', error);
-      toastError('No se pudieron cargar los movimientos.');
+      if (!preserveData) toastError('No se pudieron cargar los movimientos.');
     } finally {
-      setIsLoading(false);
+      if (!background) setIsLoading(false);
     }
   };
 

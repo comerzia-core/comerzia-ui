@@ -1,3 +1,5 @@
+import { isTransientRefreshFailure } from '../../realtime/utils/refreshErrors';
+import { useRealtimeRefresh } from '../../realtime/hooks/useRealtimeRefresh';
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { commercialService } from '../services/commercialService';
@@ -15,6 +17,13 @@ import { ComerziaSelect } from '../../../components/ui/ComerziaSelect';
 import { formatDateForUser } from '../../../utils/date';
 
 export const PricesPage = () => {
+  useRealtimeRefresh(['PRODUCT'], async () => {
+    if (productData) {
+      setProductData(await commercialService.getPricesByBarcode(productData.barCode));
+      await loadHistoryAndTrend(true);
+    }
+  });
+
   const [searchParams] = useSearchParams();
   const [productData, setProductData] = useState<VariantWithPricesResponse | null>(null);
   const [isLoadingScan, setIsLoadingScan] = useState(false);
@@ -69,26 +78,28 @@ export const PricesPage = () => {
     }
   }, [searchParams, executeScan]);
 
-  const loadHistoryAndTrend = useCallback(async () => {
-    if (!productData || !selectedPriceType || !selectedPriceType.priceTypeId) return;
+  const selectedVariantId = productData?.variantId;
+  const loadHistoryAndTrend = useCallback(async (background = false) => {
+    if (!selectedVariantId || !selectedPriceType || !selectedPriceType.priceTypeId) return;
 
     // Cargar Historial
-    setIsLoadingHistory(true);
+    if (!background) setIsLoadingHistory(true);
     try {
-      const res = await commercialService.getSalePriceHistory(productData.variantId, selectedPriceType.priceTypeId, page, size);
+      const res = await commercialService.getSalePriceHistory(selectedVariantId, selectedPriceType.priceTypeId, page, size);
       setHistoryData(res.content);
       setTotalElements(res.totalElements);
     } catch (e) {
+      const preserveData = background && isTransientRefreshFailure(e);
       console.error(e);
-      setHistoryData([]);
+      if (!preserveData) setHistoryData([]);
     } finally {
-      setIsLoadingHistory(false);
+      if (!background) setIsLoadingHistory(false);
     }
 
     // Cargar Tendencia
-    setIsLoadingTrend(true);
+    if (!background) setIsLoadingTrend(true);
     try {
-      const trendRes = await commercialService.getSalePriceTrend(productData.variantId, selectedPriceType.priceTypeId, Number(trendMonths));
+      const trendRes = await commercialService.getSalePriceTrend(selectedVariantId, selectedPriceType.priceTypeId, Number(trendMonths));
 
       setTrendData(trendRes.map(item => {
         const d = new Date(item.validFrom);
@@ -98,12 +109,13 @@ export const PricesPage = () => {
         };
       }));
     } catch (e) {
+      const preserveData = background && isTransientRefreshFailure(e);
       console.error(e);
-      setTrendData([]);
+      if (!preserveData) setTrendData([]);
     } finally {
-      setIsLoadingTrend(false);
+      if (!background) setIsLoadingTrend(false);
     }
-  }, [productData, selectedPriceType, page, size, trendMonths]);
+  }, [selectedVariantId, selectedPriceType, page, size, trendMonths]);
 
   useEffect(() => {
     if (selectedPriceType) {

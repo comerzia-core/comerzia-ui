@@ -1,3 +1,5 @@
+import { isTransientRefreshFailure } from '../../realtime/utils/refreshErrors';
+import { useRealtimeRefresh } from '../../realtime/hooks/useRealtimeRefresh';
 // src/features/commercial/pages/DemandForecastingPage.tsx
 import { useState, useEffect } from 'react';
 import { commercialService } from '../services/commercialService';
@@ -167,6 +169,10 @@ const getSuggestedActionInfo = (action?: string | DemandSuggestedAction) => {
 };
 
 export const DemandForecastingPage = () => {
+  useRealtimeRefresh(['DASHBOARD'], async () => {
+    if (isBranchesInitialized) await Promise.all([loadMetrics(true), loadCharts(true), loadReport(page, size, true)]);
+  });
+
   const { error: toastError } = useToast();
   const { userProfile } = useAuthStore();
   const currencyCode = userProfile?.companySettings?.currencyCode || 'USD';
@@ -289,8 +295,8 @@ export const DemandForecastingPage = () => {
   const effectiveSearch = cleanSearch.length >= 3 ? cleanSearch : '';
 
   // 5. Cargar KPIs de demanda
-  const loadMetrics = async () => {
-    setIsLoadingMetrics(true);
+  const loadMetrics = async (background = false) => {
+    if (!background) setIsLoadingMetrics(true);
     try {
       const res = await commercialService.getDemandMetrics({
         branchId: selectedBranchId || undefined,
@@ -301,16 +307,17 @@ export const DemandForecastingPage = () => {
       });
       setMetrics(res);
     } catch (err) {
+      const preserveData = background && isTransientRefreshFailure(err);
       console.error('Error loading demand metrics:', err);
-      setMetrics(null);
+      if (!preserveData) setMetrics(null);
     } finally {
-      setIsLoadingMetrics(false);
+      if (!background) setIsLoadingMetrics(false);
     }
   };
 
   // 6. Cargar Gráficas (Tendencia y Matriz BCG)
-  const loadCharts = async () => {
-    setIsLoadingCharts(true);
+  const loadCharts = async (background = false) => {
+    if (!background) setIsLoadingCharts(true);
     try {
       const res = await commercialService.getDemandCharts({
         branchId: selectedBranchId || undefined,
@@ -321,16 +328,17 @@ export const DemandForecastingPage = () => {
       });
       setChartsData(res);
     } catch (err) {
+      const preserveData = background && isTransientRefreshFailure(err);
       console.error('Error loading demand charts:', err);
-      setChartsData(null);
+      if (!preserveData) setChartsData(null);
     } finally {
-      setIsLoadingCharts(false);
+      if (!background) setIsLoadingCharts(false);
     }
   };
 
   // 7. Cargar Reporte Paginado
-  const loadReport = async (targetPage = page, targetSize = size) => {
-    setIsLoadingReport(true);
+  const loadReport = async (targetPage = page, targetSize = size, background = false) => {
+    if (!background) setIsLoadingReport(true);
     try {
       const res = await commercialService.getDemandReport({
         branchId: selectedBranchId || undefined,
@@ -365,11 +373,12 @@ export const DemandForecastingPage = () => {
       setTotalElements(res.totalElements || 0);
       setTotalPages(res.totalPages || 0);
     } catch (err) {
+      const preserveData = background && isTransientRefreshFailure(err);
       console.error('Error loading demand report:', err);
-      setReportData([]);
-      toastError('No se pudo cargar el reporte de pronóstico.');
+      if (!preserveData) setReportData([]);
+      if (!preserveData) toastError('No se pudo cargar el reporte de pronóstico.');
     } finally {
-      setIsLoadingReport(false);
+      if (!background) setIsLoadingReport(false);
     }
   };
 

@@ -538,3 +538,13 @@
 .animate-toast-out {
   animation: toast-slide-out 0.3s cubic-bezier(0.7, 0, 0.84, 0) forwards;
 }
+/* Solo las tarjetas nuevas entran suavemente; los cambios de importes no reinician la animación. */
+@media (prefers-reduced-motion: no-preference) {
+  .realtime-sale-enter {
+    animation: realtime-sale-enter 180ms ease-out;
+  }
+}
+@keyframes realtime-sale-enter {
+  from { opacity: 0.7; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}

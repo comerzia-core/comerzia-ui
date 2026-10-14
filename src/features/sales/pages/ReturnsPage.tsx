@@ -1,3 +1,4 @@
+import { useRealtimeRefresh } from '../../realtime/hooks/useRealtimeRefresh';
 import { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../../../stores/useAuthStore';
@@ -31,6 +32,16 @@ import {
 } from 'lucide-react';
 
 export const ReturnsPage = () => {
+  useRealtimeRefresh(['SALE'], async () => {
+    if (!activeSale || isSubmitting || showConfirmModal) return;
+    const current = await salesService.getSaleByNumber(activeSale.saleNumber);
+    const details = await salesService.getSaleDetails(current.id);
+    setActiveSale({ ...current, details });
+    const status = getStatusCode(current.saleStatus);
+    if (status !== 602 && status !== 605) {
+      setStatusNotice({ title: 'Venta actualizada', message: 'El estado actual no permite una devolución.', type: 'warning' });
+    }
+  });
   const { saleNumber: routeSaleNumber } = useParams<{ saleNumber?: string }>();
   const [searchParams] = useSearchParams();
 

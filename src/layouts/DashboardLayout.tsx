@@ -1,3 +1,4 @@
+import { useRealtimeConnection } from '../features/realtime/hooks/useRealtimeConnection';
 import { useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
 import { SidebarMenu } from "../components/layout/SidebarMenu";
@@ -5,6 +6,7 @@ import { Header } from "../components/layout/Header";
 import { useAuthStore } from "../stores/useAuthStore"; 
 
 export const DashboardLayout = () => {
+  useRealtimeConnection();
   // 1. Consumimos datos y acciones directamente del Estado Global
   const { menuTree, isSessionReady, initializeSession } = useAuthStore();
 

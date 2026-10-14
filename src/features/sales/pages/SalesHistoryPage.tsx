@@ -1,3 +1,5 @@
+import { isTransientRefreshFailure } from '../../realtime/utils/refreshErrors';
+import { useRealtimeRefresh } from '../../realtime/hooks/useRealtimeRefresh';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../../stores/useAuthStore';
@@ -40,6 +42,10 @@ import { hardwareService } from '../../pos/services/hardwareService';
 import { HwPrintJobTypeCode } from '../../pos/types/hardware';
 
 export const SalesHistoryPage = () => {
+  useRealtimeRefresh(['SALE'], async () => {
+    await loadSales(page, size, appliedFilters, true);
+  });
+
   const navigate = useNavigate();
   const { userProfile, hasPermission, hasRole } = useAuthStore();
   const { success: toastSuccess, error: toastError } = useToast();
@@ -186,19 +192,18 @@ export const SalesHistoryPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, size]);
 
-  const loadSales = async (
-    targetPage = page,
+  const loadSales = async (targetPage = page,
     targetSize = size,
-    activeFilters = appliedFilters
-  ) => {
-    setIsLoading(true);
+    activeFilters = appliedFilters,
+    background = false) => {
+    if (!background) setIsLoading(true);
     const isFiltering = canFilter && activeFilters !== null;
 
     try {
       if (isFiltering) {
         if (activeFilters.startDate && activeFilters.endDate && activeFilters.startDate > activeFilters.endDate) {
           toastError("La fecha 'Desde' no puede ser posterior a la fecha 'Hasta'.");
-          setIsLoading(false);
+          if (!background) setIsLoading(false);
           return;
         }
 
@@ -220,13 +225,14 @@ export const SalesHistoryPage = () => {
         setTotalPages(res.totalPages || 0);
       }
     } catch (e: any) {
+      const preserveData = background && isTransientRefreshFailure(e);
       console.error('Error loading sales:', e);
-      toastError(e.response?.data?.message || "Error al cargar las ventas.");
-      setSales([]);
-      setTotalElements(0);
-      setTotalPages(0);
+      if (!preserveData) toastError(e.response?.data?.message || "Error al cargar las ventas.");
+      if (!preserveData) setSales([]);
+      if (!preserveData) setTotalElements(0);
+      if (!preserveData) setTotalPages(0);
     } finally {
-      setIsLoading(false);
+      if (!background) setIsLoading(false);
     }
   };
 

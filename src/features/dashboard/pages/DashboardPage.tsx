@@ -1,3 +1,5 @@
+import { isTransientRefreshFailure } from '../../realtime/utils/refreshErrors';
+import { useRealtimeRefresh } from '../../realtime/hooks/useRealtimeRefresh';
 // src/features/dashboard/pages/DashboardPage.tsx
 import { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
@@ -150,9 +152,14 @@ export const DashboardPage = () => {
   }, [canReadBranches, hasGlobalBranchPermission]);
 
   // 6. Cargar Resumen Ejecutivo (KPIs, Tendencias y Sucursales) - Solo si tiene COM_DASHBOARD_READ_SUMMARY
-  const loadSummary = async () => {
+  useRealtimeRefresh(['DASHBOARD'], async () => {
+    if (period === 'CUSTOM' && (!startDate || !endDate)) return;
+    await Promise.all([loadSummary(true), loadPersonalStats(), loadSellerRanking(sellerPage, true)]);
+  });
+
+  const loadSummary = async (background = false) => {
     if (!canViewSummary) return;
-    setIsLoadingSummary(true);
+    if (!background) setIsLoadingSummary(true);
     try {
       const res = await dashboardService.getDashboardSummary({
         branchId: selectedBranchId || undefined,
@@ -162,11 +169,12 @@ export const DashboardPage = () => {
       });
       setSummaryData(res);
     } catch (err) {
+      const preserveData = background && isTransientRefreshFailure(err);
       console.error('Error loading dashboard summary:', err);
-      setSummaryData(null);
-      toastError('No se pudo cargar el resumen del dashboard.');
+      if (!preserveData) setSummaryData(null);
+      if (!preserveData) toastError('No se pudo cargar el resumen del dashboard.');
     } finally {
-      setIsLoadingSummary(false);
+      if (!background) setIsLoadingSummary(false);
     }
   };
 
@@ -187,9 +195,9 @@ export const DashboardPage = () => {
   };
 
   // 8. Cargar Leaderboard de Vendedores - Solo si tiene COM_DASHBOARD_READ
-  const loadSellerRanking = async (targetPage = sellerPage) => {
+  const loadSellerRanking = async (targetPage = sellerPage, background = false) => {
     if (!hasDashboardRead) return;
-    setIsLoadingRanking(true);
+    if (!background) setIsLoadingRanking(true);
     try {
       const res = await dashboardService.getSellerRanking({
         branchId: selectedBranchId || undefined,
@@ -204,10 +212,11 @@ export const DashboardPage = () => {
       setSellerTotalElements(res.totalElements || 0);
       setSellerTotalPages(res.totalPages || 0);
     } catch (err) {
+      const preserveData = background && isTransientRefreshFailure(err);
       console.error('Error loading seller ranking:', err);
-      toastError('No se pudo cargar el ranking de vendedores.');
+      if (!preserveData) toastError('No se pudo cargar el ranking de vendedores.');
     } finally {
-      setIsLoadingRanking(false);
+      if (!background) setIsLoadingRanking(false);
     }
   };
 

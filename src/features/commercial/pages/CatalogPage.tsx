@@ -1,3 +1,4 @@
+import { useRealtimeRefresh } from '../../realtime/hooks/useRealtimeRefresh';
 import { useState, useEffect } from 'react';
 import { commercialService } from '../services/commercialService';
 import { ComerziaCreatableSelect } from '../../../components/ui/ComerziaCreatableSelect';
@@ -14,6 +15,12 @@ import { Filter, ChevronDown, FileSpreadsheet, Search, X } from 'lucide-react';
 import { getCatalogErrorMessage } from '../utils/catalogErrorMessages';
 
 export const CatalogPage = () => {
+  useRealtimeRefresh(['CATEGORY'], async () => {
+    await loadCategories(true);
+    if (selectedCategoryId) await loadSegments(selectedCategoryId, true);
+    if (selectedSegmentId) await loadBrands(selectedSegmentId, true);
+  });
+
   const { error: toastError, success: toastSuccess } = useToast();
   const { hasPermission, hasRole } = useAuthStore();
   const canManage = hasPermission('COM_CATALOG_MANAGE');
@@ -52,8 +59,8 @@ export const CatalogPage = () => {
     loadCategories();
   }, [canManage]);
 
-  const loadCategories = async () => {
-    setIsLoadingCategories(true);
+  const loadCategories = async (background = false) => {
+    if (!background) setIsLoadingCategories(true);
     try {
       const activeOnly = canManage ? false : undefined;
       const res = await commercialService.getCategories(activeOnly);
@@ -61,7 +68,7 @@ export const CatalogPage = () => {
     } catch (e) {
       console.error(e);
     } finally {
-      setIsLoadingCategories(false);
+      if (!background) setIsLoadingCategories(false);
     }
   };
 
@@ -76,8 +83,8 @@ export const CatalogPage = () => {
     setBrands([]);
   }, [selectedCategoryId, canManage]);
 
-  const loadSegments = async (categoryId: string) => {
-    setIsLoadingSegments(true);
+  const loadSegments = async (categoryId: string, background = false) => {
+    if (!background) setIsLoadingSegments(true);
     try {
       const activeOnly = canManage ? false : undefined;
       const res = await commercialService.getSegmentsByCategory(categoryId, activeOnly);
@@ -85,7 +92,7 @@ export const CatalogPage = () => {
     } catch (e) {
       console.error(e);
     } finally {
-      setIsLoadingSegments(false);
+      if (!background) setIsLoadingSegments(false);
     }
   };
 
@@ -98,8 +105,8 @@ export const CatalogPage = () => {
     setSelectedBrandId('');
   }, [selectedSegmentId, canManage]);
 
-  const loadBrands = async (segmentId: string) => {
-    setIsLoadingBrands(true);
+  const loadBrands = async (segmentId: string, background = false) => {
+    if (!background) setIsLoadingBrands(true);
     try {
       const activeOnly = canManage ? false : undefined;
       const res = await commercialService.getBrandsBySegment(segmentId, activeOnly);
@@ -107,7 +114,7 @@ export const CatalogPage = () => {
     } catch (e) {
       console.error(e);
     } finally {
-      setIsLoadingBrands(false);
+      if (!background) setIsLoadingBrands(false);
     }
   };
 

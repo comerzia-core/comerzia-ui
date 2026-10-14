@@ -1,3 +1,5 @@
+import { isTransientRefreshFailure } from '../../realtime/utils/refreshErrors';
+import { useRealtimeRefresh } from '../../realtime/hooks/useRealtimeRefresh';
 // src/features/commercial/pages/StockValuationPage.tsx
 import { useState, useEffect } from 'react';
 import { commercialService } from '../services/commercialService';
@@ -50,6 +52,10 @@ const getMarginBadgeVariant = (margin: number): 'success' | 'warning' | 'error' 
 };
 
 export const StockValuationPage = () => {
+  useRealtimeRefresh(['DASHBOARD'], async () => {
+    if (isBranchesInitialized) await Promise.all([loadMetrics(true), loadCharts(true), loadReport(page, size, true)]);
+  });
+
   const { error: toastError } = useToast();
   const { userProfile } = useAuthStore();
   const currencyCode = userProfile?.companySettings?.currencyCode || 'USD';
@@ -179,8 +185,8 @@ export const StockValuationPage = () => {
   const effectiveSearch = cleanSearch.length >= 3 ? cleanSearch : '';
 
   // 5. Cargar métricas (KPIs)
-  const loadMetrics = async () => {
-    setIsLoadingMetrics(true);
+  const loadMetrics = async (background = false) => {
+    if (!background) setIsLoadingMetrics(true);
     try {
       const res = await commercialService.getValuationMetrics({
         branchId: selectedBranchId || undefined,
@@ -190,16 +196,17 @@ export const StockValuationPage = () => {
       });
       setMetrics(res);
     } catch (err) {
+      const preserveData = background && isTransientRefreshFailure(err);
       console.error('Error loading valuation metrics:', err);
-      setMetrics(null);
+      if (!preserveData) setMetrics(null);
     } finally {
-      setIsLoadingMetrics(false);
+      if (!background) setIsLoadingMetrics(false);
     }
   };
 
   // 6. Cargar gráficas analíticas
-  const loadCharts = async () => {
-    setIsLoadingCharts(true);
+  const loadCharts = async (background = false) => {
+    if (!background) setIsLoadingCharts(true);
     try {
       const res = await commercialService.getValuationCharts({
         branchId: selectedBranchId || undefined,
@@ -209,16 +216,17 @@ export const StockValuationPage = () => {
       });
       setChartsData(res);
     } catch (err) {
+      const preserveData = background && isTransientRefreshFailure(err);
       console.error('Error loading valuation charts:', err);
-      setChartsData(null);
+      if (!preserveData) setChartsData(null);
     } finally {
-      setIsLoadingCharts(false);
+      if (!background) setIsLoadingCharts(false);
     }
   };
 
   // 7. Cargar reporte paginado
-  const loadReport = async (targetPage = page, targetSize = size) => {
-    setIsLoadingReport(true);
+  const loadReport = async (targetPage = page, targetSize = size, background = false) => {
+    if (!background) setIsLoadingReport(true);
     try {
       const res = await commercialService.getValuationReport({
         branchId: selectedBranchId || undefined,
@@ -237,11 +245,12 @@ export const StockValuationPage = () => {
       setTotalElements(res.totalElements || 0);
       setTotalPages(res.totalPages || 0);
     } catch (err) {
+      const preserveData = background && isTransientRefreshFailure(err);
       console.error('Error loading valuation report:', err);
-      setReportData([]);
-      toastError('No se pudo cargar el reporte de valorización.');
+      if (!preserveData) setReportData([]);
+      if (!preserveData) toastError('No se pudo cargar el reporte de valorización.');
     } finally {
-      setIsLoadingReport(false);
+      if (!background) setIsLoadingReport(false);
     }
   };
 

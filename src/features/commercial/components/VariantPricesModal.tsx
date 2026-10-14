@@ -1,3 +1,4 @@
+import { useRealtimeRefresh } from '../../realtime/hooks/useRealtimeRefresh';
 import { useState, useEffect } from 'react';
 import { ComerziaModal } from '../../../components/ui/ComerziaModal';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
@@ -22,6 +23,12 @@ interface PriceItemForm {
 }
 
 export const VariantPricesModal = ({ isOpen, onClose, variantId, variantName }: Props) => {
+  useRealtimeRefresh(['PRODUCT'], async () => {
+    if (isOpen && variantId) {
+      setActivePrices(await commercialService.getActiveSalePricesByVariant(variantId));
+    }
+  });
+
   const { userProfile, hasPermission } = useAuthStore();
   const canManagePrices = hasPermission('COM_PRICES_MANAGE');
   const currencyCode = userProfile?.companySettings?.currencyCode || 'USD';

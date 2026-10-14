@@ -1,3 +1,4 @@
+import { useRealtimeRefresh } from '../../realtime/hooks/useRealtimeRefresh';
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { commercialService } from '../services/commercialService';
@@ -10,6 +11,12 @@ import { CommercialProductSearchBar } from '../components/CommercialProductSearc
 import { ImageOff, Store, Tag, Layers, ZoomIn, PackageSearch } from 'lucide-react';
 
 export const StockQueryPage = () => {
+  useRealtimeRefresh(['STOCK', 'PRODUCT', 'CATEGORY'], async () => {
+    if (productData?.scannedVariant.barCode) {
+      setProductData(await commercialService.scanBarcode(productData.scannedVariant.barCode));
+    }
+  });
+
   const [searchParams] = useSearchParams();
   const [productData, setProductData] = useState<ScannerProductResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);

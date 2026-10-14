@@ -1,3 +1,5 @@
+import { isTransientRefreshFailure } from '../../realtime/utils/refreshErrors';
+import { useRealtimeRefresh } from '../../realtime/hooks/useRealtimeRefresh';
 import { useState, useEffect, useMemo } from 'react';
 import { isAxiosError } from 'axios';
 import { commercialService } from '../services/commercialService';
@@ -52,6 +54,10 @@ interface InlineRowEditState {
 }
 
 export const StockReportsPage = () => {
+  useRealtimeRefresh(['DASHBOARD'], async () => {
+    if (selectedBranchId) await Promise.all([loadMetrics(true), loadReport(page, size, true)]);
+  });
+
   const { hasPermission } = useAuthStore();
   const canManageStock = hasPermission('COM_STOCK_MANAGE') || hasPermission('COM_STOCK_WRITE');
   const { error: toastError, success: toastSuccess } = useToast();
@@ -167,9 +173,9 @@ export const StockReportsPage = () => {
   }, [selectedSegmentId]);
 
   // 5. Cargar métricas (KPIs)
-  const loadMetrics = async () => {
+  const loadMetrics = async (background = false) => {
     if (!selectedBranchId) return;
-    setIsLoadingMetrics(true);
+    if (!background) setIsLoadingMetrics(true);
     try {
       const res = await commercialService.getReplenishmentMetrics({
         branchId: selectedBranchId,
@@ -179,10 +185,11 @@ export const StockReportsPage = () => {
       });
       setMetrics(res);
     } catch (err) {
+      const preserveData = background && isTransientRefreshFailure(err);
       console.error('Error loading replenishment metrics:', err);
-      setMetrics(null);
+      if (!preserveData) setMetrics(null);
     } finally {
-      setIsLoadingMetrics(false);
+      if (!background) setIsLoadingMetrics(false);
     }
   };
 
@@ -191,9 +198,9 @@ export const StockReportsPage = () => {
   const effectiveSearch = cleanSearch.length >= 3 ? cleanSearch : '';
 
   // 6. Cargar reporte paginado
-  const loadReport = async (targetPage = page, targetSize = size) => {
+  const loadReport = async (targetPage = page, targetSize = size, background = false) => {
     if (!selectedBranchId) return;
-    setIsLoadingReport(true);
+    if (!background) setIsLoadingReport(true);
     try {
       const res = await commercialService.getReplenishmentReport({
         branchId: selectedBranchId,
@@ -225,11 +232,12 @@ export const StockReportsPage = () => {
       });
       setInlineEdits(initialEdits);
     } catch (err) {
+      const preserveData = background && isTransientRefreshFailure(err);
       console.error('Error loading replenishment report:', err);
-      setReportData([]);
-      toastError('No se pudo cargar el reporte de reabastecimiento.');
+      if (!preserveData) setReportData([]);
+      if (!preserveData) toastError('No se pudo cargar el reporte de reabastecimiento.');
     } finally {
-      setIsLoadingReport(false);
+      if (!background) setIsLoadingReport(false);
     }
   };
 

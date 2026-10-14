@@ -1,3 +1,5 @@
+import { isTransientRefreshFailure } from '../../realtime/utils/refreshErrors';
+import { useRealtimeRefresh } from '../../realtime/hooks/useRealtimeRefresh';
 // src/features/employees/pages/SalesPerformancePage.tsx
 import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../../../stores/useAuthStore';
@@ -25,6 +27,10 @@ import {
 import { PERIOD_OPTIONS, getPeriodDescription } from '../../../utils/date';
 
 export const SalesPerformancePage: React.FC = () => {
+  useRealtimeRefresh(['DASHBOARD'], async () => {
+    if (!hasAuditPermission || (period === 'CUSTOM' && (!customStartDate || !customEndDate))) return;
+    await Promise.all([loadSummary(true), loadAuditTable(true)]);
+  });
   const { hasPermission, userProfile } = useAuthStore();
   const { error: toastError } = useToast();
   const currencyCode = userProfile?.companySettings?.currencyCode || 'USD';
@@ -129,27 +135,52 @@ export const SalesPerformancePage: React.FC = () => {
     loadBranches();
   }, [canReadBranches]);
 
+  const loadSummary = async (background = false) => {
+    if (!background) setIsLoadingSummary(true);
+    try {
+      const data = await salesPerformanceService.getTeamSummary({
+        branchId: selectedBranchId || undefined,
+        startDate: effectiveStartDate,
+        endDate: effectiveEndDate
+      });
+      setSummaryData(data);
+    } catch (err) {
+      const preserveData = background && isTransientRefreshFailure(err);
+      console.error('Error loading team performance summary:', err);
+      if (!preserveData) setSummaryData(null);
+    } finally {
+      if (!background) setIsLoadingSummary(false);
+    }
+  };
+
+  const loadAuditTable = async (background = false) => {
+    if (!background) setIsLoadingTable(true);
+    try {
+      const res = await salesPerformanceService.getPerformanceAudit({
+        branchId: selectedBranchId || undefined,
+        startDate: effectiveStartDate,
+        endDate: effectiveEndDate,
+        search: debouncedSearch || undefined,
+        page,
+        size: pageSize
+      });
+      setAuditList(res.content || []);
+      setTotalElements(res.totalElements || 0);
+      setTotalPages(res.totalPages || 0);
+    } catch (err) {
+      const preserveData = background && isTransientRefreshFailure(err);
+      console.error('Error loading sales performance audit:', err);
+      if (!preserveData) setAuditList([]);
+      if (!preserveData) toastError('No se pudo cargar la auditoría de ventas.');
+    } finally {
+      if (!background) setIsLoadingTable(false);
+    }
+  };
+
   // 7. Cargar Resumen Global del Equipo
   useEffect(() => {
     if (!hasAuditPermission) return;
     if (period === 'CUSTOM' && (!customStartDate || !customEndDate)) return;
-
-    const loadSummary = async () => {
-      setIsLoadingSummary(true);
-      try {
-        const data = await salesPerformanceService.getTeamSummary({
-          branchId: selectedBranchId || undefined,
-          startDate: effectiveStartDate,
-          endDate: effectiveEndDate
-        });
-        setSummaryData(data);
-      } catch (err) {
-        console.error('Error loading team performance summary:', err);
-        setSummaryData(null);
-      } finally {
-        setIsLoadingSummary(false);
-      }
-    };
 
     loadSummary();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -159,29 +190,6 @@ export const SalesPerformancePage: React.FC = () => {
   useEffect(() => {
     if (!hasAuditPermission) return;
     if (period === 'CUSTOM' && (!customStartDate || !customEndDate)) return;
-
-    const loadAuditTable = async () => {
-      setIsLoadingTable(true);
-      try {
-        const res = await salesPerformanceService.getPerformanceAudit({
-          branchId: selectedBranchId || undefined,
-          startDate: effectiveStartDate,
-          endDate: effectiveEndDate,
-          search: debouncedSearch || undefined,
-          page,
-          size: pageSize
-        });
-        setAuditList(res.content || []);
-        setTotalElements(res.totalElements || 0);
-        setTotalPages(res.totalPages || 0);
-      } catch (err) {
-        console.error('Error loading sales performance audit:', err);
-        setAuditList([]);
-        toastError('No se pudo cargar la auditoría de ventas.');
-      } finally {
-        setIsLoadingTable(false);
-      }
-    };
 
     loadAuditTable();
     // eslint-disable-next-line react-hooks/exhaustive-deps
