@@ -56,7 +56,7 @@ export const LoginPage = () => {
             
             // Si funciona a la primera, lo dejamos entrar
             await loginStore(data.token);
-            navigate('/dashboard', { replace: true });
+            navigate('/', { replace: true });
 
         } catch (error) {
             if (isAxiosError<AuthErrorResponse>(error) && error.response) {
@@ -145,7 +145,7 @@ export const LoginPage = () => {
 
             // Si es exitoso (200 OK), el backend devuelve el JWT token y entra directamente
             await loginStore(data.token);
-            navigate('/dashboard', { replace: true });
+            navigate('/', { replace: true });
 
         } catch (error) {
             if (isAxiosError<AuthErrorResponse>(error) && error.response) {

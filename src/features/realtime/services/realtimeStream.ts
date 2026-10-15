@@ -1,3 +1,5 @@
+import { isPlatformUser } from '../../saas/utils/workspace';
+import { useAuthStore } from '../../../stores/useAuthStore';
 import api from '../../../lib/axios';
 import { REALTIME_ENTITIES, type RealtimeChange } from '../types/realtime';
 
@@ -54,7 +56,7 @@ export class RealtimeHttpError extends Error {
 export async function readRealtimeStream(
   token: string, signal: AbortSignal, onFrame: (frame: StreamFrame) => void,
 ): Promise<void> {
-  const response = await fetch(api.getUri({ url: '/tenant/realtime/stream' }), {
+  const response = await fetch(api.getUri({ url: isPlatformUser(useAuthStore.getState().userProfile) ? '/saas/realtime/stream' : '/tenant/realtime/stream' }), {
     headers: { Authorization: `Bearer ${token}`, Accept: 'text/event-stream, application/json' },
     signal, cache: 'no-store', credentials: 'omit',
   });

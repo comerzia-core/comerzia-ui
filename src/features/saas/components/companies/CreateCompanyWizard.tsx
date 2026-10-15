@@ -1,3 +1,5 @@
+import { usePlatformData } from '../../hooks/usePlatformData';
+import type { PlatformPlan } from '../../types/platform';
 import { useState } from "react";
 import { ComerziaModal } from "../../../../components/ui/ComerziaModal";
 import { ComerziaStepper } from "../../../../components/ui/ComerziaStepper";
@@ -22,7 +24,7 @@ interface Props {
 const INITIAL_STATE: CreateCompanyRequest = {
     company: { legalName: '', commercialName: '', slug: '', taxId: '' },
     owner: { firstName: '', paternalSurname: '', maternalSurname: '', documentType: '', documentNumber: '', extension: '', email: '', phoneNumber: '' },
-    subscription: { planType: '', validUntil: '', maxBranches: 1, maxUsers: 1, maxProducts: 100, enabledModules: '' }
+    subscription: { planTypeCode: '', validUntil: '', extraBranches: 0, extraUsers: 0 }
 };
 
 export const CreateCompanyWizard = ({ isOpen, onClose, onSuccess }: Props) => {
@@ -44,6 +46,10 @@ export const CreateCompanyWizard = ({ isOpen, onClose, onSuccess }: Props) => {
         DICTIONARIES.DOCUMENT_EXTENSION,
         DICTIONARIES.PLAN_TYPE
     ]);
+
+    const catalog = usePlatformData<PlatformPlan[]>('/saas/plans', undefined, isOpen);
+    const selectedPlan = catalog.data?.find(plan => plan.code === Number(formData.subscription.planTypeCode));
+    const requiresExpiry = selectedPlan?.requiresExpiry ?? true;
 
     const steps = ["Empresa", "Propietario", "Suscripción"];
 
@@ -104,11 +110,10 @@ export const CreateCompanyWizard = ({ isOpen, onClose, onSuccess }: Props) => {
             if (!formData.owner.phoneNumber.trim()) newErrors.phoneNumber = "Campo requerido";
         } 
         else if (step === 3) {
-            if (!formData.subscription.planType) newErrors.planType = "Seleccione un plan";
-            if (!formData.subscription.validUntil) newErrors.validUntil = "Fecha requerida";
-            if (formData.subscription.maxBranches < 1) newErrors.maxBranches = "Mínimo 1";
-            if (formData.subscription.maxUsers < 1) newErrors.maxUsers = "Mínimo 1";
-            if (formData.subscription.maxProducts < 1) newErrors.maxProducts = "Mínimo 1";
+            if (!formData.subscription.planTypeCode) newErrors.planTypeCode = "Seleccione un plan";
+            if (requiresExpiry && !formData.subscription.validUntil) newErrors.validUntil = "Fecha requerida";
+            if (formData.subscription.extraBranches < 0) newErrors.extraBranches = "Mínimo 1";
+            if (formData.subscription.extraUsers < 0) newErrors.extraUsers = "Mínimo 1";
         }
 
         setErrors(newErrors);
@@ -142,12 +147,12 @@ export const CreateCompanyWizard = ({ isOpen, onClose, onSuccess }: Props) => {
 
         try {
             setIsSaving(true);
-            const localDate = new Date(formData.subscription.validUntil);
+            const validUntil = requiresExpiry ? new Date(formData.subscription.validUntil!).toISOString() : null;
             const payload: CreateCompanyRequest = {
                 ...formData,
                 subscription: {
                     ...formData.subscription,
-                    validUntil: localDate.toISOString() // Transformación estricta a UTC
+                    validUntil // Transformación estricta a UTC
                 }
             };
 
@@ -231,7 +236,7 @@ export const CreateCompanyWizard = ({ isOpen, onClose, onSuccess }: Props) => {
                 {step === 2 && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="col-span-full">
-                            <h3 className="font-bold text-base-content/70 border-b pb-2 mb-2">Datos del Administrador Root</h3>
+                            <h3 className="font-bold text-base-content/70 border-b pb-2 mb-2">Datos del propietario de la empresa</h3>
                         </div>
                         <ComerziaInput 
                             label="Nombres" 
@@ -322,59 +327,37 @@ export const CreateCompanyWizard = ({ isOpen, onClose, onSuccess }: Props) => {
                                 label="Plan Inicial" 
                                 options={options[DICTIONARIES.PLAN_TYPE]} 
                                 isLoading={isLoadingDicts}
-                                value={formData.subscription.planType} 
-                                onChange={(e) => updateSubscription('planType', e.target.value)} 
+                                value={formData.subscription.planTypeCode} 
+                                onChange={(e) => updateSubscription('planTypeCode', e.target.value)} 
                                 isRequired 
-                                error={errors.planType}
+                                error={errors.planTypeCode}
                                 shakeKey={shakeKey}
                             />
                         </div>
-                        <div className="col-span-full md:col-span-1">
-                            {/* Fallback de error para el Input Nativo de Fecha */}
-                            <div className="form-control w-full">
-                                <label className="label">
-                                    <span className={`label-text font-semibold ${errors.validUntil ? 'text-error' : ''}`}>
-                                        Válido Hasta *
-                                    </span>
-                                </label>
-                                <input 
-                                    type="datetime-local" 
-                                    className={`input input-bordered w-full bg-base-100 ${errors.validUntil ? 'input-error animate-shake' : ''}`} 
-                                    value={formData.subscription.validUntil}
-                                    onChange={(e) => updateSubscription('validUntil', e.target.value)}
-                                    required
-                                />
-                                {errors.validUntil && <span className="text-xs text-error mt-1">{errors.validUntil}</span>}
-                            </div>
-                        </div>
+                        {requiresExpiry && <ComerziaInput label="Vigencia del plan" type="datetime-local" isRequired
+                            value={formData.subscription.validUntil ?? ''} onChange={event => updateSubscription('validUntil',event.target.value)}
+                            error={errors.validUntil} shakeKey={shakeKey} />}
+                        {!requiresExpiry && <p className="text-sm text-base-content/60 self-center">Este plan no tiene vencimiento.</p>}
 
                         <ComerziaInput 
-                            label="Max. Sucursales" 
-                            type="number"
-                            value={String(formData.subscription.maxBranches)} 
-                            onChange={(e) => updateSubscription('maxBranches', Number(e.target.value))} 
+                            label="Sucursales adicionales" 
+                            type="number" min={0} step={1}
+                            value={String(formData.subscription.extraBranches)} 
+                            onChange={(e) => updateSubscription('extraBranches', Number(e.target.value))} 
                             isRequired 
-                            error={errors.maxBranches}
+                            error={errors.extraBranches}
                             shakeKey={shakeKey}
                         />
                         <ComerziaInput 
-                            label="Max. Usuarios" 
-                            type="number"
-                            value={String(formData.subscription.maxUsers)} 
-                            onChange={(e) => updateSubscription('maxUsers', Number(e.target.value))} 
+                            label="Usuarios adicionales" 
+                            type="number" min={0} step={1}
+                            value={String(formData.subscription.extraUsers)} 
+                            onChange={(e) => updateSubscription('extraUsers', Number(e.target.value))} 
                             isRequired 
-                            error={errors.maxUsers}
+                            error={errors.extraUsers}
                             shakeKey={shakeKey}
                         />
-                        <ComerziaInput 
-                            label="Max. Productos" 
-                            type="number"
-                            value={String(formData.subscription.maxProducts)} 
-                            onChange={(e) => updateSubscription('maxProducts', Number(e.target.value))} 
-                            isRequired 
-                            error={errors.maxProducts}
-                            shakeKey={shakeKey}
-                        />
+
                     </div>
                 )}
             </div>
@@ -392,7 +375,7 @@ export const CreateCompanyWizard = ({ isOpen, onClose, onSuccess }: Props) => {
                     {step < steps.length ? (
                         <BtnNext onClick={handleNext} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
                     ) : (
-                        <BtnSave onClick={handleSubmit} isLoading={isSaving} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
+                        <BtnSave disabled={catalog.isPending || catalog.isError} responsive={false} onClick={handleSubmit} isLoading={isSaving} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
                     )}
                 </div>
             </div>

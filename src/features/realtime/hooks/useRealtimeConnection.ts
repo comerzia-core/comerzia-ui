@@ -81,6 +81,9 @@ export function useRealtimeConnection(): void {
             attempts = 0;
             setStatus('live');
             if (hasBusinessReads) recoverRealtime(client);
+          } else if (frame.event === 'subscription-changed') {
+            void client.invalidateQueries({ queryKey: ['platform'] });
+            if (useAuthStore.getState().token === token) void useAuthStore.getState().fetchUserProfile();
           } else if (frame.event === 'session-revoked') {
             let code: string | undefined;
             try {

@@ -5,7 +5,7 @@ import { SidebarMenu } from "../components/layout/SidebarMenu";
 import { Header } from "../components/layout/Header"; 
 import { useAuthStore } from "../stores/useAuthStore"; 
 
-export const DashboardLayout = () => {
+export const DashboardLayout = ({ workspace = "tenant" }: { workspace?: "saas" | "tenant" }) => {
   useRealtimeConnection();
   // 1. Consumimos datos y acciones directamente del Estado Global
   const { menuTree, isSessionReady, initializeSession } = useAuthStore();
@@ -58,7 +58,7 @@ export const DashboardLayout = () => {
         <label htmlFor="my-drawer" aria-label="close sidebar" className="drawer-overlay"></label> 
         
         <SidebarMenu 
-            menuTree={menuTree} 
+            menuTree={menuTree.filter(item => workspace === "saas" ? item.route === "/saas" || item.route.startsWith("/saas/") : !item.route.startsWith("/saas"))} 
             // Ya no le pasamos loading al Sidebar, porque el Layout detiene el renderizado hasta estar listo
             isLoading={false} 
             isCollapsed={isSidebarCollapsed}

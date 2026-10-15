@@ -51,6 +51,11 @@ api.interceptors.response.use(
                 }
             }
 
+            if (status === 402 && error.response.data?.code === 'subscription_required') {
+                const current = useAuthStore.getState();
+                if (current.userProfile && error.config?.headers?.Authorization === 'Bearer ' + current.token)
+                    useAuthStore.setState({ userProfile: { ...current.userProfile, operational: false } });
+            }
             if (status === 403) {
                 console.error("Access denied by backend configuration.");
             }

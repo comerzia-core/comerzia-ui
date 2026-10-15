@@ -9,6 +9,12 @@ interface BaseBtnProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     fullWidth?: boolean;
 }
 
+export const BtnAccess = ({ disabledAccess, label, ...props }: BaseBtnProps & { disabledAccess: boolean }) => (
+    <ComerziaButton variant={disabledAccess ? 'save' : 'cancel'}
+        label={label ?? (disabledAccess ? 'Habilitar' : 'Suspender')}
+        icon={disabledAccess ? <Unlock size={18} /> : <Lock size={18} />} {...props} />
+);
+
 // 1. BOTÓN GUARDAR (Verde + Icono Save)
 export const BtnSave = ({ label = "Guardar", responsive = true, ...props }: BaseBtnProps) => (
     <ComerziaButton 

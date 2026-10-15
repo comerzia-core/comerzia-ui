@@ -3,6 +3,9 @@
  * Evita hardcodear strings en las vistas.
  */
 export const DICTIONARIES = {
+    RECOVERY_ENTITY: "recovery-entity",
+    SAAS_TEAM_ROLE: "saas-team-role",
+    SUBSCRIPTION_PAYMENT_STATUS: "subscription-payment-status",
     USER_STATUS: 'user-status',
     SUBSCRIPTION_STATUS: 'subscription-status',
     PLAN_TYPE: 'plan-type',

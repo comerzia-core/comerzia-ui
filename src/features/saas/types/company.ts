@@ -50,6 +50,7 @@ export interface SaasCompanyDetailResponse {
 
 export interface BranchResponse {
     id: string;
+    code?: string;
     name: string;
     address: string;
     status: boolean;
@@ -86,12 +87,10 @@ export interface CreateOwnerDetails {
 }
 
 export interface CreateSubscriptionDetails {
-    planType: string; // Código del Enum/Diccionario
-    validUntil: string; // Instant (UTC String)
-    maxBranches: number;
-    maxUsers: number;
-    maxProducts: number;
-    enabledModules?: string;
+    planTypeCode: string;
+    validUntil: string | null;
+    extraBranches: number;
+    extraUsers: number;
 }
 
 export interface CreateCompanyRequest {

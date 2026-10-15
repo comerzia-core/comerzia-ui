@@ -1,4 +1,17 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { SaasLayout } from '../layouts/SaasLayout';
+import { WorkspaceGuard, WorkspaceHome } from './WorkspaceGuard';
+import { useAuthStore } from '../stores/useAuthStore';
+import { isPlatformUser } from '../features/saas/utils/workspace';
+import { SaasDashboardPage } from '../features/saas/pages/SaasDashboardPage';
+import { SaasDirectoryPage } from '../features/saas/pages/SaasDirectoryPage';
+import { SaasTenantPage } from '../features/saas/pages/SaasTenantPage';
+import { SaasTeamPage } from '../features/saas/pages/SaasTeamPage';
+import { SaasFinancePage } from '../features/saas/pages/SaasFinancePage';
+import { SaasAuditPage } from '../features/saas/pages/SaasAuditPage';
+import { SaasRecoveryPage } from '../features/saas/pages/SaasRecoveryPage';
+import { SaasTechnicalPage } from '../features/saas/pages/SaasTechnicalPage';
+import { SubscriptionPage } from '../features/organization/pages/SubscriptionPage';
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { LoginPage } from "../features/auth/pages/LoginPage";
 import { DashboardPage } from "../features/dashboard/pages/DashboardPage";
 import { DashboardLayout } from "../layouts/DashboardLayout";
@@ -8,8 +21,8 @@ import { UnderConstruction } from "../features/errors/pages/UnderConstructionPag
 import { useDynamicBranding } from "../hooks/useDynamicBranding";
 import { NotFoundPage } from "../features/errors/pages/NotFoundPage";
 import { PermissionGuard } from "./PermissionGuard";
-import { CompaniesPage } from "../features/saas/pages/CompaniesPage";
-import { CompanyDashboardPage } from "../features/saas/pages/CompanyDashboardPage";
+
+
 import { CompanyProfilePage } from "../features/organization/pages/CompanyProfilePage";
 import { BranchesPage } from "../features/organization/pages/BranchesPage";
 import { EmployeePage } from "../features/employees/pages/EmployeePage";
@@ -43,6 +56,8 @@ import { SalesHistoryPage } from "../features/sales/pages/SalesHistoryPage";
 import { CustomersManagementPage } from "../features/sales/pages/CustomersManagementPage";
 import { ReturnsPage } from "../features/sales/pages/ReturnsPage";
 
+const ProfileLayout = () => isPlatformUser(useAuthStore(state => state.userProfile)) ? <SaasLayout /> : <DashboardLayout />;
+
 export const AppRouter = () => {
   useDynamicBranding();
 
@@ -55,9 +70,30 @@ export const AppRouter = () => {
         {/* RUTAS PROTEGIDAS */}
         <Route element={<ProtectedRoute />}>
 
+          <Route path="/" element={<WorkspaceHome />} />
+          <Route element={<ProfileLayout />}><Route path="/profile" element={<ProfilePage />} /></Route>
+          <Route element={<WorkspaceGuard workspace="saas" />}>
+            <Route element={<SaasLayout />}>
+              <Route element={<PermissionGuard code="SYS_DASHBOARD_READ" />}><Route path="/saas/dashboard" element={<SaasDashboardPage />} /></Route>
+              <Route element={<PermissionGuard code="SYS_COMPANIES_READ" />}>
+                <Route path="/saas/tenants" element={<SaasDirectoryPage />} />
+                <Route path="/saas/companies/:id" element={<SaasTenantPage />} />
+              </Route>
+              <Route element={<PermissionGuard code="SYS_FINANCE_READ" />}><Route path="/saas/finances" element={<SaasFinancePage />} /></Route>
+              <Route element={<PermissionGuard code="SYS_TEAM_READ" />}><Route path="/saas/team" element={<SaasTeamPage />} /></Route>
+              <Route element={<PermissionGuard code="SYS_AUDIT_READ" />}><Route path="/saas/audit" element={<SaasAuditPage />} /></Route>
+              <Route element={<PermissionGuard code="SYS_DATA_RECOVERY" />}>
+                <Route path="/saas/data-recovery" element={<SaasDirectoryPage recovery />} />
+                <Route path="/saas/data-recovery/:companyId" element={<SaasRecoveryPage />} />
+              </Route>
+              <Route element={<PermissionGuard code="SYS_TECHNICAL_READ" />}><Route path="/saas/technical" element={<SaasTechnicalPage />} /></Route>
+              <Route path="/saas/*" element={<NotFoundPage />} />
+            </Route>
+          </Route>
+          <Route element={<WorkspaceGuard workspace="tenant" />}>
           <Route element={<DashboardLayout />}>
             {/* Redirección por defecto al entrar a la raíz "/" */}
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/organization/subscription" element={<SubscriptionPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
 
             {/* --- COMMERCIAL MODULES --- */}
@@ -107,36 +143,14 @@ export const AppRouter = () => {
 
 
             {/* --- MÓDULO SAAS --- */}
-            <Route element={<PermissionGuard code="SYS_TENANTS_VIEW" />}>
-              <Route path="/saas/tenants" element={<UnderConstruction />} />
-            </Route>
-
-            <Route element={<PermissionGuard code="SYS_SUBSCRIPTIONS_VIEW" />}>
-              <Route path="/saas/subscriptions" element={<UnderConstruction />} />
-            </Route>
-
-
-            {/* --- SECURITY --- */}
             <Route path="/security/audit" element={<AuditPage />} />
             <Route path="/security/users" element={<UsersPage />} />
-            <Route path="/profile" element={<ProfilePage />} />
+
 
             {/* --- MÓDULOS DEL SISTEMA --- */}
-            <Route path="/saas/tenants" element={<CompaniesPage />} />
-            <Route path="/saas/companies/:id" element={<CompanyDashboardPage />} />
-
-
-
-            {/* <Route element={<PermissionGuard code="SYS_TENANTS_VIEW" />}>
-                  <Route path="/security/users" element={<UsersPage />} 
-                </Route> */}
-
-            {/* Ruta Comodín INTERNA (Dashboard 404): 
-                  Si escriben una URL protegida que no existe (ej: /dashboard/xyz), 
-                  mostramos el 404 SIN sacarlos del Layout (siguen viendo el Sidebar).
-                */}
             <Route path="*" element={<NotFoundPage />} />
 
+          </Route>
           </Route>
 
         </Route>
