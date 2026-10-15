@@ -278,7 +278,8 @@ export function useBarcodeScanner({ onScanSuccess, onScanError, formats = DEFAUL
               console.debug("Atomic optical adjustments partially unavailable, applying fallbacks:", error);
               if (optical.torch) {
                 try {
-                  await track.applyConstraints({ advanced: [{ torch: true }] });
+                  const fallbackTorch: CameraConstraints = { torch: true };
+                  await track.applyConstraints({ advanced: [fallbackTorch] });
                   if (!disposed) setIsTorchOn(true);
                 } catch { /* ignore */ }
               }
