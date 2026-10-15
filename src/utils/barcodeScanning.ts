@@ -8,7 +8,10 @@ export const DEFAULT_BARCODE_FORMATS: BarcodeFormat[] = [
 ];
 
 export function createBarcodeHints(formats: BarcodeFormat[] = DEFAULT_BARCODE_FORMATS) {
-  return new Map<DecodeHintType, unknown>([[DecodeHintType.POSSIBLE_FORMATS, formats]]);
+  const hints = new Map<DecodeHintType, unknown>();
+  hints.set(DecodeHintType.POSSIBLE_FORMATS, formats);
+  hints.set(DecodeHintType.TRY_HARDER, true);
+  return hints;
 }
 
 export function isBarcodeReadMiss(error: unknown): boolean {
