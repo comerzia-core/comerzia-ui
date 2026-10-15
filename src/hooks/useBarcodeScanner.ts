@@ -128,6 +128,8 @@ function createNativeBarcodeDetector(): BarcodeDetectorInstance | null {
   }
 }
 
+let cachedCuratedDevices: MediaDeviceInfo[] | null = null;
+
 export function useBarcodeScanner({ onScanSuccess, onScanError, formats = DEFAULT_BARCODE_FORMATS }: ScannerOptions) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -136,7 +138,7 @@ export function useBarcodeScanner({ onScanSuccess, onScanError, formats = DEFAUL
   const errorRef = useRef(onScanError);
   const defaultDeviceIdRef = useRef("");
   const [activeDeviceId, setActiveDeviceId] = useState("");
-  const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
+  const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>(() => cachedCuratedDevices || []);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasTorch, setHasTorch] = useState(false);
@@ -180,10 +182,16 @@ export function useBarcodeScanner({ onScanSuccess, onScanError, formats = DEFAUL
         if (!navigator.mediaDevices?.getUserMedia)
           throw new Error("La cámara requiere un navegador compatible y HTTPS o localhost.");
 
-        const rawDevices = await BrowserMultiFormatReader.listVideoInputDevices();
+        // Usar dispositivos previamente cacheados para evitar la latencia de hardware de enumerateDevices()
+        let curated = cachedCuratedDevices || [];
+        if (curated.length === 0) {
+          try {
+            const rawDevices = await BrowserMultiFormatReader.listVideoInputDevices();
+            curated = curateVideoDevices(rawDevices);
+            cachedCuratedDevices = curated;
+          } catch { /* ignore */ }
+        }
         if (disposed) return;
-
-        const curated = curateVideoDevices(rawDevices);
         setVideoDevices(curated);
 
         // Identificar la mejor cámara trasera candidata para evitar lentes auxiliares
@@ -214,17 +222,27 @@ export function useBarcodeScanner({ onScanSuccess, onScanError, formats = DEFAUL
         if (disposed) { stop(); return; }
         streamRef.current = stream;
 
-        // Actualizar lista de dispositivos con las etiquetas ya disponibles tras conceder permisos
+        // Reproducir video y retirar spinner inmediatamente para un arranque fluido
+        video.srcObject = stream;
         try {
-          const freshDevices = await navigator.mediaDevices.enumerateDevices();
-          if (!disposed) {
+          await video.play();
+        } catch { /* ignorar fallo de reproducción transitorio que luego maneja el lector */ }
+        if (!disposed) {
+          setIsLoading(false);
+        }
+
+        // Actualizar dispositivos en segundo plano sin bloquear el arranque del video
+        if (!cachedCuratedDevices || cachedCuratedDevices.some(d => !d.label)) {
+          void navigator.mediaDevices.enumerateDevices().then(freshDevices => {
+            if (disposed) return;
             const videoInputs = freshDevices.filter(d => d.kind === "videoinput");
             const refreshedCurated = curateVideoDevices(videoInputs);
             if (refreshedCurated.length > 0) {
+              cachedCuratedDevices = refreshedCurated;
               setVideoDevices(refreshedCurated);
             }
-          }
-        } catch { /* ignore */ }
+          }).catch(() => {});
+        }
 
         const track = stream.getVideoTracks()[0];
         if (track) {
@@ -234,20 +252,14 @@ export function useBarcodeScanner({ onScanSuccess, onScanError, formats = DEFAUL
           }
 
           const capabilities: CameraCapabilities = track.getCapabilities?.() ?? {};
-          setHasTorch(capabilities.torch === true);
+          const hasLight = capabilities.torch === true;
+          setHasTorch(hasLight);
 
-          if (capabilities.torch === true) {
-            try {
-              const lighting: CameraConstraints = { torch: true };
-              await track.applyConstraints({ advanced: [lighting] });
-              if (!disposed) setIsTorchOn(true);
-            } catch (error) { console.debug("Default camera torch activation is unavailable:", error); }
-          }
-
-          if (disposed) { stop(); return; }
-
-          // Configurar autofoco continuo y zoom óptico suave para evitar desenfoque por proximidad
+          // Agrupar linterna, autofoco y zoom en una sola petición atómica para reducir bloqueos de IPC
           const optical: CameraConstraints = {};
+          if (hasLight) {
+            optical.torch = true;
+          }
           if (capabilities.focusMode?.includes("continuous")) {
             optical.focusMode = "continuous";
           }
@@ -258,11 +270,18 @@ export function useBarcodeScanner({ onScanSuccess, onScanError, formats = DEFAUL
             }
           }
 
-          if (Object.keys(optical).length) {
+          if (Object.keys(optical).length > 0) {
             try {
               await track.applyConstraints({ advanced: [optical] });
+              if (optical.torch && !disposed) setIsTorchOn(true);
             } catch (error) {
-              console.debug("Optical adjustments partially unavailable:", error);
+              console.debug("Atomic optical adjustments partially unavailable, applying fallbacks:", error);
+              if (optical.torch) {
+                try {
+                  await track.applyConstraints({ advanced: [{ torch: true }] });
+                  if (!disposed) setIsTorchOn(true);
+                } catch { /* ignore */ }
+              }
               if (optical.focusMode) {
                 try {
                   const fallbackFocus: CameraConstraints = { focusMode: optical.focusMode };
@@ -326,7 +345,6 @@ export function useBarcodeScanner({ onScanSuccess, onScanError, formats = DEFAUL
         });
 
         if (disposed) { stop(); return; }
-        setIsLoading(false);
       } catch (cause: unknown) {
         if (disposed) return;
         const error = cause instanceof Error ? cause : new Error("No se pudo iniciar la cámara.");
