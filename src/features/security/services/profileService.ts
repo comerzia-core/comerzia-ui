@@ -6,6 +6,12 @@ import type {
 } from '../types/profile';
 
 export const profileService = {
+  updateTheme: async (theme: string, token: string, signal: AbortSignal): Promise<{ theme: string }> => {
+    const { data } = await api.patch<{ theme: string }>('/profile/theme', { theme }, {
+      signal, timeout: 15000, headers: { Authorization: `Bearer ${token}` },
+    });
+    return data;
+  },
   /**
    * Retrieves profile information of the currently authenticated user
    */

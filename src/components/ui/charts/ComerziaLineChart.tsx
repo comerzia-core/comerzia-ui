@@ -77,7 +77,7 @@ export const ComerziaLineChart = ({
               strokeWidth={3}
               fillOpacity={1}
               fill={`url(#color${s.dataKey})`}
-              dot={{ r: 4, strokeWidth: 2, fill: 'oklch(var(--b1))', stroke: s.color || '#4f46e5' }}
+              dot={{ r: 4, strokeWidth: 2, fill: 'var(--color-base-100)', stroke: s.color || '#4f46e5' }}
               activeDot={{ r: 6, strokeWidth: 0, fill: s.color || '#4f46e5' }}
             />
           ))}

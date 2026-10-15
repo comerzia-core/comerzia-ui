@@ -14,7 +14,8 @@
     "test:labels": "node --test tests/labelRolls.test.mjs",
     "test:labels-ui": "playwright test --config playwright.labels.config.mjs",
     "test:realtime": "playwright test --config playwright.realtime.config.mjs",
-    "test:images": "playwright test --config playwright.images.config.mjs"
+    "test:images": "playwright test --config playwright.images.config.mjs",
+    "test:themes": "playwright test --config playwright.themes.config.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

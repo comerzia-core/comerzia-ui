@@ -1,6 +1,7 @@
 import type { DictionaryResponse } from '../../../types/dictionary';
 
 export interface MyProfileResponse {
+  theme?: string;
   id: string;
   username: string;
   status: string;

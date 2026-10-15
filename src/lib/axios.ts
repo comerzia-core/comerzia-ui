@@ -15,7 +15,8 @@ api.interceptors.request.use(
         // Leemos el token directamente desde la memoria de Zustand
         const token = useAuthStore.getState().token;
         
-        if (token) {
+        // Una petición ligada explícitamente a una sesión conserva su credencial al cambiar de cuenta.
+        if (token && !config.headers.Authorization) {
             config.headers.Authorization = `Bearer ${token}`;
         }
         return config;

@@ -235,7 +235,7 @@ export const ComerziaBcgMatrixChart = ({
 
           <Tooltip
             wrapperStyle={{ outline: 'none', zIndex: 60 }}
-            cursor={{ strokeDasharray: '3 3', stroke: 'oklch(var(--p))', strokeWidth: 1 }}
+            cursor={{ strokeDasharray: '3 3', stroke: 'var(--color-primary)', strokeWidth: 1 }}
             content={({ active, payload }) => {
               if (active && payload && payload.length) {
                 const point = payload[0].payload as DemandBcgItem;
@@ -298,7 +298,7 @@ export const ComerziaBcgMatrixChart = ({
                 <Cell
                   key={`bcg-cell-${index}`}
                   fill={bcg.color}
-                  stroke="oklch(var(--b1))"
+                  stroke="var(--color-base-100)"
                   strokeWidth={2}
                   style={{
                     cursor: onPointClick ? 'pointer' : 'default',

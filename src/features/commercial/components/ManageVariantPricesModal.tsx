@@ -324,7 +324,7 @@ export const ManageVariantPricesModal = ({ isOpen, onClose, variantId, variantNa
                     key={pt.id}
                     type="button"
                     onClick={() => addPriceType(pt.id)}
-                    className="btn btn-xs bg-base-100 hover:bg-primary hover:text-white text-primary border border-dashed border-primary/40 rounded-lg gap-1 font-medium transition-all shadow-2xs"
+                    className="btn btn-xs bg-base-100 hover:bg-primary hover:text-primary-content text-primary border border-dashed border-primary/40 rounded-lg gap-1 font-medium transition-all shadow-2xs"
                   >
                     <Plus size={13} /> {pt.name} {pt.equivalenceFactor > 1 ? `(x${pt.equivalenceFactor})` : ''}
                   </button>

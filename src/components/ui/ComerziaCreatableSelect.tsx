@@ -363,7 +363,7 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
                         {canCreate && canManage && (
                             <li className="w-full">
                                 <a 
-                                    className="text-primary font-medium flex items-center gap-2 hover:!bg-primary hover:!text-white active:!bg-primary-focus transition-all duration-150 px-3 py-2 rounded-lg w-full cursor-pointer"
+                                    className="text-primary font-medium flex items-center gap-2 hover:!bg-primary hover:!text-primary-content active:!bg-primary transition-all duration-150 px-3 py-2 rounded-lg w-full cursor-pointer"
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         handleCreate();

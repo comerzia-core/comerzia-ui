@@ -1,0 +1,14 @@
+{
+  "light": { "label": "Día clásico", "mode": "light", "description": "Claro y sencillo", "icon": "Sun" },
+  "dark": { "label": "Noche carbón", "mode": "dark", "description": "Grises profundos", "icon": "Moon" },
+  "cupcake": { "label": "Dulce pastel", "mode": "light", "description": "Crema, rosa y menta", "icon": "Candy" },
+  "valentine": { "label": "Romance rosa", "mode": "light", "description": "Rosa y violeta", "icon": "Heart" },
+  "synthwave": { "label": "Retro neón", "mode": "dark", "description": "Fucsia y azul nocturno", "icon": "Zap" },
+  "dracula": { "label": "Medianoche", "mode": "dark", "description": "Morado y acentos vivos", "icon": "Sparkles" },
+  "emerald": { "label": "Esmeralda", "mode": "light", "description": "Verde fresco", "icon": "Leaf" },
+  "corporate": { "label": "Ejecutivo azul", "mode": "light", "description": "Azul sobrio", "icon": "BriefcaseBusiness" },
+  "coffee": { "label": "Café y caramelo", "mode": "dark", "description": "Tonos cálidos", "icon": "Coffee" },
+  "halloween": { "label": "Calabaza y sombras", "mode": "dark", "description": "Naranja sobre negro", "icon": "Flame" },
+  "luxury": { "label": "Oro y azabache", "mode": "dark", "description": "Dorado y negro", "icon": "Crown" },
+  "nord": { "label": "Nieve ártica", "mode": "light", "description": "Grises y azul hielo", "icon": "Snowflake" }
+}

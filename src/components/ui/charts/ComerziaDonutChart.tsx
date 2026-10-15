@@ -106,7 +106,7 @@ export const ComerziaDonutChart = ({
             paddingAngle={3}
             dataKey="value"
             animationDuration={600}
-            stroke="oklch(var(--b1))"
+            stroke="var(--color-base-100)"
             strokeWidth={2}
             style={{ outline: 'none' }}
           >

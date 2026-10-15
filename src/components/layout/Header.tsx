@@ -3,8 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../stores/useAuthStore";
 import { useCurrentTime } from "../../hooks/useCurrentTime";
-import { LogOut, User as UserIcon, HelpCircle, Menu } from "lucide-react";
-import { ThemeToggle } from "../ui/ThemeToggle";
+import { LogOut, User as UserIcon, Menu } from "lucide-react";
+import { ThemePickerTrigger } from '../../features/security/components/ThemePickerTrigger';
 import {
   BtnModalYes,
   BtnModalNo
@@ -92,6 +92,7 @@ export const Header = () => {
         {/* DERECHA */}
         <div className="flex items-center gap-2 shrink-0">
           <RealtimeStatusIndicator />
+          <ThemePickerTrigger />
 
           {/* TELÓN DE FONDO (BACKDROP OSCURO Y DIFUMINADO) EN MOBILE */}
           {isDropdownOpen && (
@@ -147,21 +148,6 @@ export const Header = () => {
 
                 <div className="divider my-0"></div>
 
-                {/* TEMA (Con el toggle corregido) */}
-                <li>
-                  <div className="py-3 flex justify-between active:bg-transparent hover:bg-transparent cursor-default">
-                    <div className="flex items-center gap-2">
-                      <HelpCircle size={18} className="opacity-0" />
-                      <span className="-ml-6">Tema</span>
-                    </div>
-                    {/* stopPropagation evita que el clic en el switch cierre el menú */}
-                    <div onClick={(e) => e.stopPropagation()}>
-                      <ThemeToggle />
-                    </div>
-                  </div>
-                </li>
-
-                <div className="divider my-0"></div>
 
                 <li>
                   <button

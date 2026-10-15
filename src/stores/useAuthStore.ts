@@ -3,6 +3,7 @@ import api from '../lib/axios';
 // Importamos estrictamente desde tu archivo central de tipos
 import type { UserProfile, MenuItem } from '../features/auth/types';
 import { getMyMenuTree } from '../services/menuService';
+import { useThemeStore } from './useThemeStore';
 
 interface AuthState {
     token: string | null;
@@ -35,6 +36,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
         isSessionReady: false, 
 
         login: async (token: string) => {
+            useThemeStore.getState().clearSession();
             localStorage.setItem('token', token);
             set({ token, isAuthenticated: true, isSessionReady: false });
             
@@ -48,6 +50,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
         },
 
         logout: (reason?: string) => {
+            useThemeStore.getState().clearSession();
             const notices: Record<string, string> = {
                 session_permissions_changed: 'Tus permisos cambiaron. Inicia sesión nuevamente.',
                 session_access_changed: 'Tu acceso cambió. Inicia sesión nuevamente.',
@@ -97,8 +100,12 @@ export const useAuthStore = create<AuthState>((set, get) => {
 
         fetchUserProfile: async () => {
             const token = get().token;
+            const themeRevision = useThemeStore.getState().revision;
             const { data } = await api.get<UserProfile>('/auth/profile');
-            if (token && get().token === token) set({ userProfile: data });
+            if (token && get().token === token) {
+                set({ userProfile: data });
+                useThemeStore.getState().bindProfile(data.id, data.theme, token, themeRevision);
+            }
         },
 
         fetchMenuTree: async () => {

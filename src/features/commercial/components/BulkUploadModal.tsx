@@ -414,7 +414,7 @@ export const BulkUploadModal = ({ isOpen, onClose, onSuccess }: Props) => {
                   className="cursor-pointer flex flex-col items-center justify-center space-y-2 py-4 select-none"
                 >
                   <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-200 ${
-                    isDragging ? 'bg-primary text-white scale-110 shadow-md' : 'bg-primary/10 text-primary'
+                    isDragging ? 'bg-primary text-primary-content scale-110 shadow-md' : 'bg-primary/10 text-primary'
                   }`}>
                     <FileSpreadsheet size={28} />
                   </div>

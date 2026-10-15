@@ -1,3 +1,6 @@
+import { AppearancePreferences } from '../components/ThemePreferencePanel';
+import { ComerziaButton } from '../../../components/ui/ComerziaButton';
+import { Palette } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { 
   User, 
@@ -44,7 +47,7 @@ export const ProfilePage = () => {
   ]);
 
   // Estados de carga y navegación de pestañas
-  const [activeTab, setActiveTab] = useState<'personal' | 'security'>('personal');
+  const [activeTab, setActiveTab] = useState<'personal' | 'security' | 'appearance'>('personal');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSavingProfile, setIsSavingProfile] = useState<boolean>(false);
   const [isChangingPassword, setIsChangingPassword] = useState<boolean>(false);
@@ -490,7 +493,7 @@ export const ProfilePage = () => {
         <div className="lg:col-span-8 xl:col-span-8 space-y-0">
           
           {/* BARRA DE PESTAÑAS */}
-          <div className="tabs tabs-boxed bg-base-200 p-1 rounded-t-2xl gap-1 font-semibold flex">
+          <div className="tabs tabs-boxed bg-base-200 p-1 rounded-t-2xl gap-1 font-semibold flex flex-wrap">
             <button
               type="button"
               className={`tab flex-1 text-xs sm:text-sm py-2.5 whitespace-nowrap transition-all ${
@@ -499,7 +502,7 @@ export const ProfilePage = () => {
               onClick={() => setActiveTab('personal')}
             >
               <User size={16} className="mr-1.5" />
-              Información Personal
+              <span className="hidden sm:inline">Información Personal</span><span className="sm:hidden">Personal</span>
             </button>
 
             <button
@@ -510,8 +513,11 @@ export const ProfilePage = () => {
               onClick={() => setActiveTab('security')}
             >
               <KeyRound size={16} className="mr-1.5" />
-              Seguridad y Contraseña
+              <span className="hidden sm:inline">Seguridad y Contraseña</span><span className="sm:hidden">Seguridad</span>
             </button>
+            <ComerziaButton type="button" label="Apariencia" variant="ghost" icon={<Palette size={16} />}
+              onClick={() => setActiveTab('appearance')}
+              className={`tab flex-1 !min-w-0 !min-h-11 !px-2 !text-xs sm:!text-sm !shadow-none ${activeTab === 'appearance' ? '!bg-base-100 !text-primary' : ''}`} />
           </div>
 
           {/* CUERPO DEL TAB */}
@@ -520,6 +526,7 @@ export const ProfilePage = () => {
             {/* ======================================================== */}
             {/* TAB 1: INFORMACIÓN PERSONAL                              */}
             {/* ======================================================== */}
+            {activeTab === 'appearance' && <AppearancePreferences />}
             {activeTab === 'personal' && (
               <form onSubmit={handleSavePersonal} className="space-y-6">
                 

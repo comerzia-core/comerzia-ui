@@ -46,7 +46,7 @@ export const BranchComparisonSection: React.FC<Props> = ({
         {/* Cabecera de la sucursal con ícono destacado y código */}
         <div className="flex items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-white transition-colors duration-200">
+            <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-primary-content transition-colors duration-200">
               <Store size={15} />
             </div>
             <div className="min-w-0 flex-1">

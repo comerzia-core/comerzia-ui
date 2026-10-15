@@ -213,7 +213,7 @@ export const PairAgentModal = ({ isOpen, onClose, onSuccess, initialAgent }: Pro
             <span className="text-xs uppercase font-bold tracking-wider text-base-content/60">
               PIN de Enlace
             </span>
-            <div className="text-3xl sm:text-4xl font-mono font-extrabold text-primary tracking-widest selection:bg-primary selection:text-white">
+            <div className="text-3xl sm:text-4xl font-mono font-extrabold text-primary tracking-widest selection:bg-primary selection:text-primary-content">
               {formatPin(createdAgent?.pairingCode)}
             </div>
 

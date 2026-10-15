@@ -70,7 +70,7 @@ export const ComerziaBarChart = ({
               }
               return null;
             }}
-            cursor={{ fill: 'oklch(var(--b2) / 0.35)', rx: 8, ry: 8 }}
+            cursor={{ fill: 'color-mix(in srgb, var(--color-base-200) 35%, transparent)', rx: 8, ry: 8 }}
           />
           <Legend
             verticalAlign="top"
@@ -83,7 +83,7 @@ export const ComerziaBarChart = ({
               key={s.dataKey}
               dataKey={s.dataKey}
               name={s.name || s.dataKey}
-              fill={s.color || 'oklch(var(--p))'}
+              fill={s.color || 'var(--color-primary)'}
               radius={[6, 6, 0, 0]}
               maxBarSize={48}
               style={{ outline: 'none', cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}

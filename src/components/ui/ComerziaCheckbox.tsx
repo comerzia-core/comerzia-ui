@@ -71,15 +71,14 @@ export const ComerziaCheckbox: React.FC<ComerziaCheckboxProps> = ({
           sizeClasses[size]
         } ${
           isChecked
-            ? 'bg-[#432ad5] !border-[#432ad5] !text-white shadow-xs'
-            : 'bg-base-100 border-base-content/40 hover:border-[#432ad5] hover:bg-[#432ad5]/5 shadow-2xs'
+            ? 'bg-primary !border-primary !text-primary-content shadow-xs'
+            : 'bg-base-100 border-base-content/40 hover:border-primary hover:bg-primary/5 shadow-2xs'
         }`}
-        style={isChecked ? { backgroundColor: '#432ad5', borderColor: '#432ad5', color: '#ffffff' } : undefined}
       >
         {indeterminate ? (
-          <Minus size={iconSizes[size]} className="stroke-[3.5] text-white" />
+          <Minus size={iconSizes[size]} className="stroke-[3.5] text-primary-content" />
         ) : checked ? (
-          <Check size={iconSizes[size]} className="stroke-[3.5] text-white" />
+          <Check size={iconSizes[size]} className="stroke-[3.5] text-primary-content" />
         ) : null}
       </div>
       {label && (

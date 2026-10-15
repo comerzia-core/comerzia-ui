@@ -40,6 +40,7 @@ export interface CompanySettings {
 }
 
 export interface UserProfile {
+    theme?: string;
     id: string;
     username: string;
     firstName: string;

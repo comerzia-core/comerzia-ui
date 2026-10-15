@@ -52,7 +52,7 @@ export const ComerziaButton = ({
       case "info": return "btn-comerzia-info border-none";
       case "neutral": return "btn-comerzia-neutral border-none";
 
-      case "primary": return "btn-comerzia-primary text-white border-none";
+      case "primary": return "btn-comerzia-primary text-primary-content border-none";
       case "white": return "bg-white text-base-content hover:bg-gray-100 border-none"; 
       case "overlay": return "bg-black/40 hover:bg-black/60 text-white border-none backdrop-blur-[2px] shadow-sm";
       default: return "btn-comerzia-primary text-white border-none";
