@@ -23,7 +23,7 @@ export function TenantSubscriptionPanel({ companyId }: { companyId: string }) {
       <ComerziaMetricCard label="Usuarios" value={query.data.users + ' / ' + (query.data.unlimited ? 'Sin límite' : query.data.maxUsers)} />
       <ComerziaMetricCard label="Productos" value={query.data.products + ' / ' + (query.data.unlimited ? 'Sin límite' : query.data.maxProducts)} /></div></>}
     {can('SYS_BILLING_MANAGE') && <BtnDetails responsive={false} label="Asignar o bonificar plan" onClick={() => { setEditor(true); setReason(''); setPlan(''); }} />}
-    {can('SYS_BILLING_MANAGE') && query.data && !query.data.unlimited && <BtnDetails responsive={false} label="Modificar l?mites" onClick={() => setLimits(true)} />}
+    {can('SYS_BILLING_MANAGE') && query.data && !query.data.unlimited && <BtnDetails responsive={false} label="Modificar recursos" onClick={() => setLimits(true)} />}
     {limits && query.data && <TenantLimitsModal companyId={companyId} access={query.data} onClose={() => setLimits(false)} />}
     <ComerziaModal isOpen={editor} onClose={() => { if (!grant.isPending) setEditor(false); }} title="Asignación manual de plan"
       actions={<BtnSave responsive={false} isLoading={grant.isPending} onClick={() => {

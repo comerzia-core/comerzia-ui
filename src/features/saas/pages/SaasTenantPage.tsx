@@ -1,3 +1,4 @@
+import { ComerziaSurface } from '../../../components/ui/ComerziaSurface';
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { ComerziaModal } from '../../../components/ui/ComerziaModal';
@@ -26,11 +27,11 @@ export function SaasTenantPage() {
       <BtnTab responsive={false} label="Sucursales" onClick={() => setTab('branches')} />
       {can('SYS_TENANT_USERS_READ') && <BtnTab responsive={false} label="Usuarios" onClick={() => setTab('users')} />}
     </div>
-    {tab === 'summary' && <div className="card bg-base-100 p-4 rounded-2xl border border-base-200 space-y-3">
+    {tab === 'summary' && <ComerziaSurface className="space-y-3">
       <p>{company.status ? 'Empresa habilitada' : 'Empresa suspendida'}</p>
       <p>Zona horaria: {company.saasCompanySettingsResponse?.timezone ?? 'Sin configurar'}</p>
       <p>Moneda: {company.saasCompanySettingsResponse?.currencyCode ?? 'Sin configurar'}</p>
-    </div>}
+    </ComerziaSurface>}
     {tab === 'subscription' && <TenantSubscriptionPanel companyId={id} />}
     {tab === 'branches' && <TenantBranchTable companyId={id} />}
     {tab === 'users' && can('SYS_TENANT_USERS_READ') && <TenantAccountTable companyId={id} />}

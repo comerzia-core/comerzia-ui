@@ -1,3 +1,4 @@
+import { ComerziaSurface } from '../../../components/ui/ComerziaSurface';
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { ArchiveRestore } from 'lucide-react';
@@ -23,8 +24,8 @@ export function SaasRecoveryPage() {
   const context = useSaasContextMenu<RecoveryRecord>();
   const restore = usePlatformAction(() => platformService.post(path + '/' + encodeURIComponent(selected!.id) + '/restore?entity=' + encodeURIComponent(entity), { reason }));
   return <div className="space-y-6"><h1 className="text-2xl font-bold">Registros eliminados</h1>
-    <div className="card bg-base-100 p-4 rounded-2xl shadow-xs border border-base-200"><ComerziaSelect label="Tipo de registro" options={options[DICTIONARIES.RECOVERY_ENTITY] ?? []}
-      value={entity} onChange={event => { setEntity(event.target.value); query.pagination.onPageChange(0); }} /></div>
+    <ComerziaSurface className=""><ComerziaSelect label="Tipo de registro" options={options[DICTIONARIES.RECOVERY_ENTITY] ?? []}
+      value={entity} onChange={event => { setEntity(event.target.value); query.pagination.onPageChange(0); }} /></ComerziaSurface>
     {query.isError && <p role="alert">No se pudieron consultar los registros.</p>}
     {entity && <ComerziaResponsiveTable data={query.data?.content ?? []} pagination={query.pagination} isLoading={query.isPending} onActions={context.open}
       columns={[{ header: 'Nombre', accessorKey: 'name' }, { header: 'Eliminación', render: row => formatDateForUser(row.removedAt) }, { header: 'Responsable', accessorKey: 'removedBy' }]} />}

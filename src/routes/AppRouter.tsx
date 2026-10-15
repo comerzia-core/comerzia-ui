@@ -10,6 +10,7 @@ import { SaasFinancePage } from '../features/saas/pages/SaasFinancePage';
 import { SaasAuditPage } from '../features/saas/pages/SaasAuditPage';
 import { SaasRecoveryPage } from '../features/saas/pages/SaasRecoveryPage';
 import { SaasTechnicalPage } from '../features/saas/pages/SaasTechnicalPage';
+import { SaasCitiesPage } from '../features/saas/pages/SaasCitiesPage';
 import { SubscriptionPage } from '../features/organization/pages/SubscriptionPage';
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { LoginPage } from "../features/auth/pages/LoginPage";
@@ -87,6 +88,7 @@ export const AppRouter = () => {
                 <Route path="/saas/data-recovery/:companyId" element={<SaasRecoveryPage />} />
               </Route>
               <Route element={<PermissionGuard code="SYS_TECHNICAL_READ" />}><Route path="/saas/technical" element={<SaasTechnicalPage />} /></Route>
+              <Route element={<PermissionGuard code="GEN_CITIES_READ" />}><Route path="/saas/cities" element={<SaasCitiesPage />} /></Route>
               <Route path="/saas/*" element={<NotFoundPage />} />
             </Route>
           </Route>

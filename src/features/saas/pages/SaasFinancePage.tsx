@@ -1,3 +1,4 @@
+import { ComerziaSurface } from '../../../components/ui/ComerziaSurface';
 import { useState } from 'react';
 import { ComerziaMetricCard } from '../../../components/ui/ComerziaMetricCard';
 import { ComerziaSelect } from '../../../components/ui/ComerziaSelect';
@@ -25,10 +26,10 @@ export function SaasFinancePage() {
       <ComerziaMetricCard label="ARR · proyección anual" value={summary.data.arr.toFixed(2) + ' Bs'} />
     </div><p className="text-sm">{summary.data.pendingReviews} pagos pendientes de revisión</p></>}
     {!settings.data?.qrUrl && settings.isSuccess && <p className="text-warning text-sm">Configura el QR para que los clientes puedan solicitar pagos.</p>}
-    <div className="card bg-base-100 p-4 rounded-2xl shadow-xs border border-base-200">
+    <ComerziaSurface className="">
       <ComerziaSelect label="Estado" options={options[DICTIONARIES.SUBSCRIPTION_PAYMENT_STATUS] ?? []} value={status} enableDefaultOption placeholder="Todos"
         onChange={event => { setStatus(event.target.value); queue.pagination.onPageChange(0); }} />
-    </div>
+    </ComerziaSurface>
     <SubscriptionPaymentTable showCompany data={queue.data?.content ?? []} pagination={queue.pagination} isLoading={queue.isPending} onDetail={setSelected} />
     {selected && <ReviewPaymentModal key={selected.id} payment={selected} canReview={can('SYS_FINANCE_MANAGE')} onClose={() => setSelected(null)} />}
     {showSettings && settings.data && <BillingSettingsModal value={settings.data} onClose={() => setShowSettings(false)} />}

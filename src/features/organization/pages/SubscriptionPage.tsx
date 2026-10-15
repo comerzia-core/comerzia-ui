@@ -1,3 +1,4 @@
+import { ComerziaSurface } from '../../../components/ui/ComerziaSurface';
 import { useState } from 'react';
 import { ComerziaMetricCard } from '../../../components/ui/ComerziaMetricCard';
 import { ComerziaModal } from '../../../components/ui/ComerziaModal';
@@ -27,10 +28,10 @@ export function SubscriptionPage() {
       <ComerziaMetricCard label="Usuarios" value={access.data.users + ' / ' + (access.data.unlimited ? 'Sin límite' : access.data.maxUsers)} />
       <ComerziaMetricCard label="Productos" value={access.data.products + ' / ' + (access.data.unlimited ? 'Sin límite' : access.data.maxProducts)} /></div></>}
     {!canRead && <p className="text-sm">Contacta con el propietario para revisar o renovar el plan.</p>}
-    {canRead && <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">{plans.data?.map(plan => <div key={plan.id} className="card bg-base-100 p-4 rounded-2xl border border-base-200 space-y-3">
+    {canRead && <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">{plans.data?.map(plan => <ComerziaSurface key={plan.id} className="space-y-3">
       <h2 className="font-bold">{plan.name}</h2><p>{plan.monthlyPrice.toFixed(2)} Bs/mes</p><p className="text-xs text-base-content/60">{plan.baseMaxBranches} sucursales · {plan.baseMaxUsers} usuarios · {plan.baseMaxProducts} productos</p>
       {canPay && !access.data?.unlimited && (plan.monthlyPrice > 0 ? <BtnDetails responsive={false} label="Pagar por QR" onClick={() => checkout.choose(plan.code)} /> : <BtnDetails responsive={false} label="Activar Free" onClick={() => setConfirmFree(true)} />)}
-    </div>)}</div>}
+    </ComerziaSurface>)}</div>}
     {canRead && <><h2 className="text-lg font-bold">Solicitudes de pago</h2>
       {history.isError && <p role="alert">No se pudo consultar el historial.</p>}
       <SubscriptionPaymentTable data={history.data?.content ?? []} pagination={history.pagination} isLoading={history.isPending} onDetail={setDetail} /></>}

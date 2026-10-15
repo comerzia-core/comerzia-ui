@@ -1,4 +1,4 @@
-import { Save, X, Trash2, Pencil, FileSpreadsheet, FileText, Plus, ArrowLeft, ArrowRight, ArrowRightLeft, RefreshCw, Eye, Unlock, Lock, DollarSign, Coins, Camera, Upload, ScanBarcode, Printer, Laptop, Flashlight, FlashlightOff, Settings2 } from "lucide-react";
+import { Save, X, Trash2, Pencil, FileSpreadsheet, FileText, Plus, ArrowLeft, ArrowRight, ArrowRightLeft, RefreshCw, Eye, Unlock, Lock, DollarSign, Coins, Camera, Upload, ScanBarcode, Printer, Laptop, Flashlight, FlashlightOff, Settings2, Copy } from "lucide-react";
 import { ComerziaButton } from "./ComerziaButton";
 
 // Tipos para pasar props extra (como onClick)
@@ -13,6 +13,9 @@ export const BtnAccess = ({ disabledAccess, label, ...props }: BaseBtnProps & { 
     <ComerziaButton variant={disabledAccess ? 'save' : 'cancel'}
         label={label ?? (disabledAccess ? 'Habilitar' : 'Suspender')}
         icon={disabledAccess ? <Unlock size={18} /> : <Lock size={18} />} {...props} />
+);
+export const BtnCopy = ({ label = 'Copiar', ...props }: BaseBtnProps) => (
+    <ComerziaButton variant="neutral" label={label} icon={<Copy size={18} />} {...props} />
 );
 
 // 1. BOTÓN GUARDAR (Verde + Icono Save)

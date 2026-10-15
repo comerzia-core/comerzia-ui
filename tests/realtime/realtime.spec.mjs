@@ -2,11 +2,12 @@ import { test, expect } from '@playwright/test';
 
 const sale = { id: 'sale', saleNumber: 'RT-001', date: '2026-10-13T15:00:00Z', totalAmount: 10, subtotalAmount: 10, discountedAmount: 0, employeeName: 'Test', details: [] };
 async function mockApi(page) {
-  const state = { sales: [], name: 'Original product', description: 'Original description', pendingReads: 0, productReads: 0, shiftReads: 0, inflows: 722.20, outflows: 120, delay: 0, status: 200 };
+  const state = { sales: [], name: 'Original product', description: 'Original description', pendingReads: 0, productReads: 0, shiftReads: 0, inflows: 722.20, outflows: 120, delay: 0, status: 200, operational: true };
   await page.route('**/api/**', async route => {
     const path = new URL(route.request().url()).pathname;
     let data = {};
-    if (path.endsWith('/sales/pending')) { state.pendingReads++; data = state.sales; }
+    if (path.endsWith('/auth/profile')) data = { ...await page.evaluate(() => window.realtimeTest.profile()), operational: state.operational };
+    else if (path.endsWith('/sales/pending')) { state.pendingReads++; data = state.sales; }
     else if (path.endsWith('/active-summaries')) {
       state.shiftReads++; data = [{ id: 'shift', cashName: 'Realtime register', branchName: 'Main',
         employeeName: 'Test Cashier', openedAt: '2026-10-14T12:00:00Z',
@@ -71,6 +72,20 @@ test('disconnect recovers changes missed while offline', async ({ page }) => {
   await page.evaluate(() => window.realtimeTest.close());
   await expect(page.getByText('RT-001').first()).toBeVisible();
   expect(await page.evaluate(() => window.realtimeTest.connections)).toBe(2);
+});
+
+test('subscription status changes rebuild the authorized stream without losing the session', async ({ page }) => {
+  const state = await mockApi(page); await page.goto('/tests/realtime/index.html?view=probe');
+  await expect(page.getByRole('status', { name: 'En vivo' })).toBeVisible();
+  state.operational = false;
+  await page.evaluate(() => window.realtimeTest.raw('event: subscription-changed\ndata: {}\n\n'));
+  await expect.poll(() => page.evaluate(() => window.realtimeTest.profile()?.operational)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.realtimeTest.connections)).toBe(2);
+  state.operational = true;
+  await page.evaluate(() => window.realtimeTest.raw('event: subscription-changed\ndata: {}\n\n'));
+  await expect.poll(() => page.evaluate(() => window.realtimeTest.profile()?.operational)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.realtimeTest.connections)).toBe(3);
+  expect(await page.evaluate(() => window.realtimeTest.token())).toBe('test-bearer-secret');
 });
 
 test('resume refreshes after mobile suspension and keeps one stream', async ({ page }) => {

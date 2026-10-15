@@ -22,7 +22,7 @@ export function TenantBranchTable({ companyId }: { companyId: string }) {
   return <div className="space-y-4">
     {can('SYS_COMPANIES_MANAGE') && <BtnCreate responsive={false} label="Nueva sucursal" onClick={() => edit('new')} />}
     {query.isError && <p role="alert">No se pudieron consultar las sucursales.</p>}
-    <ComerziaResponsiveTable data={query.data?.content ?? []} isLoading={query.isPending} pagination={query.pagination} onActions={context.open}
+    <ComerziaResponsiveTable data={query.data?.content ?? []} isLoading={query.isPending} pagination={query.pagination} onActions={can('SYS_COMPANIES_MANAGE') ? context.open : undefined}
       columns={[{ header: 'Nombre', accessorKey: 'name' }, { header: 'Dirección', accessorKey: 'address' }, { header: 'Estado', render: row => row.status ? 'Habilitada' : 'Deshabilitada' }]} />
     <ComerziaContextMenu {...context.menu} onClose={context.close}>
       {can('SYS_COMPANIES_MANAGE') && <><ContextMenuItem icon={Pencil} label="Editar sucursal" onClick={() => { if (context.menu.item) edit(context.menu.item); context.close(); }} />

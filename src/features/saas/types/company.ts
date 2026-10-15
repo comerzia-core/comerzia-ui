@@ -30,7 +30,7 @@ export interface SaasSubscriptionResponse {
     statusTypeCode: number;
     statusName: string;
     validFrom: string; // ISO String (UTC)
-    validUntil: string; // ISO String (UTC)
+    validUntil: string | null; // ISO String (UTC); Free y Perpetuo no vencen.
     maxBranches: number;
     maxUsers: number;
     maxProducts: number;
@@ -79,15 +79,15 @@ export interface CreateOwnerDetails {
     firstName: string;
     paternalSurname: string;
     maternalSurname?: string;
-    documentType: string; // En el JSON viajan como String hacia el Enum del Backend
+    documentType: string | number;
     documentNumber: string;
-    extension?: string;
+    extension?: string | number | null;
     email: string;
     phoneNumber: string;
 }
 
 export interface CreateSubscriptionDetails {
-    planTypeCode: string;
+    planTypeCode: string | number;
     validUntil: string | null;
     extraBranches: number;
     extraUsers: number;

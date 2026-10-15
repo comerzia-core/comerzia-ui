@@ -1,230 +1,59 @@
-import { usePlatformData } from '../../hooks/usePlatformData';
-import type { PlatformPlan } from '../../types/platform';
-import { useState } from "react";
-import { ComerziaModal } from "../../../../components/ui/ComerziaModal";
-import { ComerziaStepper } from "../../../../components/ui/ComerziaStepper";
-import { ComerziaInput } from "../../../../components/ui/ComerziaInput";
-import { ComerziaSelect } from "../../../../components/ui/ComerziaSelect";
-import { BtnBack, BtnNext, BtnCancel, BtnSave } from "../../../../components/ui/CrudButtons";
-import { useLoadDictionaries } from "../../../../hooks/useLoadDictionaries";
-import { DICTIONARIES } from "../../../../config/dictionaries";
-import { createCompany } from "../../services/companyService";
-import type { CompanyCreatedResponse, CreateCompanyRequest } from "../../types/company";
+import { ComerziaModal } from '../../../../components/ui/ComerziaModal';
+import { ComerziaStepper } from '../../../../components/ui/ComerziaStepper';
+import { ComerziaInput } from '../../../../components/ui/ComerziaInput';
+import { ComerziaSelect } from '../../../../components/ui/ComerziaSelect';
+import { BtnBack, BtnNext, BtnCancel, BtnSave } from '../../../../components/ui/CrudButtons';
+import { DICTIONARIES } from '../../../../config/dictionaries';
+import { useCompanyOnboarding, type CompanyOnboardingOptions } from '../../hooks/useCompanyOnboarding';
 
-// NOTA: Asumo que tu context exporta un hook useToast con métodos como success() y error().
-// Ajusta esto si la firma de tu ToastContext es ligeramente distinta.
-import { useToast } from "../../../../context/ToastContext"; 
-
-interface Props {
-    isOpen: boolean;
-    onClose: () => void;
-    onSuccess: (data: CompanyCreatedResponse) => void;
-}
-
-const INITIAL_STATE: CreateCompanyRequest = {
-    company: { legalName: '', commercialName: '', slug: '', taxId: '' },
-    owner: { firstName: '', paternalSurname: '', maternalSurname: '', documentType: '', documentNumber: '', extension: '', email: '', phoneNumber: '' },
-    subscription: { planTypeCode: '', validUntil: '', extraBranches: 0, extraUsers: 0 }
-};
-
-export const CreateCompanyWizard = ({ isOpen, onClose, onSuccess }: Props) => {
-    // 1. CORRECCIÓN: El stepper de Comerzia empieza en 1 (1-based index)
-    const [step, setStep] = useState(1);
-    
-    const [formData, setFormData] = useState<CreateCompanyRequest>(INITIAL_STATE);
-    const [isSaving, setIsSaving] = useState(false);
-    
-    // 2. ESTADOS PARA VALIDACIÓN UX (SHAKE Y ERRORES)
-    const [errors, setErrors] = useState<Record<string, string>>({});
-    const [shakeKey, setShakeKey] = useState(0);
-    
-    // Instancia de notificaciones
-    const toast = useToast();
-
-    const { options, isLoading: isLoadingDicts } = useLoadDictionaries([
-        DICTIONARIES.DOCUMENT_TYPE,
-        DICTIONARIES.DOCUMENT_EXTENSION,
-        DICTIONARIES.PLAN_TYPE
-    ]);
-
-    const catalog = usePlatformData<PlatformPlan[]>('/saas/plans', undefined, isOpen);
-    const selectedPlan = catalog.data?.find(plan => plan.code === Number(formData.subscription.planTypeCode));
-    const requiresExpiry = selectedPlan?.requiresExpiry ?? true;
-
-    const steps = ["Empresa", "Propietario", "Suscripción"];
-
-    // --- MANEJADORES DE ESTADO ---
-    const updateCompany = (field: keyof typeof formData.company, value: string) => {
-        setFormData(prev => ({ ...prev, company: { ...prev.company, [field]: value } }));
-        // Limpiamos el error de este campo al escribir
-        if (errors[field]) setErrors(prev => ({ ...prev, [field]: '' }));
-    };
-
-    const updateOwner = (field: keyof typeof formData.owner, value: string) => {
-        setFormData(prev => ({ ...prev, owner: { ...prev.owner, [field]: value } }));
-        if (errors[field]) setErrors(prev => ({ ...prev, [field]: '' }));
-    };
-
-    const updateSubscription = (field: keyof typeof formData.subscription, value: string | number) => {
-        setFormData(prev => ({ ...prev, subscription: { ...prev.subscription, [field]: value } }));
-        if (errors[field]) setErrors(prev => ({ ...prev, [field]: '' }));
-    };
-
-    // 3. CORRECCIÓN: Auto-generar SLUG seguro desde el Nombre Comercial
-    const handleCommercialNameChange = (val: string) => {
-        updateCompany('commercialName', val);
-        
-        const autoSlug = val
-            .normalize("NFD") // Descompone acentos y caracteres especiales (ej. 'ñ' -> 'n' + '~')
-            .replace(/[\u0300-\u036f]/g, "") // Elimina las marcas de acentuación
-            .toLowerCase() // Todo a minúsculas
-            .replace(/[^a-z0-9]+/g, '-') // Reemplaza cualquier cosa que NO sea letra o número por guiones
-            .replace(/(^-|-$)+/g, ''); // Quita guiones iniciales o finales huérfanos
-            
-        updateCompany('slug', autoSlug);
-    };
-
-    // --- LÓGICA DE VALIDACIÓN ESTRICTA ---
-    const validateCurrentStep = (): boolean => {
-        const newErrors: Record<string, string> = {};
-
-        if (step === 1) {
-            if (!formData.company.legalName.trim()) newErrors.legalName = "Campo requerido";
-            if (!formData.company.commercialName.trim()) newErrors.commercialName = "Campo requerido";
-            if (!formData.company.taxId.trim()) newErrors.taxId = "Campo requerido";
-        } 
-        else if (step === 2) {
-            if (!formData.owner.firstName.trim()) newErrors.firstName = "Campo requerido";
-            if (!formData.owner.paternalSurname.trim()) newErrors.paternalSurname = "Campo requerido";
-            if (!formData.owner.documentType) newErrors.documentType = "Seleccione un documento";
-            if (!formData.owner.documentNumber.trim()) newErrors.documentNumber = "Campo requerido";
-            
-            // Validación básica de email
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!formData.owner.email.trim()) {
-                newErrors.email = "Campo requerido";
-            } else if (!emailRegex.test(formData.owner.email)) {
-                newErrors.email = "Correo inválido";
-            }
-            
-            if (!formData.owner.phoneNumber.trim()) newErrors.phoneNumber = "Campo requerido";
-        } 
-        else if (step === 3) {
-            if (!formData.subscription.planTypeCode) newErrors.planTypeCode = "Seleccione un plan";
-            if (requiresExpiry && !formData.subscription.validUntil) newErrors.validUntil = "Fecha requerida";
-            if (formData.subscription.extraBranches < 0) newErrors.extraBranches = "Mínimo 1";
-            if (formData.subscription.extraUsers < 0) newErrors.extraUsers = "Mínimo 1";
-        }
-
-        setErrors(newErrors);
-
-        // Si hay errores, disparamos el Shake y mostramos Toast
-        if (Object.keys(newErrors).length > 0) {
-            setShakeKey(prev => prev + 1); // Dispara la animación CSS de vibración
-            
-            // Dependiendo de tu implementación de ToastContext (toast.error o toast({type: 'error'}))
-            if (toast?.error) {
-                toast.error("Por favor, complete los campos obligatorios en rojo.");
-            }
-            return false;
-        }
-
-        return true;
-    };
-
-    // --- NAVEGACIÓN Y SUBMIT ---
-    const handleNext = () => {
-        if (validateCurrentStep()) {
-            setStep(prev => Math.min(prev + 1, steps.length));
-        }
-    };
-    
-    const handlePrev = () => setStep(prev => Math.max(prev - 1, 1));
-
-    const handleSubmit = async () => {
-        // Validar el último paso antes de enviar al backend
-        if (!validateCurrentStep()) return;
-
-        try {
-            setIsSaving(true);
-            const validUntil = requiresExpiry ? new Date(formData.subscription.validUntil!).toISOString() : null;
-            const payload: CreateCompanyRequest = {
-                ...formData,
-                subscription: {
-                    ...formData.subscription,
-                    validUntil // Transformación estricta a UTC
-                }
-            };
-
-            // 2. Capturamos la respuesta del backend
-            const responseData = await createCompany(payload);
-            
-            if (toast?.success) toast.success("Empresa y Suscripción registradas exitosamente.");
-            
-            // 3. Emitimos la data al padre
-            onSuccess(responseData);
-            handleClose();
-        } catch (error: any) {
-            console.error("Error creating company:", error);
-            if (toast?.error) {
-                toast.error(error?.response?.data?.message || "Ocurrió un error al registrar la empresa.");
-            }
-        } finally {
-            setIsSaving(false);
-        }
-    };
-
-    const handleClose = () => {
-        setFormData(INITIAL_STATE);
-        setStep(1); // Volver al índice base 1
-        setErrors({});
-        onClose();
-    };
-
+export const CreateCompanyWizard = (props: CompanyOnboardingOptions) => {
+    const { isOpen } = props;
+    const { step, formData, isSaving, errors, shakeKey, options, isLoadingDicts, catalog, requiresExpiry, steps,
+        updateCompany, updateOwner, updateSubscription, handleCommercialNameChange, handleNext, handlePrev, handleSubmit, handleClose } = useCompanyOnboarding(props);
     return (
-        <ComerziaModal isOpen={isOpen} onClose={handleClose} title="Registrar Nueva Empresa (Tenant)" size="lg">
-            
+        <ComerziaModal isOpen={isOpen} onClose={() => { if (!isSaving) handleClose(); }} title="Registrar nueva empresa" size="lg">
+
             <div className="mb-8">
                 <ComerziaStepper steps={steps} currentStep={step} />
             </div>
 
             <div className="min-h-[300px]">
-                
+
                 {/* PASO 1: EMPRESA (Antes paso 0) */}
                 {step === 1 && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="col-span-full">
-                            <ComerziaInput 
-                                label="Razón Social" 
-                                value={formData.company.legalName} 
-                                onChange={(e) => updateCompany('legalName', e.target.value)} 
-                                isRequired 
+                            <ComerziaInput
+                                label="Razón Social" aria-label="Razón Social"
+                                value={formData.company.legalName}
+                                onChange={(e) => updateCompany('legalName', e.target.value)}
+                                isRequired
                                 error={errors.legalName}
                                 shakeKey={shakeKey}
                             />
                         </div>
-                        <ComerziaInput 
-                            label="Nombre Comercial" 
-                            value={formData.company.commercialName} 
-                            onChange={(e) => handleCommercialNameChange(e.target.value)} 
-                            isRequired 
+                        <ComerziaInput
+                            label="Nombre Comercial" aria-label="Nombre Comercial"
+                            value={formData.company.commercialName}
+                            onChange={(e) => handleCommercialNameChange(e.target.value)}
+                            isRequired
                             error={errors.commercialName}
                             shakeKey={shakeKey}
                         />
-                        <ComerziaInput 
-                            label="NIT / Tax ID" 
-                            value={formData.company.taxId} 
-                            onChange={(e) => updateCompany('taxId', e.target.value)} 
-                            isRequired 
+                        <ComerziaInput
+                            label="NIT / Tax ID" aria-label="NIT / Tax ID"
+                            value={formData.company.taxId}
+                            onChange={(e) => updateCompany('taxId', e.target.value)}
+                            isRequired
                             error={errors.taxId}
                             shakeKey={shakeKey}
                         />
                         <div className="col-span-full">
-                            <ComerziaInput 
-                                label="Slug de Acceso (URL Auto-generada)" 
-                                value={formData.company.slug} 
+                            <ComerziaInput
+                                label="Slug de Acceso (URL Auto-generada)" aria-label="Slug de Acceso (URL Auto-generada)"
+                                value={formData.company.slug}
                                 disabled // Bloqueado, no editable por el usuario
-                                isRequired 
+                                isRequired
                                 error={errors.slug}
                                 shakeKey={shakeKey}
                             />
@@ -238,80 +67,80 @@ export const CreateCompanyWizard = ({ isOpen, onClose, onSuccess }: Props) => {
                         <div className="col-span-full">
                             <h3 className="font-bold text-base-content/70 border-b pb-2 mb-2">Datos del propietario de la empresa</h3>
                         </div>
-                        <ComerziaInput 
-                            label="Nombres" 
-                            value={formData.owner.firstName} 
-                            onChange={(e) => updateOwner('firstName', e.target.value)} 
-                            isRequired 
+                        <ComerziaInput
+                            label="Nombres" aria-label="Nombres"
+                            value={formData.owner.firstName}
+                            onChange={(e) => updateOwner('firstName', e.target.value)}
+                            isRequired
                             error={errors.firstName}
                             shakeKey={shakeKey}
                         />
-                        <ComerziaInput 
-                            label="Apellido Paterno" 
-                            value={formData.owner.paternalSurname} 
-                            onChange={(e) => updateOwner('paternalSurname', e.target.value)} 
-                            isRequired 
+                        <ComerziaInput
+                            label="Apellido Paterno" aria-label="Apellido Paterno"
+                            value={formData.owner.paternalSurname}
+                            onChange={(e) => updateOwner('paternalSurname', e.target.value)}
+                            isRequired
                             error={errors.paternalSurname}
                             shakeKey={shakeKey}
                         />
-                        <ComerziaInput 
-                            label="Apellido Materno" 
-                            value={formData.owner.maternalSurname || ''} 
-                            onChange={(e) => updateOwner('maternalSurname', e.target.value)} 
+                        <ComerziaInput
+                            label="Apellido Materno" aria-label="Apellido Materno"
+                            value={formData.owner.maternalSurname || ''}
+                            onChange={(e) => updateOwner('maternalSurname', e.target.value)}
                         />
-                        
-                        <ComerziaSelect 
-                            label="Tipo de Documento" 
-                            options={options[DICTIONARIES.DOCUMENT_TYPE]} 
+
+                        <ComerziaSelect
+                            label="Tipo de Documento" aria-label="Tipo de Documento"
+                            options={options[DICTIONARIES.DOCUMENT_TYPE]}
                             isLoading={isLoadingDicts}
-                            value={formData.owner.documentType} 
-                            onChange={(e) => updateOwner('documentType', e.target.value)} 
-                            isRequired 
+                            value={formData.owner.documentType}
+                            onChange={(e) => updateOwner('documentType', e.target.value)}
+                            isRequired
                             error={errors.documentType}
                             shakeKey={shakeKey}
                         />
-                        <ComerziaInput 
-                            label="Número de Documento" 
-                            value={formData.owner.documentNumber} 
+                        <ComerziaInput
+                            label="Número de Documento" aria-label="Número de Documento"
+                            value={formData.owner.documentNumber}
                             onChange={(e) => {
-                                const soloNumeros = e.target.value.replace(/\D/g, '').slice(0, 12);
-                                updateOwner('documentNumber', soloNumeros);
-                            }} 
-                            isRequired 
+                                const digits = e.target.value.replace(/\D/g, '').slice(0, 12);
+                                updateOwner('documentNumber', digits);
+                            }}
+                            isRequired
                             error={errors.documentNumber}
                             shakeKey={shakeKey}
                         />
-                        <ComerziaSelect 
-                            label="Extensión" 
-                            options={options[DICTIONARIES.DOCUMENT_EXTENSION]} 
+                        <ComerziaSelect
+                            label="Extensión" aria-label="Extensión"
+                            options={options[DICTIONARIES.DOCUMENT_EXTENSION]}
                             isLoading={isLoadingDicts}
-                            value={formData.owner.extension || ''} 
-                            onChange={(e) => updateOwner('extension', e.target.value)} 
-                            isRequired 
+                            value={formData.owner.extension || ''}
+                            onChange={(e) => updateOwner('extension', e.target.value)}
+                            isRequired
                             error={errors.extension}
                             shakeKey={shakeKey}
                         />
 
-                        <ComerziaInput 
-                            label="Correo Electrónico" 
+                        <ComerziaInput
+                            label="Correo Electrónico" aria-label="Correo Electrónico"
                             type="email"
-                            value={formData.owner.email} 
-                            onChange={(e) => updateOwner('email', e.target.value)} 
-                            isRequired 
+                            value={formData.owner.email}
+                            onChange={(e) => updateOwner('email', e.target.value)}
+                            isRequired
                             error={errors.email}
                             shakeKey={shakeKey}
                         />
-                        <ComerziaInput 
-                            label="Teléfono" 
-                            value={formData.owner.phoneNumber} 
+                        <ComerziaInput
+                            label="Teléfono" aria-label="Teléfono"
+                            value={formData.owner.phoneNumber}
                             onChange={(e) => {
-                                const soloNumeros = e.target.value.replace(/\D/g, '').slice(0, 8);
-                                updateOwner('phoneNumber', soloNumeros);
-                            }} 
-                            isRequired 
+                                const digits = e.target.value.replace(/\D/g, '').slice(0, 8);
+                                updateOwner('phoneNumber', digits);
+                            }}
+                            isRequired
                             error={errors.phoneNumber}
                             shakeKey={shakeKey}
-                            placeholder="ej. 71234567" 
+                            placeholder="ej. 71234567"
                         />
                     </div>
                 )}
@@ -323,37 +152,37 @@ export const CreateCompanyWizard = ({ isOpen, onClose, onSuccess }: Props) => {
                             <h3 className="font-bold text-base-content/70 border-b pb-2 mb-2">Parámetros de Suscripción</h3>
                         </div>
                         <div className="col-span-full md:col-span-1">
-                            <ComerziaSelect 
-                                label="Plan Inicial" 
-                                options={options[DICTIONARIES.PLAN_TYPE]} 
+                            <ComerziaSelect
+                                label="Plan Inicial" aria-label="Plan Inicial"
+                                options={options[DICTIONARIES.PLAN_TYPE]}
                                 isLoading={isLoadingDicts}
-                                value={formData.subscription.planTypeCode} 
-                                onChange={(e) => updateSubscription('planTypeCode', e.target.value)} 
-                                isRequired 
+                                value={formData.subscription.planTypeCode}
+                                onChange={(e) => updateSubscription('planTypeCode', e.target.value)}
+                                isRequired
                                 error={errors.planTypeCode}
                                 shakeKey={shakeKey}
                             />
                         </div>
-                        {requiresExpiry && <ComerziaInput label="Vigencia del plan" type="datetime-local" isRequired
+                        {requiresExpiry && <ComerziaInput label="Vigencia del plan" aria-label="Vigencia del plan" type="datetime-local" isRequired
                             value={formData.subscription.validUntil ?? ''} onChange={event => updateSubscription('validUntil',event.target.value)}
                             error={errors.validUntil} shakeKey={shakeKey} />}
                         {!requiresExpiry && <p className="text-sm text-base-content/60 self-center">Este plan no tiene vencimiento.</p>}
 
-                        <ComerziaInput 
-                            label="Sucursales adicionales" 
+                        <ComerziaInput
+                            label="Sucursales adicionales" aria-label="Sucursales adicionales"
                             type="number" min={0} step={1}
-                            value={String(formData.subscription.extraBranches)} 
-                            onChange={(e) => updateSubscription('extraBranches', Number(e.target.value))} 
-                            isRequired 
+                            value={String(formData.subscription.extraBranches)}
+                            onChange={(e) => updateSubscription('extraBranches', Number(e.target.value))}
+                            isRequired
                             error={errors.extraBranches}
                             shakeKey={shakeKey}
                         />
-                        <ComerziaInput 
-                            label="Usuarios adicionales" 
+                        <ComerziaInput
+                            label="Usuarios adicionales" aria-label="Usuarios adicionales"
                             type="number" min={0} step={1}
-                            value={String(formData.subscription.extraUsers)} 
-                            onChange={(e) => updateSubscription('extraUsers', Number(e.target.value))} 
-                            isRequired 
+                            value={String(formData.subscription.extraUsers)}
+                            onChange={(e) => updateSubscription('extraUsers', Number(e.target.value))}
+                            isRequired
                             error={errors.extraUsers}
                             shakeKey={shakeKey}
                         />
@@ -366,16 +195,16 @@ export const CreateCompanyWizard = ({ isOpen, onClose, onSuccess }: Props) => {
             <div className="flex flex-row items-center gap-2 mt-6 pt-3 border-t border-base-200 w-full sm:justify-between">
                 <div>
                     {step > 1 && (
-                        <BtnBack onClick={handlePrev} disabled={isSaving} responsive={true} className="min-w-0" />
+                        <BtnBack onClick={handlePrev} disabled={isSaving} responsive={false} className="min-w-0" />
                     )}
                 </div>
                 <div className="flex flex-1 sm:flex-none justify-end gap-2">
                     <BtnCancel onClick={handleClose} disabled={isSaving} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
-                    
+
                     {step < steps.length ? (
-                        <BtnNext onClick={handleNext} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
+                        <BtnNext onClick={handleNext} responsive={false} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
                     ) : (
-                        <BtnSave disabled={catalog.isPending || catalog.isError} responsive={false} onClick={handleSubmit} isLoading={isSaving} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
+                        <BtnSave disabled={catalog.isPending || catalog.isError} responsive={false} onClick={handleSubmit} isLoading={isSaving} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
                     )}
                 </div>
             </div>

@@ -3,18 +3,21 @@ const company={id:'CompanyOpaque',legalName:'Empresa Ejemplo',commercialName:'Ti
 const paged=rows=>({content:rows,totalElements:rows.length,totalPages:rows.length?1:0});
 const access={operational:true,companyActive:true,planName:'Inicial',planTypeCode:702,validUntil:'2026-11-15T12:00:00Z',unlimited:false,branches:1,users:1,products:10,maxBranches:1,maxUsers:3,maxProducts:500};
 const payment={id:'PaymentOpaque',companyName:'Tienda ejemplo',planName:'Inicial',planTypeCode:702,months:1,amount:49,currency:'BOB',reference:'BANCO-123',statusCode:1401,statusLabel:'Pendiente',pending:true,requestedAt:'2026-10-15T14:00:00Z',reviewedAt:null,message:null,receiptUrl:null};
-const dictionaries={'plan-type':[{code:701,label:'Free'},{code:702,label:'Inicial'},{code:705,label:'Perpetuo'}],
+const dictionaries={'document-type':[{code:101,label:'Cédula de Identidad'}],'document-extension':[{code:201,label:'La Paz'}],
+ 'plan-type':[{code:701,label:'Free'},{code:702,label:'Inicial'},{code:705,label:'Perpetuo'}],
  'saas-team-role':[{code:1301,label:'Administración'},{code:1302,label:'Finanzas'},{code:1303,label:'Soporte'}],
  'subscription-payment-status':[{code:1401,label:'Pendiente'},{code:1402,label:'Aprobado'}]};
 async function prepare(page,role,path,extra=''){
- const calls=[],writes=[];
+ const calls=[],writes=[],requests=[];
  await page.route('**/api/**',async route=>{
   const req=route.request(),url=new URL(req.url()),name=url.pathname.replace(/^.*?\/api/,'');calls.push(name);
+  requests.push({name,search:url.search});
   if(req.method()!=='GET'){
    writes.push({name,body:req.postData()});
    if(name.endsWith('/review'))return route.fulfill({json:{...payment,pending:false,statusLabel:'Aprobado'}});
    if(name==='/tenant/billing/requests')return route.fulfill({status:201,json:payment});
    if(name==='/saas/team')return route.fulfill({status:201,json:{username:'nuevo',temporaryPassword:'Temporal123!'}});
+   if(name==='/saas/companies')return route.fulfill({status:201,json:{companyId:'NewOpaque',businessName:'Tienda nueva',ownerUsername:'nuevo.owner',temporaryPassword:'Temporal456!'}});
    return route.fulfill({json:{}});
   }
   let result;
@@ -22,6 +25,9 @@ async function prepare(page,role,path,extra=''){
   if(name==='/generic/dictionaries')result=dictionaries;
   else if(name==='/saas/directory'||name==='/saas/companies')result=paged([company]);
   else if(name==='/saas/companies/CompanyOpaque')result=company;
+  else if(name==='/saas/plans')result=[{code:701,name:'Free',monthlyPrice:0,maxBranches:1,maxUsers:1,maxProducts:50,requiresExpiry:false,unlimited:false},{code:702,name:'Inicial',monthlyPrice:49,maxBranches:1,maxUsers:3,maxProducts:500,requiresExpiry:true,unlimited:false}];
+  else if(name==='/saas/cities')result=paged([{id:'CityOpaque',name:'La Paz',country:'Bolivia'}]);
+  else if(name==='/saas/audit')result=paged([{id:'AuditOpaque',occurredAt:'2026-10-15T12:00:00Z',companyName:'Tienda ejemplo',username:'ana',module:'SAAS',action:'UPDATE',entity:'Tenant',before:'{"status":true}',after:'{"status":false}'}]);
   else if(name.endsWith('/subscription-access')||name==='/tenant/billing/access')result=access;
   else if(name.endsWith('/branches'))result=paged([{id:'BranchOpaque',name:'Casa Matriz',address:'Centro',status:true}]);
   else if(name.endsWith('/users'))result=paged([{id:'TenantUserOpaque',fullName:'Dueña',username:'duena',roles:['Dueño'],statusLabel:'Activo',disabled:false,locked:true}]);
@@ -36,8 +42,8 @@ async function prepare(page,role,path,extra=''){
   else return route.fulfill({status:404,json:{message:'Unexpected test route: '+name}});
   return route.fulfill({json:result});
  });
- await page.goto('/tests/saas/index.html?role='+role+'&path='+encodeURIComponent(path)+extra);
- return {calls,writes};
+ await page.goto('/tests/saas/index.html?role='+role+'&path='+encodeURIComponent(path)+extra,{waitUntil:'domcontentloaded'});
+ return {calls,writes,requests};
 }
 async function actions(page,info,text){
  const item=page.getByText(text,{exact:true}).filter({visible:true}).first();
@@ -110,4 +116,54 @@ test('una suscripción vencida dirige a renovación sin montar el POS',async({pa
  await prepare(page,'OWNER','/pos/terminal','&expired=true');
  await expect(page.getByRole('heading',{name:'Suscripción y pagos'})).toBeVisible();
  await expect(page).toHaveURL(/\/organization\/subscription/);
+});
+
+test('alta Free envía el contrato acordado sin una fecha de vencimiento',async({page})=>{
+ const {writes}=await prepare(page,'SAAS_OWNER','/saas/tenants');
+ await page.getByRole('button',{name:'Nueva empresa',exact:true}).click();
+ await page.getByRole('textbox',{name:'Razón Social',exact:true}).fill('Empresa nueva');
+ await page.getByRole('textbox',{name:'Nombre Comercial',exact:true}).fill('Tienda nueva');
+ await page.getByRole('textbox',{name:'NIT / Tax ID',exact:true}).fill('99887766');
+ await page.getByRole('dialog').getByRole('button',{name:'Siguiente',exact:true}).click();
+ await page.getByRole('textbox',{name:'Nombres',exact:true}).fill('Ana');
+ await page.getByRole('textbox',{name:'Apellido Paterno',exact:true}).fill('Prueba');
+ await page.getByRole('combobox',{name:'Tipo de Documento',exact:true}).selectOption('101');
+ await page.getByRole('textbox',{name:'Número de Documento',exact:true}).fill('77889900');
+ await page.getByRole('textbox',{name:'Correo Electrónico',exact:true}).fill('ana@example.test');
+ await page.getByRole('textbox',{name:'Teléfono',exact:true}).fill('70000000');
+ await page.getByRole('dialog').getByRole('button',{name:'Siguiente',exact:true}).click();
+ await page.getByRole('combobox',{name:'Plan Inicial',exact:true}).selectOption('701');
+ await expect(page.getByText('Este plan no tiene vencimiento.')).toBeVisible();
+ await page.getByRole('button',{name:'Guardar',exact:true}).click();
+ await expect(page.getByText('Temporal456!',{exact:true})).toBeVisible();
+ const submitted=JSON.parse(writes.find(write=>write.name==='/saas/companies').body);
+ expect(submitted.subscription).toEqual({planTypeCode:701,validUntil:null,extraBranches:0,extraUsers:0});
+ expect(submitted.owner).toMatchObject({documentType:101,extension:null});
+ await expect(page.getByText('NewOpaque',{exact:true})).toHaveCount(0);
+});
+
+test('auditoría filtra la empresa sin mostrar su referencia y convierte fechas a UTC',async({page},info)=>{
+ const {calls,requests}=await prepare(page,'SAAS_OWNER','/saas/audit');
+ await expect(page.getByRole('heading',{name:'Auditoría global'})).toBeVisible();
+ await page.getByRole('button',{name:'Filtrar empresa',exact:true}).click();
+ await actions(page.getByRole('dialog'),info,'Tienda ejemplo');await page.getByText('Seleccionar empresa',{exact:true}).click();
+ await expect.poll(()=>calls.filter(name=>name==='/saas/audit').length).toBeGreaterThan(1);
+ await expect(page.getByRole('button',{name:'Tienda ejemplo',exact:true})).toBeVisible();
+ await expect(page.getByText('CompanyOpaque',{exact:true})).toHaveCount(0);
+ await page.locator('input[type="datetime-local"]').first().fill('2026-10-15T08:00');
+ const expected=await page.evaluate(()=>new Date('2026-10-15T08:00').toISOString());
+ await expect.poll(()=>requests.some(request=>request.name==='/saas/audit' && new URLSearchParams(request.search).get('from')===expected && new URLSearchParams(request.search).get('companyId')==='CompanyOpaque')).toBe(true);
+});
+
+test('catálogo global permite editar ciudades con controles adaptados a móvil',async({page},info)=>{
+ const {writes}=await prepare(page,'ROOT','/saas/cities');
+ await expect(page.getByRole('heading',{name:'Ciudades',exact:true})).toBeVisible();
+ await actions(page,info,'La Paz');await page.getByText('Editar ciudad',{exact:true}).click();
+ await page.getByRole('textbox',{name:'Ciudad',exact:true}).fill('La Paz centro');
+ await page.getByRole('button',{name:'Guardar',exact:true}).click();
+ await expect.poll(()=>writes.length).toBe(1);
+ expect(writes[0]).toMatchObject({name:'/saas/cities/CityOpaque'});
+ expect(JSON.parse(writes[0].body)).toEqual({name:'La Paz centro',country:'Bolivia'});
+ await expect(page.getByText('CityOpaque',{exact:true})).toHaveCount(0);
+ await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });

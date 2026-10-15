@@ -13,6 +13,7 @@ import { useRealtimeConnection } from '../../src/features/realtime/hooks/useReal
 import { useRealtimeRefresh } from '../../src/features/realtime/hooks/useRealtimeRefresh';
 import { SseParser, parseRealtimeChange } from '../../src/features/realtime/services/realtimeStream';
 import { useAuthStore } from '../../src/stores/useAuthStore';
+import type { UserProfile } from '../../src/features/auth/types';
 import api from '../../src/lib/axios';
 import '../../src/index.css';
 
@@ -22,6 +23,7 @@ declare global {
       connections: number; requests: { url: string; authorization: string | null }[];
       emit: (entity: string, count?: number) => void; close: () => void;
       raw: (text: string) => void; logout: () => void;
+      profile: () => UserProfile | null;
       parser: () => boolean; token: () => string | null; replaceToken: (token: string) => void; initialize: () => Promise<void>; snapshot: () => { token: string | null; ready: boolean; profileId: string | undefined };
     };
   }
@@ -30,7 +32,7 @@ api.defaults.baseURL = `${window.location.origin}/api`;
 const view = new URLSearchParams(window.location.search).get('view') || 'terminal';
 const client = new QueryClient();
 useAuthStore.setState({ token: 'test-bearer-secret', isSessionReady: true, isAuthenticated: true, userProfile: {
-  id: 'user', username: 'user', firstName: 'Test', paternalLastName: 'Cashier', maternalFirstName: null,
+  id: 'user', username: 'user', firstName: 'Test', paternalLastName: 'Cashier', maternalFirstName: null, operational: true,
   fullName: 'Test Cashier', email: 'test@example.test', imageUrl: null, roles: ['CASHIER', 'OWNER'],
   permissions: view === 'denied' ? [] : ['SAL_SALES_READ', 'SAL_PROCESS_PAYMENT', 'COM_PRODUCTS_READ', 'COM_CATALOG_READ', 'POS_SHIFTS_READ_ALL'],
   companySettings: { id: 'company', commercialName: 'Test Company', timezone: 'America/La_Paz', currencyCode: 'BOB',
@@ -42,6 +44,7 @@ const originalFetch = window.fetch.bind(window);
 window.realtimeTest = {
   connections: 0, requests: [],
   token: () => useAuthStore.getState().token,
+  profile: () => useAuthStore.getState().userProfile,
   initialize: () => useAuthStore.getState().initializeSession(),
   snapshot: () => { const state = useAuthStore.getState(); return { token: state.token, ready: state.isSessionReady, profileId: state.userProfile?.id }; },
   replaceToken: token => { localStorage.setItem('token', token); useAuthStore.setState({ token }); },

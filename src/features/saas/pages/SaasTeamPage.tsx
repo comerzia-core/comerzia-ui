@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pencil, KeyRound } from 'lucide-react';
+import { Pencil, KeyRound, Unlock } from 'lucide-react';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
 import { ComerziaCheckbox } from '../../../components/ui/ComerziaCheckbox';
 import { ComerziaModal } from '../../../components/ui/ComerziaModal';
@@ -24,11 +24,12 @@ export function SaasTeamPage() {
   const save = usePlatformAction(async () => editor === 'new' ? platformService.post<TemporaryCredentials>('/saas/team', form)
     : platformService.patch<PlatformAccount>('/saas/team/' + encodeURIComponent((editor as PlatformAccount).id), { roleCodes: form.roleCodes, disabled: form.disabled }));
   const reset = usePlatformAction((row: PlatformAccount) => platformService.post<TemporaryCredentials>('/saas/team/' + encodeURIComponent(row.id) + '/reset-password'));
+  const unlock = usePlatformAction((row: PlatformAccount) => platformService.post('/saas/team/' + encodeURIComponent(row.id) + '/unlock'));
   const openEditor = (row: PlatformAccount | 'new') => { setShake(0); setForm({ username: '', firstName: '', lastName: '', email: '', roleCodes: row === 'new' ? [] : row.roleCodes, disabled: row === 'new' ? false : row.disabled }); setEditor(row); };
   return <div className="space-y-6"><div className="flex justify-between gap-3"><h1 className="text-2xl font-bold">Equipo matriz</h1>
     {can('SYS_TEAM_MANAGE') && <BtnCreate responsive={false} label="Colaborador" onClick={() => openEditor('new')} />}</div>
     {query.isError && <p role="alert">No se pudo cargar el equipo.</p>}
-    <ComerziaResponsiveTable data={query.data?.content ?? []} pagination={query.pagination} isLoading={query.isPending} onActions={context.open}
+    <ComerziaResponsiveTable data={query.data?.content ?? []} pagination={query.pagination} isLoading={query.isPending} onActions={(event, row, centered) => { if (can('SYS_TEAM_MANAGE') && row.roleCodes.length) context.open(event, row, centered); }}
       columns={[{ header: 'Nombre', accessorKey: 'fullName' }, { header: 'Usuario', accessorKey: 'username' },
         { header: 'Roles', render: row => row.roleCodes.length ? row.roleCodes.map(code => options[DICTIONARIES.SAAS_TEAM_ROLE]?.find(option => option.value === code)?.label ?? 'Rol').join(', ') : 'Cuenta protegida' },
         { header: 'Acceso', render: row => row.disabled ? 'Deshabilitado' : row.locked ? 'Bloqueado' : 'Habilitado' }]} />
@@ -36,6 +37,7 @@ export function SaasTeamPage() {
       {can('SYS_TEAM_MANAGE') && !!context.menu.item?.roleCodes.length && <>
         <ContextMenuItem icon={Pencil} label="Editar accesos" onClick={() => { if (context.menu.item) openEditor(context.menu.item); context.close(); }} />
         <ContextMenuItem icon={KeyRound} label="Restablecer contraseña" onClick={() => { if (context.menu.item) reset.mutate(context.menu.item, { onSuccess: setCredentials }); context.close(); }} />
+        {context.menu.item?.locked && <ContextMenuItem icon={Unlock} label="Desbloquear cuenta" onClick={() => { if (context.menu.item) unlock.mutate(context.menu.item); context.close(); }} />}
       </>}
     </ComerziaContextMenu>
     <ComerziaModal isOpen={!!editor} onClose={() => { if (!save.isPending) setEditor(null); }} title={editor === 'new' ? 'Nuevo colaborador' : 'Accesos del colaborador'}

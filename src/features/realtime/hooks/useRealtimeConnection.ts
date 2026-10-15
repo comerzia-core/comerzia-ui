@@ -19,6 +19,7 @@ export function useRealtimeConnection(): void {
   const token = useAuthStore(state => state.token);
   const ready = useAuthStore(state => state.isSessionReady);
   const company = useAuthStore(state => state.userProfile?.companySettings?.id);
+  const operational = useAuthStore(state => state.userProfile?.operational);
 
   const permissions = useAuthStore(state => state.userProfile?.permissions);
   const hasBusinessReads = businessReadPermissions.some(permission => permissions?.includes(permission));
@@ -41,6 +42,7 @@ export function useRealtimeConnection(): void {
     let disposed = false;
     let blocked = false;
     let attempts = 0;
+    let connectedOnce = false;
     let active: AbortController | undefined;
     let retry: ReturnType<typeof setTimeout> | undefined;
     let watchdog: ReturnType<typeof setTimeout> | undefined;
@@ -78,12 +80,20 @@ export function useRealtimeConnection(): void {
           if (disposed || controller.signal.aborted) return;
           armWatchdog();
           if (frame.event === 'connected') {
+            const reconnected = connectedOnce;
+            connectedOnce = true;
             attempts = 0;
             setStatus('live');
             if (hasBusinessReads) recoverRealtime(client);
+            if (reconnected) {
+              void client.invalidateQueries({ queryKey: ['platform'] });
+              if (operational !== undefined && useAuthStore.getState().token === token) {
+                void useAuthStore.getState().fetchUserProfile().catch(() => { /* El interceptor mantiene la política de sesión; un fallo de red permite reintentar. */ });
+              }
+            }
           } else if (frame.event === 'subscription-changed') {
             void client.invalidateQueries({ queryKey: ['platform'] });
-            if (useAuthStore.getState().token === token) void useAuthStore.getState().fetchUserProfile();
+            if (useAuthStore.getState().token === token) void useAuthStore.getState().fetchUserProfile().catch(() => { /* Se recuperará el perfil al reconectar. */ });
           } else if (frame.event === 'session-revoked') {
             let code: string | undefined;
             try {
@@ -140,5 +150,5 @@ export function useRealtimeConnection(): void {
       window.removeEventListener('offline', resume);
       document.removeEventListener('visibilitychange', resume);
     };
-  }, [token, ready, company, client, hasBusinessReads]);
+  }, [token, ready, company, client, hasBusinessReads, operational]);
 }
