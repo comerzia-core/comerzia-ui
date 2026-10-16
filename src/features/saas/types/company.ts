@@ -39,13 +39,16 @@ export interface SaasSubscriptionResponse {
 
 export interface SaasCompanyDetailResponse {
     id: string;
-    legalName: string;
+    legalName: string | null;
     commercialName: string;
     slug: string;
-    taxId: string;
+    taxId: string | null;
     status: boolean;
     saasCompanySettingsResponse: SaasCompanySettingsResponse; // Mapeado del JSON backend (saasCompanySettingsResponse)
     subscriptionHistory: SaasSubscriptionResponse[];
+    registeredAt?: string | null;
+    email?: string | null; phoneNumber?: string | null; address?: string | null;
+    financialSummary?: { lifetimeValue: number; currentMrr: number; totalPaymentsCount: number; lastPaymentDate: string | null; hasPendingVerification: boolean } | null;
 }
 
 export interface BranchResponse {
@@ -71,7 +74,7 @@ export interface EmployeeSummaryResponse {
 export interface CreateCompanyDetails {
     legalName: string;
     commercialName: string;
-    slug: string;
+    slug: string | null;
     taxId: string;
 }
 
@@ -79,7 +82,7 @@ export interface CreateOwnerDetails {
     firstName: string;
     paternalSurname: string;
     maternalSurname?: string;
-    documentType: string | number;
+    documentType: string | number | null;
     documentNumber: string;
     extension?: string | number | null;
     email: string;
@@ -102,7 +105,7 @@ export interface CreateCompanyRequest {
 export interface CompanyCreatedResponse {
     companyId: string;
     businessName: string;
-    defaultBranchName: string;
+    defaultBranchName: string | null;
     ownerFullName: string;
     ownerUsername: string;
     temporaryPassword: string;

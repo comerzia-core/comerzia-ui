@@ -1,0 +1,4 @@
+export interface SaasStaffSummary { id: string; fullName: string; email: string | null; phoneNumber: string | null; jobTitle: string | null; active: boolean; }
+export interface StaffPerson { firstName: string; paternalSurname: string; maternalSurname: string; email: string; phoneNumber: string; documentType: number | null; documentNumber: string; extension: number | null; }
+export interface SaasStaffDetails { id: string; fullName: string; jobTitle: string | null; active: boolean; person: StaffPerson; imageUrl: string | null; address: string | null; employmentStartDate: string | null; employmentEndDate: string | null; baseSalary: number | null; paymentFrequency: number | null; }
+export interface SaasStaffForm { person: StaffPerson; jobTitle: string; address: string; employmentStartDate: string; employmentEndDate: string; baseSalary: string; paymentFrequency: string; active: boolean; }

@@ -5,14 +5,21 @@ import { isPlatformUser } from '../features/saas/utils/workspace';
 import { SaasDashboardPage } from '../features/saas/pages/SaasDashboardPage';
 import { SaasDirectoryPage } from '../features/saas/pages/SaasDirectoryPage';
 import { SaasTenantPage } from '../features/saas/pages/SaasTenantPage';
+import { SaasStaffPage } from '../features/saas/pages/SaasStaffPage';
+import { SaasSupportPage } from '../features/saas/pages/SaasSupportPage';
+import { SaasPlansPage } from '../features/saas/pages/SaasPlansPage';
+import { SaasOnboardingPage } from '../features/saas/pages/SaasOnboardingPage';
+import { SaasBranchesPage } from '../features/saas/pages/SaasBranchesPage';
 import { SaasTeamPage } from '../features/saas/pages/SaasTeamPage';
 import { SaasFinancePage } from '../features/saas/pages/SaasFinancePage';
 import { SaasAuditPage } from '../features/saas/pages/SaasAuditPage';
 import { SaasRecoveryPage } from '../features/saas/pages/SaasRecoveryPage';
 import { SaasTechnicalPage } from '../features/saas/pages/SaasTechnicalPage';
 import { SaasCitiesPage } from '../features/saas/pages/SaasCitiesPage';
+import { SaasBillingHistoryPage } from '../features/saas/pages/SaasBillingHistoryPage';
+import { SaasBillingSettingsPage } from '../features/saas/pages/SaasBillingSettingsPage';
 import { SubscriptionPage } from '../features/organization/pages/SubscriptionPage';
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { LoginPage } from "../features/auth/pages/LoginPage";
 import { DashboardPage } from "../features/dashboard/pages/DashboardPage";
 import { DashboardLayout } from "../layouts/DashboardLayout";
@@ -75,20 +82,55 @@ export const AppRouter = () => {
           <Route element={<ProfileLayout />}><Route path="/profile" element={<ProfilePage />} /></Route>
           <Route element={<WorkspaceGuard workspace="saas" />}>
             <Route element={<SaasLayout />}>
-              <Route element={<PermissionGuard code="SYS_DASHBOARD_READ" />}><Route path="/saas/dashboard" element={<SaasDashboardPage />} /></Route>
+              <Route element={<PermissionGuard code="SYS_PLANS_READ" />}><Route path="/saas/billing/plans" element={<SaasPlansPage />} /></Route>
+              <Route path="/saas/dashboard" element={<SaasDashboardPage />} />
+              <Route path="/saas/dashboard/operations" element={<Navigate to="/saas/dashboard" replace />} />
+              <Route path="/saas/dashboard/financial" element={<Navigate to="/saas/dashboard" replace />} />
               <Route element={<PermissionGuard code="SYS_COMPANIES_READ" />}>
                 <Route path="/saas/tenants" element={<SaasDirectoryPage />} />
+              </Route>
+              <Route element={<PermissionGuard code="SYS_TENANT_PROFILE_READ" />}>
+                <Route path="/saas/tenants/:id" element={<SaasTenantPage />} />
                 <Route path="/saas/companies/:id" element={<SaasTenantPage />} />
               </Route>
-              <Route element={<PermissionGuard code="SYS_FINANCE_READ" />}><Route path="/saas/finances" element={<SaasFinancePage />} /></Route>
-              <Route element={<PermissionGuard code="SYS_TEAM_READ" />}><Route path="/saas/team" element={<SaasTeamPage />} /></Route>
-              <Route element={<PermissionGuard code="SYS_AUDIT_READ" />}><Route path="/saas/audit" element={<SaasAuditPage />} /></Route>
+              <Route element={<PermissionGuard code="SYS_COMPANIES_MANAGE" />}>
+                <Route path="/saas/tenants/new" element={<SaasOnboardingPage />} />
+                <Route path="/saas/tenants/:id/branches" element={<SaasBranchesPage />} />
+              </Route>
+              <Route element={<PermissionGuard code="SYS_TENANT_USERS_READ" />}>
+                <Route path="/saas/support/access-hub" element={<SaasSupportPage />} />
+                <Route path="/saas/support/tenants/:id/users" element={<SaasSupportPage />} />
+                <Route path="/saas/support/audit-log" element={<SaasSupportPage audit />} />
+              </Route>
+              <Route element={<PermissionGuard code="SYS_FINANCE_READ" />}>
+                <Route path="/saas/billing/verification" element={<SaasFinancePage mode="verification" />} />
+                <Route path="/saas/billing/history" element={<SaasBillingHistoryPage />} />
+                <Route path="/saas/billing/settings" element={<SaasBillingSettingsPage />} />
+                <Route path="/saas/finances" element={<SaasFinancePage mode="verification" />} />
+              </Route>
+              <Route element={<PermissionGuard code="SYS_TEAM_READ" />}>
+                <Route path="/saas/team/members" element={<SaasStaffPage />} />
+                <Route path="/saas/team/security" element={<SaasTeamPage />} />
+                <Route path="/saas/team" element={<SaasTeamPage />} />
+              </Route>
+              <Route element={<PermissionGuard code="SYS_AUDIT_READ" />}>
+                <Route path="/saas/system/audit" element={<SaasAuditPage />} />
+                <Route path="/saas/audit" element={<SaasAuditPage />} />
+              </Route>
               <Route element={<PermissionGuard code="SYS_DATA_RECOVERY" />}>
+                <Route path="/saas/system/recovery" element={<SaasDirectoryPage recovery />} />
+                <Route path="/saas/system/recovery/:companyId" element={<SaasRecoveryPage />} />
                 <Route path="/saas/data-recovery" element={<SaasDirectoryPage recovery />} />
                 <Route path="/saas/data-recovery/:companyId" element={<SaasRecoveryPage />} />
               </Route>
-              <Route element={<PermissionGuard code="SYS_TECHNICAL_READ" />}><Route path="/saas/technical" element={<SaasTechnicalPage />} /></Route>
-              <Route element={<PermissionGuard code="GEN_CITIES_READ" />}><Route path="/saas/cities" element={<SaasCitiesPage />} /></Route>
+              <Route element={<PermissionGuard code="SYS_TECHNICAL_READ" />}>
+                <Route path="/saas/system/technical" element={<SaasTechnicalPage />} />
+                <Route path="/saas/technical" element={<SaasTechnicalPage />} />
+              </Route>
+              <Route element={<PermissionGuard code="GEN_CITIES_READ" />}>
+                <Route path="/saas/system/cities" element={<SaasCitiesPage />} />
+                <Route path="/saas/cities" element={<SaasCitiesPage />} />
+              </Route>
               <Route path="/saas/*" element={<NotFoundPage />} />
             </Route>
           </Route>

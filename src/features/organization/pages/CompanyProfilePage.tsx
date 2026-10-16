@@ -261,7 +261,7 @@ export const CompanyProfilePage = () => {
                       <img src={getCardImageUrl(profileData.companyLogoUrl)} alt="Logo" className="object-cover" />
                     ) : (
                       <span className="text-xl font-bold text-base-content/40">
-                        {profileData.legalName.substring(0, 2).toUpperCase()}
+                        {(profileData.legalName || profileData.commercialName || '').substring(0, 2).toUpperCase()}
                       </span>
                     )}
                   </div>

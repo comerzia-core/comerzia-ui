@@ -5,6 +5,7 @@
 export const DICTIONARIES = {
     RECOVERY_ENTITY: "recovery-entity",
     SAAS_TEAM_ROLE: "saas-team-role",
+    SUBSCRIPTION_PAYMENT_METHOD: "subscription-payment-method",
     SUBSCRIPTION_PAYMENT_STATUS: "subscription-payment-status",
     USER_STATUS: 'user-status',
     SUBSCRIPTION_STATUS: 'subscription-status',

@@ -3,10 +3,11 @@ import { ComerziaTable, type Column, type TablePaginationConfig } from './Comerz
 import { BtnBack, BtnNext } from './CrudButtons';
 
 interface Props<T extends { id: string | number }> {
-  data: T[]; columns: Column<T>[]; isLoading?: boolean; pagination: TablePaginationConfig;
+  data: T[]; columns: Column<T>[]; isLoading?: boolean; pagination?: TablePaginationConfig;
   onActions?: (event: MouseEvent, item: T, centered: boolean) => void;
 }
-export function ComerziaResponsiveTable<T extends { id: string | number }>({ data, columns, isLoading, pagination, onActions }: Props<T>) {
+export function ComerziaResponsiveTable<T extends { id: string | number }>({ data, columns, isLoading, pagination: suppliedPagination, onActions }: Props<T>) {
+  const pagination = suppliedPagination ?? { currentPage: 0, pageSize: Math.max(1, data.length), totalElements: data.length, totalPages: 1, onPageChange: () => {}, onPageSizeChange: () => {} };
   const { currentPage: page, pageSize, totalElements, totalPages, onPageChange } = pagination;
   return <div>
     <div className="hidden md:block"><ComerziaTable data={data} columns={columns} isLoading={isLoading} pagination={pagination}

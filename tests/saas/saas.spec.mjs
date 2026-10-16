@@ -16,7 +16,7 @@ async function prepare(page,role,path,extra=''){
    writes.push({name,body:req.postData()});
    if(name.endsWith('/review'))return route.fulfill({json:{...payment,pending:false,statusLabel:'Aprobado'}});
    if(name==='/tenant/billing/requests')return route.fulfill({status:201,json:payment});
-   if(name==='/saas/team')return route.fulfill({status:201,json:{username:'nuevo',temporaryPassword:'Temporal123!'}});
+   if(name==='/saas/team/accounts')return route.fulfill({status:201,json:{username:'nuevo',temporaryPassword:'Temporal123!'}});
    if(name==='/saas/companies')return route.fulfill({status:201,json:{companyId:'NewOpaque',businessName:'Tienda nueva',ownerUsername:'nuevo.owner',temporaryPassword:'Temporal456!'}});
    return route.fulfill({json:{}});
   }
@@ -31,6 +31,11 @@ async function prepare(page,role,path,extra=''){
   else if(name.endsWith('/subscription-access')||name==='/tenant/billing/access')result=access;
   else if(name.endsWith('/branches'))result=paged([{id:'BranchOpaque',name:'Casa Matriz',address:'Centro',status:true}]);
   else if(name.endsWith('/users'))result=paged([{id:'TenantUserOpaque',fullName:'Dueña',username:'duena',roles:['Dueño'],statusLabel:'Activo',disabled:false,locked:true}]);
+  else if(name==='/saas/team/members')result=paged([{id:'MemberOpaque',fullName:'Ana Personal',email:'ana@example.test',jobTitle:'Soporte',active:true}]);
+  else if(name==='/saas/support/accounts')result=paged([{id:'AccountOpaque',companyId:'CompanyOpaque',companyName:'Tienda ejemplo',fullName:'Ana Caja',username:'acaja',email:'ana@example.test',locked:true,disabled:false,requiresPasswordChange:false}]);
+  else if(name==='/saas/support/audit-log')result=paged([{id:'LogOpaque',occurredAt:'2026-10-15T12:00:00Z',operator:'soporte',companyName:'Tienda ejemplo',target:'acaja',action:'UNLOCK',reason:'Solicitud autorizada'}]);
+  else if(name==='/saas/billing/history')result=paged([{id:'PaymentOpaque',companyName:'Tienda ejemplo',planName:'Inicial',amount:49,statusLabel:'Aprobado',reference:'BANCO-123',operator:'finanzas',occurredAt:'2026-10-15T12:00:00Z'}]);
+  else if(name==='/saas/dashboard/financial')result={mrr:49,arr:588,arpu:49,collectedThisMonth:49,collectedLastMonth:0,observedLifetimeValue:49,activePaidTenants:1,pendingReviews:1,pendingAmount:49,expiredTenants:0,churnRatePercentage:null,historyCoverageFrom:null,currency:'BOB',revenueHistory:[{yearMonth:'2026-10',amount:49,paymentsCount:1}],planDistribution:[{code:702,name:'Inicial',count:1,mrr:49}],expiringTenants:[]};
   else if(name==='/saas/team')result=paged([{id:'StaffOpaque',username:'soporte',fullName:'Agente soporte',disabled:false,locked:false,roles:['SAAS_SUPPORT'],roleCodes:[1303]}]);
   else if(name==='/saas/finances')result={collectedThisMonth:490,totalCollected:980,mrr:490,arr:5880,pendingReviews:1,currency:'BOB'};
   else if(name==='/saas/billing/settings')result={receiverName:'Comerzia',qrUrl:null,instructions:'Usa referencia',currency:'BOB'};
@@ -84,7 +89,7 @@ test('QR envía una solicitud solo al confirmar y evita endpoints anteriores',as
  expect(writes.some(x=>x.name.includes('change-plan')||x.name.endsWith('/payments'))).toBe(false);
 });
 test('aprobar requiere confirmar la verificación bancaria',async({page},info)=>{
- const {writes}=await prepare(page,'SAAS_OWNER','/saas/finances');
+ const {writes,calls}=await prepare(page,'SAAS_OWNER','/saas/finances');
  await actions(page,info,'Inicial');await page.getByText('Ver solicitud',{exact:true}).click();
  await page.getByRole('button',{name:'Aprobar',exact:true}).click();expect(writes).toHaveLength(0);
  await page.getByText('Verifiqué esta transferencia en la cuenta bancaria',{exact:true}).click();
@@ -92,18 +97,18 @@ test('aprobar requiere confirmar la verificación bancaria',async({page},info)=>
  await expect.poll(()=>writes.length).toBe(1);
  expect(JSON.parse(writes[0].body)).toMatchObject({approved:true,bankVerified:true,receivedAmount:49});
  await expect(page.getByText('Pago de Tienda ejemplo',{exact:true})).toHaveCount(0);
+ expect(calls).not.toContain('/saas/finances');
+ expect(calls).not.toContain('/saas/billing/settings');
 });
 test('alta del equipo presenta las credenciales tras guardar y sin IDs visibles',async({page})=>{
  const {writes}=await prepare(page,'SAAS_OWNER','/saas/team');
- await page.getByRole('button',{name:'Colaborador',exact:true}).click();
- await page.getByRole('textbox',{name:'Usuario',exact:true}).fill('nuevo');
- await page.getByRole('textbox',{name:'Nombres',exact:true}).fill('Ana');
- await page.getByRole('textbox',{name:'Apellidos',exact:true}).fill('Prueba');
- await page.getByRole('textbox',{name:'Correo',exact:true}).fill('ana@example.test');
+ await page.getByRole('button',{name:'Crear acceso',exact:true}).click();
+ await page.getByRole('combobox',{name:'Colaborador',exact:true}).selectOption('MemberOpaque');
+ await page.getByRole('textbox',{name:'Usuario (opcional)',exact:true}).fill('nuevo');
  await page.getByText('Soporte',{exact:true}).filter({visible:true}).last().click();
  await page.getByRole('button',{name:'Guardar',exact:true}).click();
  await expect(page.getByText('Temporal123!',{exact:true})).toBeVisible();
- expect(writes).toHaveLength(1);expect(JSON.parse(writes[0].body)).toMatchObject({username:'nuevo',roleCodes:[1303]});
+ expect(writes).toHaveLength(1);expect(JSON.parse(writes[0].body)).toMatchObject({username:'nuevo',memberId:'MemberOpaque',roleCodes:[1303]});
  await expect(page.getByText('StaffOpaque',{exact:true})).toHaveCount(0);
 });
 test('las cuentas de plataforma no montan el POS',async({page})=>{
@@ -166,4 +171,45 @@ test('catálogo global permite editar ciudades con controles adaptados a móvil'
  expect(JSON.parse(writes[0].body)).toEqual({name:'La Paz centro',country:'Bolivia'});
  await expect(page.getByText('CityOpaque',{exact:true})).toHaveCount(0);
  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
+
+test('personal se registra sin cuenta y acepta solo apellido materno',async({page})=>{
+ const {writes}=await prepare(page,'SAAS_OWNER','/saas/team/members');
+ await page.getByRole('button',{name:'Colaborador',exact:true}).click();
+ await page.getByRole('textbox',{name:'Nombres',exact:true}).fill('Ana');
+ await page.getByRole('textbox',{name:'Apellido materno',exact:true}).fill('Personal');
+ await page.getByRole('button',{name:'Guardar',exact:true}).click();
+ await expect.poll(()=>writes.length).toBe(1);
+ expect(writes[0].name).toBe('/saas/team/members');
+ expect(JSON.parse(writes[0].body).person).toMatchObject({firstName:'Ana',maternalSurname:'Personal',documentType:null});
+ expect(writes.some(write=>write.name==='/saas/team/accounts')).toBe(false);
+ await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
+
+test('soporte solicita motivo y no muestra herramientas financieras',async({page},info)=>{
+ const {writes,calls}=await prepare(page,'SAAS_SUPPORT','/saas/support/access-hub');
+ await actions(page,info,'Ana Caja');await page.getByText('Desbloquear cuenta',{exact:true}).click();
+ await expect(page.getByRole('button',{name:'Confirmar',exact:true})).toBeDisabled();
+ await page.getByRole('textbox',{name:'Motivo de asistencia',exact:true}).fill('Solicitud del titular');
+ await page.getByRole('button',{name:'Confirmar',exact:true}).click();
+ await expect.poll(()=>writes.length).toBe(1);
+ expect(writes[0].name).toBe('/saas/companies/CompanyOpaque/users/AccountOpaque/unlock');
+ expect(JSON.parse(writes[0].body)).toEqual({reason:'Solicitud del titular'});
+ expect(calls).not.toContain('/saas/finances');
+ await expect(page.getByText('AccountOpaque',{exact:true})).toHaveCount(0);
+});
+
+test('finanzas usa su dashboard sin montar el resumen operativo',async({page})=>{
+ const {calls}=await prepare(page,'SAAS_FINANCE','/saas/dashboard');
+ await expect(page.getByRole('heading',{name:'Resumen financiero de Comerzia'})).toBeVisible();
+ expect(calls).toContain('/saas/dashboard/financial');expect(calls).not.toContain('/saas/dashboard');
+ await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
+
+test('historial contable vive fuera de la cola de verificación',async({page})=>{
+ const {calls}=await prepare(page,'SAAS_FINANCE','/saas/billing/history');
+ await expect(page.getByRole('heading',{name:'Historial de cobros'})).toBeVisible();
+ await expect(page.getByText('BANCO-123',{exact:true}).filter({visible:true}).first()).toBeVisible();
+ expect(calls).not.toContain('/saas/billing/requests');
+ await expect(page.getByRole('button',{name:'Aprobar',exact:true})).toHaveCount(0);
 });

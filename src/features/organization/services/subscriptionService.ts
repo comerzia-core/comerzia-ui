@@ -11,7 +11,7 @@ export const subscriptionService = {
     if (receipt) body.append('receipt', await compressImageFile(receipt, { format: 'image/jpeg', maxDimension: 1920 }));
     return (await api.post<SubscriptionPayment>('/tenant/billing/requests', body, { headers: { 'Content-Type': undefined } })).data;
   },
-  async saveSettings(value: { receiverName: string; instructions: string }, qr: File | null): Promise<BillingSettings> {
+  async saveSettings(value: { receiverName: string; instructions: string; bankName?: string; accountNumber?: string }, qr: File | null): Promise<BillingSettings> {
     const body = new FormData(); body.append('settings', new Blob([JSON.stringify(value)], { type: 'application/json' }));
     if (qr) body.append('qr', qr);
     return (await api.put<BillingSettings>('/saas/billing/settings', body, { headers: { 'Content-Type': undefined } })).data;

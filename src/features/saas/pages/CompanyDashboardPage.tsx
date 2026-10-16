@@ -52,7 +52,7 @@ export const CompanyDashboardPage = () => {
                                 <img src={getCardImageUrl(company.saasCompanySettingsResponse.companyLogoUrl)} alt="Logo" />
                             ) : (
                                 <div className="bg-base-200 w-full h-full flex items-center justify-center font-bold text-base-content/50">
-                                    {company.legalName.substring(0, 2).toUpperCase()}
+                                    {(company.legalName || company.commercialName).substring(0, 2).toUpperCase()}
                                 </div>
                             )}
                         </div>

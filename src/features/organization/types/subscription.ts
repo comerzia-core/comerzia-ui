@@ -13,5 +13,5 @@ export interface SubscriptionQuote {
   planTypeCode: number; planName: string; months: number; monthlyPrice: number; amount: number; currency: string;
   receiverName: string; qrUrl: string; instructions: string | null; validityRule: string;
 }
-export interface BillingSettings { receiverName: string; qrUrl: string | null; instructions: string | null; currency: string; }
+export interface BillingSettings { bankName?: string | null; accountNumber?: string | null; receiverName: string; qrUrl: string | null; instructions: string | null; currency: string; }
 export interface FinanceSummary { collectedThisMonth: number; totalCollected: number; mrr: number; arr: number; pendingReviews: number; currency: string; }

@@ -64,33 +64,22 @@ export function useCompanyOnboarding({ isOpen, onClose, onSuccess }: CompanyOnbo
     };
 
     // 3. CORRECCIÓN: Auto-generar SLUG seguro desde el Nombre Comercial
-    const handleCommercialNameChange = (val: string) => {
-        updateCompany('commercialName', val);
-
-        const autoSlug = val
-            .normalize("NFD") // Descompone acentos y caracteres especiales (ej. 'ñ' -> 'n' + '~')
-            .replace(/[\u0300-\u036f]/g, "") // Elimina las marcas de acentuación
-            .toLowerCase() // Todo a minúsculas
-            .replace(/[^a-z0-9]+/g, '-') // Reemplaza cualquier cosa que NO sea letra o número por guiones
-            .replace(/(^-|-$)+/g, ''); // Quita guiones iniciales o finales huérfanos
-
-        updateCompany('slug', autoSlug);
-    };
+    const handleCommercialNameChange = (value: string) => { updateCompany('commercialName', value); updateCompany('slug', ''); };
 
     // --- LÓGICA DE VALIDACIÓN ESTRICTA ---
     const validateCurrentStep = (): boolean => {
         const newErrors: Record<string, string> = {};
 
         if (step === 1) {
-            if (!formData.company.legalName.trim()) newErrors.legalName = "Campo requerido";
+
             if (!formData.company.commercialName.trim()) newErrors.commercialName = "Campo requerido";
-            if (!formData.company.taxId.trim()) newErrors.taxId = "Campo requerido";
+
         }
         else if (step === 2) {
             if (!formData.owner.firstName.trim()) newErrors.firstName = "Campo requerido";
-            if (!formData.owner.paternalSurname.trim()) newErrors.paternalSurname = "Campo requerido";
-            if (!formData.owner.documentType) newErrors.documentType = "Seleccione un documento";
-            if (!formData.owner.documentNumber.trim()) newErrors.documentNumber = "Campo requerido";
+            if (!formData.owner.paternalSurname.trim() && !formData.owner.maternalSurname?.trim()) newErrors.paternalSurname = "Indica al menos un apellido";
+            if (formData.owner.documentNumber.trim() && !formData.owner.documentType) newErrors.documentType = "Seleccione un documento";
+            if (formData.owner.documentType && !formData.owner.documentNumber.trim()) newErrors.documentNumber = "Campo requerido";
 
             // Validación básica de email
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -100,7 +89,7 @@ export function useCompanyOnboarding({ isOpen, onClose, onSuccess }: CompanyOnbo
                 newErrors.email = "Correo inválido";
             }
 
-            if (!formData.owner.phoneNumber.trim()) newErrors.phoneNumber = "Campo requerido";
+
         }
         else if (step === 3) {
             if (!formData.subscription.planTypeCode) newErrors.planTypeCode = "Seleccione un plan";
@@ -143,7 +132,8 @@ export function useCompanyOnboarding({ isOpen, onClose, onSuccess }: CompanyOnbo
             const validUntil = requiresExpiry ? new Date(formData.subscription.validUntil!).toISOString() : null;
             const payload: CreateCompanyRequest = {
                 ...formData,
-                owner: { ...formData.owner, documentType: Number(formData.owner.documentType), extension: formData.owner.extension ? Number(formData.owner.extension) : null },
+                company: { ...formData.company, slug: formData.company.slug || null },
+                owner: { ...formData.owner, documentType: formData.owner.documentType ? Number(formData.owner.documentType) : null, extension: formData.owner.extension ? Number(formData.owner.extension) : null },
                 subscription: {
                     ...formData.subscription,
                     planTypeCode: Number(formData.subscription.planTypeCode),

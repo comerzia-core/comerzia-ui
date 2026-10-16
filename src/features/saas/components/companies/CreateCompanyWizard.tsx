@@ -27,7 +27,6 @@ export const CreateCompanyWizard = (props: CompanyOnboardingOptions) => {
                                 label="Razón Social" aria-label="Razón Social"
                                 value={formData.company.legalName}
                                 onChange={(e) => updateCompany('legalName', e.target.value)}
-                                isRequired
                                 error={errors.legalName}
                                 shakeKey={shakeKey}
                             />
@@ -44,20 +43,10 @@ export const CreateCompanyWizard = (props: CompanyOnboardingOptions) => {
                             label="NIT / Tax ID" aria-label="NIT / Tax ID"
                             value={formData.company.taxId}
                             onChange={(e) => updateCompany('taxId', e.target.value)}
-                            isRequired
                             error={errors.taxId}
                             shakeKey={shakeKey}
                         />
-                        <div className="col-span-full">
-                            <ComerziaInput
-                                label="Slug de Acceso (URL Auto-generada)" aria-label="Slug de Acceso (URL Auto-generada)"
-                                value={formData.company.slug}
-                                disabled // Bloqueado, no editable por el usuario
-                                isRequired
-                                error={errors.slug}
-                                shakeKey={shakeKey}
-                            />
-                        </div>
+
                     </div>
                 )}
 
@@ -79,7 +68,6 @@ export const CreateCompanyWizard = (props: CompanyOnboardingOptions) => {
                             label="Apellido Paterno" aria-label="Apellido Paterno"
                             value={formData.owner.paternalSurname}
                             onChange={(e) => updateOwner('paternalSurname', e.target.value)}
-                            isRequired
                             error={errors.paternalSurname}
                             shakeKey={shakeKey}
                         />
@@ -93,9 +81,8 @@ export const CreateCompanyWizard = (props: CompanyOnboardingOptions) => {
                             label="Tipo de Documento" aria-label="Tipo de Documento"
                             options={options[DICTIONARIES.DOCUMENT_TYPE]}
                             isLoading={isLoadingDicts}
-                            value={formData.owner.documentType}
+                            value={formData.owner.documentType ?? ''}
                             onChange={(e) => updateOwner('documentType', e.target.value)}
-                            isRequired
                             error={errors.documentType}
                             shakeKey={shakeKey}
                         />
@@ -103,10 +90,8 @@ export const CreateCompanyWizard = (props: CompanyOnboardingOptions) => {
                             label="Número de Documento" aria-label="Número de Documento"
                             value={formData.owner.documentNumber}
                             onChange={(e) => {
-                                const digits = e.target.value.replace(/\D/g, '').slice(0, 12);
-                                updateOwner('documentNumber', digits);
+                                updateOwner('documentNumber', e.target.value);
                             }}
-                            isRequired
                             error={errors.documentNumber}
                             shakeKey={shakeKey}
                         />
@@ -116,7 +101,6 @@ export const CreateCompanyWizard = (props: CompanyOnboardingOptions) => {
                             isLoading={isLoadingDicts}
                             value={formData.owner.extension || ''}
                             onChange={(e) => updateOwner('extension', e.target.value)}
-                            isRequired
                             error={errors.extension}
                             shakeKey={shakeKey}
                         />
@@ -134,10 +118,8 @@ export const CreateCompanyWizard = (props: CompanyOnboardingOptions) => {
                             label="Teléfono" aria-label="Teléfono"
                             value={formData.owner.phoneNumber}
                             onChange={(e) => {
-                                const digits = e.target.value.replace(/\D/g, '').slice(0, 8);
-                                updateOwner('phoneNumber', digits);
+                                updateOwner('phoneNumber', e.target.value);
                             }}
-                            isRequired
                             error={errors.phoneNumber}
                             shakeKey={shakeKey}
                             placeholder="ej. 71234567"
