@@ -28,10 +28,18 @@ async function setup(page, options = {}) {
   return { writes, saved: () => saved };
 }
 
+async function openPicker(page) {
+  const trigger = page.getByRole('button', { name: 'Elegir tema', exact: true });
+  if (!await trigger.isVisible()) {
+    await page.getByLabel('Opciones de perfil').click();
+  }
+  await trigger.click();
+}
+
 test('previsualiza sin guardar por clic y al cerrar persiste solamente el último tema', async ({ page }, info) => {
   const { writes } = await setup(page);
   await page.getByLabel('Referencia').fill('Carrito conservado');
-  await page.getByRole('button', { name: 'Elegir tema', exact: true }).click();
+  await openPicker(page);
   const dialog = page.getByRole('dialog', { name: 'Elige tu tema' });
   await page.getByRole('button', { name: 'Elegir Dulce pastel', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'cupcake');
@@ -52,9 +60,9 @@ test('previsualiza sin guardar por clic y al cerrar persiste solamente el últim
 
 test('Escape y tocar fuera guardan; cerrar sin cambios no genera escrituras', async ({ page }) => {
   const { writes } = await setup(page);
-  await page.getByRole('button', { name: 'Elegir tema', exact: true }).click();
+  await openPicker(page);
   await page.keyboard.press('Escape'); expect(writes).toHaveLength(0);
-  await page.getByRole('button', { name: 'Elegir tema', exact: true }).click();
+  await openPicker(page);
   await page.getByRole('button', { name: 'Elegir Romance rosa', exact: true }).click();
   await page.mouse.click(10, 70);
   await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -65,7 +73,7 @@ test('Escape y tocar fuera guardan; cerrar sin cambios no genera escrituras', as
 test('persistencia entre recargas y la preferencia del backend prevalece sobre la caché', async ({ page }) => {
   const { writes } = await setup(page, { initial: 'nord' });
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'nord');
-  await page.getByRole('button', { name: 'Elegir tema', exact: true }).click();
+  await openPicker(page);
   await page.getByRole('button', { name: 'Elegir Medianoche', exact: true }).click();
   await page.getByRole('button', { name: 'Cerrar selector de temas', exact: true }).click();
   await expect.poll(() => writes.length).toBe(1);
@@ -78,13 +86,13 @@ test('un error mantiene el tema local y permite reintentar sin cerrar sesión', 
   let attempts = 0;
   await setup(page, { onWrite: (route, body) => ++attempts === 1
     ? route.fulfill({ status: 503, json: { message: 'Unavailable' } }) : route.fulfill({ json: body }) });
-  await page.getByRole('button', { name: 'Elegir tema', exact: true }).click();
+  await openPicker(page);
   await page.getByRole('button', { name: 'Elegir Esmeralda', exact: true }).click();
   await page.keyboard.press('Escape');
   await expect.poll(() => page.evaluate(() => window.themeTest.snapshot().error)).toBeTruthy();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'emerald');
   await expect(page.getByLabel('Referencia')).toBeEnabled();
-  await page.getByRole('button', { name: 'Elegir tema', exact: true }).click();
+  await openPicker(page);
   await page.getByRole('button', { name: 'Listo', exact: true }).click();
   await expect.poll(() => page.evaluate(() => window.themeTest.snapshot().savedTheme)).toBe('emerald');
   expect(attempts).toBe(2);
@@ -98,11 +106,11 @@ test('serializa guardados y no permite que una respuesta anterior restaure el te
     if (++sequence === 1) await firstResponse;
     return route.fulfill({ json: body });
   } });
-  await page.getByRole('button', { name: 'Elegir tema', exact: true }).click();
+  await openPicker(page);
   await page.getByRole('button', { name: 'Elegir Dulce pastel', exact: true }).click();
   await page.keyboard.press('Escape');
   await expect.poll(() => writes.length).toBe(1);
-  await page.getByRole('button', { name: 'Elegir tema', exact: true }).click();
+  await openPicker(page);
   await page.getByRole('button', { name: 'Elegir Oro y azabache', exact: true }).click();
   await page.keyboard.press('Escape'); expect(writes).toHaveLength(1);
   finish();
@@ -115,7 +123,7 @@ test('cambiar de usuario aísla la caché y descarta guardados de la sesión ant
   let finish;
   const delayed = new Promise(resolve => { finish = resolve; });
   const { writes } = await setup(page, { onWrite: async (route, body) => { await delayed; await route.fulfill({ json: body }).catch(() => {}); } });
-  await page.getByRole('button', { name: 'Elegir tema', exact: true }).click();
+  await openPicker(page);
   await page.getByRole('button', { name: 'Elegir Retro neón', exact: true }).click(); await page.keyboard.press('Escape');
   await expect.poll(() => writes.length).toBe(1);
   await page.evaluate(() => window.themeTest.changeUser('owner-b', 'corporate'));
@@ -195,7 +203,7 @@ test('un refresco de perfil iniciado antes de la elección no sobrescribe la pre
   await page.route('**/api/auth/profile', async route => { started = true; await response; await route.fulfill({ json: { ...profile, theme: 'light' } }); });
   const refreshing = page.evaluate(() => window.themeTest.refresh());
   await expect.poll(() => started).toBe(true);
-  await page.getByRole('button', { name: 'Elegir tema', exact: true }).click();
+  await openPicker(page);
   await page.getByRole('button', { name: 'Elegir Esmeralda', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'emerald');
   await page.keyboard.press('Escape');
@@ -208,7 +216,7 @@ test('la caché confirmada se comparte con otra pestaña de la misma cuenta sin 
   const first = await setup(page);
   const second = await context.newPage();
   const other = await setup(second);
-  await page.getByRole('button', { name: 'Elegir tema', exact: true }).click();
+  await openPicker(page);
   await page.getByRole('button', { name: 'Elegir Esmeralda', exact: true }).click();
   await expect(second.locator('html')).toHaveAttribute('data-theme', 'light');
   await page.keyboard.press('Escape');
@@ -224,7 +232,7 @@ test('el cambio sigue funcionando cuando el navegador bloquea la caché de apari
     Storage.prototype.setItem = function(key, value) { if (key === 'theme' || key.startsWith('comerzia.theme.')) throw new DOMException('Restricted'); return write.call(this, key, value); };
   });
   const { writes } = await setup(page, { initial: 'dracula' });
-  await page.getByRole('button', { name: 'Elegir tema', exact: true }).click();
+  await openPicker(page);
   await page.getByRole('button', { name: 'Elegir Nieve ártica', exact: true }).click(); await page.keyboard.press('Escape');
   await expect.poll(() => writes.length).toBe(1); expect(writes[0].body.theme).toBe('nord');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'nord');
@@ -252,10 +260,10 @@ test('un fallo del guardado anterior no impide guardar una selección posterior 
     if (++sequence === 1) { await pending; return route.fulfill({ status: 503, json: {} }); }
     return route.fulfill({ json: body });
   } });
-  await page.getByRole('button', { name: 'Elegir tema', exact: true }).click();
+  await openPicker(page);
   await page.getByRole('button', { name: 'Elegir Dulce pastel', exact: true }).click(); await page.keyboard.press('Escape');
   await expect.poll(() => writes.length).toBe(1);
-  await page.getByRole('button', { name: 'Elegir tema', exact: true }).click();
+  await openPicker(page);
   await page.getByRole('button', { name: 'Elegir Romance rosa', exact: true }).click(); await page.keyboard.press('Escape');
   finish();
   await expect.poll(() => page.evaluate(() => window.themeTest.snapshot().savedTheme)).toBe('valentine');

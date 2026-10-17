@@ -3,8 +3,9 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../stores/useAuthStore";
 import { useCurrentTime } from "../../hooks/useCurrentTime";
-import { LogOut, User as UserIcon, Menu } from "lucide-react";
+import { LogOut, User as UserIcon, Menu, Palette } from "lucide-react";
 import { ThemePickerTrigger } from '../../features/security/components/ThemePickerTrigger';
+import { useThemeStore } from '../../stores/useThemeStore';
 import {
   BtnModalYes,
   BtnModalNo
@@ -92,7 +93,6 @@ export const Header = () => {
         {/* DERECHA */}
         <div className="flex items-center gap-2 shrink-0">
           <RealtimeStatusIndicator />
-          <ThemePickerTrigger />
 
           {/* TELÓN DE FONDO (BACKDROP OSCURO Y DIFUMINADO) EN MOBILE */}
           {isDropdownOpen && (
@@ -148,7 +148,23 @@ export const Header = () => {
 
                 <div className="divider my-0"></div>
 
+                {/* TEMA */}
+                <li>
+                  <div
+                    onClick={() => { closeDropdown(); useThemeStore.getState().open(); }}
+                    className="py-2.5 flex items-center justify-between font-medium cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Palette size={18} />
+                      <span>Tema</span>
+                    </div>
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <ThemePickerTrigger onOpen={closeDropdown} />
+                    </div>
+                  </div>
+                </li>
 
+                <div className="divider my-0"></div>
                 <li>
                   <button
                     type="button"
