@@ -7,6 +7,7 @@ interface BaseBtnProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     label?: string; // Por si quieres sobreescribir el texto por defecto
     responsive?: boolean;
     fullWidth?: boolean;
+    tooltip?: string;
 }
 
 export const BtnAccess = ({ disabledAccess, label, ...props }: BaseBtnProps & { disabledAccess: boolean }) => (

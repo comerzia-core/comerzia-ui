@@ -139,6 +139,8 @@ export const CatalogPage = () => {
     selectedCategoryId || selectedSegmentId || selectedBrandId || (debouncedSearch.trim().length >= 3)
   );
 
+  const isHierarchyComplete = Boolean(selectedCategoryId && selectedSegmentId && selectedBrandId);
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* ENCABEZADO */}
@@ -158,11 +160,17 @@ export const CatalogPage = () => {
             />
           )}
           {canCreateProduct && (
-            <BtnCreate
-              label="Nuevo Producto"
-              onClick={() => setIsCreateModalOpen(true)}
-              className="flex-1 sm:flex-initial"
-            />
+            <div
+              className={`flex-1 sm:flex-initial ${!isHierarchyComplete ? 'tooltip tooltip-bottom' : ''}`}
+              data-tip={!isHierarchyComplete ? 'Selecciona Categoría, Rubro y Marca para habilitar la creación' : undefined}
+            >
+              <BtnCreate
+                label="Nuevo Producto"
+                onClick={() => setIsCreateModalOpen(true)}
+                disabled={!isHierarchyComplete}
+                className="w-full sm:w-auto"
+              />
+            </div>
           )}
         </div>
       </div>

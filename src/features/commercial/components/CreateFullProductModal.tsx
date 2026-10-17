@@ -24,7 +24,7 @@ import { BarcodeScannerModal } from '../../../components/ui/BarcodeScannerModal'
 import { uploadFile } from '../../shared/services/storageService';
 import { STORAGE_FOLDERS } from '../../../config/storage';
 import { BtnScanIcon } from '../../../components/ui/CrudButtons';
-import { BadgePercent, X, Plus } from 'lucide-react';
+import { BadgePercent, X, Plus, Check } from 'lucide-react';
 import { getCatalogErrorMessage } from '../utils/catalogErrorMessages';
 
 interface Props {
@@ -70,6 +70,7 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { error: toastError, success: toastSuccess } = useToast();
   const [openDiscounts, setOpenDiscounts] = useState<Record<string, boolean>>({});
+  const [isPricesCopiedToAll, setIsPricesCopiedToAll] = useState(false);
 
   const [nameError, setNameError] = useState('');
   const [barcodeErrors, setBarcodeErrors] = useState<Record<number, string>>({});
@@ -91,6 +92,7 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
       setVariants([{ name: '', sku: '', barCode: '', isInternalBarcode: false, prices: [] }]);
       setVariantImages([null]);
       setOpenDiscounts({});
+      setIsPricesCopiedToAll(false);
       loadInitialData();
       if (initialCategoryId) {
         commercialService.getSegmentsByCategory(initialCategoryId).then(setSegments);
@@ -359,6 +361,7 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
     const updated = [...variants];
     (updated[variantIndex].prices[priceIndex] as any)[field] = value;
     setVariants(updated);
+    if (variantIndex === 0) setIsPricesCopiedToAll(false);
   };
 
   const toggleDiscount = (key: string, variantIndex: number, priceIndex: number) => {
@@ -369,12 +372,14 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
     } else {
       setOpenDiscounts(prev => ({ ...prev, [key]: true }));
     }
+    if (variantIndex === 0) setIsPricesCopiedToAll(false);
   };
 
   const removePriceType = (variantIndex: number, priceIndex: number) => {
     const updated = [...variants];
     updated[variantIndex].prices = updated[variantIndex].prices.filter((_, i) => i !== priceIndex);
     setVariants(updated);
+    if (variantIndex === 0) setIsPricesCopiedToAll(false);
   };
 
   const addPriceType = (variantIndex: number, priceTypeId: string) => {
@@ -388,18 +393,40 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
       }
     ];
     setVariants(updated);
+    if (variantIndex === 0) setIsPricesCopiedToAll(false);
   };
 
   const addVariant = () => {
-    setVariants([...variants, { name: '', sku: '', barCode: '', isInternalBarcode: false, prices: [] }]);
+    const defaultInternalBarcode = variants[0]?.isInternalBarcode ?? false;
+    setVariants([...variants, { name: '', sku: '', barCode: '', isInternalBarcode: defaultInternalBarcode, prices: [] }]);
     setVariantImages([...variantImages, null]);
+    setIsPricesCopiedToAll(false);
   };
 
   const removeVariant = (index: number) => {
     if (variants.length > 1) {
       setVariants(variants.filter((_, i) => i !== index));
       setVariantImages(variantImages.filter((_, i) => i !== index));
+      setIsPricesCopiedToAll(false);
     }
+  };
+
+  const handleCopyPricesToAll = () => {
+    const firstPrices = variants[0]?.prices;
+    if (!firstPrices || firstPrices.length === 0 || !firstPrices.every(p => Number(p.salePrice) > 0)) {
+      toastError("Ingresa precios válidos en la primera variante antes de copiarlos.");
+      return;
+    }
+    const newVariants = variants.map((v, idx) => {
+      if (idx === 0) return v;
+      return {
+        ...v,
+        prices: JSON.parse(JSON.stringify(firstPrices))
+      };
+    });
+    setVariants(newVariants);
+    setIsPricesCopiedToAll(true);
+    toastSuccess("Precios asignados a todas las variantes.");
   };
 
   return (
@@ -746,27 +773,35 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
                     </div>
                   )}
 
-                  {vIdx === 0 && variants.length > 1 && (
-                    <div className="mt-3 pt-3 border-t border-base-200">
-                      <label className="label cursor-pointer justify-start gap-3 py-1">
-                        <input
-                          type="checkbox"
-                          className="checkbox checkbox-primary checkbox-sm rounded-md"
-                          disabled={!isFirstVariantComplete}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              const newVariants = [...variants];
-                              for (let i = 1; i < newVariants.length; i++) {
-                                newVariants[i].prices = JSON.parse(JSON.stringify(variant.prices));
-                              }
-                              setVariants(newVariants);
+                  {vIdx === 0 && variants.length > 1 && isFirstVariantComplete && (
+                    <div className="mt-3 pt-3 border-t border-base-200 animate-fade-in">
+                      <button
+                        type="button"
+                        onClick={handleCopyPricesToAll}
+                        className={`
+                          w-full p-3 sm:p-3.5 rounded-xl border-2 transition-all flex items-center gap-3 text-left select-none group min-w-0 cursor-pointer
+                          ${isPricesCopiedToAll
+                            ? 'bg-primary/10 border-primary text-primary shadow-xs'
+                            : 'bg-base-100 hover:bg-primary/5 border-base-300 hover:border-primary/50 text-base-content shadow-2xs'
+                          }
+                        `}
+                      >
+                        <div
+                          className={`
+                            w-5 h-5 sm:w-6 sm:h-6 rounded-md flex items-center justify-center shrink-0 border-2 transition-all
+                            ${isPricesCopiedToAll
+                              ? 'bg-primary border-primary text-primary-content shadow-xs'
+                              : 'border-base-content/40 bg-base-100 group-hover:border-primary text-transparent'
                             }
-                          }}
-                        />
-                        <span className={`label-text text-sm font-medium ${!isFirstVariantComplete ? 'opacity-50' : ''}`}>
+                          `}
+                        >
+                          <Check size={14} className={`stroke-[3] ${isPricesCopiedToAll ? 'text-primary-content' : 'opacity-0'}`} />
+                        </div>
+
+                        <span className="text-xs sm:text-sm font-semibold text-base-content break-words whitespace-normal leading-snug flex-1 min-w-0">
                           Asignar estos precios a todas las variantes
                         </span>
-                      </label>
+                      </button>
                     </div>
                   )}
                 </div>
