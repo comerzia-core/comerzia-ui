@@ -25,49 +25,42 @@ export const salesService = {
   },
 
   getSuggestions: async (term: string, signal?: AbortSignal, branchId?: string | null): Promise<SalesCatalogSuggestionResponse[]> => {
-    const headers: Record<string, string> = {};
+    const params: Record<string, string> = { q: term };
     if (branchId) {
-      headers['X-Branch-Context'] = branchId;
+      params.branchId = branchId;
     }
     const response = await api.get<SalesCatalogSuggestionResponse[]>('/tenant/sales-catalog/suggestions', {
-      params: { q: term },
-      headers,
+      params,
       signal
     });
     return response.data;
   },
 
   getProductDetailsById: async (variantId: string, branchId?: string | null): Promise<SalesProductResponse> => {
-    const headers: Record<string, string> = {};
-    if (branchId) {
-      headers['X-Branch-Context'] = branchId;
-    }
-    const response = await api.get<SalesProductResponse>(`/tenant/sales-catalog/variants/${variantId}`, { headers });
+    const params = branchId ? { branchId } : undefined;
+    const response = await api.get<SalesProductResponse>(`/tenant/sales-catalog/variants/${variantId}`, { params });
     return response.data;
   },
 
   getProductDetailsByBarcode: async (barcode: string, branchId?: string | null): Promise<SalesProductResponse> => {
-    const headers: Record<string, string> = {};
-    if (branchId) {
-      headers['X-Branch-Context'] = branchId;
-    }
-    const response = await api.get<SalesProductResponse>(`/tenant/sales-catalog/barcodes/${encodeURIComponent(barcode)}`, { headers });
+    const params = branchId ? { branchId } : undefined;
+    const response = await api.get<SalesProductResponse>(`/tenant/sales-catalog/barcodes/${encodeURIComponent(barcode)}`, { params });
     return response.data;
   },
 
   getProductDetailsBySku: async (sku: string, branchId?: string | null): Promise<SalesProductResponse> => {
-    const headers: Record<string, string> = {};
-    if (branchId) {
-      headers['X-Branch-Context'] = branchId;
-    }
-    const response = await api.get<SalesProductResponse>(`/tenant/sales-catalog/skus/${encodeURIComponent(sku)}`, { headers });
+    const params = branchId ? { branchId } : undefined;
+    const response = await api.get<SalesProductResponse>(`/tenant/sales-catalog/skus/${encodeURIComponent(sku)}`, { params });
     return response.data;
   },
 
   // --- Ventas (Shift Sales & Sales History) ---
   createSale: async (data: CreateSaleRequest, branchId?: string | null): Promise<SaleResponse> => {
-    const config = branchId ? { headers: { 'X-Branch-Context': branchId } } : undefined;
-    const response = await api.post<SaleResponse>('/tenant/sales', data, config);
+    const payload: CreateSaleRequest = {
+      ...data,
+      branchId: data.branchId !== undefined ? data.branchId : (branchId || null)
+    };
+    const response = await api.post<SaleResponse>('/tenant/sales', payload);
     return response.data;
   },
 
@@ -143,6 +136,11 @@ export const salesService = {
 
   processReturn: async (saleId: string, data: CreateReturnRequest): Promise<ReturnResponse> => {
     const response = await api.post<ReturnResponse>(`/tenant/sales/${saleId}/returns`, data);
+    return response.data;
+  },
+
+  getReturnContext: async (saleId: string): Promise<import('../types/sales').ReturnContextResponse> => {
+    const response = await api.get<import('../types/sales').ReturnContextResponse>(`/tenant/sales/${saleId}/return-context`);
     return response.data;
   },
 

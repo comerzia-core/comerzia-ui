@@ -4,7 +4,8 @@ import { ComerziaModal } from '../../../components/ui/ComerziaModal';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
 import { ComerziaSelect } from '../../../components/ui/ComerziaSelect';
 import { BtnCancel, BtnSave } from '../../../components/ui/CrudButtons';
-import { useAuthStore } from '../../../stores/useAuthStore';
+import { usePermission } from '../../../hooks/usePermission';
+import { getPosOperationMessage } from '../utils/posOperationMessages';
 import { posService } from '../services/posService';
 import { branchService } from '../../organization/services/branchService';
 import { useToast } from '../../../context/ToastContext';
@@ -16,11 +17,9 @@ interface Props {
 }
 
 export const OpenShiftModal = ({ isOpen, onClose, onSuccess }: Props) => {
-  const { userProfile } = useAuthStore();
-  const roles = userProfile?.roles || [];
-  const isOwner = roles.includes('OWNER');
-  const isManager = roles.includes('BRANCH_MANAGER');
-  const canAssignCashier = isOwner || isManager;
+  const { can } = usePermission();
+  const canSelectBranch = can('SWITCH_BRANCH');
+  const canAssignCashier = can('POS_SHIFTS_MANAGE_ALL');
   const { error: toastError, success: toastSuccess } = useToast();
 
   const [isLoading, setIsLoading] = useState(false);
@@ -53,7 +52,7 @@ export const OpenShiftModal = ({ isOpen, onClose, onSuccess }: Props) => {
       setRegisters([]);
       setCashiers([]);
 
-      if (isOwner) {
+      if (canSelectBranch) {
         loadBranches();
       } else {
         loadNonOwnerData();
@@ -137,7 +136,7 @@ export const OpenShiftModal = ({ isOpen, onClose, onSuccess }: Props) => {
 
   const handleSubmit = async () => {
     if (
-      (isOwner && !form.branchId) ||
+      (canSelectBranch && !form.branchId) ||
       !form.cashRegisterId ||
       !form.initialAmount ||
       (canAssignCashier && !form.cashierEmployeeId)
@@ -155,21 +154,13 @@ export const OpenShiftModal = ({ isOpen, onClose, onSuccess }: Props) => {
           cashierEmployeeId: canAssignCashier ? form.cashierEmployeeId : undefined,
           observation: form.observation || undefined
         },
-        isOwner ? form.branchId : undefined
+        canSelectBranch ? form.branchId : undefined
       );
       toastSuccess('Turno abierto.');
       onSuccess();
       onClose();
-    } catch (err: any) {
-      const status = err.response?.status;
-      const msg = err.response?.data?.message || err.response?.data?.error || '';
-      if (status === 409 || msg.toLowerCase().includes('open shift') || msg.toLowerCase().includes('active shift')) {
-        toastError('La caja o el cajero ya cuenta con un turno abierto.');
-      } else if (msg) {
-        toastError(msg);
-      } else {
-        toastError('No se pudo abrir el turno.');
-      }
+    } catch (error: unknown) {
+      toastError(getPosOperationMessage(error, 'No se pudo abrir el turno.'));
       setShakeKey(prev => prev + 1);
     } finally {
       setIsLoading(false);
@@ -191,7 +182,7 @@ export const OpenShiftModal = ({ isOpen, onClose, onSuccess }: Props) => {
     >
       <div className="space-y-4 pt-2">
         {/* Selector de Sucursal (Solo visible para rol OWNER) */}
-        {isOwner && (
+        {canSelectBranch && (
           <ComerziaSelect
             label="Sucursal"
             options={branches}
@@ -214,7 +205,7 @@ export const OpenShiftModal = ({ isOpen, onClose, onSuccess }: Props) => {
           isLoading={loadingRegisters}
           enableDefaultOption
           isRequired
-          disabled={isOwner && !form.branchId}
+          disabled={canSelectBranch && !form.branchId}
           shakeKey={shakeKey}
           error={!form.cashRegisterId && shakeKey > 0 ? 'Requerido' : ''}
         />
@@ -229,7 +220,7 @@ export const OpenShiftModal = ({ isOpen, onClose, onSuccess }: Props) => {
             isLoading={loadingCashiers}
             enableDefaultOption
             isRequired
-            disabled={isOwner && (!form.branchId || !form.cashRegisterId)}
+            disabled={canSelectBranch && (!form.branchId || !form.cashRegisterId)}
             shakeKey={shakeKey}
             error={!form.cashierEmployeeId && shakeKey > 0 ? 'Requerido' : ''}
           />

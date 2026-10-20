@@ -4,6 +4,7 @@ import { ComerziaModal } from '../../../components/ui/ComerziaModal';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
 import { ComerziaTextarea } from '../../../components/ui/ComerziaTextarea';
 import { BtnCancel, BtnSave } from '../../../components/ui/CrudButtons';
+import { getPosErrorCode, getPosOperationMessage } from '../utils/posOperationMessages';
 import { posService } from '../services/posService';
 import type { ShiftSummaryResponse } from '../types/pos';
 import { useToast } from '../../../context/ToastContext';
@@ -125,19 +126,11 @@ export const CloseShiftModal = ({ isOpen, onClose, onSuccess, shiftId, shiftSumm
       toastSuccess('Turno cerrado exitosamente.');
       onSuccess();
       onClose();
-    } catch (err: any) {
-      const status = err.response?.status;
-      const apiMsg = err.response?.data?.message || err.response?.data?.error || '';
-      if (status === 400 || apiMsg.toLowerCase().includes('observation')) {
-        setObservationError('Se requiere observación por descuadre en caja.');
-        toastError('Se requiere observación al existir descuadre en caja.');
-      } else if (status === 409) {
-        toastError('El turno no está abierto o ya fue cerrado.');
-      } else if (apiMsg) {
-        toastError(apiMsg);
-      } else {
-        toastError('No se pudo cerrar el turno.');
+    } catch (error: unknown) {
+      if (getPosErrorCode(error) === 'observation_required') {
+        setObservationError('Indica el motivo del descuadre.');
       }
+      toastError(getPosOperationMessage(error, 'No se pudo cerrar el turno.'));
       setShakeKey(prev => prev + 1);
     } finally {
       setIsLoading(false);

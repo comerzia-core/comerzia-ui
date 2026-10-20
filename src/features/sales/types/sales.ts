@@ -51,6 +51,7 @@ export interface SaleDetailRequest {
 }
 
 export interface CreateSaleRequest {
+  branchId?: string | null;
   expectedTotalAmount: number;
   details: SaleDetailRequest[];
   customerId?: string;
@@ -171,12 +172,16 @@ export interface ReturnDetailItemRequest {
 export interface CreateReturnRequest {
   saleId?: string;
   shiftId?: string;
-  targetShiftId?: string;
-  reason?: string;
+  targetShiftId: string;
+  reason: string;
   returnPaymentType?: number;
   notes?: string;
   details?: ReturnDetailItemRequest[];
   returnDetails?: ReturnDetailItemRequest[];
+}
+
+export interface ReturnContextResponse {
+  availableShifts: import('../../pos/types/pos').ShiftSummaryResponse[];
 }
 
 export interface ReturnDetailResponse {

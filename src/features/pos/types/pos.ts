@@ -67,6 +67,7 @@ export interface ShiftResponse {
   observation: string | null;
   statusType: DictionaryResponse;
   cashierName: string;
+  reopenAllowed: boolean;
 }
 
 export interface PageShiftResponse {
@@ -101,6 +102,13 @@ export interface ShiftSummaryResponse {
   totalOutflows: number;
   employeeName: string;
   payments?: ShiftPaymentSummaryResponse[];
+}
+
+export interface DailyShiftResponse extends ShiftSummaryResponse {
+  closedAt: string | null;
+  statusType: DictionaryResponse;
+  reopenAllowed: boolean;
+  closeAllowed: boolean;
 }
 
 export interface OpenShiftRequest {

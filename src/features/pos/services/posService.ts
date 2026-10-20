@@ -19,6 +19,12 @@ import type {
 } from '../types/pos';
 
 export const posService = {
+  getTodayShifts: async (page = 0, size = 10): Promise<import('../../../types/api').PageResponse<import('../types/pos').DailyShiftResponse>> => {
+    const response = await api.get<import('../../../types/api').PageResponse<import('../types/pos').DailyShiftResponse>>('/tenant/shifts/summaries', {
+      params: { currentDayOnly: true, page, size },
+    });
+    return response.data;
+  },
   // --- Cajeros ---
   getCashiers: async (branchId?: string): Promise<EmployeePosResponse[]> => {
     const headers: Record<string, string> = {};

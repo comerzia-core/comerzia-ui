@@ -99,6 +99,36 @@ export const formatTimeForUser = (utcString: string | null | undefined, timezone
 
 export type FilterPeriod = 'TODAY' | 'THIS_WEEK' | 'THIS_MONTH' | 'LAST_MONTH' | 'THIS_YEAR' | 'CUSTOM';
 
+export const getCompanyDateString = (now = new Date()): string => {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: getEffectiveTimezone(), year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(now);
+  const value = (type: string) => parts.find(part => part.type === type)?.value ?? '';
+  return `${value('year')}-${value('month')}-${value('day')}`;
+};
+
+export const getCompanyDateRange = (
+  period: FilterPeriod, customStart: string, customEnd: string, now = new Date(),
+): { start?: string; end?: string } => {
+  if (period === 'CUSTOM') return { start: customStart || undefined, end: customEnd || undefined };
+  const today = getCompanyDateString(now);
+  const date = new Date(`${today}T00:00:00Z`);
+  const year = date.getUTCFullYear();
+  const month = date.getUTCMonth();
+  const day = date.getUTCDate();
+  const calendar = (value: Date) => value.toISOString().slice(0, 10);
+  if (period === 'TODAY') return { start: today, end: today };
+  if (period === 'THIS_WEEK') {
+    const weekday = date.getUTCDay() || 7;
+    return { start: calendar(new Date(Date.UTC(year, month, day - weekday + 1))), end: today };
+  }
+  if (period === 'THIS_MONTH') return { start: calendar(new Date(Date.UTC(year, month, 1))), end: today };
+  if (period === 'LAST_MONTH') return {
+    start: calendar(new Date(Date.UTC(year, month - 1, 1))), end: calendar(new Date(Date.UTC(year, month, 0))),
+  };
+  return { start: calendar(new Date(Date.UTC(year, 0, 1))), end: today };
+};
+
 export const PERIOD_OPTIONS = [
   { value: 'TODAY', label: 'Hoy' },
   { value: 'THIS_WEEK', label: 'Esta semana' },
@@ -118,10 +148,10 @@ const MONTH_NAMES_ES = [
  * Retorna cadena vacía para 'CUSTOM' ya que el usuario ingresa las fechas manualmente.
  */
 export const getPeriodDescription = (period: FilterPeriod | string): string => {
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth();
-  const currentDay = now.getDate();
+  const now = new Date(`${getCompanyDateString()}T00:00:00Z`);
+  const currentYear = now.getUTCFullYear();
+  const currentMonth = now.getUTCMonth();
+  const currentDay = now.getUTCDate();
 
   const pad = (n: number) => String(n).padStart(2, '0');
 
@@ -130,11 +160,11 @@ export const getPeriodDescription = (period: FilterPeriod | string): string => {
       return `${currentDay} de ${MONTH_NAMES_ES[currentMonth]} ${currentYear}`;
     }
     case 'THIS_WEEK': {
-      const day = now.getDay();
-      const diff = now.getDate() - day + (day === 0 ? -6 : 1);
-      const monday = new Date(now.getFullYear(), now.getMonth(), diff);
-      const monDay = monday.getDate();
-      const monMonth = MONTH_NAMES_ES[monday.getMonth()].slice(0, 3).toLowerCase();
+      const day = now.getUTCDay();
+      const diff = now.getUTCDate() - day + (day === 0 ? -6 : 1);
+      const monday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), diff));
+      const monDay = monday.getUTCDate();
+      const monMonth = MONTH_NAMES_ES[monday.getUTCMonth()].slice(0, 3).toLowerCase();
       const nowMonth = MONTH_NAMES_ES[currentMonth].slice(0, 3).toLowerCase();
       return `${monDay} ${monMonth} - ${currentDay} ${nowMonth} ${currentYear}`;
     }
@@ -142,10 +172,10 @@ export const getPeriodDescription = (period: FilterPeriod | string): string => {
       return `${MONTH_NAMES_ES[currentMonth]} ${currentYear} (01 - ${pad(currentDay)} ${MONTH_NAMES_ES[currentMonth].slice(0, 3).toLowerCase()})`;
     }
     case 'LAST_MONTH': {
-      const lastMonthDate = new Date(currentYear, currentMonth - 1, 1);
-      const lastMonthIndex = lastMonthDate.getMonth();
-      const lastMonthYear = lastMonthDate.getFullYear();
-      const lastDayOfLastMonth = new Date(currentYear, currentMonth, 0).getDate();
+      const lastMonthDate = new Date(Date.UTC(currentYear, currentMonth - 1, 1));
+      const lastMonthIndex = lastMonthDate.getUTCMonth();
+      const lastMonthYear = lastMonthDate.getUTCFullYear();
+      const lastDayOfLastMonth = new Date(Date.UTC(currentYear, currentMonth, 0)).getUTCDate();
       return `${MONTH_NAMES_ES[lastMonthIndex]} ${lastMonthYear} (01 - ${lastDayOfLastMonth} ${MONTH_NAMES_ES[lastMonthIndex].slice(0, 3).toLowerCase()})`;
     }
     case 'THIS_YEAR': {

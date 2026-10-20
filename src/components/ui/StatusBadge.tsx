@@ -4,9 +4,10 @@ import { STATUS_COLOR_MAP } from "../../config/badgeConfig";
 interface Props {
     statusName: string;
     statusCode: number; // El código que viene del backend (ej. 901)
+    className?: string;
 }
 
-export const StatusBadge = ({ statusName, statusCode }: Props) => {
+export const StatusBadge = ({ statusName, statusCode, className = "" }: Props) => {
     
     // Buscamos el color en el mapa global. 
     // Si el backend nos manda un código que aún no hemos mapeado, usamos "ghost" por defecto.
@@ -16,6 +17,7 @@ export const StatusBadge = ({ statusName, statusCode }: Props) => {
         <ComerziaBadge 
             label={statusName} 
             variant={variant} 
+            className={className}
         />
     );
 };

@@ -16,7 +16,8 @@
     "test:realtime": "playwright test --config playwright.realtime.config.mjs",
     "test:images": "playwright test --config playwright.images.config.mjs",
     "test:themes": "playwright test --config playwright.themes.config.mjs",
-    "test:saas": "playwright test --config playwright.saas.config.mjs"
+    "test:saas": "playwright test --config playwright.saas.config.mjs",
+    "test:returns": "playwright test --config playwright.returns.config.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

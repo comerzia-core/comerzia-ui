@@ -10,6 +10,7 @@ import { useLoadDictionaries } from '../../../hooks/useLoadDictionaries';
 import { DICTIONARIES } from '../../../config/dictionaries';
 import { Banknote, QrCode, Split, CheckCircle, ImageOff } from 'lucide-react';
 import { getCardImageUrl } from '../../../utils/image';
+import { getPosOperationMessage } from '../../pos/utils/posOperationMessages';
 
 interface Props {
   isOpen: boolean;
@@ -180,26 +181,9 @@ export const PaySaleModal = ({ isOpen, onClose, sale, shiftId, onPaymentSuccess 
       const paidSaleNumber = sale.saleNumber;
       onClose();
       onPaymentSuccess(paidSaleId, paidSaleNumber);
-    } catch (e: any) {
-      console.error(e);
-      const status = e.response?.status;
-      const serverMsg = e.response?.data?.message;
-
-      let errorMsg = "Error al procesar el pago.";
-
-      if (status === 400) {
-        errorMsg = serverMsg || "Monto insuficiente o pago digital excede el total.";
-      } else if (status === 403) {
-        errorMsg = "El turno activo pertenece a otro cajero.";
-      } else if (status === 404) {
-        errorMsg = "No se encontró la venta o el turno de caja.";
-      } else if (status === 409) {
-        errorMsg = "La venta ya no se encuentra pendiente de cobro.";
-      } else if (serverMsg) {
-        errorMsg = serverMsg;
-      }
-
-      toastError(errorMsg);
+    } catch (error: unknown) {
+      console.error('Sale payment failed:', error);
+      toastError(getPosOperationMessage(error, 'No se pudo completar el cobro.'));
       setShakeKey(prev => prev + 1);
     } finally {
       setIsSubmitting(false);

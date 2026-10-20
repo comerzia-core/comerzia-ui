@@ -5,9 +5,9 @@ import { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { salesService } from '../services/salesService';
-import { posService } from '../../pos/services/posService';
+import { useReturnContext } from '../hooks/useReturnContext';
+import { getPosErrorCode, getPosOperationMessage } from '../../pos/utils/posOperationMessages';
 import type { SaleResponse, SaleDetailResponse } from '../types/sales';
-import type { ShiftSummaryResponse } from '../../pos/types/pos';
 import { useToast } from '../../../context/ToastContext';
 import { useLoadDictionaries } from '../../../hooks/useLoadDictionaries';
 import { DICTIONARIES } from '../../../config/dictionaries';
@@ -67,12 +67,8 @@ export const ReturnsPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [shakeKey, setShakeKey] = useState(0);
 
-  // Turno destino (cuando el turno original está cerrado)
-  const [requiresTargetShift, setRequiresTargetShift] = useState(false);
-  const [activeShifts, setActiveShifts] = useState<ShiftSummaryResponse[]>([]);
-  const [selectedShiftId, setSelectedShiftId] = useState<string>('');
-  const [isLoadingShifts, setIsLoadingShifts] = useState(false);
-  const [shiftErrorMessage, setShiftErrorMessage] = useState<string | null>(null);
+  const { activeShifts, selectedShiftId, setSelectedShiftId, isLoadingShifts, shiftErrorMessage,
+    clearReturnContext, loadReturnContext } = useReturnContext();
 
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
@@ -109,36 +105,6 @@ export const ReturnsPage = () => {
     return Math.max(0, purchasedReceipt - returnedReceipt);
   };
 
-  // Cargar turnos activos de la sucursal de la venta
-  const loadBranchActiveShifts = async (branchId: string) => {
-    setIsLoadingShifts(true);
-    setShiftErrorMessage(null);
-    try {
-      const shifts = await posService.getActiveShiftsByBranch(branchId);
-      setActiveShifts(shifts);
-      if (shifts && shifts.length > 0) {
-        setSelectedShiftId(shifts[0].id);
-      } else {
-        setSelectedShiftId('');
-        setShiftErrorMessage("No existen turnos de caja abiertos en la sucursal de esta venta. Para registrar la salida de dinero y completar la devolución, debe abrir un nuevo turno o reabrir uno existente desde el módulo POS.");
-      }
-    } catch (err: any) {
-      console.error("Error al obtener turnos activos por sucursal:", err);
-      const data = err.response?.data;
-      const errorCode = data?.errorCode || data?.code;
-      const rawMsg = data?.message;
-      let msg = "No se pudieron obtener los turnos de caja activos de la sucursal.";
-      if (errorCode === 'resource_not_found' || rawMsg?.toLowerCase().includes('not found')) {
-        msg = "No se encontró la sucursal para consultar los turnos de caja.";
-      } else if (rawMsg) {
-        msg = rawMsg;
-      }
-      setShiftErrorMessage(msg);
-    } finally {
-      setIsLoadingShifts(false);
-    }
-  };
-
   // Buscar Venta por N° de Venta usando /tenant/sales/number/{saleNumber}
   const fetchSaleByNumber = async (numberToSearch: string) => {
     const term = numberToSearch.trim();
@@ -150,10 +116,7 @@ export const ReturnsPage = () => {
     setReason('');
     setReturnQtys({});
     setShakeKey(0);
-    setRequiresTargetShift(false);
-    setActiveShifts([]);
-    setSelectedShiftId('');
-    setShiftErrorMessage(null);
+    clearReturnContext();
 
     try {
       const sale = await salesService.getSaleByNumber(term);
@@ -203,6 +166,7 @@ export const ReturnsPage = () => {
           initialQtys[d.id] = 0;
         });
         setReturnQtys(initialQtys);
+        await loadReturnContext(fullSale.id);
       } else {
         setStatusNotice({
           title: "Estado No Procesable",
@@ -211,26 +175,9 @@ export const ReturnsPage = () => {
         });
         setActiveSale(fullSale);
       }
-    } catch (err: any) {
-      console.error("Error al buscar venta por número:", err);
-      const data = err.response?.data;
-      const errorCode = data?.errorCode || data?.code;
-      const rawMsg = data?.message || '';
-
-      let msg = `No se encontró la venta con el número "${term}".`;
-      if (
-        errorCode === 'resource_not_found' ||
-        rawMsg.toLowerCase().includes('not found') ||
-        rawMsg.toLowerCase().includes('sale was not found')
-      ) {
-        msg = `No se encontró ninguna venta registrada con el número "${term}".`;
-      } else if (errorCode === 'access_denied') {
-        msg = "No cuentas con los permisos necesarios para consultar esta venta.";
-      } else if (rawMsg) {
-        msg = rawMsg;
-      }
-
-      toastError(msg);
+    } catch (error: unknown) {
+      console.error('Error loading sale for return:', error);
+      toastError(getPosOperationMessage(error, 'No se pudo encontrar la venta.'));
       setActiveSale(null);
       setStatusNotice(null);
     } finally {
@@ -293,13 +240,13 @@ export const ReturnsPage = () => {
     if (!activeSale) return;
     if (!reason.trim()) {
       setShakeKey(prev => prev + 1);
-      toastError("Debes especificar el motivo de la devolución.");
+      toastError("Indica el motivo de la devolución.");
       return;
     }
 
-    if (requiresTargetShift && !selectedShiftId) {
+    if (isLoadingShifts || shiftErrorMessage || !selectedShiftId) {
       setShakeKey(prev => prev + 1);
-      toastError("Debes seleccionar un turno de caja activo para procesar la devolución.");
+      toastError("Selecciona un turno abierto.");
       return;
     }
 
@@ -311,7 +258,7 @@ export const ReturnsPage = () => {
       }));
 
     if (returnDetails.length === 0) {
-      toastWarning("Debes seleccionar al menos un producto y una cantidad mayor a 0 para devolver.");
+      toastWarning("Selecciona productos y cantidades a devolver.");
       return;
     }
 
@@ -323,59 +270,23 @@ export const ReturnsPage = () => {
         reason: reason.trim(),
         returnPaymentType: paymentTypeNum,
         returnDetails,
-        ...(selectedShiftId ? { targetShiftId: selectedShiftId } : {})
+        targetShiftId: selectedShiftId
       };
 
       await salesService.processReturn(activeSale.id, payload);
-      toastSuccess("Devolución procesada y registrada exitosamente. Inventario y caja actualizados.");
+      toastSuccess("Devolución registrada.");
       setShowConfirmModal(false);
       
       // Recargar la venta actualizada por número para reflejar nuevo estado (605 o 606)
       if (activeSale.saleNumber) {
         fetchSaleByNumber(activeSale.saleNumber);
       }
-    } catch (err: any) {
-      const data = err.response?.data;
-      const status = err.response?.status;
-      const errorCode = data?.errorCode || data?.code;
-      const rawMsg = data?.message || '';
-
-      const isShiftClosed = status === 409 || errorCode === 'shift_closed' || errorCode === 'shift_not_open' || (status === 400 && (
-        rawMsg.includes("targetShiftId") ||
-        rawMsg.toLowerCase().includes("shift") ||
-        rawMsg.toLowerCase().includes("turno") ||
-        rawMsg.toLowerCase().includes("closed")
-      ));
-
-      // Si el turno original está cerrado y aún no habíamos pedido targetShiftId
-      if (isShiftClosed && !selectedShiftId) {
-        setRequiresTargetShift(true);
+    } catch (error: unknown) {
+      toastError(getPosOperationMessage(error, 'No se pudo procesar la devolución.'));
+      if (['return_shift_unavailable', 'return_shift_required', 'shift_not_open', 'shift_branch_mismatch'].includes(getPosErrorCode(error) ?? '')) {
         setShowConfirmModal(false);
-        toastWarning("El turno original de la venta está cerrado. Selecciona a continuación en qué turno activo registrar la devolución.");
-        if (activeSale.branchId) {
-          loadBranchActiveShifts(activeSale.branchId);
-        } else {
-          setShiftErrorMessage("La venta no contiene el ID de sucursal requerido para buscar turnos activos.");
-        }
-        return;
+        await loadReturnContext(activeSale.id);
       }
-
-      let errorDisplay = "Ocurrió un error al procesar la devolución.";
-      if (errorCode === 'resource_not_found' || rawMsg.toLowerCase().includes('not found')) {
-        errorDisplay = "No se encontró la venta, turno o producto especificado para la devolución.";
-      } else if (errorCode === 'invalid_quantity' || rawMsg.toLowerCase().includes('quantity')) {
-        errorDisplay = "La cantidad a devolver no es válida o excede lo disponible.";
-      } else if (errorCode === 'shift_branch_mismatch') {
-        errorDisplay = "El turno seleccionado no pertenece a la sucursal de la venta.";
-      } else if (errorCode === 'sale_not_returnable') {
-        errorDisplay = "El estado actual de la venta no permite procesar devoluciones.";
-      } else if (errorCode === 'access_denied') {
-        errorDisplay = "No cuentas con los permisos necesarios para procesar devoluciones.";
-      } else if (rawMsg) {
-        errorDisplay = rawMsg;
-      }
-
-      toastError(errorDisplay);
     } finally {
       setIsSubmitting(false);
     }
@@ -845,13 +756,13 @@ export const ReturnsPage = () => {
                       error={!reason.trim() && shakeKey > 0 ? "El motivo es obligatorio" : ""}
                     />
 
-                    {/* Sección Inline: Turno Destino para Caja (cuando el turno original está cerrado) */}
-                    {requiresTargetShift && (
+                    {/* El backend determina los turnos habilitados para esta devolución. */}
+                    {isReturnable && (
                       <div className="p-3.5 rounded-xl bg-base-200/50 border border-base-300 space-y-2.5 animate-fade-in">
                         <div className="flex items-center justify-between gap-1">
                           <span className="font-bold text-xs text-base-content flex items-center gap-1.5">
                             <Clock size={14} className="text-primary" />
-                            Turno para Imputar Reembolso
+                            Caja del reembolso
                           </span>
                           {activeSale.branchName && (
                             <span className="badge badge-sm badge-ghost text-[10px] font-medium truncate max-w-[120px]">
@@ -928,7 +839,7 @@ export const ReturnsPage = () => {
                         !hasItemsToReturn || 
                         !reason.trim() || 
                         isSubmitting ||
-                        (requiresTargetShift && (!selectedShiftId || Boolean(shiftErrorMessage)))
+                        (isLoadingShifts || !selectedShiftId || Boolean(shiftErrorMessage))
                       }
                       onClick={() => setShowConfirmModal(true)}
                       className="font-bold py-2.5"

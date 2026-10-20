@@ -8,6 +8,12 @@ async function mockApi(page) {
     let data = {};
     if (path.endsWith('/auth/profile')) data = { ...await page.evaluate(() => window.realtimeTest.profile()), operational: state.operational };
     else if (path.endsWith('/sales/pending')) { state.pendingReads++; data = state.sales; }
+    else if (path.endsWith('/shifts/summaries')) {
+      state.shiftReads++; data = { content: [{ id: 'shift', cashName: 'Realtime register', branchName: 'Main',
+        employeeName: 'Test Cashier', openedAt: '2026-10-14T12:00:00Z', closedAt: null,
+        statusType: { code: 1, label: 'Abierta' }, closeAllowed: true, reopenAllowed: false,
+        totalInflows: state.inflows, totalOutflows: state.outflows, payments: [] }], totalElements: 1, totalPages: 1 };
+    }
     else if (path.endsWith('/active-summaries')) {
       state.shiftReads++; data = [{ id: 'shift', cashName: 'Realtime register', branchName: 'Main',
         employeeName: 'Test Cashier', openedAt: '2026-10-14T12:00:00Z',
@@ -239,8 +245,8 @@ for (const mobile of [false, true]) test(`shift income and expenses refresh with
   await page.goto('/tests/realtime/index.html?view=shifts');
   await expect(page.getByRole('status', { name: 'En vivo' })).toBeVisible();
   await expect.poll(() => state.shiftReads).toBeGreaterThan(1);
-  await expect(page.getByText('722.20', { exact: false })).toBeVisible();
-  const heading = page.getByRole('heading', { name: 'Realtime register' });
+  await expect(page.getByText('722.20', { exact: false }).filter({ visible: true }).first()).toBeVisible();
+  const heading = page.getByText('Realtime register', { exact: true }).filter({ visible: true }).first();
   const original = await heading.elementHandle();
   state.delay = 700;
   state.inflows = 732.20;
@@ -249,11 +255,11 @@ for (const mobile of [false, true]) test(`shift income and expenses refresh with
   await expect(heading).toBeVisible();
   expect(await original.evaluate(node => node.isConnected)).toBe(true);
   await expect(page.locator('.loading-spinner')).toHaveCount(0);
-  await expect(page.getByText('732.20', { exact: false })).toBeVisible();
+  await expect(page.getByText('732.20', { exact: false }).filter({ visible: true }).first()).toBeVisible();
   state.inflows = 757.20; state.outflows = 127;
   await page.evaluate(() => window.realtimeTest.emit('POS', 2));
-  await expect(page.getByText('757.20', { exact: false })).toBeVisible();
-  await expect(page.getByText('127.00', { exact: false })).toBeVisible();
+  await expect(page.getByText('757.20', { exact: false }).filter({ visible: true }).first()).toBeVisible();
+  await expect(page.getByText('127.00', { exact: false }).filter({ visible: true }).first()).toBeVisible();
   expect(await original.evaluate(node => node.isConnected)).toBe(true);
 });
 

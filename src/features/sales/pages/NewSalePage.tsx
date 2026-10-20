@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { salesService } from '../services/salesService';
 import { useCartStore } from '../store/useCartStore';
-import type { SalesCatalogItem, SalesProductResponse, SalesCatalogSuggestionResponse, SaleResponse, SaleBranchResponse } from '../types/sales';
+import type { SalesCatalogItem, SalesProductResponse, SalesCatalogSuggestionResponse, SaleResponse, SaleBranchResponse, CreateSaleRequest } from '../types/sales';
 import { useToast } from '../../../context/ToastContext';
 import { CommercialProductSearchBar } from '../../commercial/components/CommercialProductSearchBar';
 import { ComerziaButton } from '../../../components/ui/ComerziaButton';
@@ -320,7 +320,7 @@ export const NewSalePage = () => {
   const editSale = location.state?.editSale as SaleResponse | undefined;
 
   const { hasPermission, hasRole, userProfile } = useAuthStore();
-  const hasSwitchBranchPerm = hasPermission('SWITCH_BRANCH');
+  const hasSwitchBranchPerm = hasPermission('SWITCH_BRANCH_SALES');
   const roles = userProfile?.roles || [];
   const isCashier = hasRole('CASHIER') || roles.includes('CASHIER');
   const isSeller = hasRole('SELLER') || roles.includes('SELLER');
@@ -329,6 +329,7 @@ export const NewSalePage = () => {
   const { success: toastSuccess, error: toastError, warning: toastWarning } = useToast();
 
   const [branches, setBranches] = useState<SaleBranchResponse[]>([]);
+  const [assignedBranchId, setAssignedBranchId] = useState<string | null>(null);
   const [selectedBranchId, setSelectedBranchId] = useState<string>('');
   const [isLoadingInit, setIsLoadingInit] = useState(true);
   const [initError, setInitError] = useState<string | null>(null);
@@ -359,6 +360,10 @@ export const NewSalePage = () => {
         try {
           const branchList = await salesService.getBranches();
           setBranches(branchList || []);
+          if (branchList && branchList.length > 0) {
+            const currentBranch = branchList.find((b) => b.isCurrent);
+            setAssignedBranchId(currentBranch ? currentBranch.id : null);
+          }
         } catch (_) { }
       }
       try {
@@ -410,14 +415,26 @@ export const NewSalePage = () => {
         setBranches(branchList || []);
         if (branchList && branchList.length > 0) {
           const currentBranch = branchList.find((b) => b.isCurrent);
-          const defaultBranchId = currentBranch ? currentBranch.id : branchList[0].id;
-          setSelectedBranchId(defaultBranchId);
-          setCartBranchId(defaultBranchId);
+          if (currentBranch) {
+            // El usuario tiene una sucursal asignada por defecto (isCurrent: true)
+            setAssignedBranchId(currentBranch.id);
+            setSelectedBranchId(currentBranch.id);
+            setCartBranchId(currentBranch.id);
+          } else {
+            // Ninguna sucursal tiene isCurrent: true (ej. OWNER sin sucursal fija asignada).
+            // Por defecto usamos la primera sucursal de la lista como selección inicial,
+            // pero assignedBranchId es null para que siempre se inyecte la sucursal elegida.
+            setAssignedBranchId(null);
+            const fallbackBranchId = branchList[0].id;
+            setSelectedBranchId(fallbackBranchId);
+            setCartBranchId(fallbackBranchId);
+          }
         } else {
           setInitError('No se encontraron sucursales activas.');
         }
       } else {
         // Usuarios no-OWNER (ej: SELLER): El backend asigna la sucursal del turno activo.
+        setAssignedBranchId(null);
         setSelectedBranchId('');
         setCartBranchId(null);
       }
@@ -429,6 +446,18 @@ export const NewSalePage = () => {
       setIsLoadingInit(false);
     }
   };
+
+  // Determinamos si se requiere enviar el branchId al backend:
+  // - Si no tiene permiso de cambio de sucursal -> false (opera bajo su turno natural)
+  // - Si no tiene ninguna sucursal asignada (todas isCurrent: false) -> true (se envía la que escogió o la primera por defecto)
+  // - Si tiene sucursal asignada pero cambió a otra distinta -> true (se envía la nueva elegida)
+  // - Si tiene sucursal asignada y mantiene esa misma -> false (no se envía para usar el contexto nativo del backend)
+  const requiresBranchContext = Boolean(
+    hasSwitchBranchPerm &&
+    selectedBranchId &&
+    (!assignedBranchId || selectedBranchId !== assignedBranchId)
+  );
+  const effectiveBranchId = requiresBranchContext ? selectedBranchId : undefined;
 
   const handleBranchChange = (branchId: string) => {
     setSelectedBranchId(branchId);
@@ -470,9 +499,8 @@ export const NewSalePage = () => {
   };
 
   const handleSelectSuggestion = async (sug: SalesCatalogSuggestionResponse) => {
-    const branchCtx = hasSwitchBranchPerm && selectedBranchId ? selectedBranchId : undefined;
     try {
-      const productResponse = await salesService.getProductDetailsById(sug.variantId, branchCtx);
+      const productResponse = await salesService.getProductDetailsById(sug.variantId, effectiveBranchId);
       if (productResponse) {
         handleProductSelect(productResponse);
       } else {
@@ -485,17 +513,16 @@ export const NewSalePage = () => {
 
   const handleScanBarcode = async (scannedCode: string) => {
     if (!scannedCode.trim()) return;
-    const branchCtx = hasSwitchBranchPerm && selectedBranchId ? selectedBranchId : undefined;
     try {
       let productResponse: SalesProductResponse | null = null;
       try {
-        productResponse = await salesService.getProductDetailsByBarcode(scannedCode.trim(), branchCtx);
+        productResponse = await salesService.getProductDetailsByBarcode(scannedCode.trim(), effectiveBranchId);
       } catch {
         try {
-          productResponse = await salesService.getProductDetailsBySku(scannedCode.trim(), branchCtx);
+          productResponse = await salesService.getProductDetailsBySku(scannedCode.trim(), effectiveBranchId);
         } catch {
           try {
-            productResponse = await salesService.getProductDetailsById(scannedCode.trim(), branchCtx);
+            productResponse = await salesService.getProductDetailsById(scannedCode.trim(), effectiveBranchId);
           } catch {
             productResponse = null;
           }
@@ -579,7 +606,8 @@ export const NewSalePage = () => {
 
     setIsSubmitting(true);
     try {
-      const payload = {
+      const payload: CreateSaleRequest = {
+        branchId: requiresBranchContext ? selectedBranchId : null,
         expectedTotalAmount: roundToTwo(getTotal()),
         details: items.map(i => ({
           productVariantId: i.productVariantId,
@@ -595,7 +623,7 @@ export const NewSalePage = () => {
         clearCart();
         navigate('/sales/history');
       } else {
-        await salesService.createSale(payload, hasSwitchBranchPerm && selectedBranchId ? selectedBranchId : null);
+        await salesService.createSale(payload);
         toastSuccess('¡Venta registrada con éxito y enviada a Caja!');
         clearCart();
       }
@@ -685,7 +713,7 @@ export const NewSalePage = () => {
           <CommercialProductSearchBar
             onSearchBarcode={handleScanBarcode}
             onSelectSuggestion={handleSelectSuggestion}
-            branchId={hasSwitchBranchPerm && selectedBranchId ? selectedBranchId : undefined}
+            branchId={effectiveBranchId}
             placeholder="Buscar producto por nombre o escanear..."
           />
         </div>

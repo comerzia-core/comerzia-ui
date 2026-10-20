@@ -16,7 +16,7 @@ import { ComerziaContextMenu, ContextMenuItem } from '../../../components/ui/Com
 import { BtnCancel, BtnModalYes } from '../../../components/ui/CrudButtons';
 import { SaleDetailsModal } from '../components/SaleDetailsModal';
 import { RegisterSaleCustomerModal } from '../components/RegisterSaleCustomerModal';
-import { formatDateForUser, type FilterPeriod, PERIOD_OPTIONS, getPeriodDescription } from '../../../utils/date';
+import { formatDateForUser, type FilterPeriod, PERIOD_OPTIONS, getPeriodDescription, getCompanyDateRange, getCompanyDateString } from '../../../utils/date';
 import { useLoadDictionaries } from '../../../hooks/useLoadDictionaries';
 import { DICTIONARIES } from '../../../config/dictionaries';
 import { useUrlParams } from '../../../hooks/useUrlState';
@@ -39,6 +39,7 @@ import {
   ChevronsRight,
   Printer
 } from 'lucide-react';
+import { getPosErrorCode, getPosOperationMessage } from '../../pos/utils/posOperationMessages';
 import { hardwareService } from '../../pos/services/hardwareService';
 import { HwPrintJobTypeCode } from '../../pos/types/hardware';
 
@@ -54,8 +55,8 @@ export const SalesHistoryPage = () => {
   const urlSaleDetailId = getParam('saleDetail');
 
   const navigate = useNavigate();
-  const { userProfile, hasPermission, hasRole } = useAuthStore();
-  const { success: toastSuccess, error: toastError } = useToast();
+  const { userProfile, hasPermission } = useAuthStore();
+  const { success: toastSuccess, error: toastError, warning: toastWarning } = useToast();
 
   const { options: dictOptions } = useLoadDictionaries([DICTIONARIES.PAYMENT_TYPE]);
   const paymentTypeOptions = dictOptions[DICTIONARIES.PAYMENT_TYPE] || [];
@@ -72,69 +73,21 @@ export const SalesHistoryPage = () => {
   const [sales, setSales] = useState<SaleResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Rol Owner
-  const isOwner = hasRole('OWNER');
+  // La vista global se habilita mediante el permiso de contexto de sucursal.
+  const canViewAllBranches = hasPermission('SWITCH_BRANCH');
 
   // Permisos requeridos
-  const canCancel = hasPermission('SAL_SALES_CANCEL') || hasRole('OWNER') || hasRole('ADMIN');
-  const canReturn = hasPermission('SAL_RETURNS_MANAGE') || hasRole('OWNER') || hasRole('ADMIN');
-  const canManageSales = hasPermission('SAL_SALES_MANAGE') || hasRole('OWNER') || hasRole('ADMIN');
+  const canCancel = hasPermission('SAL_SALES_CANCEL');
+  const canReturn = hasPermission('SAL_RETURNS_MANAGE');
+  const canManageSales = hasPermission('SAL_SALES_MANAGE');
   
   // Permisos para búsqueda con filtros (SAL_SALES_READ_ALL y SAL_SELLERS_READ)
-  const hasReadAllPermission = hasPermission('SAL_SALES_READ_ALL') || hasRole('OWNER') || hasRole('ADMIN');
-  const hasSellersPermission = hasPermission('SAL_SELLERS_READ') || hasRole('OWNER') || hasRole('ADMIN');
+  const hasReadAllPermission = hasPermission('SAL_SALES_READ_ALL');
+  const hasSellersPermission = hasPermission('SAL_SELLERS_READ');
   const canFilter = hasReadAllPermission && hasSellersPermission;
 
-  // Función utilitaria para obtener fecha local actual (YYYY-MM-DD)
-  const getTodayDateString = () => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
-  const formatLocalDate = (d: Date): string => {
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
-  const getDateRange = (
-    selectedPeriod: FilterPeriod,
-    customStart: string,
-    customEnd: string
-  ): { start?: string; end?: string } => {
-    const now = new Date();
-    if (selectedPeriod === 'TODAY') {
-      const todayStr = formatLocalDate(now);
-      return { start: todayStr, end: todayStr };
-    }
-    if (selectedPeriod === 'THIS_WEEK') {
-      const day = now.getDay();
-      const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Lunes
-      const monday = new Date(now.getFullYear(), now.getMonth(), diff);
-      return { start: formatLocalDate(monday), end: formatLocalDate(now) };
-    }
-    if (selectedPeriod === 'THIS_MONTH') {
-      const start = new Date(now.getFullYear(), now.getMonth(), 1);
-      return { start: formatLocalDate(start), end: formatLocalDate(now) };
-    }
-    if (selectedPeriod === 'LAST_MONTH') {
-      const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const end = new Date(now.getFullYear(), now.getMonth(), 0);
-      return { start: formatLocalDate(start), end: formatLocalDate(end) };
-    }
-    if (selectedPeriod === 'THIS_YEAR') {
-      const start = new Date(now.getFullYear(), 0, 1);
-      return { start: formatLocalDate(start), end: formatLocalDate(now) };
-    }
-    if (selectedPeriod === 'CUSTOM') {
-      return { start: customStart || undefined, end: customEnd || undefined };
-    }
-    return {};
-  };
+  const getTodayDateString = getCompanyDateString;
+  const getDateRange = getCompanyDateRange;
 
   // Lista de vendedores disponibles para el filtro
   const [sellers, setSellers] = useState<SellerResponse[]>([]);
@@ -414,7 +367,7 @@ export const SalesHistoryPage = () => {
         </div>
       )
     },
-    isOwner && {
+    canViewAllBranches && {
       header: 'Sucursal',
       render: (row: SaleResponse) => (
         <div className="flex items-center gap-1.5 text-xs text-base-content/80">
@@ -715,7 +668,7 @@ export const SalesHistoryPage = () => {
                       <Calendar size={12} className="text-base-content/40 shrink-0" />
                       <span>{formatDateForUser(sale.date)}</span>
                     </div>
-                    {isOwner && sale.branchName && (
+                    {canViewAllBranches && sale.branchName && (
                       <div className="flex items-center gap-1 text-base-content/70 font-medium">
                         <Building2 size={12} className="text-primary/70 shrink-0" />
                         <span className="truncate max-w-[130px]">{sale.branchName}</span>
@@ -876,16 +829,16 @@ export const SalesHistoryPage = () => {
                   <ContextMenuItem
                     icon={RotateCcw}
                     label="Procesar Devolución"
-                    isExternalLink={!contextMenu.isCentered}
-                    onClick={() => {
-                      if (contextMenu.sale?.saleNumber) {
-                        const path = `/sales/returns/${encodeURIComponent(contextMenu.sale.saleNumber)}`;
-                        setContextMenu(prev => ({ ...prev, isOpen: false }));
-                        if (contextMenu.isCentered) {
-                          navigate(path);
-                        } else {
-                          window.open(path, '_blank');
-                        }
+                    onClick={async () => {
+                      const sale = contextMenu.sale;
+                      if (!sale?.saleNumber) return;
+                      setContextMenu(prev => ({ ...prev, isOpen: false }));
+                      try {
+                        await salesService.getReturnContext(sale.id);
+                        navigate(`/sales/returns/${encodeURIComponent(sale.saleNumber)}`);
+                      } catch (error: unknown) {
+                        const notify = getPosErrorCode(error) === 'return_shift_unavailable' ? toastWarning : toastError;
+                        notify(getPosOperationMessage(error, 'No se pudo iniciar la devolución.'));
                       }
                     }}
                   />

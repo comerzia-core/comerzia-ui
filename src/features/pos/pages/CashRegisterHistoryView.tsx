@@ -9,6 +9,8 @@ import { useToast } from '../../../context/ToastContext';
 import { ShiftDetailsModal } from '../components/ShiftDetailsModal';
 import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
 import { formatDateForUser } from '../../../utils/date';
+import { usePermission } from '../../../hooks/usePermission';
+import { getPosOperationMessage } from '../utils/posOperationMessages';
 import { 
   History, 
   Eye, 
@@ -27,6 +29,7 @@ interface Props {
 }
 
 export const CashRegisterHistoryView = ({ register: propRegister }: Props) => {
+  const { can } = usePermission();
   const { registerId } = useParams<{ registerId: string }>();
   const { error: toastError, success: toastSuccess } = useToast();
   
@@ -118,10 +121,10 @@ export const CashRegisterHistoryView = ({ register: propRegister }: Props) => {
     setIsLoading(true);
     try {
       await posService.reopenShift(shiftToReopen);
-      toastSuccess("Turno reabierto exitosamente.");
+      toastSuccess("Turno reabierto.");
       loadShifts(targetRegisterId);
-    } catch (err: any) {
-      toastError(err.response?.data?.message || "Error al reabrir el turno.");
+    } catch (error: unknown) {
+      toastError(getPosOperationMessage(error, "No se pudo reabrir el turno."));
     } finally {
       setIsLoading(false);
       setShiftToReopen(null);
@@ -356,7 +359,7 @@ export const CashRegisterHistoryView = ({ register: propRegister }: Props) => {
                 }
               }}
             />
-            {contextMenu.shift.closedAt && (
+            {contextMenu.shift.reopenAllowed && can('POS_SHIFTS_REOPEN') && can('POS_CASH_REGISTERS_REOPEN') && (
               <ContextMenuItem
                 icon={RotateCcw}
                 label="Reabrir Turno"

@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { isAxiosError } from "axios";
 import { AlertTriangle, Eye, EyeOff, Lock, User, Key } from "lucide-react";
 import api from "../../../lib/axios";
 import { useAuthStore } from "../../../stores/useAuthStore";
+import { useToast } from "../../../context/ToastContext";
 import { PasswordChecklist } from "../components/PasswordChecklist";
 import { AUTH_ERROR_CODES, type AuthErrorResponse } from "../types";
 
@@ -18,6 +19,15 @@ export const LoginPage = () => {
     const navigate = useNavigate();
     const loginStore = useAuthStore(state => state.login);
     const sessionNotice = useAuthStore(state => state.sessionNotice);
+    const { info: toastInfo } = useToast();
+
+    // Mostrar aviso de sesión (ej. revocación, cambio de permisos) mediante notificación toast
+    useEffect(() => {
+        if (sessionNotice) {
+            toastInfo(sessionNotice);
+            useAuthStore.setState({ sessionNotice: null });
+        }
+    }, [sessionNotice, toastInfo]);
 
     // --- ESTADOS DE FLUJO ---
     const [currentStep, setCurrentStep] = useState<AuthStep>('LOGIN');
@@ -178,8 +188,6 @@ export const LoginPage = () => {
         <div className="min-h-screen bg-base-200 flex items-center justify-center p-4">
             <div className="card w-full max-w-md bg-base-100 shadow-xl border border-base-300">
                 <div className="card-body">
-                    
-                    {sessionNotice && <p role="status" className="alert alert-info text-sm">{sessionNotice}</p>}
                     {/* LOGO AREA */}
                     <div className="text-center mb-6">
                         <div className="w-16 h-16 bg-primary text-primary-content rounded-2xl mx-auto flex items-center justify-center mb-4 shadow-lg">

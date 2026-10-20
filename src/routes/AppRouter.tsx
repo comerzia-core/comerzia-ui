@@ -167,7 +167,9 @@ export const AppRouter = () => {
 
             {/* --- POINT OF SALE --- */}
             <Route path="/pos/terminal" element={<TerminalPage />} />
-            <Route path="/pos/shifts" element={<ShiftsPage />} />
+            <Route element={<PermissionGuard codes={['POS_SHIFTS_READ_ALL', 'POS_SHIFTS_READ_OWN']} />}>
+              <Route path="/pos/shifts" element={<ShiftsPage />} />
+            </Route>
             <Route path="/pos/movements" element={<MovementsPage />} />
             <Route path="/pos/registers" element={<RegistersPage />} />
             <Route path="/pos/registers/:registerId/history" element={<CashRegisterHistoryView />} />
@@ -177,7 +179,9 @@ export const AppRouter = () => {
 
             {/* --- SALES MODULES --- */}
             <Route path="/sales/new" element={<NewSalePage />} />
-            <Route path="/sales/history" element={<SalesHistoryPage />} />
+            <Route element={<PermissionGuard code="SAL_SALES_READ" />}>
+              <Route path="/sales/history" element={<SalesHistoryPage />} />
+            </Route>
             <Route path="/sales/customers" element={<CustomersManagementPage />} />
             <Route path="/sales/promotions" element={<UnderConstruction/>} />
             <Route element={<PermissionGuard code="SAL_RETURNS_MANAGE" />}>
