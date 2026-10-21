@@ -474,6 +474,42 @@ export const CompanyProfilePage = () => {
                   error={errors.defaultIdealStock}
                   shakeKey={shakeKey}
                 />
+
+                <div className="divider md:col-span-2 my-2 text-xs font-bold text-base-content/40 uppercase tracking-widest text-center whitespace-normal break-words sm:whitespace-nowrap px-1">
+                  Módulos de Punto de Venta y Facturación
+                </div>
+
+                <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="p-3.5 bg-base-200/50 rounded-xl border border-base-200 flex items-center justify-between">
+                    <div className="pr-3">
+                      <span className="text-xs text-base-content font-bold block">
+                        Asignación y Registro de Clientes
+                      </span>
+                      <span className="text-[11px] text-base-content/60 block mt-0.5">
+                        Permite registrar y asociar clientes a las ventas en historial y terminal de cobro.
+                      </span>
+                    </div>
+                    <ComerziaSwitch
+                      checked={formData.saleCustomerRegistrationEnabled ?? true}
+                      onChange={() => setFormData(prev => ({ ...prev, saleCustomerRegistrationEnabled: !(prev.saleCustomerRegistrationEnabled ?? true) }))}
+                    />
+                  </div>
+
+                  <div className="p-3.5 bg-base-200/50 rounded-xl border border-base-200 flex items-center justify-between">
+                    <div className="pr-3">
+                      <span className="text-xs text-base-content font-bold block">
+                        Impresión de Tickets Térmicos
+                      </span>
+                      <span className="text-[11px] text-base-content/60 block mt-0.5">
+                        Habilita la emisión y reimpresión de tickets de venta y vinculación de tickeras en cajas.
+                      </span>
+                    </div>
+                    <ComerziaSwitch
+                      checked={formData.receiptPrintingEnabled ?? true}
+                      onChange={() => setFormData(prev => ({ ...prev, receiptPrintingEnabled: !(prev.receiptPrintingEnabled ?? true) }))}
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* ACTION BUTTONS */}

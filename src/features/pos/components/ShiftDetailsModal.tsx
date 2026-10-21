@@ -98,22 +98,34 @@ export const ShiftDetailsModal = ({ isOpen, onClose, shiftId }: Props) => {
     }
   };
 
+  const isNegativeMovement = (movementType: { code?: number; label: string }) => {
+    return (
+      movementType.code === 202 ||
+      movementType.code === 203 ||
+      movementType.label.toLowerCase().includes('egreso') ||
+      movementType.label.toLowerCase().includes('gasto') ||
+      movementType.label.toLowerCase().includes('outflow') ||
+      movementType.label.toLowerCase().includes('devoluc') ||
+      movementType.label.toLowerCase().includes('return')
+    );
+  };
+
   const renderMovementType = (movementType: { code?: number; label: string }) => {
-    const isOutflow = movementType.code === 2 || movementType.label.toLowerCase().includes('egreso') || movementType.label.toLowerCase().includes('gasto') || movementType.label.toLowerCase().includes('outflow');
-    const isReturn = movementType.code === 3 || movementType.label.toLowerCase().includes('devoluc') || movementType.label.toLowerCase().includes('return');
+    const isReturn = movementType.code === 3 || movementType.code === 203 || movementType.label.toLowerCase().includes('devoluc') || movementType.label.toLowerCase().includes('return');
+    const isOutflow = movementType.code === 2 || movementType.code === 202 || movementType.label.toLowerCase().includes('egreso') || movementType.label.toLowerCase().includes('gasto') || movementType.label.toLowerCase().includes('outflow');
     
-    if (isOutflow) {
+    if (isReturn) {
       return (
         <span className="flex items-center gap-1.5 font-medium text-error">
-          <TrendingDown size={15} className="shrink-0" />
+          <RotateCcw size={15} className="shrink-0" />
           <span>{movementType.label}</span>
         </span>
       );
     }
-    if (isReturn) {
+    if (isOutflow) {
       return (
-        <span className="flex items-center gap-1.5 font-medium text-warning">
-          <RotateCcw size={15} className="shrink-0" />
+        <span className="flex items-center gap-1.5 font-medium text-error">
+          <TrendingDown size={15} className="shrink-0" />
           <span>{movementType.label}</span>
         </span>
       );
@@ -152,10 +164,10 @@ export const ShiftDetailsModal = ({ isOpen, onClose, shiftId }: Props) => {
     { 
       header: 'Monto', 
       render: row => {
-        const isOutflow = row.movementType.code === 2 || row.movementType.label.toLowerCase().includes('egreso') || row.movementType.label.toLowerCase().includes('gasto');
+        const isNegative = isNegativeMovement(row.movementType);
         return (
-          <span className={`font-bold font-mono ${isOutflow ? 'text-error' : 'text-success'}`}>
-            {isOutflow ? '-' : '+'}{currency} {row.amount.toFixed(2)}
+          <span className={`font-bold font-mono ${isNegative ? 'text-error' : 'text-success'}`}>
+            {isNegative ? '-' : '+'}{currency} {row.amount.toFixed(2)}
           </span>
         );
       }
@@ -434,7 +446,7 @@ export const ShiftDetailsModal = ({ isOpen, onClose, shiftId }: Props) => {
                     </p>
                   ) : (
                     movementsData.map((m) => {
-                      const isOutflow = m.movementType.code === 2 || m.movementType.label.toLowerCase().includes('egreso') || m.movementType.label.toLowerCase().includes('gasto');
+                      const isNegative = isNegativeMovement(m.movementType);
                       return (
                         <div key={m.id} className="bg-base-100 p-4 rounded-2xl border border-base-300 shadow-md space-y-2 text-xs hover:border-primary/30 transition-colors">
                           <div className="flex justify-between items-start">
@@ -448,8 +460,8 @@ export const ShiftDetailsModal = ({ isOpen, onClose, shiftId }: Props) => {
                                 {formatTimeForUser(m.date)}
                               </span>
                             </div>
-                            <span className={`font-bold font-mono text-sm ${isOutflow ? 'text-error' : 'text-success'}`}>
-                              {isOutflow ? '-' : '+'}{currency} {m.amount.toFixed(2)}
+                            <span className={`font-bold font-mono text-sm ${isNegative ? 'text-error' : 'text-success'}`}>
+                              {isNegative ? '-' : '+'}{currency} {m.amount.toFixed(2)}
                             </span>
                           </div>
                           <p className="text-[10px] text-base-content/60 italic mt-0.5">

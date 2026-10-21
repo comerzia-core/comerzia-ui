@@ -8,11 +8,13 @@ import { hardwareService } from '../../services/hardwareService';
 import { useToast } from '../../../../context/ToastContext';
 import { useLoadDictionaries } from '../../../../hooks/useLoadDictionaries';
 import { DICTIONARIES } from '../../../../config/dictionaries';
-import type {
-  HwDeviceResponse,
-  HwDeviceType,
-  HwDeviceStatus,
-  HwAgentResponse,
+import { useAuthStore } from '../../../../stores/useAuthStore';
+import {
+  HwDeviceTypeCode,
+  type HwDeviceResponse,
+  type HwDeviceType,
+  type HwDeviceStatus,
+  type HwAgentResponse,
 } from '../../types/hardware';
 
 import { Printer } from 'lucide-react';
@@ -61,10 +63,15 @@ export const DeviceModal = ({
     status: '',
   });
 
-  const typeOptions = (options[DICTIONARIES.HW_DEVICE_TYPE] || []).map(opt => ({
-    value: opt.value.toString(),
-    label: opt.label,
-  }));
+  const { userProfile } = useAuthStore();
+  const receiptPrintingEnabled = userProfile?.companySettings?.receiptPrintingEnabled ?? true;
+
+  const typeOptions = (options[DICTIONARIES.HW_DEVICE_TYPE] || [])
+    .filter(opt => receiptPrintingEnabled || Number(opt.value) !== HwDeviceTypeCode.RECEIPT_PRINTER)
+    .map(opt => ({
+      value: opt.value.toString(),
+      label: opt.label,
+    }));
 
   const statusOptions = (options[DICTIONARIES.HW_DEVICE_STATUS] || []).map(opt => ({
     value: opt.value.toString(),

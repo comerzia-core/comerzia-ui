@@ -393,7 +393,7 @@ export const TerminalPage = () => {
                     </strong>
                   </div>
 
-                  {sale.customer && (
+                  {customerRegistrationEnabled && sale.customer && (
                     <div className="flex justify-between items-center text-base-content/70">
                       <span className="flex items-center gap-1.5 text-base-content/60">
                         <UserCheck size={13} className="text-success shrink-0" /> Cliente:

@@ -149,6 +149,8 @@ export const SalesHistoryPage = () => {
   const [isCanceling, setIsCanceling] = useState(false);
 
   const currency = userProfile?.companySettings?.currencyCode || 'USD';
+  const saleCustomerRegistrationEnabled = userProfile?.companySettings?.saleCustomerRegistrationEnabled ?? true;
+  const receiptPrintingEnabled = userProfile?.companySettings?.receiptPrintingEnabled ?? true;
 
   // 1. Cargar vendedores si tiene los permisos correspondientes
   useEffect(() => {
@@ -361,7 +363,7 @@ export const SalesHistoryPage = () => {
           <span className="font-mono text-sm font-bold text-base-content">
             {row.saleNumber ? `#${row.saleNumber}` : '-'}
           </span>
-          {row.customer && (
+          {saleCustomerRegistrationEnabled && row.customer && (
             <UserCheck size={15} className="text-primary shrink-0" />
           )}
         </div>
@@ -393,7 +395,7 @@ export const SalesHistoryPage = () => {
         </div>
       )
     },
-    {
+    saleCustomerRegistrationEnabled && {
       header: 'Cliente',
       render: (row: SaleResponse) => (
         <span className="text-xs text-base-content/80 truncate max-w-[160px] block">
@@ -620,7 +622,7 @@ export const SalesHistoryPage = () => {
                       <span className="font-mono text-sm font-bold text-base-content shrink-0">
                         {sale.saleNumber ? `#${sale.saleNumber}` : '-'}
                       </span>
-                      {sale.customer && (
+                      {saleCustomerRegistrationEnabled && sale.customer && (
                         <UserCheck size={15} className="text-primary shrink-0" />
                       )}
                     </div>
@@ -636,7 +638,7 @@ export const SalesHistoryPage = () => {
                         <User size={13} className="text-primary/70 shrink-0" />
                         <span className="truncate font-medium">{sale.employeeName || 'Cajero'}</span>
                       </div>
-                      {sale.customer && (
+                      {saleCustomerRegistrationEnabled && sale.customer && (
                         <div className="flex items-center gap-1.5 text-base-content/60 text-[11px] truncate">
                           <UserCheck size={12} className="text-primary/70 shrink-0" />
                           <span className="truncate">{sale.customer.fullName || sale.customer.firstName}</span>
@@ -770,27 +772,29 @@ export const SalesHistoryPage = () => {
             />
 
             {/* Opciones de Cliente */}
-            {contextMenu.sale.customer ? (
-              <ContextMenuItem
-                icon={UserCheck}
-                label="Ver Detalles del Cliente"
-                onClick={() => {
-                  if (contextMenu.sale?.customer) {
-                    setSelectedCustomerDetails(contextMenu.sale.customer);
-                  }
-                }}
-              />
-            ) : (
-              canManageSales && getStatusCode(contextMenu.sale.saleStatus) === 602 && (
+            {saleCustomerRegistrationEnabled && (
+              contextMenu.sale.customer ? (
                 <ContextMenuItem
-                  icon={UserPlus}
-                  label="Asignar Cliente"
+                  icon={UserCheck}
+                  label="Ver Detalles del Cliente"
                   onClick={() => {
-                    if (contextMenu.sale) {
-                      setAssigningCustomerSale(contextMenu.sale);
+                    if (contextMenu.sale?.customer) {
+                      setSelectedCustomerDetails(contextMenu.sale.customer);
                     }
                   }}
                 />
+              ) : (
+                canManageSales && getStatusCode(contextMenu.sale.saleStatus) === 602 && (
+                  <ContextMenuItem
+                    icon={UserPlus}
+                    label="Asignar Cliente"
+                    onClick={() => {
+                      if (contextMenu.sale) {
+                        setAssigningCustomerSale(contextMenu.sale);
+                      }
+                    }}
+                  />
+                )
               )
             )}
 
@@ -818,13 +822,15 @@ export const SalesHistoryPage = () => {
             {/* Si la venta está COMPLETED (602) o PARTIALLY_REFUNDED (605) */}
             {(getStatusCode(contextMenu.sale.saleStatus) === 602 || getStatusCode(contextMenu.sale.saleStatus) === 605) && (
               <>
-                <ContextMenuItem
-                  icon={Printer}
-                  label="Reimprimir Ticket"
-                  onClick={() => {
-                    if (contextMenu.sale) handleReprintTicket(contextMenu.sale);
-                  }}
-                />
+                {receiptPrintingEnabled && (
+                  <ContextMenuItem
+                    icon={Printer}
+                    label="Reimprimir Ticket"
+                    onClick={() => {
+                      if (contextMenu.sale) handleReprintTicket(contextMenu.sale);
+                    }}
+                  />
+                )}
                 {canReturn && (
                   <ContextMenuItem
                     icon={RotateCcw}
@@ -857,55 +863,57 @@ export const SalesHistoryPage = () => {
       />
 
       {/* MODAL DETALLES DEL CLIENTE ASIGNADO */}
-      <ComerziaModal
-        isOpen={!!selectedCustomerDetails}
-        onClose={() => setSelectedCustomerDetails(null)}
-        title="Perfil del Cliente"
-        size="md"
-      >
-        {selectedCustomerDetails && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 p-3.5 bg-primary/10 rounded-xl border border-primary/20">
-              <UserCheck className="h-8 w-8 text-primary shrink-0" />
-              <div>
-                <h3 className="font-bold text-base text-base-content">
-                  {selectedCustomerDetails.fullName || selectedCustomerDetails.firstName}
-                </h3>
-                <span className="text-xs text-base-content/60">
-                  {selectedCustomerDetails.customerType === 612 ? 'Persona Jurídica (Empresa)' : 'Persona Natural'}
-                </span>
+      {saleCustomerRegistrationEnabled && (
+        <ComerziaModal
+          isOpen={!!selectedCustomerDetails}
+          onClose={() => setSelectedCustomerDetails(null)}
+          title="Perfil del Cliente"
+          size="md"
+        >
+          {selectedCustomerDetails && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 p-3.5 bg-primary/10 rounded-xl border border-primary/20">
+                <UserCheck className="h-8 w-8 text-primary shrink-0" />
+                <div>
+                  <h3 className="font-bold text-base text-base-content">
+                    {selectedCustomerDetails.fullName || selectedCustomerDetails.firstName}
+                  </h3>
+                  <span className="text-xs text-base-content/60">
+                    {selectedCustomerDetails.customerType === 612 ? 'Persona Jurídica (Empresa)' : 'Persona Natural'}
+                  </span>
+                </div>
               </div>
-            </div>
 
-            <div className="grid grid-cols-2 gap-3 bg-base-200/40 p-4 rounded-xl border border-base-200 text-xs">
-              <div>
-                <span className="text-base-content/50 block font-medium">Documento de Identidad</span>
-                <span className="font-mono text-sm font-semibold text-base-content">{selectedCustomerDetails.documentNumber || '-'}</span>
+              <div className="grid grid-cols-2 gap-3 bg-base-200/40 p-4 rounded-xl border border-base-200 text-xs">
+                <div>
+                  <span className="text-base-content/50 block font-medium">Documento de Identidad</span>
+                  <span className="font-mono text-sm font-semibold text-base-content">{selectedCustomerDetails.documentNumber || '-'}</span>
+                </div>
+                <div>
+                  <span className="text-base-content/50 block font-medium">Teléfono / Celular</span>
+                  <span className="font-mono text-sm font-semibold text-base-content">{selectedCustomerDetails.phoneNumber || '-'}</span>
+                </div>
+                <div className="col-span-2">
+                  <span className="text-base-content/50 block font-medium">Correo Electrónico</span>
+                  <span className="text-sm text-base-content">{selectedCustomerDetails.email || '-'}</span>
+                </div>
               </div>
-              <div>
-                <span className="text-base-content/50 block font-medium">Teléfono / Celular</span>
-                <span className="font-mono text-sm font-semibold text-base-content">{selectedCustomerDetails.phoneNumber || '-'}</span>
-              </div>
-              <div className="col-span-2">
-                <span className="text-base-content/50 block font-medium">Correo Electrónico</span>
-                <span className="text-sm text-base-content">{selectedCustomerDetails.email || '-'}</span>
-              </div>
-            </div>
 
-            <div className="flex justify-end pt-2 border-t border-base-200">
-              <BtnCancel
-                label="Cerrar"
-                onClick={() => setSelectedCustomerDetails(null)}
-                responsive={true}
-                className="w-full sm:w-auto"
-              />
+              <div className="flex justify-end pt-2 border-t border-base-200">
+                <BtnCancel
+                  label="Cerrar"
+                  onClick={() => setSelectedCustomerDetails(null)}
+                  responsive={true}
+                  className="w-full sm:w-auto"
+                />
+              </div>
             </div>
-          </div>
-        )}
-      </ComerziaModal>
+          )}
+        </ComerziaModal>
+      )}
 
       {/* MODAL ASIGNAR CLIENTE A VENTA */}
-      {assigningCustomerSale && (
+      {saleCustomerRegistrationEnabled && assigningCustomerSale && (
         <RegisterSaleCustomerModal
           isOpen={!!assigningCustomerSale}
           onClose={() => setAssigningCustomerSale(null)}

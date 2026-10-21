@@ -10,6 +10,7 @@ import { useLoadDictionaries } from '../../../../hooks/useLoadDictionaries';
 import { usePermission } from '../../../../hooks/usePermission';
 import { DICTIONARIES } from '../../../../config/dictionaries';
 import { PERMISSIONS } from '../../../../config/permissions';
+import { useAuthStore } from '../../../../stores/useAuthStore';
 import {
   HwDeviceTypeCode,
   HwDeviceStatusCode,
@@ -59,6 +60,8 @@ export const DeviceList = ({
   const { can } = usePermission();
   const canManageDevices = can(PERMISSIONS.HARDWARE.DEVICES_MANAGE);
   const canPrintExecute = can(PERMISSIONS.HARDWARE.PRINT_EXECUTE);
+  const { userProfile } = useAuthStore();
+  const receiptPrintingEnabled = userProfile?.companySettings?.receiptPrintingEnabled ?? true;
 
   const { options } = useLoadDictionaries([DICTIONARIES.HW_DEVICE_TYPE, DICTIONARIES.HW_DEVICE_STATUS]);
   const deviceTypeOptions = options[DICTIONARIES.HW_DEVICE_TYPE] || [];
@@ -261,7 +264,7 @@ export const DeviceList = ({
 
   const typeFilterOptions = [
     { value: 'ALL', label: 'Todos los tipos de impresora' },
-    { value: 'RECEIPT', label: 'Tickets de Venta' },
+    ...(receiptPrintingEnabled ? [{ value: 'RECEIPT', label: 'Tickets de Venta' }] : []),
     { value: 'BARCODE', label: 'Etiquetas de Código de Barras' },
   ];
 

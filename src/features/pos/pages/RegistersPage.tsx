@@ -16,6 +16,7 @@ import { Monitor, MapPin, History, Pencil, Building2, Printer } from 'lucide-rea
 import { ComerziaBadge } from '../../../components/ui/ComerziaBadge';
 import { ComerziaSelect } from '../../../components/ui/ComerziaSelect';
 import { ComerziaContextMenu, ContextMenuItem } from '../../../components/ui/ComerziaContextMenu';
+import { useAuthStore } from '../../../stores/useAuthStore';
 
 export const RegistersPage = () => {
   useRealtimeRefresh(['POS'], async () => {
@@ -25,7 +26,10 @@ export const RegistersPage = () => {
   const navigate = useNavigate();
   const { error: toastError } = useToast();
   const { can } = usePermission();
+  const { userProfile } = useAuthStore();
+  const receiptPrintingEnabled = userProfile?.companySettings?.receiptPrintingEnabled ?? true;
   const canViewPrinters = can(PERMISSIONS.HARDWARE.PRINTERS_VIEW) || can(PERMISSIONS.HARDWARE.DEVICES_READ);
+  const showRegisterPrinterAction = receiptPrintingEnabled && canViewPrinters;
 
   const [registers, setRegisters] = useState<CashRegisterResponse[]>([]);
   const [branches, setBranches] = useState<BranchResponse[]>([]);
@@ -215,7 +219,7 @@ export const RegistersPage = () => {
                     <MapPin size={14} className="text-base-content/40 shrink-0 sm:w-4 sm:h-4" />
                     <span className="truncate">{register.branchName || 'Sin sucursal'}</span>
                   </p>
-                  {canViewPrinters && (
+                  {showRegisterPrinterAction && (
                     <ComerziaButton
                       type="button"
                       variant="ghost"
@@ -255,7 +259,7 @@ export const RegistersPage = () => {
                 }
               }}
             />
-            {canViewPrinters && (
+            {showRegisterPrinterAction && (
               <ContextMenuItem
                 icon={Printer}
                 label="Impresora Asociada"
