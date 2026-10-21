@@ -460,14 +460,14 @@ export const BtnTab = ({ label, ...props }: BaseBtnProps) => <ComerziaButton var
 // Control de iluminación manual para evitar reflejos sobre etiquetas brillantes.
 const scannerControlClass = "btn-sm !min-w-0 !px-3.5 !py-2 rounded-xl text-xs font-bold backdrop-blur-md";
 
-export const BtnFlashlight = ({ enabled, overlay = false, className = "", ...props }: BaseBtnProps & { enabled: boolean; overlay?: boolean }) => (
+export const BtnFlashlight = ({ enabled, stateKnown = true, overlay = false, className = "", ...props }: BaseBtnProps & { enabled: boolean; stateKnown?: boolean; overlay?: boolean }) => (
     <ComerziaButton
         type="button"
-        variant={enabled ? "warning" : overlay ? "overlay" : "neutral"}
-        label={overlay ? (enabled ? "Flash: ON" : "Flash: OFF") : (enabled ? "Apagar luz" : "Encender luz")}
-        aria-label={enabled ? "Apagar luz" : "Encender luz"}
+        variant={stateKnown && enabled ? "warning" : overlay ? "overlay" : "neutral"}
+        label={!stateKnown ? "Luz: —" : overlay ? (enabled ? "Flash: ON" : "Flash: OFF") : (enabled ? "Apagar luz" : "Encender luz")}
+        aria-label={!stateKnown ? "Cambiar luz" : enabled ? "Apagar luz" : "Encender luz"}
         icon={enabled ? <FlashlightOff size={16} /> : <Flashlight size={16} className={overlay ? "text-warning" : ""} />}
-        aria-pressed={enabled}
+        aria-pressed={stateKnown ? enabled : "mixed"}
         className={`${overlay ? scannerControlClass : ""} ${className}`}
         {...props}
     />

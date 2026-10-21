@@ -2,23 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import { BrowserMultiFormatReader, type IScannerControls } from "@zxing/browser";
 import { type BarcodeFormat } from "@zxing/library";
 import { createBarcodeHints, DEFAULT_BARCODE_FORMATS, isBarcodeReadMiss } from "../utils/barcodeScanning";
+import { cameraRequestFallback, confirmedRearDevice, curateScannerCameras, initializeScannerOptics,
+  primaryCameraCorrection, readCameraSettings, scannerVideoConstraints, setScannerTorch } from "../utils/scannerCamera";
 
 interface ScannerOptions {
   onScanSuccess: (code: string) => void;
   onScanError?: (error: Error) => void;
   formats?: BarcodeFormat[];
-}
-
-interface CameraCapabilities extends MediaTrackCapabilities {
-  torch?: boolean;
-  focusMode?: string[];
-  zoom?: { min: number; max: number; step?: number };
-}
-
-interface CameraConstraints extends MediaTrackConstraintSet {
-  torch?: boolean;
-  focusMode?: string;
-  zoom?: number;
 }
 
 interface DetectedBarcode {
@@ -51,55 +41,6 @@ function cameraErrorMessage(error: Error): string {
   return error.message || "No se pudo acceder a la cámara.";
 }
 
-// Clasificación de lentes para evitar cámaras gran angular, macro o de profundidad fijas
-function isBackCameraLabel(label: string): boolean {
-  return /back|rear|environment|trasera|posterior|externa/i.test(label);
-}
-
-function isFrontCameraLabel(label: string): boolean {
-  return /front|selfie|user|delantera|frontal/i.test(label);
-}
-
-function isAuxiliaryCameraLabel(label: string): boolean {
-  return /wide|ultra|tele|macro|depth|profundidad|0\.[3-9]x/i.test(label);
-}
-
-// Puntuación de cámara: prioriza la cámara trasera principal estándar 1x con autofoco
-function scoreCamera(device: MediaDeviceInfo): number {
-  const label = device.label || "";
-  let score = 0;
-  if (isBackCameraLabel(label)) score += 100;
-  if (isFrontCameraLabel(label)) score -= 200;
-  if (isAuxiliaryCameraLabel(label)) score -= 50;
-  if (/main|principal|primary/i.test(label)) score += 40;
-  if (/camera2?\s*0\b/i.test(label)) score += 20;
-  return score;
-}
-
-// Curar dispositivos para evitar rotaciones caóticas por múltiples lentes auxiliares y selfies secundarias
-function curateVideoDevices(devices: MediaDeviceInfo[]): MediaDeviceInfo[] {
-  if (devices.length <= 1) return devices;
-
-  const backDevices = devices.filter(d => isBackCameraLabel(d.label) || (!isFrontCameraLabel(d.label) && /camera2?\s*0/i.test(d.label)));
-  const frontDevices = devices.filter(d => isFrontCameraLabel(d.label));
-
-  backDevices.sort((a, b) => scoreCamera(b) - scoreCamera(a));
-  frontDevices.sort((a, b) => (isAuxiliaryCameraLabel(a.label) ? 1 : 0) - (isAuxiliaryCameraLabel(b.label) ? 1 : 0));
-
-  const curated: MediaDeviceInfo[] = [];
-  if (backDevices.length > 0) {
-    curated.push(backDevices[0]);
-    // Permitir como máximo una trasera secundaria si no es macro o sensor de profundidad
-    const secondaryBack = backDevices.slice(1).find(d => !/depth|profundidad|macro/i.test(d.label));
-    if (secondaryBack) curated.push(secondaryBack);
-  }
-  if (frontDevices.length > 0) {
-    curated.push(frontDevices[0]);
-  }
-
-  return curated.length > 0 ? curated : devices;
-}
-
 function createNativeBarcodeDetector(): BarcodeDetectorInstance | null {
   if (typeof window === "undefined" || !("BarcodeDetector" in window) || !window.BarcodeDetector) {
     return null;
@@ -128,7 +69,8 @@ function createNativeBarcodeDetector(): BarcodeDetectorInstance | null {
   }
 }
 
-let cachedCuratedDevices: MediaDeviceInfo[] | null = null;
+let cachedCuratedDevices: MediaDeviceInfo[] = [];
+let cachedPrimaryRearDeviceId: string | undefined;
 
 export function useBarcodeScanner({ onScanSuccess, onScanError, formats = DEFAULT_BARCODE_FORMATS }: ScannerOptions) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -137,12 +79,18 @@ export function useBarcodeScanner({ onScanSuccess, onScanError, formats = DEFAUL
   const successRef = useRef(onScanSuccess);
   const errorRef = useRef(onScanError);
   const defaultDeviceIdRef = useRef("");
+  const torchRequestedRef = useRef(true);
+  const torchChangingRef = useRef(false);
   const [activeDeviceId, setActiveDeviceId] = useState("");
-  const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>(() => cachedCuratedDevices || []);
+  const [automaticDeviceId, setAutomaticDeviceId] = useState("");
+  const primaryCorrectionAttemptedRef = useRef(false);
+  const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>(() => cachedCuratedDevices);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasTorch, setHasTorch] = useState(false);
   const [isTorchOn, setIsTorchOn] = useState(false);
+  const [isTorchStateKnown, setIsTorchStateKnown] = useState(false);
+  const [isTorchChanging, setIsTorchChanging] = useState(false);
   const [isCameraSwitched, setIsCameraSwitched] = useState(false);
   const formatsKey = formats.join(",");
 
@@ -178,121 +126,64 @@ export function useBarcodeScanner({ onScanSuccess, onScanError, formats = DEFAUL
       setErrorMessage(null);
       setHasTorch(false);
       setIsTorchOn(false);
+      setIsTorchStateKnown(false);
+      setIsTorchChanging(true);
+      torchRequestedRef.current = true;
+      torchChangingRef.current = true;
       try {
         if (!navigator.mediaDevices?.getUserMedia)
           throw new Error("La cámara requiere un navegador compatible y HTTPS o localhost.");
 
-        // Usar dispositivos previamente cacheados para evitar la latencia de hardware de enumerateDevices()
-        let curated = cachedCuratedDevices || [];
-        if (curated.length === 0) {
-          try {
-            const rawDevices = await BrowserMultiFormatReader.listVideoInputDevices();
-            curated = curateVideoDevices(rawDevices);
-            cachedCuratedDevices = curated;
-          } catch { /* ignore */ }
+        const requestedDeviceId = activeDeviceId || automaticDeviceId || cachedPrimaryRearDeviceId;
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: scannerVideoConstraints(requestedDeviceId) });
+        } catch (error) {
+          const fallback = cameraRequestFallback(error, requestedDeviceId);
+          if (!fallback || disposed) throw error;
+          if (!activeDeviceId) cachedPrimaryRearDeviceId = undefined;
+          stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: fallback });
         }
-        if (disposed) return;
-        setVideoDevices(curated);
-
-        // Identificar la mejor cámara trasera candidata para evitar lentes auxiliares
-        const bestBackCamera = curated.find(device => isBackCameraLabel(device.label)) || curated[0];
-        const chosenDeviceId = activeDeviceId || bestBackCamera?.deviceId || curated[0]?.deviceId;
-
-        if (!activeDeviceId && chosenDeviceId) {
-          defaultDeviceIdRef.current = chosenDeviceId;
-        }
-
-        // Restricciones de video con resolución óptima de 720p para nitidez en códigos curvados
-        const videoConstraints: MediaTrackConstraints = {
-          width: { ideal: 1280, min: 640 },
-          height: { ideal: 720, min: 480 },
-        };
-
-        if (chosenDeviceId) {
-          videoConstraints.deviceId = { exact: chosenDeviceId };
-        } else {
-          videoConstraints.facingMode = { ideal: "environment" };
-        }
-
-        stream = await navigator.mediaDevices.getUserMedia({
-          audio: false,
-          video: videoConstraints,
-        });
-
         if (disposed) { stop(); return; }
         streamRef.current = stream;
 
-        // Reproducir video y retirar spinner inmediatamente para un arranque fluido
-        video.srcObject = stream;
-        try {
-          await video.play();
-        } catch { /* ignorar fallo de reproducción transitorio que luego maneja el lector */ }
-        if (!disposed) {
-          setIsLoading(false);
-        }
-
-        // Actualizar dispositivos en segundo plano sin bloquear el arranque del video
-        if (!cachedCuratedDevices || cachedCuratedDevices.some(d => !d.label)) {
-          void navigator.mediaDevices.enumerateDevices().then(freshDevices => {
-            if (disposed) return;
-            const videoInputs = freshDevices.filter(d => d.kind === "videoinput");
-            const refreshedCurated = curateVideoDevices(videoInputs);
-            if (refreshedCurated.length > 0) {
-              cachedCuratedDevices = refreshedCurated;
-              setVideoDevices(refreshedCurated);
-            }
-          }).catch(() => {});
-        }
-
         const track = stream.getVideoTracks()[0];
-        if (track) {
-          const actualDeviceId = track.getSettings().deviceId || chosenDeviceId || "";
-          if (!activeDeviceId && actualDeviceId) {
-            defaultDeviceIdRef.current = actualDeviceId;
-          }
+        if (!track) throw new DOMException("No video track is available.", "NotFoundError");
+        const actualDeviceId = readCameraSettings(track).deviceId || "";
+        if (!activeDeviceId && actualDeviceId) defaultDeviceIdRef.current = actualDeviceId;
+        setIsCameraSwitched(!!actualDeviceId && actualDeviceId !== defaultDeviceIdRef.current);
 
-          const capabilities: CameraCapabilities = track.getCapabilities?.() ?? {};
-          const hasLight = capabilities.torch === true;
-          setHasTorch(hasLight);
+        // Enumerar después del permiso y en segundo plano: no retrasar el video ni los lectores.
+        void navigator.mediaDevices.enumerateDevices().then(devices => {
+          if (disposed || streamRef.current !== stream) return;
+          const videoInputs = devices.filter(device => device.kind === "videoinput");
+          const correction = !activeDeviceId && !primaryCorrectionAttemptedRef.current
+            ? primaryCameraCorrection(track, videoInputs) : undefined;
+          if (correction) {
+            // Una única corrección identificada, no una búsqueda entre todos los lentes.
+            primaryCorrectionAttemptedRef.current = true;
+            setAutomaticDeviceId(correction);
+            return;
+          }
+          const confirmedRear = confirmedRearDevice(track, videoInputs);
+          if (confirmedRear && (!activeDeviceId || activeDeviceId === defaultDeviceIdRef.current)) cachedPrimaryRearDeviceId = confirmedRear;
+          const curated = curateScannerCameras(videoInputs, confirmedRear || defaultDeviceIdRef.current);
+          cachedCuratedDevices = curated;
+          setVideoDevices(curated);
+        }).catch(() => {});
 
-          // Agrupar linterna, autofoco y zoom en una sola petición atómica para reducir bloqueos de IPC
-          const optical: CameraConstraints = {};
-          if (hasLight) {
-            optical.torch = true;
-          }
-          if (capabilities.focusMode?.includes("continuous")) {
-            optical.focusMode = "continuous";
-          }
-          if (capabilities.zoom && typeof capabilities.zoom === "object") {
-            const { min = 1, max = 1 } = capabilities.zoom;
-            if (min <= 1.25 && max >= 1.25) {
-              optical.zoom = 1.25;
-            }
-          }
-
-          if (Object.keys(optical).length > 0) {
-            try {
-              await track.applyConstraints({ advanced: [optical] });
-              if (optical.torch && !disposed) setIsTorchOn(true);
-            } catch (error) {
-              console.debug("Atomic optical adjustments partially unavailable, applying fallbacks:", error);
-              if (optical.torch) {
-                try {
-                  const fallbackTorch: CameraConstraints = { torch: true };
-                  await track.applyConstraints({ advanced: [fallbackTorch] });
-                  if (!disposed) setIsTorchOn(true);
-                } catch { /* ignore */ }
-              }
-              if (optical.focusMode) {
-                try {
-                  const fallbackFocus: CameraConstraints = { focusMode: optical.focusMode };
-                  await track.applyConstraints({ advanced: [fallbackFocus] });
-                } catch { /* ignore */ }
-              }
-            }
-          }
-        }
-
+        video.srcObject = stream;
+        try { await video.play(); }
+        catch { /* El lector vuelve a comprobar la reproducción del video. */ }
+        if (disposed) { stop(); return; }
+        setIsLoading(false);
+        const optical = await initializeScannerOptics(track);
+        if (disposed) { stop(); return; }
+        setHasTorch(optical.available);
+        setIsTorchStateKnown(typeof optical.enabled === "boolean");
+        setIsTorchOn(optical.enabled === true);
+        torchRequestedRef.current = optical.enabled ?? true;
+        torchChangingRef.current = false;
+        setIsTorchChanging(false);
         if (disposed) { stop(); return; }
 
         // Motor nativo acelerado por hardware (Chromium / Android NPU) para QR y barras curvados
@@ -357,13 +248,29 @@ export function useBarcodeScanner({ onScanSuccess, onScanError, formats = DEFAUL
       }
     };
 
+    const devicesChanged = () => {
+      cachedPrimaryRearDeviceId = undefined;
+      cachedCuratedDevices = [];
+      if (!streamRef.current || disposed) return;
+      void navigator.mediaDevices.enumerateDevices().then(devices => {
+        if (disposed) return;
+        const curated = curateScannerCameras(devices.filter(device => device.kind === "videoinput"), defaultDeviceIdRef.current);
+        cachedCuratedDevices = curated;
+        setVideoDevices(curated);
+      }).catch(() => {});
+    };
+    navigator.mediaDevices?.addEventListener?.("devicechange", devicesChanged);
     initializationRef.current = initializationRef.current.then(start);
-    return stop;
-  }, [activeDeviceId, formatsKey]);
+    return () => {
+      navigator.mediaDevices?.removeEventListener?.("devicechange", devicesChanged);
+      stop();
+    };
+  }, [activeDeviceId, automaticDeviceId, formatsKey]);
 
   const toggleCamera = () => {
     if (videoDevices.length <= 1) return;
-    const currentId = activeDeviceId || defaultDeviceIdRef.current;
+    const currentTrack = streamRef.current?.getVideoTracks()[0];
+    const currentId = (currentTrack && readCameraSettings(currentTrack).deviceId) || activeDeviceId || defaultDeviceIdRef.current;
     const index = videoDevices.findIndex(device => device.deviceId === currentId);
     const nextIndex = index >= 0 ? (index + 1) % videoDevices.length : 0;
     const nextDeviceId = videoDevices[nextIndex].deviceId;
@@ -373,13 +280,24 @@ export function useBarcodeScanner({ onScanSuccess, onScanError, formats = DEFAUL
 
   const toggleTorch = async () => {
     const track = streamRef.current?.getVideoTracks()[0];
-    if (!track || !hasTorch) return;
-    const next = !isTorchOn;
-    const optical: CameraConstraints = { torch: next };
+    if (!track || !hasTorch || torchChangingRef.current) return;
+    const next = !torchRequestedRef.current;
+    torchChangingRef.current = true;
+    setIsTorchChanging(true);
     try {
-      await track.applyConstraints({ advanced: [optical] });
-      if (streamRef.current?.getVideoTracks()[0] === track) setIsTorchOn(next);
+      const actual = await setScannerTorch(track, next);
+      if (streamRef.current?.getVideoTracks()[0] === track) {
+        torchRequestedRef.current = actual ?? next;
+        setIsTorchStateKnown(typeof actual === "boolean");
+        setIsTorchOn(actual === true);
+      }
     } catch (error) { console.error("Camera torch change failed:", error); }
+    finally {
+      if (streamRef.current?.getVideoTracks()[0] === track) {
+        torchChangingRef.current = false;
+        setIsTorchChanging(false);
+      }
+    }
   };
 
   return {
@@ -388,6 +306,8 @@ export function useBarcodeScanner({ onScanSuccess, onScanError, formats = DEFAUL
     isLoading,
     hasTorch,
     isTorchOn,
+    isTorchStateKnown,
+    isTorchChanging,
     isCameraSwitched,
     toggleTorch,
     toggleCamera,

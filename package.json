@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "test:checkout": "playwright test --config playwright.checkout.config.mjs",
     "test:barcodes": "node --test tests/barcodeScanning.test.mjs",
+    "test:scanner-camera": "node --test tests/scannerCamera.test.mjs",
     "test:camera": "playwright test --config playwright.camera.config.mjs",
     "test:labels": "node --test tests/labelRolls.test.mjs",
     "test:labels-ui": "playwright test --config playwright.labels.config.mjs",

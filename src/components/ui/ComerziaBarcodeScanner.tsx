@@ -10,7 +10,7 @@ interface Props {
 }
 
 export const ComerziaBarcodeScanner = (props: Props) => {
-  const { videoRef, errorMessage, isLoading, hasTorch, isTorchOn, isCameraSwitched, toggleTorch, toggleCamera,
+  const { videoRef, errorMessage, isLoading, hasTorch, isTorchOn, isTorchStateKnown, isTorchChanging, isCameraSwitched, toggleTorch, toggleCamera,
     canSwitchCamera } = useBarcodeScanner(props);
   if (errorMessage) {
     return (
@@ -38,7 +38,7 @@ export const ComerziaBarcodeScanner = (props: Props) => {
         </div>
         {!isLoading && (hasTorch || canSwitchCamera) && (
           <div className="absolute bottom-3 inset-x-3 z-30 flex items-center justify-between gap-2 pointer-events-auto">
-            {hasTorch ? <BtnFlashlight enabled={isTorchOn} overlay onClick={toggleTorch} /> : <div />}
+            {hasTorch ? <BtnFlashlight enabled={isTorchOn} stateKnown={isTorchStateKnown} disabled={isTorchChanging} overlay onClick={toggleTorch} /> : <div />}
             {canSwitchCamera && <BtnScannerCamera switched={isCameraSwitched} onClick={toggleCamera} />}
           </div>
         )}
