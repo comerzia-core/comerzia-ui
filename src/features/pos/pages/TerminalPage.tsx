@@ -526,13 +526,13 @@ export const TerminalPage = () => {
             Esta acción abortará la venta pendiente {cancelingSale?.saleNumber ? `#${cancelingSale.saleNumber}` : ''} y devolverá inmediatamente los productos reservados a su stock físico original.
           </p>
           <div className="flex flex-row items-center gap-2 mt-6 pt-3 border-t border-base-200 w-full sm:justify-end">
-            <BtnCancel onClick={() => setCancelingSale(null)} disabled={isCanceling} responsive={true} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
+            <BtnCancel onClick={() => setCancelingSale(null)} disabled={isCanceling} responsive={false} className="flex-1 sm:flex-none sm:w-auto min-w-0" />
             <BtnModalYes
               label="Sí, Cancelar"
               onClick={handleConfirmCancelSale}
               isLoading={isCanceling}
               disabled={isCanceling}
-              responsive={true}
+              responsive={false}
               className="flex-1 sm:flex-none sm:w-auto min-w-0"
             />
           </div>

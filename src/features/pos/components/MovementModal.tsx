@@ -1,5 +1,5 @@
 // src/features/pos/components/MovementModal.tsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { ComerziaModal } from '../../../components/ui/ComerziaModal';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
 import { ComerziaSelect } from '../../../components/ui/ComerziaSelect';
@@ -33,9 +33,17 @@ export const MovementModal = ({ isOpen, onClose, onSuccess, shiftId, movementToE
   const [isLoading, setIsLoading] = useState(false);
   const [shakeKey, setShakeKey] = useState(0);
 
+  const paymentOptions = options[DICTIONARIES.PAYMENT_TYPE] || [];
+
+  // Resolver código por defecto de efectivo (701)
+  const defaultCashCode = useMemo(() => {
+    const cashOption = paymentOptions.find(opt => String(opt.value) === '701' || opt.label.toLowerCase().includes('efectivo'));
+    return cashOption ? String(cashOption.value) : '701';
+  }, [paymentOptions]);
+
   const [form, setForm] = useState({
-    movementType: '201', // 201: INFLOW (Ingreso), 202: OUTFLOW (Gasto)
-    paymentType: '',
+    movementType: '202', // 202: OUTFLOW (Gasto), 201: INFLOW (Ingreso)
+    paymentType: '701',
     amount: '',
     observation: ''
   });
@@ -59,15 +67,22 @@ export const MovementModal = ({ isOpen, onClose, onSuccess, shiftId, movementToE
         setSelectedShiftId(movementToEdit.shiftId);
       } else {
         setForm({
-          movementType: '201',
-          paymentType: '',
+          movementType: '202',
+          paymentType: defaultCashCode,
           amount: '',
           observation: ''
         });
         setSelectedShiftId(shiftId || '');
       }
     }
-  }, [isOpen, movementToEdit, shiftId]);
+  }, [isOpen, movementToEdit, shiftId, defaultCashCode]);
+
+  // Si los diccionarios cargan después de abrir el modal y el método de pago no está asignado
+  useEffect(() => {
+    if (isOpen && !movementToEdit && defaultCashCode && !form.paymentType) {
+      setForm(prev => ({ ...prev, paymentType: defaultCashCode }));
+    }
+  }, [isOpen, movementToEdit, defaultCashCode, form.paymentType]);
 
   const loadActiveShifts = async () => {
     setIsLoadingShifts(true);
@@ -167,29 +182,6 @@ export const MovementModal = ({ isOpen, onClose, onSuccess, shiftId, movementToE
             </span>
           </label>
           <div className="grid grid-cols-2 gap-3">
-            {/* INGRESO (201) */}
-            <button
-              type="button"
-              onClick={() => setForm({ ...form, movementType: '201' })}
-              className={`p-4 rounded-2xl border-2 flex items-center gap-3 transition-all ${
-                form.movementType === '201'
-                  ? 'border-success bg-success/10 text-success shadow-xs'
-                  : 'border-base-300 hover:border-base-content/20 text-base-content/60'
-              }`}
-            >
-              <div
-                className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                  form.movementType === '201' ? 'bg-success text-success-content' : 'bg-base-200'
-                }`}
-              >
-                <ArrowDownRight size={20} />
-              </div>
-              <div className="text-left">
-                <div className="font-bold text-sm">Ingreso</div>
-                <div className="text-xs opacity-75">Entrada de dinero</div>
-              </div>
-            </button>
-
             {/* GASTO (202) */}
             <button
               type="button"
@@ -210,6 +202,29 @@ export const MovementModal = ({ isOpen, onClose, onSuccess, shiftId, movementToE
               <div className="text-left">
                 <div className="font-bold text-sm">Gasto</div>
                 <div className="text-xs opacity-75">Salida de dinero</div>
+              </div>
+            </button>
+
+            {/* INGRESO (201) */}
+            <button
+              type="button"
+              onClick={() => setForm({ ...form, movementType: '201' })}
+              className={`p-4 rounded-2xl border-2 flex items-center gap-3 transition-all ${
+                form.movementType === '201'
+                  ? 'border-success bg-success/10 text-success shadow-xs'
+                  : 'border-base-300 hover:border-base-content/20 text-base-content/60'
+              }`}
+            >
+              <div
+                className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                  form.movementType === '201' ? 'bg-success text-success-content' : 'bg-base-200'
+                }`}
+              >
+                <ArrowDownRight size={20} />
+              </div>
+              <div className="text-left">
+                <div className="font-bold text-sm">Ingreso</div>
+                <div className="text-xs opacity-75">Entrada de dinero</div>
               </div>
             </button>
           </div>
