@@ -19,6 +19,11 @@ async function mockApi(page) {
       state.contextReads++;
       if (state.eligible) data = { availableShifts: state.availableShifts };
       else { status = 409; data = { errorCode: 'return_shift_unavailable', message: 'Internal English details' }; }
+    } else if (path.endsWith('/return-quote')) {
+      const details = route.request().postDataJSON().returnDetails.map(item => ({ ...item,
+        subtotalRefund: item.quantityToReturn * 10, discountRefund: 0, totalRefund: item.quantityToReturn * 10 }));
+      data = { details, subtotalRefund: details.reduce((total, item) => total + item.subtotalRefund, 0), discountRefund: 0,
+        totalRefund: details.reduce((total, item) => total + item.totalRefund, 0) };
     } else if (path.endsWith('/returns') && route.request().method() === 'POST') {
       state.post = route.request().postDataJSON();
       if (state.postError) { status = 409; data = { errorCode: state.postError, message: 'Internal English details' }; }

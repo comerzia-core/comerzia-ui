@@ -6,6 +6,7 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { salesService } from '../services/salesService';
 import { useReturnContext } from '../hooks/useReturnContext';
+import { useReturnQuote } from '../hooks/useReturnQuote';
 import { getPosErrorCode, getPosOperationMessage } from '../../pos/utils/posOperationMessages';
 import type { SaleResponse, SaleDetailResponse } from '../types/sales';
 import { useToast } from '../../../context/ToastContext';
@@ -17,15 +18,15 @@ import { ComerziaSelect } from '../../../components/ui/ComerziaSelect';
 import { ComerziaModal } from '../../../components/ui/ComerziaModal';
 import { ComerziaButton } from '../../../components/ui/ComerziaButton';
 import { BtnCancel, BtnModalYes } from '../../../components/ui/CrudButtons';
-import { 
-  Search, 
-  AlertTriangle, 
-  FileText, 
-  Receipt, 
-  User, 
-  Calendar, 
-  ShoppingBag, 
-  UserCheck, 
+import {
+  Search,
+  AlertTriangle,
+  FileText,
+  Receipt,
+  User,
+  Calendar,
+  ShoppingBag,
+  UserCheck,
   RotateCcw,
   Minus,
   Plus,
@@ -202,42 +203,21 @@ export const ReturnsPage = () => {
   };
 
   // Desglose de Reembolso con Precios, Factores y Descuentos
-  const calculateRefundBreakdown = () => {
-    if (!activeSale) return { subtotalRefund: 0, discountRefund: 0, totalRefund: 0, totalReceiptItems: 0, totalPhysicalItems: 0 };
-    let subtotalRefund = 0;
-    let discountRefund = 0;
-    let totalRefund = 0;
-    let totalReceiptItems = 0;
-    let totalPhysicalItems = 0;
-
-    (activeSale.details || []).forEach(d => {
-      const qtyToReturn = returnQtys[d.id] || 0;
-      if (qtyToReturn > 0) {
-        const factor = d.equivalenceFactor || 1;
-        totalReceiptItems += qtyToReturn;
-        totalPhysicalItems += qtyToReturn * factor;
-
-        const totalPurchasedQty = d.receiptQuantity ?? 1;
-        const lineSuggested = d.lineTotalSuggested ?? (d.receiptUnitPrice ? d.receiptUnitPrice * totalPurchasedQty : 0);
-        const lineDiscount = d.lineTotalDiscount ?? 0;
-        const lineFinal = d.lineTotalFinal ?? (lineSuggested - lineDiscount);
-
-        const unitSuggested = totalPurchasedQty > 0 ? lineSuggested / totalPurchasedQty : (d.receiptUnitPrice ?? 0);
-        const unitDiscount = totalPurchasedQty > 0 ? lineDiscount / totalPurchasedQty : 0;
-        const unitFinal = totalPurchasedQty > 0 ? lineFinal / totalPurchasedQty : (unitSuggested - unitDiscount);
-
-        subtotalRefund += unitSuggested * qtyToReturn;
-        discountRefund += unitDiscount * qtyToReturn;
-        totalRefund += unitFinal * qtyToReturn;
-      }
-    });
-
-    return { subtotalRefund, discountRefund, totalRefund, totalReceiptItems, totalPhysicalItems };
+  const { quote, isQuoteLoading, quoteError, hasQuote, totalReceiptItems, totalPhysicalItems } = useReturnQuote(activeSale, returnQtys);
+  const refundBreakdown = {
+    subtotalRefund: quote?.subtotalRefund ?? 0,
+    discountRefund: quote?.discountRefund ?? 0,
+    totalRefund: quote?.totalRefund ?? 0,
+    totalReceiptItems,
+    totalPhysicalItems,
   };
 
-  // Enviar devolución
   const handleSubmitReturn = async () => {
-    if (!activeSale) return;
+    if (!activeSale || isSubmitting) return;
+    if (!hasQuote) {
+      toastWarning(quoteError || 'Espera el c\u00e1lculo del reembolso.');
+      return;
+    }
     if (!reason.trim()) {
       setShakeKey(prev => prev + 1);
       toastError("Indica el motivo de la devolución.");
@@ -270,18 +250,23 @@ export const ReturnsPage = () => {
         reason: reason.trim(),
         returnPaymentType: paymentTypeNum,
         returnDetails,
-        targetShiftId: selectedShiftId
+        targetShiftId: selectedShiftId,
+        expectedRefundAmount: quote!.totalRefund
       };
 
       await salesService.processReturn(activeSale.id, payload);
       toastSuccess("Devolución registrada.");
       setShowConfirmModal(false);
-      
+
       // Recargar la venta actualizada por número para reflejar nuevo estado (605 o 606)
       if (activeSale.saleNumber) {
         fetchSaleByNumber(activeSale.saleNumber);
       }
     } catch (error: unknown) {
+      if (getPosErrorCode(error) === 'price_mismatch') {
+        setShowConfirmModal(false);
+        await fetchSaleByNumber(activeSale.saleNumber);
+      }
       toastError(getPosOperationMessage(error, 'No se pudo procesar la devolución.'));
       if (['return_shift_unavailable', 'return_shift_required', 'shift_not_open', 'shift_branch_mismatch'].includes(getPosErrorCode(error) ?? '')) {
         setShowConfirmModal(false);
@@ -292,7 +277,6 @@ export const ReturnsPage = () => {
     }
   };
 
-  const refundBreakdown = calculateRefundBreakdown();
   const hasItemsToReturn = refundBreakdown.totalReceiptItems > 0;
   const isReturnable = activeSale && (getStatusCode(activeSale.saleStatus) === 602 || getStatusCode(activeSale.saleStatus) === 605);
 
@@ -469,12 +453,8 @@ export const ReturnsPage = () => {
                       const currentReturnQty = returnQtys[d.id] || 0;
                       const currentReturnPhysical = currentReturnQty * factor;
 
-                      const lineSuggested = d.lineTotalSuggested ?? (d.receiptUnitPrice ? d.receiptUnitPrice * purchasedQty : 0);
-                      const lineDiscount = d.lineTotalDiscount ?? 0;
-                      const lineFinal = d.lineTotalFinal ?? (lineSuggested - lineDiscount);
-
-                      const unitFinal = purchasedQty > 0 ? lineFinal / purchasedQty : (d.receiptUnitPrice ?? 0);
-                      const lineFinalRefund = unitFinal * currentReturnQty;
+                      const unitSuggested = d.receiptSuggestedUnitPrice ?? ((d.lineTotalSuggested ?? 0) / purchasedQty);
+                      const lineFinalRefund = quote?.details.find((detail) => detail.saleDetailId === d.id)?.totalRefund ?? 0;
 
                       return (
                         <tr key={`desktop-return-${d.id}`} className="hover:bg-base-200/30 transition-colors">
@@ -517,7 +497,7 @@ export const ReturnsPage = () => {
                           </td>
                           <td className="text-right font-mono">
                             <span className="font-medium text-base-content">
-                              {currency} {unitFinal.toFixed(2)}
+                              {currency} {unitSuggested.toFixed(2)}
                             </span>
                           </td>
                           <td className="text-center">
@@ -575,7 +555,7 @@ export const ReturnsPage = () => {
                           </td>
                           <td className="text-right font-mono">
                             <span className={`font-semibold ${lineFinalRefund > 0 ? 'text-error font-bold' : 'text-base-content/30'}`}>
-                              {lineFinalRefund > 0 ? `-${currency} ${lineFinalRefund.toFixed(2)}` : '0.00'}
+                              {isQuoteLoading && currentReturnQty > 0 ? '...' : lineFinalRefund > 0 ? `-${currency} ${lineFinalRefund.toFixed(2)}` : '0.00'}
                             </span>
                           </td>
                         </tr>
@@ -596,12 +576,8 @@ export const ReturnsPage = () => {
                   const maxQty = getMaxReturnQty(d);
                   const currentReturnQty = returnQtys[d.id] || 0;
 
-                  const lineSuggested = d.lineTotalSuggested ?? (d.receiptUnitPrice ? d.receiptUnitPrice * purchasedQty : 0);
-                  const lineDiscount = d.lineTotalDiscount ?? 0;
-                  const lineFinal = d.lineTotalFinal ?? (lineSuggested - lineDiscount);
-
-                  const unitFinal = purchasedQty > 0 ? lineFinal / purchasedQty : (d.receiptUnitPrice ?? 0);
-                  const lineFinalRefund = unitFinal * currentReturnQty;
+                  const unitSuggested = d.receiptSuggestedUnitPrice ?? ((d.lineTotalSuggested ?? 0) / purchasedQty);
+                  const lineFinalRefund = quote?.details.find((detail) => detail.saleDetailId === d.id)?.totalRefund ?? 0;
 
                   return (
                     <div key={`mobile-return-${d.id}`} className="p-3 rounded-xl bg-base-100 border border-base-200 shadow-xs space-y-2.5">
@@ -622,7 +598,7 @@ export const ReturnsPage = () => {
                           <div className="flex items-center gap-1.5 text-[11px] text-base-content/60 mt-0.5">
                             <span>Comprado: {purchasedQty} {d.measureUnitName || 'u'}</span>
                             <span>&bull;</span>
-                            <span className="font-mono">{currency} {unitFinal.toFixed(2)}</span>
+                            <span className="font-mono">{currency} {unitSuggested.toFixed(2)}</span>
                           </div>
                           {totalReturnedPhysical > 0 && (
                             <span className="text-[10px] text-warning font-semibold block mt-0.5">
@@ -632,7 +608,7 @@ export const ReturnsPage = () => {
                         </div>
                         <div className="text-right shrink-0 font-mono">
                           <span className={`text-xs font-bold ${lineFinalRefund > 0 ? 'text-error' : 'text-base-content/40'}`}>
-                            {lineFinalRefund > 0 ? `-${currency} ${lineFinalRefund.toFixed(2)}` : '0.00'}
+                            {isQuoteLoading && currentReturnQty > 0 ? '...' : lineFinalRefund > 0 ? `-${currency} ${lineFinalRefund.toFixed(2)}` : '0.00'}
                           </span>
                         </div>
                       </div>
@@ -831,13 +807,15 @@ export const ReturnsPage = () => {
                       <span>Reintegra el stock al inventario y genera un egreso contable en caja.</span>
                     </div>
 
+                    {quoteError && <p role="alert" className="text-xs text-error">{quoteError}</p>}
+                    {isQuoteLoading && <p role="status" className="text-xs text-base-content/60">Calculando reembolso...</p>}
                     <ComerziaButton
                       variant="delete"
                       label="Procesar Devolución"
                       fullWidth
                       disabled={
-                        !hasItemsToReturn || 
-                        !reason.trim() || 
+                        !hasItemsToReturn || !hasQuote ||
+                        !reason.trim() ||
                         isSubmitting ||
                         (isLoadingShifts || !selectedShiftId || Boolean(shiftErrorMessage))
                       }
@@ -893,16 +871,16 @@ export const ReturnsPage = () => {
           </p>
 
           <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-3 border-t border-base-200">
-            <BtnCancel 
-              onClick={() => setShowConfirmModal(false)} 
-              disabled={isSubmitting} 
+            <BtnCancel
+              onClick={() => setShowConfirmModal(false)}
+              disabled={isSubmitting}
               responsive={false}
               className="w-full sm:w-auto" />
             <BtnModalYes
               label="Sí, Procesar"
               onClick={handleSubmitReturn}
               isLoading={isSubmitting}
-              disabled={isSubmitting}
+              disabled={isSubmitting || !hasQuote}
               className="w-full sm:w-auto"
             />
           </div>

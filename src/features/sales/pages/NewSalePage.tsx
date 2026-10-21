@@ -9,12 +9,15 @@ import { useToast } from '../../../context/ToastContext';
 import { CommercialProductSearchBar } from '../../commercial/components/CommercialProductSearchBar';
 import { ComerziaButton } from '../../../components/ui/ComerziaButton';
 import type { CartItem } from '../store/useCartStore';
+import { ProductDiscountControl } from '../components/ProductDiscountControl';
+import { getCartLineKey, getLineSubtotal, getMaximumLineDiscount, toCents } from '../utils/cartPricing';
 import { AlertCircle, ArrowRight, ShoppingCart, Store, ChevronDown, ChevronUp, Trash2, Tag, X, Monitor } from 'lucide-react';
 import { roundToTwo } from '../../../utils/currency';
+import { getPosOperationMessage } from '../../pos/utils/posOperationMessages';
 
 interface QuantityControlProps {
   item: CartItem;
-  updateQuantity: (id: string, qty: number) => { success: boolean; message?: string };
+  updateQuantity: (id: string, qty: number, priceTypeId?: string) => { success: boolean; message?: string };
   toastWarning: (msg: string) => void;
 }
 
@@ -27,15 +30,27 @@ const QuantityControl = ({ item, updateQuantity, toastWarning }: QuantityControl
     setVal(item.quantity === 0 ? '' : item.quantity.toString());
   }, [item.quantity]);
 
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    setVal(raw);
+    const qty = parseInt(raw, 10);
+    if (!isNaN(qty) && qty > 0) {
+      const res = updateQuantity(item.productVariantId, qty, item.priceTypeId);
+      if (!res.success && res.message && qty > maxPackages) {
+        toastWarning(res.message);
+      }
+    }
+  };
+
   const handleCommit = () => {
-    let qty = parseInt(val);
-    if (isNaN(qty)) {
+    let qty = parseInt(val, 10);
+    if (isNaN(qty) || qty <= 0) {
       setVal(item.quantity === 0 ? '' : item.quantity.toString());
       return;
     }
 
-    const res = updateQuantity(item.productVariantId, qty);
-    const updatedItem = useCartStore.getState().items.find(i => i.productVariantId === item.productVariantId);
+    const res = updateQuantity(item.productVariantId, qty, item.priceTypeId);
+    const updatedItem = useCartStore.getState().items.find(i => i.productVariantId === item.productVariantId && i.priceTypeId === item.priceTypeId);
     if (updatedItem) {
       setVal(updatedItem.quantity.toString());
     }
@@ -53,8 +68,8 @@ const QuantityControl = ({ item, updateQuantity, toastWarning }: QuantityControl
           type="button"
           className="btn btn-circle btn-xs btn-ghost h-6 w-6 min-h-0 text-base-content/70 active:scale-95 transition-transform"
           onClick={() => {
-            const res = updateQuantity(item.productVariantId, item.quantity - 1);
-            const updatedItem = useCartStore.getState().items.find(i => i.productVariantId === item.productVariantId);
+            const res = updateQuantity(item.productVariantId, item.quantity - 1, item.priceTypeId);
+            const updatedItem = useCartStore.getState().items.find(i => i.productVariantId === item.productVariantId && i.priceTypeId === item.priceTypeId);
             if (updatedItem) setVal(updatedItem.quantity.toString());
             if (!res.success && res.message) toastWarning(res.message);
           }}
@@ -67,7 +82,7 @@ const QuantityControl = ({ item, updateQuantity, toastWarning }: QuantityControl
           className="input input-bordered input-xs w-12 sm:w-14 font-mono text-xs font-bold text-center px-2 rounded-lg [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           value={val}
           onWheel={(e) => (e.target as HTMLInputElement).blur()}
-          onChange={(e) => setVal(e.target.value)}
+          onChange={handleChange}
           onBlur={handleCommit}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
@@ -79,8 +94,8 @@ const QuantityControl = ({ item, updateQuantity, toastWarning }: QuantityControl
           type="button"
           className="btn btn-circle btn-xs btn-ghost h-6 w-6 min-h-0 text-base-content/70 active:scale-95 transition-transform"
           onClick={() => {
-            const res = updateQuantity(item.productVariantId, item.quantity + 1);
-            const updatedItem = useCartStore.getState().items.find(i => i.productVariantId === item.productVariantId);
+            const res = updateQuantity(item.productVariantId, item.quantity + 1, item.priceTypeId);
+            const updatedItem = useCartStore.getState().items.find(i => i.productVariantId === item.productVariantId && i.priceTypeId === item.priceTypeId);
             if (updatedItem) setVal(updatedItem.quantity.toString());
             if (!res.success && res.message) toastWarning(res.message);
           }}
@@ -91,225 +106,6 @@ const QuantityControl = ({ item, updateQuantity, toastWarning }: QuantityControl
           ({totalUnits} {totalUnits === 1 ? 'unid.' : 'unids.'})
         </span>
       )}
-    </div>
-  );
-};
-
-interface ProductDiscountControlProps {
-  item: CartItem;
-  currency: string;
-  updateDiscount: (id: string, disc: number) => { success: boolean; message?: string };
-  updateTotalDiscount: (id: string, totDisc: number) => { success: boolean; message?: string };
-  toastWarning: (msg: string) => void;
-  compact?: boolean;
-}
-
-const ProductDiscountControl = ({
-  item,
-  currency,
-  updateDiscount,
-  updateTotalDiscount,
-  toastWarning,
-  compact = false
-}: ProductDiscountControlProps) => {
-  const [mode, setMode] = useState<'UNIT' | 'TOTAL'>('UNIT');
-
-  const factor = item.equivalenceFactor || 1;
-  const totalUnits = item.quantity * factor;
-  const maxUnitDiscount = (item.discountPrice != null && item.discountPrice < item.salePrice)
-    ? roundToTwo(item.salePrice - item.discountPrice)
-    : 0;
-  const maxTotalDiscount = roundToTwo(maxUnitDiscount * totalUnits);
-  const currentTotalDiscount = roundToTwo(item.discountAmount * totalUnits);
-
-  const [val, setVal] = useState<string>(() => {
-    if (mode === 'UNIT') {
-      return item.discountAmount === 0 ? '' : Number(item.discountAmount.toFixed(2)).toString();
-    } else {
-      return currentTotalDiscount === 0 ? '' : Number(currentTotalDiscount.toFixed(2)).toString();
-    }
-  });
-
-  useEffect(() => {
-    if (mode === 'UNIT') {
-      setVal(item.discountAmount === 0 ? '' : Number(item.discountAmount.toFixed(2)).toString());
-    } else {
-      setVal(currentTotalDiscount === 0 ? '' : Number(currentTotalDiscount.toFixed(2)).toString());
-    }
-  }, [item.discountAmount, item.quantity, mode]);
-
-  const handleModeChange = (newMode: 'UNIT' | 'TOTAL') => {
-    setMode(newMode);
-    if (newMode === 'UNIT') {
-      setVal(item.discountAmount === 0 ? '' : Number(item.discountAmount.toFixed(2)).toString());
-    } else {
-      setVal(currentTotalDiscount === 0 ? '' : Number(currentTotalDiscount.toFixed(2)).toString());
-    }
-  };
-
-  const handleCommit = () => {
-    const num = roundToTwo(parseFloat(val) || 0);
-    if (mode === 'UNIT') {
-      const res = updateDiscount(item.productVariantId, num);
-      const updatedItem = useCartStore.getState().items.find(i => i.productVariantId === item.productVariantId);
-      if (updatedItem) {
-        setVal(updatedItem.discountAmount === 0 ? '' : Number(updatedItem.discountAmount.toFixed(2)).toString());
-      }
-      if (!res.success && res.message) {
-        toastWarning(res.message);
-      }
-    } else {
-      const res = updateTotalDiscount(item.productVariantId, num);
-      const updatedItem = useCartStore.getState().items.find(i => i.productVariantId === item.productVariantId);
-      if (updatedItem) {
-        const updatedTot = roundToTwo(updatedItem.discountAmount * updatedItem.quantity * (updatedItem.equivalenceFactor || 1));
-        setVal(updatedTot === 0 ? '' : Number(updatedTot.toFixed(2)).toString());
-      }
-      if (!res.success && res.message) {
-        toastWarning(res.message);
-      }
-    }
-  };
-
-  const handleClear = () => {
-    updateDiscount(item.productVariantId, 0);
-    setVal('');
-  };
-
-  const currentMax = mode === 'UNIT' ? maxUnitDiscount : maxTotalDiscount;
-
-  if (compact) {
-    return (
-      <div className="flex items-center gap-1.5 justify-end min-w-[150px]">
-        {/* Columna 1: Tabs Horizontales ("X Unid." y "Total") */}
-        <div className="inline-flex flex-row p-0.5 rounded-md bg-base-200 border border-base-300 shrink-0">
-          <button
-            type="button"
-            onClick={() => handleModeChange('UNIT')}
-            className={`px-1.5 py-0.5 text-[9px] font-bold rounded transition-all whitespace-nowrap ${mode === 'UNIT' ? 'bg-base-100 text-error shadow-xs' : 'text-base-content/50 hover:text-base-content'
-              }`}
-            title="Descuento por Unidad"
-          >
-            X Unid.
-          </button>
-          <button
-            type="button"
-            onClick={() => handleModeChange('TOTAL')}
-            className={`px-1.5 py-0.5 text-[9px] font-bold rounded transition-all whitespace-nowrap ${mode === 'TOTAL' ? 'bg-base-100 text-error shadow-xs' : 'text-base-content/50 hover:text-base-content'
-              }`}
-            title="Descuento sobre Total"
-          >
-            Total
-          </button>
-        </div>
-
-        {/* Columna 2: Input y Máximo debajo */}
-        <div className="flex flex-col items-end gap-0.5">
-          <div className="relative w-20">
-            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-base-content/40 select-none pointer-events-none">
-              {currency}
-            </span>
-            <input
-              type="number"
-              min="0"
-              max={currentMax}
-              step="0.01"
-              placeholder="0.00"
-              value={val}
-              disabled={item.quantity === 0}
-              onWheel={(e) => (e.target as HTMLInputElement).blur()}
-              onChange={(e) => setVal(e.target.value)}
-              onBlur={handleCommit}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  (e.target as HTMLInputElement).blur();
-                }
-              }}
-              className="input input-bordered input-xs w-full pl-6 pr-5 text-right font-mono font-bold text-error rounded focus:border-error focus:ring-1 focus:ring-error/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-            />
-          </div>
-          <span className="text-[9px] text-base-content/40 font-mono whitespace-nowrap">
-            Máx: {currentMax.toFixed(2)}
-          </span>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex items-center gap-2.5">
-      {/* Columna 1: Tabs Verticales ("Por Unidad" y "Por Total") */}
-      <div className="inline-flex flex-col p-0.5 rounded-lg bg-base-300/70 border border-base-300 shrink-0">
-        <button
-          type="button"
-          onClick={() => handleModeChange('UNIT')}
-          className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition-all whitespace-nowrap text-left ${mode === 'UNIT'
-            ? 'bg-base-100 text-error shadow-xs'
-            : 'text-base-content/60 hover:text-base-content'
-            }`}
-        >
-          Por Unidad
-        </button>
-        <button
-          type="button"
-          onClick={() => handleModeChange('TOTAL')}
-          className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition-all whitespace-nowrap text-left ${mode === 'TOTAL'
-            ? 'bg-base-100 text-error shadow-xs'
-            : 'text-base-content/60 hover:text-base-content'
-            }`}
-        >
-          Por Total
-        </button>
-      </div>
-
-      {/* Columna 2: Fila superior (Input + X) y Fila inferior (Máx. permitido) */}
-      <div className="flex-1 min-w-0 flex flex-col gap-1">
-        <div className="flex items-center gap-1.5">
-          {/* Input del Monto */}
-          <div className="relative flex-1 min-w-0">
-            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-base-content/40 select-none pointer-events-none">
-              {currency}
-            </span>
-            <input
-              type="number"
-              min="0"
-              max={currentMax}
-              step="0.01"
-              placeholder="0.00"
-              value={val}
-              disabled={item.quantity === 0}
-              onWheel={(e) => (e.target as HTMLInputElement).blur()}
-              onChange={(e) => setVal(e.target.value)}
-              onBlur={handleCommit}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  (e.target as HTMLInputElement).blur();
-                }
-              }}
-              className="input input-bordered input-sm w-full pl-8 pr-4 text-right font-mono font-bold text-error rounded-xl focus:border-error focus:ring-1 focus:ring-error/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-            />
-          </div>
-
-          {/* Botón X para limpiar */}
-          {item.discountAmount > 0 && (
-            <button
-              type="button"
-              onClick={handleClear}
-              className="btn btn-sm btn-ghost text-error hover:bg-error/10 px-1.5 h-8 min-h-0 rounded-lg shrink-0 flex items-center justify-center transition-colors"
-              title="Quitar descuento"
-            >
-              <X size={16} className="stroke-[2.5]" />
-            </button>
-          )}
-        </div>
-
-        {/* Texto de Límite Máximo Permitido */}
-        <div className="flex justify-end text-[10px] text-base-content/50 px-0.5">
-          <span className="font-mono font-medium">
-            Máx. permitido: {currency} {currentMax.toFixed(2)}
-          </span>
-        </div>
-      </div>
     </div>
   );
 };
@@ -338,7 +134,7 @@ export const NewSalePage = () => {
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
 
   const {
-    items, addItem, removeItem, updateQuantity, updateDiscount, updateTotalDiscount, updatePriceType,
+    items, addItem, removeItem, updateQuantity, updateDiscount, updatePriceType,
     setBranchId: setCartBranchId, clearCart, getSubtotal, getDiscountedAmount, getTotal
   } = useCartStore();
 
@@ -379,7 +175,7 @@ export const NewSalePage = () => {
           }
 
           if (productResponse && productResponse.activePrices && productResponse.activePrices.length > 0) {
-            const activePrice = productResponse.activePrices.find((p: any) => p.priceTypeId === (d as any).priceTypeId) || productResponse.activePrices[0];
+            const activePrice = productResponse.activePrices.find((price) => price.priceTypeId === d.priceTypeId) || productResponse.activePrices[0];
             const factor = activePrice.equivalenceFactor || 1;
 
             newCartItems.push({
@@ -397,7 +193,7 @@ export const NewSalePage = () => {
               equivalenceFactor: factor,
               activePrices: productResponse.activePrices,
               quantity: d.receiptQuantity || 1,
-              discountAmount: roundToTwo((d.lineTotalDiscount || 0) / (d.receiptQuantity || 1) / factor)
+              lineTotalDiscount: d.lineTotalDiscount || 0
             });
           }
         }
@@ -438,7 +234,7 @@ export const NewSalePage = () => {
         setSelectedBranchId('');
         setCartBranchId(null);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (hasSwitchBranchPerm) {
         setInitError('Error al inicializar las sucursales activas.');
       }
@@ -506,7 +302,7 @@ export const NewSalePage = () => {
       } else {
         toastError('No se pudo cargar la información del producto.');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       toastError('No se pudo cargar la información del producto seleccionado.');
     }
   };
@@ -534,73 +330,26 @@ export const NewSalePage = () => {
       } else {
         toastError(`No se encontró ningún producto con código "${scannedCode}"`);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       toastError(`No se encontró ningún producto con código "${scannedCode}"`);
     }
   };
 
 
 
-  const mapSaleError = (err: any, isEditMode: boolean): string => {
-    const status = err?.response?.status;
-    const rawMsg = err?.response?.data?.message || err?.message || '';
-    const lowerMsg = typeof rawMsg === 'string' ? rawMsg.toLowerCase() : '';
-
-    // Mapeo por mensaje específico del backend (en inglés o español)
-    if (lowerMsg.includes('discount limit') || lowerMsg.includes('descuento')) {
-      return 'El descuento ingresado supera el límite máximo permitido.';
-    }
-    if (lowerMsg.includes('insufficient stock') || lowerMsg.includes('stock insuficiente')) {
-      return 'Stock insuficiente para uno o varios productos seleccionados.';
-    }
-    if (lowerMsg.includes('checksum mismatch') || lowerMsg.includes('checksum')) {
-      return 'Discrepancia en el cálculo del total de la venta.';
-    }
-    if (lowerMsg.includes('no open cash register') || lowerMsg.includes('turnos de caja') || (lowerMsg.includes('shift') && lowerMsg.includes('open'))) {
-      return 'No hay turnos de caja abiertos en esta sucursal.';
-    }
-    if (lowerMsg.includes('not in pending') || lowerMsg.includes('not pending')) {
-      return 'La venta ya no se encuentra en estado Pendiente.';
-    }
-    if (lowerMsg.includes('variant') && lowerMsg.includes('not found')) {
-      return 'Una de las variantes de producto seleccionadas ya no existe.';
-    }
-    if (lowerMsg.includes('pricetype') && lowerMsg.includes('not found')) {
-      return 'El tipo de precio seleccionado no fue encontrado.';
-    }
-    if (lowerMsg.includes('sale not found') || (lowerMsg.includes('sale') && lowerMsg.includes('not found'))) {
-      return 'La venta especificada no fue encontrada.';
-    }
-
-    // Mapeo por Código HTTP según especificación de TenantSaleApiDoc
-    if (status === 400) {
-      return 'Datos inválidos: verifique que las cantidades no excedan el stock disponible y que los descuentos no superen el límite.';
-    }
-    if (status === 403) {
-      return 'No tienes permisos para realizar esta operación.';
-    }
-    if (status === 404) {
-      return isEditMode
-        ? 'No se encontró la venta, el producto o el tipo de precio a actualizar.'
-        : 'Producto, variante o tipo de precio no encontrado.';
-    }
-    if (status === 409) {
-      return isEditMode
-        ? 'La venta no se puede actualizar porque ya no se encuentra en estado Pendiente.'
-        : 'No hay turnos de caja abiertos en esta sucursal para recibir la venta.';
-    }
-    if (status === 500) {
-      return 'Ocurrió un error en el servidor al procesar la venta. Por favor, inténtelo de nuevo.';
-    }
-
-    return rawMsg || (isEditMode ? 'Error al actualizar la venta pendiente.' : 'Error al enviar la venta a Caja.');
-  };
-
   const handleSendToRegister = async () => {
     if (isSubmitting) return;
+    const currentItems = useCartStore.getState().items;
 
-    if (items.length === 0) {
+    if (currentItems.length === 0) {
       toastError('El carrito está vacío. Agregue al menos un producto.');
+      return;
+    }
+
+    const invalidDiscount = currentItems.find((item) => item.discountError
+      || toCents(item.lineTotalDiscount) > toCents(getMaximumLineDiscount(item, item.quantity)));
+    if (invalidDiscount) {
+      toastWarning(invalidDiscount.discountError || 'Revisa el descuento del producto.');
       return;
     }
 
@@ -609,16 +358,16 @@ export const NewSalePage = () => {
       const payload: CreateSaleRequest = {
         branchId: requiresBranchContext ? selectedBranchId : null,
         expectedTotalAmount: roundToTwo(getTotal()),
-        details: items.map(i => ({
+        details: currentItems.map(i => ({
           productVariantId: i.productVariantId,
           priceTypeId: i.priceTypeId,
           receiptQuantity: i.quantity,
-          lineDiscountAmount: roundToTwo(i.discountAmount || 0)
+          lineTotalDiscount: i.lineTotalDiscount || 0
         }))
       };
 
       if (editSale) {
-        await salesService.updatePendingSale(editSale.id, payload as any);
+        await salesService.updatePendingSale(editSale.id, payload);
         toastSuccess('Venta pendiente actualizada con éxito.');
         clearCart();
         navigate('/sales/history');
@@ -627,8 +376,8 @@ export const NewSalePage = () => {
         toastSuccess('¡Venta registrada con éxito y enviada a Caja!');
         clearCart();
       }
-    } catch (err: any) {
-      const msg = mapSaleError(err, !!editSale);
+    } catch (err: unknown) {
+      const msg = getPosOperationMessage(err, 'No se pudo guardar la venta.');
       toastError(msg);
     } finally {
       setIsSubmitting(false);
@@ -750,16 +499,14 @@ export const NewSalePage = () => {
               {/* Listado de Cards de Productos */}
               <div className="space-y-3">
                 {items.map((item, idx) => {
-                  const factor = item.equivalenceFactor || 1;
-                  const totalUnits = item.quantity * factor;
                   const maxDiscount = (item.discountPrice != null && item.discountPrice < item.salePrice)
                     ? roundToTwo(item.salePrice - item.discountPrice)
                     : 0;
                   const hasDiscountLimit = maxDiscount > 0;
-                  const totalDiscount = roundToTwo(item.discountAmount * totalUnits);
-                  const subtotal = roundToTwo(item.salePrice * totalUnits);
+                  const totalDiscount = item.lineTotalDiscount;
+                  const subtotal = getLineSubtotal(item, item.quantity);
                   const finalTotal = roundToTwo(Math.max(0, subtotal - totalDiscount));
-                  const isExpanded = !!expandedItems[item.productVariantId];
+                  const isExpanded = !!expandedItems[getCartLineKey(item)];
 
                   return (
                     <div
@@ -782,7 +529,7 @@ export const NewSalePage = () => {
                         </div>
                         <button
                           type="button"
-                          onClick={() => removeItem(item.productVariantId)}
+                          onClick={() => removeItem(item.productVariantId, item.priceTypeId)}
                           className="btn btn-ghost btn-xs text-error hover:bg-error/10 p-0.5 h-6 w-6 min-h-0 rounded-full shrink-0 flex items-center justify-center transition-colors"
                           title="Eliminar producto"
                         >
@@ -798,7 +545,7 @@ export const NewSalePage = () => {
                             className="select select-bordered select-xs w-full font-bold text-xs text-base-content rounded-lg px-3 truncate"
                             value={item.priceTypeId}
                             onChange={(e) => {
-                              const res = updatePriceType(item.productVariantId, e.target.value);
+                              const res = updatePriceType(item.productVariantId, e.target.value, item.priceTypeId);
                               if (!res.success && res.message) toastWarning(res.message);
                             }}
                           >
@@ -840,13 +587,13 @@ export const NewSalePage = () => {
                         <div className="pt-0.5">
                           <button
                             type="button"
-                            onClick={() => setExpandedItems(prev => ({ ...prev, [item.productVariantId]: !prev[item.productVariantId] }))}
-                            className={`btn btn-ghost btn-xs gap-1 pl-0 h-5 min-h-0 hover:bg-transparent text-error ${item.discountAmount > 0 ? 'font-bold' : 'font-semibold text-error/80 hover:text-error'
+                            onClick={() => setExpandedItems(prev => ({ ...prev, [getCartLineKey(item)]: !prev[getCartLineKey(item)] }))}
+                            className={`btn btn-ghost btn-xs gap-1 pl-0 h-5 min-h-0 hover:bg-transparent text-error ${item.lineTotalDiscount > 0 ? 'font-bold' : 'font-semibold text-error/80 hover:text-error'
                               }`}
                           >
                             <Tag size={12} className="text-error shrink-0" />
                             <span className="text-[11px] text-error">
-                              {item.discountAmount > 0
+                              {item.lineTotalDiscount > 0
                                 ? `Desc: -${currency} ${totalDiscount.toFixed(2)}`
                                 : (isExpanded ? 'Cerrar descuento' : '+ Agregar descuento')}
                             </span>
@@ -862,7 +609,6 @@ export const NewSalePage = () => {
                             item={item}
                             currency={currency}
                             updateDiscount={updateDiscount}
-                            updateTotalDiscount={updateTotalDiscount}
                             toastWarning={toastWarning}
                           />
                         </div>
@@ -907,14 +653,12 @@ export const NewSalePage = () => {
                   </thead>
                   <tbody>
                     {items.map((item, idx) => {
-                      const factor = item.equivalenceFactor || 1;
-                      const totalUnits = item.quantity * factor;
                       const maxDiscount = (item.discountPrice != null && item.discountPrice < item.salePrice)
                         ? roundToTwo(item.salePrice - item.discountPrice)
                         : 0;
                       const hasDiscountLimit = maxDiscount > 0;
-                      const totalDiscount = roundToTwo(item.discountAmount * totalUnits);
-                      const subtotal = roundToTwo(item.salePrice * totalUnits);
+                      const totalDiscount = item.lineTotalDiscount;
+                      const subtotal = getLineSubtotal(item, item.quantity);
                       const finalTotal = roundToTwo(Math.max(0, subtotal - totalDiscount));
 
                       return (
@@ -934,7 +678,7 @@ export const NewSalePage = () => {
                               className="select select-bordered select-xs w-full max-w-[120px] px-3"
                               value={item.priceTypeId}
                               onChange={(e) => {
-                                const res = updatePriceType(item.productVariantId, e.target.value);
+                                const res = updatePriceType(item.productVariantId, e.target.value, item.priceTypeId);
                                 if (!res.success && res.message) toastWarning(res.message);
                               }}
                             >
@@ -968,15 +712,15 @@ export const NewSalePage = () => {
                           <td className="text-right">
                             {hasDiscountLimit ? (
                               <div className="flex flex-col items-end gap-1">
-                                {!expandedItems[item.productVariantId] ? (
+                                {!expandedItems[getCartLineKey(item)] ? (
                                   <button
                                     type="button"
-                                    onClick={() => setExpandedItems(prev => ({ ...prev, [item.productVariantId]: true }))}
-                                    className={`btn btn-ghost btn-xs gap-1 pl-0 h-5 min-h-0 hover:bg-transparent text-error ${item.discountAmount > 0 ? 'font-bold' : 'font-semibold text-error/80 hover:text-error'}`}
+                                    onClick={() => setExpandedItems(prev => ({ ...prev, [getCartLineKey(item)]: true }))}
+                                    className={`btn btn-ghost btn-xs gap-1 pl-0 h-5 min-h-0 hover:bg-transparent text-error ${item.lineTotalDiscount > 0 ? 'font-bold' : 'font-semibold text-error/80 hover:text-error'}`}
                                   >
                                     <Tag size={12} className="text-error shrink-0" />
                                     <span className="text-[11px] text-error whitespace-nowrap">
-                                      {item.discountAmount > 0
+                                      {item.lineTotalDiscount > 0
                                         ? `Desc: -${currency} ${totalDiscount.toFixed(2)}`
                                         : '+ Agregar descuento'}
                                     </span>
@@ -987,7 +731,7 @@ export const NewSalePage = () => {
                                     <button
                                       type="button"
                                       className="btn btn-ghost btn-xs min-h-0 h-5 w-5 p-0 rounded-full text-base-content/40 hover:text-error absolute -top-2 -right-2 bg-base-100 border border-base-300 shadow-xs"
-                                      onClick={() => setExpandedItems(prev => ({ ...prev, [item.productVariantId]: false }))}
+                                      onClick={() => setExpandedItems(prev => ({ ...prev, [getCartLineKey(item)]: false }))}
                                       title="Cerrar opciones de descuento"
                                     >
                                       <X size={12} />
@@ -996,8 +740,7 @@ export const NewSalePage = () => {
                                       item={item}
                                       currency={currency}
                                       updateDiscount={updateDiscount}
-                                      updateTotalDiscount={updateTotalDiscount}
-                                      toastWarning={toastWarning}
+                                                toastWarning={toastWarning}
                                       compact={true}
                                     />
                                   </div>
@@ -1013,7 +756,7 @@ export const NewSalePage = () => {
                           <td className="text-right">
                             <button
                               type="button"
-                              onClick={() => removeItem(item.productVariantId)}
+                              onClick={() => removeItem(item.productVariantId, item.priceTypeId)}
                               className="btn btn-ghost btn-xs text-error hover:bg-error/10 p-1 h-6 w-6 min-h-0 rounded-full flex items-center justify-center ml-auto transition-colors"
                               title="Eliminar producto"
                             >
