@@ -4,4 +4,4 @@ export interface FinancialDashboard { mrr: number; arr: number; arpu: number; co
   expiringTenants: { companyId: string; commercialName: string; planName: string; validUntil: string }[];
 }
 export interface SupportAccount { id: string; companyId: string; companyName: string; fullName: string; username: string; email: string | null; locked: boolean; disabled: boolean; requiresPasswordChange: boolean; }
-export interface SupportLog { id: string; occurredAt: string; operator: string; companyName: string; target: string; action: string; reason: string; }
+export interface SupportLog { id: string; occurredAt: string; operator: string; companyName: string; target: string; action: string; actionLabel: string; reason: string; }

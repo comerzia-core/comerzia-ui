@@ -86,7 +86,7 @@ export function SaasTenantPage() {
                 {company.commercialName}
               </h1>
               <span className={`badge badge-sm font-semibold ${company.status ? 'badge-success text-success-content' : 'badge-error text-error-content'}`}>
-                {company.status ? 'Habilitada' : 'Suspendida'}
+                {company.status ? 'Habilitada' : 'Deshabilitada'}
               </span>
             </div>
             <p className="text-xs sm:text-sm text-base-content/70 mt-0.5 flex items-center gap-1.5 flex-wrap">
@@ -103,7 +103,7 @@ export function SaasTenantPage() {
             <BtnAccess
               disabledAccess={!company.status}
               responsive={false}
-              label={company.status ? 'Suspender empresa' : 'Habilitar empresa'}
+              label={company.status ? 'Deshabilitar empresa' : 'Habilitar empresa'}
               onClick={() => {
                 setReason('');
                 setShake(0);
@@ -208,7 +208,7 @@ export function SaasTenantPage() {
                       </span>
                     ) : (
                       <span className="text-error flex items-center gap-1.5">
-                        <ShieldAlert size={16} /> Empresa suspendida
+                        <ShieldAlert size={16} /> Empresa deshabilitada
                       </span>
                     )}
                   </div>
@@ -325,7 +325,7 @@ export function SaasTenantPage() {
         onClose={() => {
           if (!statusAction.isPending) setStatusEditor(false);
         }}
-        title={company.status ? 'Suspender empresa' : 'Habilitar empresa'}
+        title={company.status ? 'Deshabilitar empresa' : 'Habilitar empresa'}
         actions={
           <BtnSave
             responsive={false}
@@ -342,10 +342,11 @@ export function SaasTenantPage() {
         }
       >
         <p className="text-xs sm:text-sm text-base-content/70 mb-4">
-          La suspensión bloquea la operación de la tienda y mantiene disponible la gestión de pagos.
+          {company.status ? 'Se cerrarán las sesiones de todos sus usuarios y no podrán ingresar.' : 'Sus usuarios podrán iniciar sesión nuevamente. Los bloqueos individuales se conservan.'}
         </p>
         <ComerziaInput
           label="Motivo"
+          aria-label="Motivo"
           isRequired
           maxLength={500}
           value={reason}

@@ -43,7 +43,7 @@ api.interceptors.response.use(
                 const requestBearer = error.config?.headers?.Authorization;
                 const code: unknown = error.response.data?.code;
                 const sessionChanged = typeof code === 'string' && [
-                    'session_permissions_changed', 'session_access_changed', 'session_password_changed',
+                    'session_permissions_changed', 'session_access_changed', 'session_password_changed', 'company_disabled',
                 ].includes(code);
                 // Una respuesta de una sesión anterior no debe cerrar una sesión recién iniciada.
                 if (current.token && requestBearer === `Bearer ${current.token}` && (!isAuthRequest || sessionChanged)) {

@@ -241,7 +241,7 @@ export function SaasDashboardPage() {
               value={operationsData.activeCompanies}
             />
             <ComerziaMetricCard
-              label="Suspendidas"
+              label="Deshabilitadas"
               value={operationsData.suspendedCompanies}
             />
             <ComerziaMetricCard

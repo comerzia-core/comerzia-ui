@@ -1,28 +1,23 @@
 import { useState } from 'react';
-import { Eye, KeyRound, Unlock, ShieldAlert } from 'lucide-react';
+import { Eye, KeyRound, ShieldAlert } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
 import { ComerziaCheckbox } from '../../../components/ui/ComerziaCheckbox';
-import { ComerziaModal } from '../../../components/ui/ComerziaModal';
 import { ComerziaResponsiveTable } from '../../../components/ui/ComerziaResponsiveTable';
 import { ComerziaContextMenu, ContextMenuItem } from '../../../components/ui/ComerziaContextMenu';
-import { BtnSave } from '../../../components/ui/CrudButtons';
 import { useDebounce } from '../../../hooks/useDebounce';
-import { usePermission } from '../../../hooks/usePermission';
 import { formatDateForUser } from '../../../utils/date';
-import { usePlatformPage, usePlatformAction } from '../hooks/usePlatformData';
+import { usePlatformPage } from '../hooks/usePlatformData';
 import { useSaasContextMenu } from '../hooks/useSaasContextMenu';
-import { platformService } from '../services/platformService';
-import { TemporaryCredentialsModal } from '../components/TemporaryCredentialsModal';
+import { TenantAccountAssistanceDialog, TenantAccountMenuItems } from '../components/TenantAccountAssistance';
+import { useTenantAccountAssistance } from '../hooks/useTenantAccountAssistance';
 import type { SupportAccount, SupportLog } from '../types/financial';
-import type { TemporaryCredentials } from '../types/platform';
 
 export function SaasSupportPage({ audit = false }: { audit?: boolean }) {
   const [search, setSearch] = useState('');
   const [locked, setLocked] = useState(false);
   const debounced = useDebounce(search, 300);
   const { id } = useParams();
-  const { can } = usePermission();
 
   const accounts = usePlatformPage<SupportAccount>(
     '/saas/support/accounts',
@@ -38,34 +33,7 @@ export function SaasSupportPage({ audit = false }: { audit?: boolean }) {
   const context = useSaasContextMenu<SupportAccount>();
   const navigate = useNavigate();
 
-  const [confirmation, setConfirmation] = useState<{
-    account: SupportAccount;
-    action: 'unlock' | 'reset-password';
-  } | null>(null);
-  const [reason, setReason] = useState('');
-  const [shake, setShake] = useState(0);
-  const [credentials, setCredentials] = useState<TemporaryCredentials | null>(null);
-
-  const action = usePlatformAction(() =>
-    platformService.post<TemporaryCredentials | undefined>(
-      '/saas/companies/' +
-        encodeURIComponent(confirmation!.account.companyId) +
-        '/users/' +
-        encodeURIComponent(confirmation!.account.id) +
-        '/' +
-        confirmation!.action,
-      { reason }
-    )
-  );
-
-  const openConfirmation = (operation: 'unlock' | 'reset-password') => {
-    if (context.menu.item) {
-      setConfirmation({ account: context.menu.item, action: operation });
-      setReason('');
-      setShake(0);
-    }
-    context.close();
-  };
+  const assistance = useTenantAccountAssistance();
 
   const PageIcon = audit ? ShieldAlert : KeyRound;
 
@@ -149,7 +117,7 @@ export function SaasSupportPage({ audit = false }: { audit?: boolean }) {
               header: 'Acción',
               render: row => (
                 <span className={`badge badge-sm font-semibold ${row.action === 'UNLOCK' ? 'badge-success text-success-content' : 'badge-warning text-warning-content'}`}>
-                  {row.action === 'UNLOCK' ? 'Desbloqueo' : 'Clave temporal'}
+                  {row.actionLabel}
                 </span>
               ),
             },
@@ -202,71 +170,11 @@ export function SaasSupportPage({ audit = false }: { audit?: boolean }) {
           }}
         />
 
-        {can('SYS_TENANT_USERS_SUPPORT') && (
-          <>
-            {context.menu.item?.locked && (
-              <ContextMenuItem
-                icon={Unlock}
-                label="Desbloquear cuenta"
-                onClick={() => openConfirmation('unlock')}
-              />
-            )}
-            <ContextMenuItem
-              icon={KeyRound}
-              label="Emitir contraseña temporal"
-              onClick={() => openConfirmation('reset-password')}
-            />
-          </>
-        )}
+        <TenantAccountMenuItems account={context.menu.item}
+          onSelect={operation => { if (context.menu.item) assistance.open(context.menu.item, operation); context.close(); }} />
       </ComerziaContextMenu>
 
-      {/* MODAL DE CONFIRMACIÓN CON MOTIVO OBLIGATORIO */}
-      <ComerziaModal
-        isOpen={!!confirmation}
-        onClose={() => {
-          if (!action.isPending) setConfirmation(null);
-        }}
-        title="Confirmar asistencia"
-        actions={
-          <BtnSave
-            label="Confirmar"
-            responsive={false}
-            disabled={!reason.trim()}
-            isLoading={action.isPending}
-            onClick={() => {
-              if (!reason.trim()) {
-                setShake(v => v + 1);
-                return;
-              }
-              action.mutate(undefined, {
-                onSuccess: result => {
-                  if (result) setCredentials(result);
-                  setConfirmation(null);
-                },
-              });
-            }}
-          />
-        }
-      >
-        <p className="text-xs sm:text-sm text-base-content/80 mb-4">
-          <strong>{confirmation?.account.fullName}</strong> ({confirmation?.account.username}) · {confirmation?.account.companyName}
-        </p>
-        <ComerziaInput
-          label="Motivo de asistencia"
-          aria-label="Motivo de asistencia"
-          isRequired
-          maxLength={500}
-          value={reason}
-          shakeKey={shake}
-          error={shake && !reason.trim() ? 'Indica el motivo de la intervención.' : undefined}
-          onChange={e => setReason(e.target.value)}
-        />
-      </ComerziaModal>
-
-      <TemporaryCredentialsModal
-        value={credentials}
-        onClose={() => setCredentials(null)}
-      />
+      <TenantAccountAssistanceDialog assistance={assistance} />
     </div>
   );
 }

@@ -9,11 +9,14 @@ const dictionaries={'document-type':[{code:101,label:'Cédula de Identidad'}],'d
  'subscription-payment-status':[{code:1401,label:'Pendiente'},{code:1402,label:'Aprobado'}]};
 async function prepare(page,role,path,extra=''){
  const calls=[],writes=[],requests=[];
+ let accountDisabled=false,companyActive=true;
  await page.route('**/api/**',async route=>{
   const req=route.request(),url=new URL(req.url()),name=url.pathname.replace(/^.*?\/api/,'');calls.push(name);
   requests.push({name,search:url.search});
   if(req.method()!=='GET'){
    writes.push({name,body:req.postData()});
+   if(name.endsWith('/access')) accountDisabled=req.postDataJSON().disabled;
+   if(name.endsWith('/status')) companyActive=req.postDataJSON().active;
    if(name.endsWith('/review'))return route.fulfill({json:{...payment,pending:false,statusLabel:'Aprobado'}});
    if(name==='/tenant/billing/requests')return route.fulfill({status:201,json:payment});
    if(name==='/saas/team/accounts')return route.fulfill({status:201,json:{username:'nuevo',temporaryPassword:'Temporal123!'}});
@@ -24,16 +27,16 @@ async function prepare(page,role,path,extra=''){
   if(name.endsWith('/realtime/stream'))return route.fulfill({contentType:'text/event-stream',body:'event: connected\ndata: {}\n\n'});
   if(name==='/generic/dictionaries')result=dictionaries;
   else if(name==='/saas/directory'||name==='/saas/companies')result=paged([company]);
-  else if(name==='/saas/companies/CompanyOpaque')result=company;
+  else if(name==='/saas/companies/CompanyOpaque')result={...company,status:companyActive};
   else if(name==='/saas/plans')result=[{code:701,name:'Free',monthlyPrice:0,maxBranches:1,maxUsers:1,maxProducts:50,requiresExpiry:false,unlimited:false},{code:702,name:'Inicial',monthlyPrice:49,maxBranches:1,maxUsers:3,maxProducts:500,requiresExpiry:true,unlimited:false}];
   else if(name==='/saas/cities')result=paged([{id:'CityOpaque',name:'La Paz',country:'Bolivia'}]);
   else if(name==='/saas/audit')result=paged([{id:'AuditOpaque',occurredAt:'2026-10-15T12:00:00Z',companyName:'Tienda ejemplo',username:'ana',module:'SAAS',action:'UPDATE',entity:'Tenant',before:'{"status":true}',after:'{"status":false}'}]);
   else if(name.endsWith('/subscription-access')||name==='/tenant/billing/access')result=access;
   else if(name.endsWith('/branches'))result=paged([{id:'BranchOpaque',name:'Casa Matriz',address:'Centro',status:true}]);
-  else if(name.endsWith('/users'))result=paged([{id:'TenantUserOpaque',fullName:'Dueña',username:'duena',roles:['Dueño'],statusLabel:'Activo',disabled:false,locked:true}]);
+  else if(name.endsWith('/users'))result=paged([{id:'TenantUserOpaque',fullName:'Dueña',username:'duena',roles:['Dueño'],statusLabel:'Activo',disabled:accountDisabled,locked:true}]);
   else if(name==='/saas/team/members')result=paged([{id:'MemberOpaque',fullName:'Ana Personal',email:'ana@example.test',jobTitle:'Soporte',active:true}]);
-  else if(name==='/saas/support/accounts')result=paged([{id:'AccountOpaque',companyId:'CompanyOpaque',companyName:'Tienda ejemplo',fullName:'Ana Caja',username:'acaja',email:'ana@example.test',locked:true,disabled:false,requiresPasswordChange:false}]);
-  else if(name==='/saas/support/audit-log')result=paged([{id:'LogOpaque',occurredAt:'2026-10-15T12:00:00Z',operator:'soporte',companyName:'Tienda ejemplo',target:'acaja',action:'UNLOCK',reason:'Solicitud autorizada'}]);
+  else if(name==='/saas/support/accounts')result=paged([{id:'AccountOpaque',companyId:'CompanyOpaque',companyName:'Tienda ejemplo',fullName:'Ana Caja',username:'acaja',email:'ana@example.test',locked:true,disabled:accountDisabled,requiresPasswordChange:false}]);
+  else if(name==='/saas/support/audit-log')result=paged([{id:'LogOpaque',occurredAt:'2026-10-15T12:00:00Z',operator:'soporte',companyName:'Tienda ejemplo',target:'acaja',action:'UNLOCK',actionLabel:'Desbloqueo por intentos',reason:'Solicitud autorizada'}]);
   else if(name==='/saas/billing/history')result=paged([{id:'PaymentOpaque',companyName:'Tienda ejemplo',planName:'Inicial',amount:49,statusLabel:'Aprobado',reference:'BANCO-123',operator:'finanzas',occurredAt:'2026-10-15T12:00:00Z'}]);
   else if(name==='/saas/dashboard/financial')result={mrr:49,arr:588,arpu:49,collectedThisMonth:49,collectedLastMonth:0,observedLifetimeValue:49,activePaidTenants:1,pendingReviews:1,pendingAmount:49,expiredTenants:0,churnRatePercentage:null,historyCoverageFrom:null,currency:'BOB',revenueHistory:[{yearMonth:'2026-10',amount:49,paymentsCount:1}],planDistribution:[{code:702,name:'Inicial',count:1,mrr:49}],expiringTenants:[]};
   else if(name==='/saas/team')result=paged([{id:'StaffOpaque',username:'soporte',fullName:'Agente soporte',disabled:false,locked:false,roles:['SAAS_SUPPORT'],roleCodes:[1303]}]);
@@ -70,7 +73,7 @@ test('soporte no recibe controles de alta, planes o finanzas',async({page},info)
  await expect(page.getByRole('heading',{name:'Empresas clientes'})).toBeVisible();
  await expect(page.getByRole('button',{name:'Nueva empresa'})).toHaveCount(0);
  await actions(page,info,'Tienda ejemplo');await page.getByText('Ver empresa',{exact:true}).click();
- await expect(page.getByRole('button',{name:'Suspender empresa'})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Deshabilitar empresa'})).toHaveCount(0);
  await page.getByRole('button',{name:'Suscripción',exact:true}).click();
  await expect(page.getByRole('button',{name:'Asignar o bonificar plan'})).toHaveCount(0);
  await page.evaluate(()=>window.saasTest.navigate('/saas/finances'));
@@ -188,7 +191,7 @@ test('personal se registra sin cuenta y acepta solo apellido materno',async({pag
 
 test('soporte solicita motivo y no muestra herramientas financieras',async({page},info)=>{
  const {writes,calls}=await prepare(page,'SAAS_SUPPORT','/saas/support/access-hub');
- await actions(page,info,'Ana Caja');await page.getByText('Desbloquear cuenta',{exact:true}).click();
+ await actions(page,info,'Ana Caja');await page.getByText('Desbloquear por intentos',{exact:true}).click();
  await expect(page.getByRole('button',{name:'Confirmar',exact:true})).toBeDisabled();
  await page.getByRole('textbox',{name:'Motivo de asistencia',exact:true}).fill('Solicitud del titular');
  await page.getByRole('button',{name:'Confirmar',exact:true}).click();
@@ -212,4 +215,47 @@ test('historial contable vive fuera de la cola de verificación',async({page})=>
  await expect(page.getByText('BANCO-123',{exact:true}).filter({visible:true}).first()).toBeVisible();
  expect(calls).not.toContain('/saas/billing/requests');
  await expect(page.getByRole('button',{name:'Aprobar',exact:true})).toHaveCount(0);
+});
+
+for (const view of ['hub','directory']) test(`bloqueo administrativo con motivo y permisos en ${view}`,async({page},info)=>{
+ const path=view==='hub'?'/saas/support/access-hub':'/saas/tenants/CompanyOpaque';
+ const name=view==='hub'?'Ana Caja':'Dueña';
+ const id=view==='hub'?'AccountOpaque':'TenantUserOpaque';
+ const {writes}=await prepare(page,'SAAS_OWNER',path);
+ if(view==='directory') await page.getByRole('button',{name:'Usuarios',exact:true}).click();
+ await actions(page,info,name);
+ await page.getByText('Bloquear acceso',{exact:true}).click();
+ await expect(page.getByRole('button',{name:'Confirmar',exact:true})).toBeDisabled();
+ await page.getByRole('textbox',{name:'Motivo de asistencia'}).fill('Solicitud autorizada del cliente');
+ await page.getByRole('button',{name:'Confirmar',exact:true}).click();
+ await expect.poll(()=>writes.length).toBe(1);
+ expect(writes[0].name).toBe('/saas/companies/CompanyOpaque/users/'+id+'/access');
+ expect(JSON.parse(writes[0].body)).toEqual({disabled:true,reason:'Solicitud autorizada del cliente'});
+ await expect(page.getByRole('dialog')).toHaveCount(0);
+ await actions(page,info,name);
+ await page.getByText('Habilitar acceso',{exact:true}).click();
+ await page.getByRole('textbox',{name:'Motivo de asistencia'}).fill('Acceso autorizado');
+ await page.getByRole('button',{name:'Confirmar',exact:true}).click();
+ await expect.poll(()=>writes.length).toBe(2);
+ expect(JSON.parse(writes[1].body)).toEqual({disabled:false,reason:'Acceso autorizado'});
+});
+
+test('soporte conserva desbloqueo por intentos sin bloqueo administrativo',async({page},info)=>{
+ await prepare(page,'SAAS_SUPPORT','/saas/support/access-hub');
+ await actions(page,info,'Ana Caja');
+ await expect(page.getByText('Desbloquear por intentos',{exact:true})).toBeVisible();
+ await expect(page.getByText('Restablecer contraseña',{exact:true})).toBeVisible();
+ await expect(page.getByText('Bloquear acceso',{exact:true})).toHaveCount(0);
+});
+
+test('deshabilitar empresa advierte cierre de sesiones y permite reactivarla',async({page})=>{
+ const {writes}=await prepare(page,'SAAS_OWNER','/saas/tenants/CompanyOpaque');
+ await page.getByRole('button',{name:'Deshabilitar empresa'}).click();
+ await expect(page.getByText('Se cerrarán las sesiones de todos sus usuarios y no podrán ingresar.')).toBeVisible();
+ await page.getByRole('textbox',{name:'Motivo',exact:true}).fill('Solicitud del dueño');
+ await page.getByRole('button',{name:'Confirmar',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Habilitar empresa'})).toBeVisible();
+ expect(JSON.parse(writes[0].body)).toEqual({active:false,reason:'Solicitud del dueño'});
+ await page.getByRole('button',{name:'Habilitar empresa'}).click();
+ await expect(page.getByText('Sus usuarios podrán iniciar sesión nuevamente. Los bloqueos individuales se conservan.')).toBeVisible();
 });

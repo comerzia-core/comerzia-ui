@@ -135,7 +135,7 @@ export function SaasDirectoryPage({
             header: 'Estado',
             render: row => (
               <span className={`badge badge-sm font-semibold ${row.active ? 'badge-success text-success-content' : 'badge-error text-error-content'}`}>
-                {row.subscriptionLabel || (row.active ? 'Activa' : 'Suspendida')}
+                {row.subscriptionLabel || (row.active ? 'Activa' : 'Deshabilitada')}
               </span>
             ),
           },

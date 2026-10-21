@@ -81,7 +81,10 @@ export const LoginPage = () => {
                     errCode === AUTH_ERROR_CODES.REQUIRES_PASSWORD_CHANGE ||
                     errMsg.includes('temporary password');
 
-                if (isPasswordChangeRequired) {
+                if (errCode === 'company_disabled') {
+                    setErrorMessage('Tu empresa está deshabilitada. Contacta con soporte.');
+                    setShakeKey(prev => prev + 1);
+                } else if (isPasswordChangeRequired) {
                     setCurrentStep('CHANGE_PASSWORD');
                     setErrorMessage(""); // Limpiamos el mensaje de error para cambiar limpiamente de vista
                 } else if (status === 401) {
@@ -160,7 +163,9 @@ export const LoginPage = () => {
         } catch (error) {
             if (isAxiosError<AuthErrorResponse>(error) && error.response) {
                 const { status, data } = error.response;
-                if (status === 400) {
+                if (data?.code === 'company_disabled') {
+                    setErrorMessage('Tu empresa está deshabilitada. Contacta con soporte.');
+                } else if (status === 400) {
                     setErrorMessage(data?.message || "Credenciales incorrectas o la cuenta no requiere cambio de contraseña.");
                 } else if (status === 401) {
                     if (data?.code === AUTH_ERROR_CODES.USER_DISABLED || data?.message?.toLowerCase().includes('disabled')) {
@@ -213,6 +218,7 @@ export const LoginPage = () => {
                         <form onSubmit={handleLoginSubmit} className="space-y-4">
                             <ComerziaInput
                                 id="login-username"
+                                aria-label="Usuario"
                                 name="username"
                                 label="Usuario"
                                 type="text"
@@ -230,6 +236,7 @@ export const LoginPage = () => {
 
                             <ComerziaInput
                                 id="login-password"
+                                aria-label="Contraseña"
                                 name="password"
                                 label="Contraseña"
                                 type={showPassword ? "text" : "password"}

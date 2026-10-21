@@ -52,6 +52,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
         logout: (reason?: string) => {
             useThemeStore.getState().clearSession();
             const notices: Record<string, string> = {
+                company_disabled: 'Tu empresa está deshabilitada. Contacta con soporte.',
                 session_permissions_changed: 'Tus permisos cambiaron. Inicia sesión nuevamente.',
                 session_access_changed: 'Tu acceso cambió. Inicia sesión nuevamente.',
                 session_password_changed: 'Tu contraseña cambió. Inicia sesión nuevamente.',

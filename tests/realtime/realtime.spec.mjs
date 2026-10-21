@@ -375,3 +375,24 @@ test('a late profile response cannot restore a session after logout', async ({ p
   await page.waitForTimeout(500);
   expect(await page.evaluate(() => window.realtimeTest.snapshot())).toEqual({ token: null, ready: false, profileId: undefined });
 });
+
+test('company disable closes the session with a specific notice and stops reconnecting', async ({ page }) => {
+ await mockApi(page); await page.goto('/tests/realtime/index.html?view=probe');
+ await expect(page.getByRole('status', { name: 'En vivo' })).toBeVisible();
+ await page.evaluate(() => window.realtimeTest.raw('event: session-revoked\ndata: {"code":"company_disabled"}\n\n'));
+ await expect.poll(() => page.evaluate(() => window.realtimeTest.token())).toBeNull();
+ await expect(page.getByText('Tu empresa está deshabilitada. Contacta con soporte.')).toBeVisible();
+ await page.waitForTimeout(1500);
+ expect(await page.evaluate(() => window.realtimeTest.connections)).toBe(1);
+});
+
+test('disabled company login shows its specific message instead of a password error', async ({ page }) => {
+ await mockApi(page); await page.goto('/tests/realtime/index.html?view=probe&streamStatus=401&streamCode=company_disabled');
+ await expect.poll(() => page.evaluate(() => window.realtimeTest.token())).toBeNull();
+ await page.route('**/api/auth/login', route => route.fulfill({status:401,json:{code:'company_disabled',message:'Company access is disabled. Contact support.'}}));
+ await page.getByRole('textbox', {name:/usuario/i}).fill('tenant.owner');
+ await page.getByLabel('Contraseña', {exact:true}).fill('StrongPassword123!');
+ await page.getByRole('button', {name:/Iniciar Sesión/i}).click();
+ await expect(page.getByText('Usuario o contraseña incorrectos.')).toHaveCount(0);
+ await expect(page.getByText('Tu empresa está deshabilitada. Contacta con soporte.').first()).toBeVisible();
+});
