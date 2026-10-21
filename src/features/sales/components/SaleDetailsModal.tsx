@@ -97,7 +97,7 @@ export const SaleDetailsModal = ({ isOpen, onClose, sale }: Props) => {
     },
     {
       header: 'Precio Unit.',
-      render: (row) => `${currencyCode} ${(row.receiptUnitPrice ?? 0).toFixed(2)}`
+      render: (row) => `${currencyCode} ${(row.receiptSuggestedUnitPrice ?? ((row.lineTotalSuggested ?? 0) / (row.receiptQuantity || 1))).toFixed(2)}`
     },
     {
       header: 'Descuento',
@@ -268,7 +268,7 @@ export const SaleDetailsModal = ({ isOpen, onClose, sale }: Props) => {
                           <div>
                             <span className="text-base-content/50 block text-[10px]">P. Unit.</span>
                             <span className="font-mono text-base-content text-[11px]">
-                              {currencyCode} {(detail.receiptUnitPrice ?? 0).toFixed(2)}
+                              {currencyCode} {(detail.receiptSuggestedUnitPrice ?? ((detail.lineTotalSuggested ?? 0) / qty)).toFixed(2)}
                             </span>
                           </div>
                           <div>

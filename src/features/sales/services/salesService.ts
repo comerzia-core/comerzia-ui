@@ -19,6 +19,10 @@ import type {
 } from '../types/sales';
 
 export const salesService = {
+  quoteReturn: async (saleId: string, returnDetails: import('../types/sales').ReturnDetailItemRequest[], signal?: AbortSignal): Promise<import('../types/sales').ReturnQuoteResponse> => {
+    const response = await api.post<import('../types/sales').ReturnQuoteResponse>(`/tenant/sales/${saleId}/return-quote`, { returnDetails }, { signal });
+    return response.data;
+  },
   getBranches: async (): Promise<SaleBranchResponse[]> => {
     const response = await api.get<SaleBranchResponse[]>('/tenant/sales/branches');
     return response.data;

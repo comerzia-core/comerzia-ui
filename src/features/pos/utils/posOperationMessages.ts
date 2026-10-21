@@ -6,6 +6,10 @@ interface OperationError {
 }
 
 const messages: Record<string, string> = {
+  invalid_sale_discount: 'Revisa el descuento y sus decimales.',
+  discount_limit_exceeded: 'El descuento supera el máximo permitido.',
+  price_mismatch: 'El importe cambió. Revisa los montos antes de confirmar.',
+  insufficient_stock_available: 'Stock insuficiente para esta venta.',
   return_shift_unavailable: 'Abre un turno en la tienda de la venta o solicita su reapertura.',
   return_shift_required: 'Selecciona un turno abierto para devolver.',
   shift_branch_mismatch: 'La caja debe pertenecer a la tienda de la venta.',

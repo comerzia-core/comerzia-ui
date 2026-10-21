@@ -47,7 +47,7 @@ export interface SaleDetailRequest {
   productVariantId: string;
   priceTypeId: string;
   receiptQuantity: number;
-  lineDiscountAmount?: number;
+  lineTotalDiscount: number;
 }
 
 export interface CreateSaleRequest {
@@ -76,6 +76,8 @@ export interface SaleDetailResponse {
   equivalenceFactor?: number;
   receiptQuantity?: number;
   receiptUnitPrice?: number;
+  receiptSuggestedUnitPrice?: number;
+  priceTypeId?: string;
   
   // Physical & Return Context
   physicalQuantity?: number;
@@ -170,6 +172,7 @@ export interface ReturnDetailItemRequest {
 }
 
 export interface CreateReturnRequest {
+  expectedRefundAmount?: number;
   saleId?: string;
   shiftId?: string;
   targetShiftId: string;
@@ -182,6 +185,13 @@ export interface CreateReturnRequest {
 
 export interface ReturnContextResponse {
   availableShifts: import('../../pos/types/pos').ShiftSummaryResponse[];
+}
+
+export interface ReturnQuoteResponse {
+  details: Array<{ saleDetailId: string; quantityToReturn: number; subtotalRefund: number; discountRefund: number; totalRefund: number }>;
+  subtotalRefund: number;
+  discountRefund: number;
+  totalRefund: number;
 }
 
 export interface ReturnDetailResponse {
