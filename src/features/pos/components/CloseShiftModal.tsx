@@ -40,10 +40,27 @@ export const CloseShiftModal = ({ isOpen, onClose, onSuccess, shiftId, shiftSumm
   const [counts, setCounts] = useState<Record<number, string>>({});
   const [observation, setObservation] = useState('');
   const [observationError, setObservationError] = useState<string | undefined>(undefined);
+  const [fetchedSummary, setFetchedSummary] = useState<ShiftSummaryResponse | null>(null);
+  const [isLoadingSummary, setIsLoadingSummary] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && shiftId && !shiftSummary) {
+      setIsLoadingSummary(true);
+      posService.getShiftSummary(shiftId)
+        .then(setFetchedSummary)
+        .catch(err => console.error('Error fetching shift summary for close modal:', err))
+        .finally(() => setIsLoadingSummary(false));
+    } else if (!isOpen) {
+      setFetchedSummary(null);
+      setIsLoadingSummary(false);
+    }
+  }, [isOpen, shiftId, shiftSummary]);
+
+  const activeSummary = shiftSummary || fetchedSummary;
 
   const paymentItems: PaymentItemRow[] = useMemo(() => {
-    if (shiftSummary?.payments && shiftSummary.payments.length > 0) {
-      return shiftSummary.payments.map(p => ({
+    if (activeSummary?.payments && activeSummary.payments.length > 0) {
+      return activeSummary.payments.map(p => ({
         paymentCode: Number(p.paymentType.code),
         label: p.paymentType.label,
         expectedAmount: Number(p.expectedAmount ?? 0)
@@ -56,7 +73,7 @@ export const CloseShiftModal = ({ isOpen, onClose, onSuccess, shiftId, shiftSumm
       label: pt.label,
       expectedAmount: 0
     }));
-  }, [shiftSummary, options]);
+  }, [activeSummary, options]);
 
   useEffect(() => {
     if (isOpen) {
@@ -64,7 +81,7 @@ export const CloseShiftModal = ({ isOpen, onClose, onSuccess, shiftId, shiftSumm
       setObservation('');
       setObservationError(undefined);
     }
-  }, [isOpen, shiftSummary]);
+  }, [isOpen]);
 
   const getPaymentTypeIcon = (label: string, code: number) => {
     const l = label.toLowerCase();
@@ -163,7 +180,7 @@ export const CloseShiftModal = ({ isOpen, onClose, onSuccess, shiftId, shiftSumm
     >
       <div className="space-y-4 pt-1">
         {/* LISTADO MINIMALISTA DE MÉTODOS DE PAGO */}
-        {isLoadingDicts ? (
+        {(isLoadingDicts || isLoadingSummary) ? (
           <div className="flex justify-center py-6">
             <span className="loading loading-spinner loading-md text-primary"></span>
           </div>

@@ -37,6 +37,8 @@ export interface CompanySettings {
     companyQrUrl?: string | null;
     saleCustomerRegistrationEnabled?: boolean;
     receiptPrintingEnabled?: boolean;
+    planTypeCode?: number;
+    planTypeName?: string;
 }
 
 export interface UserProfile {
@@ -52,7 +54,8 @@ export interface UserProfile {
     imageUrl: string | null;
     roles: string[];
     permissions: string[];
-    companySettings: CompanySettings | null; 
+    companySettings: CompanySettings | null;
+    planTypeCode?: number;
 }
 
 // Request para cambio de contraseña temporal

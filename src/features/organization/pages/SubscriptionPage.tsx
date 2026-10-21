@@ -11,14 +11,35 @@ import { useSubscriptionCheckout } from '../hooks/useSubscriptionCheckout';
 import { SubscriptionPaymentTable } from '../components/SubscriptionPaymentTable';
 import { SubscriptionPaymentDetail } from '../components/SubscriptionPaymentDetail';
 import type { SubscriptionAccess, SubscriptionPlan, SubscriptionPayment } from '../types/subscription';
+import { useAuthStore } from '../../../stores/useAuthStore';
 import { formatDateForUser } from '../../../utils/date';
 export function SubscriptionPage() {
+  const { userProfile } = useAuthStore();
   const { can } = usePermission(); const canRead = can('ORG_SUBSCRIPTIONS_READ'); const canPay = can('ORG_BILLING_MANAGE');
   const access = usePlatformData<SubscriptionAccess>('/tenant/billing/access');
   const plans = usePlatformData<SubscriptionPlan[]>('/tenant/subscriptions/plans', undefined, canRead);
   const history = usePlatformPage<SubscriptionPayment>('/tenant/billing/requests', undefined, canRead);
   const checkout = useSubscriptionCheckout(); const [detail, setDetail] = useState<SubscriptionPayment | null>(null); const [confirmFree, setConfirmFree] = useState(false);
   const cancel = usePlatformAction((value: SubscriptionPayment) => platformService.post('/tenant/billing/requests/' + encodeURIComponent(value.id) + '/cancel'));
+
+  const isPerpetual = userProfile?.companySettings?.planTypeCode === 705 
+    || userProfile?.planTypeCode === 705 
+    || access.data?.planTypeCode === 705;
+
+  if (isPerpetual) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold">Suscripción y pagos</h1>
+        <div className="card bg-base-100 p-6 rounded-2xl border border-base-200 shadow-xs">
+          <h2 className="text-lg font-bold text-base-content">Plan Perpetuo Activo</h2>
+          <p className="text-sm text-base-content/60 mt-1">
+            Tu empresa cuenta con una licencia de tipo perpetuo. No requiere pagos periódicos ni renovaciones de suscripción.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return <div className="space-y-6"><h1 className="text-2xl font-bold">Suscripción y pagos</h1>
     {access.isError && <p role="alert">No se pudo consultar la suscripción.</p>}
     {access.data && <><p>{access.data.planName ?? 'Sin plan'} · {access.data.operational ? 'Disponible' : 'Requiere atención'}

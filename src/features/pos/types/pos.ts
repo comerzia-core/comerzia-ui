@@ -68,6 +68,7 @@ export interface ShiftResponse {
   statusType: DictionaryResponse;
   cashierName: string;
   reopenAllowed: boolean;
+  closeAllowed?: boolean;
 }
 
 export interface PageShiftResponse {

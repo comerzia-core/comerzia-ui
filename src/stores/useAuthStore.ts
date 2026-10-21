@@ -103,7 +103,30 @@ export const useAuthStore = create<AuthState>((set, get) => {
             const themeRevision = useThemeStore.getState().revision;
             const { data } = await api.get<UserProfile>('/auth/profile');
             if (token && get().token === token) {
-                set({ userProfile: data });
+                let planTypeCode = data.companySettings?.planTypeCode ?? data.planTypeCode;
+                if (data.companySettings && planTypeCode === undefined) {
+                    try {
+                        const billingRes = await api.get<{ planTypeCode?: number }>('/tenant/billing/access');
+                        if (billingRes.data?.planTypeCode !== undefined) {
+                            planTypeCode = billingRes.data.planTypeCode;
+                        }
+                    } catch {
+                        try {
+                            const compRes = await api.get<{ currentSubscription?: { planTypeCode?: number } }>('/tenant/company/profile');
+                            if (compRes.data?.currentSubscription?.planTypeCode !== undefined) {
+                                planTypeCode = compRes.data.currentSubscription.planTypeCode;
+                            }
+                        } catch {
+                            // Ignorar si no tiene acceso
+                        }
+                    }
+                }
+
+                const updatedProfile: UserProfile = planTypeCode !== undefined && data.companySettings
+                    ? { ...data, planTypeCode, companySettings: { ...data.companySettings, planTypeCode } }
+                    : data;
+
+                set({ userProfile: updatedProfile });
                 useThemeStore.getState().bindProfile(data.id, data.theme, token, themeRevision);
             }
         },

@@ -4,11 +4,12 @@ import { Outlet } from "react-router-dom";
 import { SidebarMenu } from "../components/layout/SidebarMenu";
 import { Header } from "../components/layout/Header"; 
 import { useAuthStore } from "../stores/useAuthStore"; 
+import { filterMenuTree } from "../services/menuService";
 
 export const DashboardLayout = ({ workspace = "tenant" }: { workspace?: "saas" | "tenant" }) => {
   useRealtimeConnection();
   // 1. Consumimos datos y acciones directamente del Estado Global
-  const { menuTree, isSessionReady, initializeSession } = useAuthStore();
+  const { menuTree, isSessionReady, initializeSession, userProfile } = useAuthStore();
 
   // 2. Estado local estrictamente para la UI
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -37,6 +38,17 @@ export const DashboardLayout = ({ workspace = "tenant" }: { workspace?: "saas" |
       );
   }
 
+  const isPerpetual = userProfile?.companySettings?.planTypeCode === 705 
+    || userProfile?.planTypeCode === 705;
+
+  const baseMenu = menuTree.filter(item => 
+    workspace === "saas" 
+      ? item.route === "/saas" || item.route.startsWith("/saas/") 
+      : !item.route.startsWith("/saas")
+  );
+
+  const displayedMenu = filterMenuTree(baseMenu, isPerpetual);
+
   // --- RENDERIZADO DEL DASHBOARD PROTEGIDO ---
   return (
     <div className="drawer lg:drawer-open bg-base-100 min-h-screen font-sans">
@@ -58,7 +70,7 @@ export const DashboardLayout = ({ workspace = "tenant" }: { workspace?: "saas" |
         <label htmlFor="my-drawer" aria-label="close sidebar" className="drawer-overlay"></label> 
         
         <SidebarMenu 
-            menuTree={menuTree.filter(item => workspace === "saas" ? item.route === "/saas" || item.route.startsWith("/saas/") : !item.route.startsWith("/saas"))} 
+            menuTree={displayedMenu} 
             // Ya no le pasamos loading al Sidebar, porque el Layout detiene el renderizado hasta estar listo
             isLoading={false} 
             isCollapsed={isSidebarCollapsed}

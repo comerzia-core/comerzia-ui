@@ -7,6 +7,7 @@ import { ComerziaContextMenu, ContextMenuItem } from '../../../components/ui/Com
 import { StatusBadge } from '../../../components/ui/StatusBadge';
 import { useToast } from '../../../context/ToastContext';
 import { ShiftDetailsModal } from '../components/ShiftDetailsModal';
+import { CloseShiftModal } from '../components/CloseShiftModal';
 import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
 import { formatDateForUser } from '../../../utils/date';
 import { usePermission } from '../../../hooks/usePermission';
@@ -29,7 +30,7 @@ interface Props {
 }
 
 export const CashRegisterHistoryView = ({ register: propRegister }: Props) => {
-  const { can } = usePermission();
+  const { can, canAny } = usePermission();
   const { registerId } = useParams<{ registerId: string }>();
   const { error: toastError, success: toastSuccess } = useToast();
   
@@ -48,6 +49,7 @@ export const CashRegisterHistoryView = ({ register: propRegister }: Props) => {
 
   const [selectedShiftId, setSelectedShiftId] = useState<string | null>(null);
   const [shiftToReopen, setShiftToReopen] = useState<string | null>(null);
+  const [closingShift, setClosingShift] = useState<ShiftResponse | null>(null);
 
   // Estado del Menú Contextual
   const [contextMenu, setContextMenu] = useState<{
@@ -140,6 +142,13 @@ export const CashRegisterHistoryView = ({ register: propRegister }: Props) => {
     onPageSizeChange: setSize
   };
 
+  const isShiftOpen = (shift?: ShiftResponse | null): boolean => {
+    if (!shift) return false;
+    return Boolean(shift.closeAllowed || !shift.closedAt || shift.statusType?.code === 1);
+  };
+
+  const activeShift = shifts.find(isShiftOpen);
+
   const columns: Column<ShiftResponse>[] = [
     { header: 'Cajero', accessorKey: 'cashierName' },
     { header: 'Apertura', render: row => formatDateForUser(row.openedAt) },
@@ -148,7 +157,23 @@ export const CashRegisterHistoryView = ({ register: propRegister }: Props) => {
       render: row => row.closedAt ? (
         formatDateForUser(row.closedAt)
       ) : (
-        <span className="badge badge-success badge-sm font-semibold">En curso</span>
+        <div className="flex items-center gap-2">
+          <span className="badge badge-success badge-sm font-semibold">En curso</span>
+          {canAny(['POS_SHIFTS_MANAGE_OWN', 'POS_SHIFTS_MANAGE_ALL']) && (
+            <button
+              type="button"
+              className="btn btn-xs btn-outline btn-warning gap-1 font-normal"
+              title="Realizar arqueo y cierre del turno"
+              onClick={(e) => {
+                e.stopPropagation();
+                setClosingShift(row);
+              }}
+            >
+              <Clock size={12} />
+              Cierre
+            </button>
+          )}
+        </div>
       ) 
     },
     { 
@@ -179,16 +204,30 @@ export const CashRegisterHistoryView = ({ register: propRegister }: Props) => {
 
   return (
     <div className="space-y-6 w-full animate-fade-in">
-      <div className="flex items-start gap-2.5">
-        <History className="w-6 h-6 sm:w-7 sm:h-7 text-primary shrink-0 mt-0.5" />
-        <div>
-          <h1 className="text-lg sm:text-2xl font-bold text-base-content tracking-tight">
-            Historial: {register.name}
-          </h1>
-          <p className="text-xs sm:text-sm text-base-content/70 mt-0.5 leading-relaxed">
-            Turnos registrados en esta caja registradora
-          </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-start gap-2.5">
+          <History className="w-6 h-6 sm:w-7 sm:h-7 text-primary shrink-0 mt-0.5" />
+          <div>
+            <h1 className="text-lg sm:text-2xl font-bold text-base-content tracking-tight">
+              Historial: {register.name}
+            </h1>
+            <p className="text-xs sm:text-sm text-base-content/70 mt-0.5 leading-relaxed">
+              Turnos registrados en esta caja registradora
+            </p>
+          </div>
         </div>
+        {activeShift && canAny(['POS_SHIFTS_MANAGE_OWN', 'POS_SHIFTS_MANAGE_ALL']) && (
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <button
+              type="button"
+              className="btn btn-warning gap-2 w-full sm:w-auto shadow-sm text-xs sm:text-sm"
+              onClick={() => setClosingShift(activeShift)}
+            >
+              <Clock size={16} />
+              Arqueo y Cierre
+            </button>
+          </div>
+        )}
       </div>
 
       {/* VISTA DESKTOP: TABLA CON CLIC DERECHO */}
@@ -252,15 +291,30 @@ export const CashRegisterHistoryView = ({ register: propRegister }: Props) => {
                     Apertura: <strong className="font-medium text-base-content/80">{formatDateForUser(shift.openedAt)}</strong>
                   </span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <Clock size={13} className={shift.closedAt ? "text-primary/70 shrink-0" : "text-success animate-pulse shrink-0"} />
-                  <span className="truncate">
-                    Cierre: {shift.closedAt ? (
-                      <strong className="font-medium text-base-content/80">{formatDateForUser(shift.closedAt)}</strong>
-                    ) : (
-                      <strong className="text-success font-semibold">En curso</strong>
-                    )}
-                  </span>
+                <div className="flex items-center justify-between gap-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <Clock size={13} className={shift.closedAt ? "text-primary/70 shrink-0" : "text-success animate-pulse shrink-0"} />
+                    <span className="truncate">
+                      Cierre: {shift.closedAt ? (
+                        <strong className="font-medium text-base-content/80">{formatDateForUser(shift.closedAt)}</strong>
+                      ) : (
+                        <strong className="text-success font-semibold">En curso</strong>
+                      )}
+                    </span>
+                  </div>
+                  {isShiftOpen(shift) && canAny(['POS_SHIFTS_MANAGE_OWN', 'POS_SHIFTS_MANAGE_ALL']) && (
+                    <button
+                      type="button"
+                      className="btn btn-xs btn-warning btn-outline gap-1"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setClosingShift(shift);
+                      }}
+                    >
+                      <Clock size={12} />
+                      Cierre
+                    </button>
+                  )}
                 </div>
                 {shift.observation && (
                   <p className="text-[11px] italic text-base-content/60 mt-1 truncate">
@@ -359,6 +413,17 @@ export const CashRegisterHistoryView = ({ register: propRegister }: Props) => {
                 }
               }}
             />
+            {isShiftOpen(contextMenu.shift) && canAny(['POS_SHIFTS_MANAGE_OWN', 'POS_SHIFTS_MANAGE_ALL']) && (
+              <ContextMenuItem
+                icon={Clock}
+                label="Arqueo y cierre"
+                onClick={() => {
+                  if (contextMenu.shift) {
+                    setClosingShift(contextMenu.shift);
+                  }
+                }}
+              />
+            )}
             {contextMenu.shift.reopenAllowed && can('POS_SHIFTS_REOPEN') && can('POS_CASH_REGISTERS_REOPEN') && (
               <ContextMenuItem
                 icon={RotateCcw}
@@ -379,6 +444,20 @@ export const CashRegisterHistoryView = ({ register: propRegister }: Props) => {
           isOpen={!!selectedShiftId}
           onClose={() => setSelectedShiftId(null)}
           shiftId={selectedShiftId}
+        />
+      )}
+
+      {closingShift && (
+        <CloseShiftModal
+          isOpen={!!closingShift}
+          shiftId={closingShift.id}
+          onClose={() => setClosingShift(null)}
+          onSuccess={() => {
+            setClosingShift(null);
+            if (targetRegisterId) {
+              loadShifts(targetRegisterId);
+            }
+          }}
         />
       )}
 

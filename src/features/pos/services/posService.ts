@@ -80,6 +80,11 @@ export const posService = {
   },
 
   // --- Turnos ---
+  getShiftSummary: async (id: string): Promise<ShiftSummaryResponse> => {
+    const response = await api.get<ShiftSummaryResponse>(`/tenant/shifts/${id}/summary`);
+    return response.data;
+  },
+
   getMyActiveShiftSummary: async (): Promise<ShiftSummaryResponse> => {
     const response = await api.get<ShiftSummaryResponse>('/tenant/shifts/my-active-summary');
     return response.data;

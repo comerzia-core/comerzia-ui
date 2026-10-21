@@ -18,3 +18,40 @@ export const getMyMenuTree = async (): Promise<MenuItem[]> => {
     // Si payload es un array, lo devolvemos. Si es un objeto, lo metemos en un array.
     return Array.isArray(payload) ? payload : [payload];
 };
+
+/**
+ * Filtra el árbol de menú de manera recursiva.
+ * Si la empresa tiene plan Perpetuo (705), oculta el ítem de "Suscripción y pagos".
+ */
+export const filterMenuTree = (items: MenuItem[], isPerpetual: boolean): MenuItem[] => {
+    if (!items || items.length === 0) return [];
+
+    return items
+        .filter(item => {
+            if (isPerpetual) {
+                const route = item.route?.toLowerCase().trim() || '';
+                const name = item.name?.toLowerCase().trim() || '';
+                // Si la ruta o el nombre apuntan a suscripción y pagos, se omite
+                if (route === '/organization/subscription' || route === '/subscription' || name.includes('suscripci')) {
+                    return false;
+                }
+            }
+            return true;
+        })
+        .map(item => {
+            if (item.children && item.children.length > 0) {
+                return {
+                    ...item,
+                    children: filterMenuTree(item.children, isPerpetual)
+                };
+            }
+            return item;
+        })
+        .filter(item => {
+            // Si era un grupo padre sin ruta propia y tras el filtrado quedó sin hijos, se descarta
+            if (item.children && item.children.length === 0 && !item.route) {
+                return false;
+            }
+            return true;
+        });
+};
