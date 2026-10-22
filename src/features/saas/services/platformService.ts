@@ -15,6 +15,11 @@ export const platformService = {
   async patch<T>(path: string, body: unknown): Promise<T> { return (await api.patch<T>(path, body)).data; },
 };
 export function platformError(error: unknown): string {
+  if (isAxiosError<{ code?: string }>(error)) {
+    if (error.response?.data.code === 'email_unavailable') return 'Este correo ya está registrado.';
+    if (error.response?.data.code === 'email_required') return 'Indica un correo válido.';
+    if (error.response?.data.code === 'username_unavailable') return 'Este usuario ya está reservado.';
+  }
   if (isAxiosError<{ message?: string }>(error) && error.response?.data.message) return error.response.data.message;
   return 'No se pudo completar la operación.';
 }

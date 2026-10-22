@@ -53,7 +53,7 @@ export const useDynamicBranding = () => {
       name: manifestName,
       short_name: manifestShortName,
       description: `Sistema de Gestión - ${manifestName}`,
-      start_url: '/',
+      start_url: '/app',
       display: 'standalone',
       background_color: '#ffffff',
       theme_color: '#3b82f6',
@@ -95,6 +95,10 @@ export const useDynamicBranding = () => {
       const currentBlobUrl = manifestLink?.getAttribute('data-blob-url');
       if (currentBlobUrl) {
         URL.revokeObjectURL(currentBlobUrl);
+      }
+      if (manifestLink?.href === manifestUrl) {
+        manifestLink.href = '/manifest.json';
+        manifestLink.removeAttribute('data-blob-url');
       }
     };
   }, [companySettings?.commercialName, companySettings?.logoUrl]);
