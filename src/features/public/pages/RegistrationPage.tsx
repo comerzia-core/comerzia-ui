@@ -7,6 +7,7 @@ import { useAuthStore } from '../../../stores/useAuthStore';
 import { AuthStage } from '../components/AuthStage';
 import { useRegistration } from '../hooks/useRegistration';
 import { usePublicPlans, useRegistrationOptions } from '../hooks/usePublicCatalog';
+import { generateSku } from '../../../utils/skuGenerator';
 import type { RegistrationForm } from '../types/public';
 
 const steps = ['Sobre ti', 'Tu acceso', 'Tu empresa'];
@@ -20,6 +21,9 @@ export function RegistrationPage() {
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => { document.title = 'Crea tu empresa gratis | Comerzia'; }, []);
   useEffect(() => { heading.current?.focus({ preventScroll: true }); heading.current?.scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); }, [step]);
+  const branchCode = generateSku(form.branchName);
+  const defaultRegisterName = options?.cashRegisterName || 'CAJA 01';
+  const cashRegisterName = branchCode ? `CAJA 01 - ${branchCode}` : defaultRegisterName;
   const field = (key: keyof RegistrationForm, label: string, maxLength: number, autoComplete: string, required = true) =>
     <ComerziaInput id={`signup-${key}`} name={key} label={label} value={form[key]} maxLength={maxLength}
       type={key === 'email' ? 'email' : 'text'} onChange={event => change(key, event.target.value)} error={errors[key]}
@@ -41,7 +45,7 @@ export function RegistrationPage() {
           </>}
           {step === 2 && <>{field('commercialName', 'Nombre de tu empresa', 150, 'organization')}{field('branchName', 'Nombre de tu primera tienda', 100, 'off')}
             <div className="public-setup-summary"><div className="public-setup-title"><Store size={19} /><strong>También dejamos listo</strong></div>
-              {options ? <><div className="public-setup-register"><CheckCircle2 size={17} /><span>{options.cashRegisterName}<small>Caja de tu primera tienda · código {options.cashRegisterCode}</small></span></div><p>Todos tus roles incluidos</p><div className="public-role-list">{options.roles.map(role => <span key={role}><Check size={13} />{role}</span>)}</div></> : <p>{isError ? 'No se pudo cargar la configuración.' : 'Preparando tu espacio…'}</p>}
+              {options ? <><div className="public-setup-register"><CheckCircle2 size={17} /><span>{cashRegisterName}<small>Caja de tu primera tienda · código {options.cashRegisterCode}</small></span></div><p>Todos tus roles incluidos</p><div className="public-role-list">{options.roles.map(role => <span key={role}><Check size={13} />{role}</span>)}</div></> : <p>{isError ? 'No se pudo cargar la configuración.' : 'Preparando tu espacio…'}</p>}
               {isError && <PublicAction type="button" className="public-action--outline" onClick={() => void refetch()}>Reintentar</PublicAction>}
             </div><p className="public-field-hint">Sin tarjeta. Free incluye tu cuenta y una tienda. Podrás configurar productos y abrir tu turno al entrar.</p>
           </>}

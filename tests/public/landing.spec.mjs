@@ -66,7 +66,10 @@ test('registration shows fixed roles and caja, submits once with anonymous heade
   await expect(page.locator('.public-setup-register')).toContainText('CAJA 01 - 001');
   await expect(page.locator('.public-role-list>span')).toHaveCount(4); await expect(page.getByRole('checkbox')).toHaveCount(0);
   await page.getByLabel('Nombre de tu empresa', { exact: true }).fill('Mi negocio');
+  await page.getByLabel('Nombre de tu primera tienda', { exact: true }).fill('TIENDA GRANDE');
+  await expect(page.locator('.public-setup-register')).toContainText('CAJA 01 - TIE-GRA');
   await page.getByLabel('Nombre de tu primera tienda', { exact: true }).fill('Centro');
+  await expect(page.locator('.public-setup-register')).toContainText('CAJA 01 - CEN');
   await page.screenshot({ path: `test-results/public/${info.project.name}-signup.png`, fullPage: true });
   await page.getByRole('button', { name: 'Crear mi empresa gratis', exact: true }).click();
   await expect.poll(() => calls).toBe(1);
