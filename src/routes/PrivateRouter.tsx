@@ -32,6 +32,7 @@ import { NotFoundPage } from "../features/errors/pages/NotFoundPage";
 import { PermissionGuard } from "./PermissionGuard";
 
 
+import { PublicCatalogPage } from "../features/organization/pages/PublicCatalogPage";
 import { CompanyProfilePage } from "../features/organization/pages/CompanyProfilePage";
 import { BranchesPage } from "../features/organization/pages/BranchesPage";
 import { EmployeePage } from "../features/employees/pages/EmployeePage";
@@ -147,6 +148,7 @@ export default function PrivateRouter() {
             <Route path="/dashboard" element={<DashboardPage />} />
 
             {/* --- COMMERCIAL MODULES --- */}
+            <Route element={<PermissionGuard code="ORG_PUBLIC_CATALOG_READ" />}><Route path="/organization/public-catalog" element={<PublicCatalogPage />} /></Route>
             <Route path="/organization/company" element={<CompanyProfilePage />} />
             <Route path="/organization/branches" element={<BranchesPage />} />
 

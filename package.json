@@ -20,7 +20,8 @@
     "test:themes": "playwright test --config playwright.themes.config.mjs",
     "test:saas": "playwright test --config playwright.saas.config.mjs",
     "test:returns": "playwright test --config playwright.returns.config.mjs",
-    "test:discounts": "playwright test --config playwright.discounts.config.mjs"
+    "test:discounts": "playwright test --config playwright.discounts.config.mjs",
+    "test:storefront": "playwright test --config playwright.storefront.config.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

@@ -4,9 +4,10 @@ interface Props {
     isLoading?: boolean;
     disabled?: boolean;
     className?: string;
+    ariaLabel?: string;
 }
 
-export const ComerziaSwitch = ({ checked, onChange, isLoading = false, disabled = false, className = "" }: Props) => {
+export const ComerziaSwitch = ({ checked, onChange, isLoading = false, disabled = false, className = "", ariaLabel }: Props) => {
     // Si está cargando o deshabilitado, bloqueamos el clic
     const isInteractive = !isLoading && !disabled;
 
@@ -19,6 +20,12 @@ export const ComerziaSwitch = ({ checked, onChange, isLoading = false, disabled 
 
     return (
         <div
+            role="switch"
+            aria-label={ariaLabel}
+            aria-checked={checked}
+            aria-disabled={!isInteractive}
+            tabIndex={isInteractive ? 0 : -1}
+            onKeyDown={event => { if (isInteractive && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); event.stopPropagation(); onChange(); } }}
             onClick={handleClick}
             className={`
                 relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-300 cursor-pointer border-2

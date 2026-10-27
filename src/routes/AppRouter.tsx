@@ -5,6 +5,7 @@ import { LandingPage } from '../features/public/pages/LandingPage';
 const RegistrationPage = lazy(() => import('../features/public/pages/RegistrationPage').then(module => ({ default: module.RegistrationPage })));
 const LoginPage = lazy(() => import('../features/auth/pages/LoginPage').then(module => ({ default: module.LoginPage })));
 const PrivateRouter = lazy(() => import('./PrivateRouter'));
+const StorefrontPage = lazy(() => import('../features/storefront/pages/StorefrontPage').then(module => ({ default: module.StorefrontPage })));
 
 export function AppRouter() {
   return <BrowserRouter><Suspense fallback={<div className="public-route-loading" role="status">Cargando…</div>}><Routes>
@@ -13,6 +14,7 @@ export function AppRouter() {
       <Route path="/registro" element={<RegistrationPage />} />
       <Route path="/login" element={<LoginPage />} />
     </Route>
+    <Route path="/c/:slug" element={<StorefrontPage />} />
     <Route path="/*" element={<PrivateRouter />} />
   </Routes></Suspense></BrowserRouter>;
 }
