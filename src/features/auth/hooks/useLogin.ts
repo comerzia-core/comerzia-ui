@@ -5,6 +5,7 @@ import { publicApi as api } from '../../public/services/publicService';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { useToast } from '../../../context/ToastContext';
 import { AUTH_ERROR_CODES, type AuthErrorResponse } from '../types';
+import { passwordFeedback } from '../utils/passwordPolicy';
 
 type AuthStep = 'LOGIN' | 'CHANGE_PASSWORD';
 
@@ -73,7 +74,7 @@ export function useLogin() {
                     status === 428 || 
                     errCode === AUTH_ERROR_CODES.PASSWORD_CHANGE_REQUIRED ||
                     errCode === AUTH_ERROR_CODES.REQUIRES_PASSWORD_CHANGE ||
-                    errMsg.includes('temporary password');
+                    errCode === 'require_password_change';
 
                 if (errCode === 'company_disabled') {
                     setErrorMessage('Tu empresa está deshabilitada. Contacta con soporte.');
@@ -81,6 +82,10 @@ export function useLogin() {
                 } else if (isPasswordChangeRequired) {
                     setCurrentStep('CHANGE_PASSWORD');
                     setErrorMessage(""); // Limpiamos el mensaje de error para cambiar limpiamente de vista
+                } else if (status === 429) {
+                    setErrorMessage('Demasiados intentos. Espera un momento.');
+                } else if (status === 503) {
+                    setErrorMessage('Acceso temporalmente no disponible. Intenta en unos segundos.');
                 } else if (status === 401) {
                     // HTTP 401: Unauthorized - Credenciales incorrectas
                     setErrorMessage("Usuario o contraseña incorrectos.");
@@ -131,11 +136,7 @@ export function useLogin() {
         setErrorMessage("");
 
         // Validaciones Manuales de la Expresión Regular
-        const isValid = 
-            newPassword.length >= 8 && newPassword.length <= 64 &&
-            /[A-Z]/.test(newPassword) && 
-            /[a-z]/.test(newPassword) && 
-            /\d/.test(newPassword);
+        const isValid = !passwordFeedback(newPassword);
 
         if (!isValid) {
             setShakeKey(prev => prev + 1);
@@ -160,6 +161,10 @@ export function useLogin() {
                 const { status, data } = error.response;
                 if (data?.code === 'company_disabled') {
                     setErrorMessage('Tu empresa está deshabilitada. Contacta con soporte.');
+                } else if (status === 429) {
+                    setErrorMessage('Demasiados intentos. Espera un momento.');
+                } else if (status === 503) {
+                    setErrorMessage('Acceso temporalmente no disponible. Intenta en unos segundos.');
                 } else if (status === 400) {
                     setErrorMessage("Revisa tus datos y la nueva contraseña.");
                 } else if (status === 401) {

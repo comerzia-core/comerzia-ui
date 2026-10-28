@@ -1,11 +1,16 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react-swc'
 import basicSsl from '@vitejs/plugin-basic-ssl'
 import { readFileSync } from 'node:fs';
 const themeCatalog: Record<string, { mode: string }> = JSON.parse(readFileSync(new URL('./src/config/themes.json', import.meta.url), 'utf8'));
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  const allowed = new Set(['VITE_API_URL', 'VITE_APP_NAME', 'VITE_APP_VERSION', 'VITE_DEFAULT_LANGUAGE', 'VITE_PAGINATION_LIMIT']);
+  for (const name of Object.keys(loadEnv(mode, process.cwd(), 'VITE_'))) {
+    if (!allowed.has(name)) throw new Error('Unapproved public build variable: ' + name);
+  }
+  return {
   plugins: [
     {
       name: 'comerzia-theme-bootstrap',
@@ -19,7 +24,7 @@ export default defineConfig({
     basicSsl()
   ],
   server: {
-    host: true, // Expone en la red local para pruebas móviles vía HTTPS
+    host: '127.0.0.1', // Las pruebas móviles requieren habilitar --host explícitamente.
     port: 5173,
     proxy: {
       '/api': {
@@ -29,4 +34,5 @@ export default defineConfig({
       }
     }
   }
+  };
 })

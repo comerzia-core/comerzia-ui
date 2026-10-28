@@ -16,7 +16,7 @@ export const userService = {
     q?: string,
     branchId?: string
   ): Promise<PageResponse<UserResponse>> => {
-    const params: Record<string, any> = { page, size };
+    const params: Record<string, string | number> = { page, size };
     if (q) params.q = q;
     if (branchId) params.branchId = branchId;
 

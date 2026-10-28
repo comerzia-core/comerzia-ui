@@ -284,7 +284,7 @@ test('a personal security notice clears the token and explains reauthentication'
   await page.evaluate(() => window.realtimeTest.raw('event: session-revoked\ndata: {"code":"session_permissions_changed"}\n\n'));
   await expect.poll(() => page.evaluate(() => window.realtimeTest.token())).toBeNull();
   await expect(page.getByText('Tus permisos cambiaron. Inicia sesión nuevamente.')).toBeVisible();
-  await expect(page.getByRole('button', { name: /Iniciar Sesión/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Ir a mi empresa/i })).toBeVisible();
   await page.waitForTimeout(1500);
   expect(await page.evaluate(() => window.realtimeTest.connections)).toBe(1);
   await page.reload();
@@ -341,6 +341,7 @@ test('security logout propagates to another tab', async ({ page, context }) => {
   try {
     await mockApi(second); await second.goto('/tests/realtime/index.html?view=probe');
     await expect(second.getByRole('status', { name: 'En vivo' })).toBeVisible();
+    await second.bringToFront();
     await page.evaluate(() => window.realtimeTest.raw('event: session-revoked\ndata: {"code":"session_permissions_changed"}\n\n'));
     await expect.poll(() => second.evaluate(() => window.realtimeTest.token())).toBeNull();
     await expect(second.getByText('Tus permisos cambiaron. Inicia sesión nuevamente.')).toBeVisible();
@@ -392,7 +393,7 @@ test('disabled company login shows its specific message instead of a password er
  await page.route('**/api/auth/login', route => route.fulfill({status:401,json:{code:'company_disabled',message:'Company access is disabled. Contact support.'}}));
  await page.getByRole('textbox', {name:/usuario/i}).fill('tenant.owner');
  await page.getByLabel('Contraseña', {exact:true}).fill('StrongPassword123!');
- await page.getByRole('button', {name:/Iniciar Sesión/i}).click();
+ await page.getByRole('button', {name: /Ir a mi empresa/i}).click();
  await expect(page.getByText('Usuario o contraseña incorrectos.')).toHaveCount(0);
  await expect(page.getByText('Tu empresa está deshabilitada. Contacta con soporte.').first()).toBeVisible();
 });

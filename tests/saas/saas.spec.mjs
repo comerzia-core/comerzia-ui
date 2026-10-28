@@ -254,8 +254,8 @@ test('deshabilitar empresa advierte cierre de sesiones y permite reactivarla',as
  await expect(page.getByText('Se cerrarán las sesiones de todos sus usuarios y no podrán ingresar.')).toBeVisible();
  await page.getByRole('textbox',{name:'Motivo',exact:true}).fill('Solicitud del dueño');
  await page.getByRole('button',{name:'Confirmar',exact:true}).click();
- await expect(page.getByRole('button',{name:'Habilitar empresa'})).toBeVisible();
- expect(JSON.parse(writes[0].body)).toEqual({active:false,reason:'Solicitud del dueño'});
- await page.getByRole('button',{name:'Habilitar empresa'}).click();
+ await expect(page.getByRole('button',{name:'Habilitar empresa',exact:true})).toBeVisible();
+ await expect.poll(()=>{const command=writes.find(write=>write.name.endsWith('/status'));return command?JSON.parse(command.body):null;}).toEqual({active:false,reason:'Solicitud del dueño'});
+ await page.getByRole('button',{name:'Habilitar empresa',exact:true}).click();
  await expect(page.getByText('Sus usuarios podrán iniciar sesión nuevamente. Los bloqueos individuales se conservan.')).toBeVisible();
 });

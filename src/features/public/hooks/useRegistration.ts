@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { publicService } from '../services/publicService';
 import type { PublicApiError, RegistrationForm } from '../types/public';
+import { passwordFeedback } from '../../auth/utils/passwordPolicy';
 
 const emptyForm: RegistrationForm = { firstName: '', paternalSurname: '', maternalSurname: '', email: '', username: '', password: '', commercialName: '', branchName: '' };
 export function useRegistration() {
@@ -29,14 +30,13 @@ export function useRegistration() {
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) next.email = 'Revisa tu correo.';
     } else if (step === 1) {
       if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]{2,39}$/.test(form.username.trim())) next.username = 'Usa de 3 a 40 letras, números, puntos, guiones o guiones bajos.';
-      if (form.password.length < 8 || form.password.length > 64 || !/[A-Z]/.test(form.password) || !/[a-z]/.test(form.password) || !/\d/.test(form.password) || new TextEncoder().encode(form.password).length > 72)
-        next.password = 'Usa 8 a 64 caracteres, mayúscula, minúscula y número.';
+      next.password = passwordFeedback(form.password);
     } else {
       if (!form.commercialName.trim()) next.commercialName = 'Escribe el nombre de tu empresa.';
       if (!form.branchName.trim()) next.branchName = 'Escribe el nombre de tu tienda.';
     }
     setErrors(next);
-    if (Object.keys(next).length) { setShakeKey(value => value + 1); return false; }
+    if (Object.values(next).some(Boolean)) { setShakeKey(value => value + 1); return false; }
     return true;
   }
   async function next() {
@@ -57,7 +57,8 @@ export function useRegistration() {
       if (code === 'username_unavailable') { setDirection('back'); setErrors({ username: 'Este usuario ya está reservado.' }); setStep(1); }
       else if (code === 'email_unavailable' || code === 'email_required') { setDirection('back'); setErrors({ email: code === 'email_required' ? 'Revisa tu correo.' : 'Este correo ya está registrado.' }); setStep(0); }
       else if (code === 'registration_already_completed' || code === 'registration_conflict') setNotice('La cuenta puede estar creada. Intenta iniciar sesión o revisa usuario y correo.');
-      else if (code === 'registration_rate_limited' || code === 'registration_busy') setNotice('Espera unos minutos y vuelve a intentar.');
+      else if (code === 'registration_rate_limited' || code === 'registration_busy' || code === 'authentication_rate_limited') setNotice('Espera un momento y vuelve a intentar.');
+      else if (code === 'authentication_temporarily_unavailable') setNotice('Registro temporalmente no disponible. Intenta en unos segundos.');
       else if (code === 'registration_unavailable') setNotice('El registro no está disponible ahora. Intenta más tarde.');
       else if (isAxiosError(error) && !error.response) setNotice('No pudimos confirmar el registro. Reintenta con los mismos datos o inicia sesión.');
       else setNotice('No se pudo crear la cuenta. Revisa los datos e intenta nuevamente.');

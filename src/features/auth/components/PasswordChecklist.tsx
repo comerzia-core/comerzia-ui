@@ -11,26 +11,8 @@ export const PasswordChecklist = ({ passwordValue = "", showErrors }: Props) => 
     const val = typeof passwordValue === 'string' ? passwordValue : '';
 
     const validations = useMemo(() => [
-        { 
-            id: 'length', 
-            label: "Entre 8 y 64 caracteres", 
-            isValid: val.length >= 8 && val.length <= 64 
-        },
-        { 
-            id: 'uppercase', 
-            label: "Al menos una letra mayúscula", 
-            isValid: /[A-Z]/.test(val) 
-        },
-        { 
-            id: 'lowercase', 
-            label: "Al menos una letra minúscula", 
-            isValid: /[a-z]/.test(val) 
-        },
-        { 
-            id: 'number', 
-            label: "Al menos un número", 
-            isValid: /\d/.test(val) 
-        }
+        { id: 'length', label: 'Entre 15 y 64 caracteres', isValid: Array.from(val).length >= 15 && Array.from(val).length <= 64 },
+        { id: 'bytes', label: 'Hasta 72 bytes UTF-8', isValid: new TextEncoder().encode(val).length <= 72 }
     ], [val]);
 
     return (

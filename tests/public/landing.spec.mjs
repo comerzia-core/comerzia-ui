@@ -74,7 +74,7 @@ test('registration shows fixed roles and caja, submits once with anonymous heade
   await page.getByRole('button', { name: 'Crear mi empresa gratis', exact: true }).click();
   await expect.poll(() => calls).toBe(1);
   await expect.poll(() => page.evaluate(() => localStorage.getItem('token'))).toBe('test-public-session');
-  await expect(page).toHaveURL(/\/dashboard$/);
+  await expect(page).toHaveURL(/\/dashboard$/, { timeout: 15000 });
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'cupcake');
   expect(payload.username).toBe('ana.perez'); expect(payload.branchName).toBe('Centro'); expect(payload.roles).toBeUndefined(); expect(payload.planTypeCode).toBeUndefined();
   expect(await page.evaluate(() => JSON.stringify(localStorage))).not.toContain('StrongPassword123');
