@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { submitBrowserCredentials } from '../../auth/services/browserSessionService';
 import type { PublicPlan, RegistrationOptions, RegistrationForm } from '../types/public';
 
 // Cliente anónimo: no incorpora tokens, sucursal ni interceptores de la sesión privada.
@@ -8,5 +9,5 @@ export const publicService = {
   plans: async (): Promise<PublicPlan[]> => (await publicApi.get('/public/plans')).data,
   options: async (): Promise<RegistrationOptions> => (await publicApi.get('/public/registration-options')).data,
   register: async (form: RegistrationForm, requestKey: string): Promise<{ token: string }> =>
-    (await publicApi.post('/public/registrations', { ...form, requestKey })).data,
+    submitBrowserCredentials('/public/registrations', { ...form, requestKey }),
 };

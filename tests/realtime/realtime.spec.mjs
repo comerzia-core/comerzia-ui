@@ -5,6 +5,8 @@ async function mockApi(page) {
   const state = { sales: [], name: 'Original product', description: 'Original description', pendingReads: 0, productReads: 0, shiftReads: 0, inflows: 722.20, outflows: 120, delay: 0, status: 200, operational: true };
   await page.route('**/api/**', async route => {
     const path = new URL(route.request().url()).pathname;
+    if (route.request().url().endsWith('/auth/csrf')) return route.fulfill({ json: { token: 'csrf-fixture' } });
+    if (route.request().url().endsWith('/auth/logout')) return route.fulfill({ status: 204 });
     let data = {};
     if (path.endsWith('/auth/profile')) data = { ...await page.evaluate(() => window.realtimeTest.profile()), operational: state.operational };
     else if (path.endsWith('/sales/pending')) { state.pendingReads++; data = state.sales; }
@@ -336,7 +338,6 @@ test('a late REST 401 from an old token does not close the new session', async (
 
 test('security logout propagates to another tab', async ({ page, context }) => {
   await mockApi(page); await page.goto('/tests/realtime/index.html?view=probe');
-  await page.evaluate(() => localStorage.setItem('token', 'test-bearer-secret'));
   const second = await context.newPage();
   try {
     await mockApi(second); await second.goto('/tests/realtime/index.html?view=probe');
@@ -348,14 +349,15 @@ test('security logout propagates to another tab', async ({ page, context }) => {
   } finally { await second.close(); }
 });
 
-test('a late cross-tab logout cannot remove a newly persisted token', async ({ page }) => {
+test('a late cross-tab logout cannot remove a newer in-memory session', async ({ page }) => {
   await mockApi(page); await page.goto('/tests/realtime/index.html?view=probe');
   await page.evaluate(() => {
-    localStorage.setItem('token', 'new-session-in-another-tab');
-    window.dispatchEvent(new StorageEvent('storage', { key: 'token', oldValue: 'test-bearer-secret', newValue: null }));
+    window.realtimeTest.replaceToken('new-session-token');
+    const channel = new BroadcastChannel('comerzia-session');
+    channel.postMessage({ type: 'logout', sessionId: 'test-bearer-secret' }); channel.close();
   });
-  await expect.poll(() => page.evaluate(() => window.realtimeTest.token())).toBeNull();
-  expect(await page.evaluate(() => localStorage.getItem('token'))).toBe('new-session-in-another-tab');
+  await expect.poll(() => page.evaluate(() => window.realtimeTest.token())).toBe('new-session-token');
+  expect(await page.evaluate(() => localStorage.getItem('token'))).toBeNull();
 });
 
 test('a late profile response cannot restore a session after logout', async ({ page }) => {

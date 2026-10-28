@@ -1,4 +1,5 @@
 import api from '../../../lib/axios';
+import { useAuthStore } from '../../../stores/useAuthStore';
 import type { 
   MyProfileResponse, 
   UpdateMyProfileRequest, 
@@ -6,7 +7,10 @@ import type {
 } from '../types/profile';
 
 export const profileService = {
-  updateTheme: async (theme: string, token: string, signal: AbortSignal): Promise<{ theme: string }> => {
+  updateTheme: async (theme: string, sessionReference: string, signal: AbortSignal): Promise<{ theme: string }> => {
+    const state = useAuthStore.getState();
+    if (state.sessionId !== sessionReference || !state.token) throw new Error('Session changed');
+    const token = state.token;
     const { data } = await api.patch<{ theme: string }>('/profile/theme', { theme }, {
       signal, timeout: 15000, headers: { Authorization: `Bearer ${token}` },
     });

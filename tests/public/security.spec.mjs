@@ -1,4 +1,6 @@
+import { mockAnonymousSession, authenticationFixture } from '../fixtures/browserSession.mjs';
 import { test, expect } from '@playwright/test';
+test.beforeEach(async ({ page }) => { await mockAnonymousSession(page); });
 for (const [status, message] of [
   [429, 'Demasiados intentos. Espera un momento.'],
   [503, 'Acceso temporalmente no disponible. Intenta en unos segundos.'],

@@ -29,12 +29,12 @@ api.defaults.baseURL = `${location.origin}/api`;
 const profile = { id: 'owner-a', username: 'user-a', firstName: 'Ana', paternalLastName: 'Paz', maternalFirstName: null,
   fullName: 'Ana Paz', email: 'ana@example.test', imageUrl: null, roles: ['OWNER'], permissions: ['SEC_PROFILE_READ'],
   companySettings: { id: 'company', commercialName: 'Test Company', timezone: 'America/La_Paz', currencyCode: 'BOB', logoUrl: null } };
-useAuthStore.setState({ token: 'token-owner-a', isAuthenticated: true, isSessionReady: true, userProfile: profile });
+useAuthStore.setState({ status: 'authenticated', sessionId: 'token-owner-a', token: 'token-owner-a', isAuthenticated: true, isSessionReady: true, userProfile: profile });
 window.themeTest = {
   snapshot: () => { const { theme, savedTheme, owner, isSaving, error } = useThemeStore.getState(); return { theme, savedTheme, owner, isSaving, error }; },
   changeUser: (id, theme) => {
     useThemeStore.getState().clearSession();
-    useAuthStore.setState({ token: `token-${id}`, userProfile: { ...profile, id, username: id } });
+    useAuthStore.setState({ sessionId: `token-${id}`, token: `token-${id}`, userProfile: { ...profile, id, username: id } });
     const store = useThemeStore.getState(); store.bindProfile(id, theme, `token-${id}`, store.revision);
   },
   refresh: () => useAuthStore.getState().fetchUserProfile(),

@@ -1,3 +1,4 @@
+import { authenticationFixture } from '../fixtures/browserSession.mjs';
 import { test, expect } from '@playwright/test';
 
 const permissions = ['ORG_COMPANIES_READ', 'ORG_SETTINGS_MANAGE', 'ORG_PUBLIC_CATALOG_READ', 'ORG_PUBLIC_CATALOG_MANAGE', 'ORG_PUBLIC_CATALOG_PUBLISH'];
@@ -7,9 +8,10 @@ async function setup(page, allowedPermissions = permissions, eligible = true, ta
   const state = { eligible, published: false, publicUrl: null, draft, templates: [{ code: 'STUDIO', label: 'Estudio', description: 'Limpio y esencial' }, { code: 'BOUTIQUE', label: 'Boutique', description: 'Imágenes protagonistas' }] };
   const variants = [{ id: 'VariantOpaque', productName: 'Café', name: 'Molido', imageUrl: null, visible: false, active: true }, { id: 'SecondOpaque', productName: 'Café', name: 'Grano', imageUrl: null, visible: false, active: true }];
   const summary = () => { const visible = variants.filter(item => item.visible).length; return { total: 2, visible, enabled: visible === 0 ? false : visible === 2 ? true : null }; };
-  await page.addInitScript(() => localStorage.setItem('token', 'admin-test-session'));
   await page.route('**/api/**', async route => {
     const request = route.request(), url = new URL(request.url()), path = url.pathname;
+    if (path.endsWith('/auth/csrf')) return route.fulfill({ json: { token: 'csrf-fixture' } });
+    if (path.endsWith('/auth/refresh')) return route.fulfill({ json: authenticationFixture('admin-test-session') });
     if (path.endsWith('/realtime/stream')) return route.abort();
     if (path.endsWith('/auth/profile')) return route.fulfill({ json: { id: 'OwnerOpaque', username: 'ana', fullName: 'Ana Pérez', firstName: 'Ana', roles: ['OWNER'], permissions: allowedPermissions,
       theme: 'light', operational: true, companySettings: { id: 'CompanyOpaque', commercialName: 'Mi tienda', currencyCode: 'BOB', timezone: 'America/La_Paz', planTypeCode: eligible ? 702 : 701 } } });

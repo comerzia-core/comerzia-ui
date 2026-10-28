@@ -1,3 +1,4 @@
+import { useToast } from '../../context/ToastContext';
 import { RealtimeStatusIndicator } from '../../features/realtime/components/RealtimeStatusIndicator';
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -14,6 +15,7 @@ import { getThumbnailUrl } from "../../utils/image";
 
 export const Header = () => {
   const userProfile = useAuthStore((state) => state.userProfile);
+  const toast = useToast();
   const logout = useAuthStore((state) => state.logout);
   const currentTime = useCurrentTime();
   const navigate = useNavigate();
@@ -30,9 +32,9 @@ export const Header = () => {
     if (modal) modal.showModal();
   };
 
-  const handleConfirmLogout = () => {
-    logout();
-    navigate('/login');
+  const handleConfirmLogout = async () => {
+    if (await logout()) navigate('/login');
+    else toast.error('No se pudo cerrar la sesión. Reintenta.');
   };
 
   // Función auxiliar para cerrar el menú manualmente al hacer clic en un link

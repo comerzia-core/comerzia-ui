@@ -4,6 +4,10 @@ const eslint = new ESLint();
 const results = await eslint.lintFiles(['src', 'vite.config.ts']);
 const counts = {};
 const strictPaths = new Set([
+  'src/lib/axios.ts', 'src/stores/useAuthStore.ts', 'src/routes/ProtectedRoute.tsx',
+  'src/features/auth/services/browserSessionService.ts', 'src/features/auth/components/BrowserSessionRuntime.tsx',
+  'src/features/security/services/browserSessions.ts', 'src/features/security/hooks/useBrowserSessions.ts',
+  'src/features/security/components/BrowserSessionsPanel.tsx',
   'src/features/auth/utils/passwordPolicy.ts', 'src/features/auth/hooks/useLogin.ts',
   'src/features/auth/components/PasswordChecklist.tsx', 'src/features/public/hooks/useRegistration.ts',
   'src/features/public/pages/RegistrationPage.tsx', 'src/features/security/pages/ProfilePage.tsx',

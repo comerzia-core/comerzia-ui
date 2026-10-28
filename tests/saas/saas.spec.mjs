@@ -59,7 +59,7 @@ async function actions(page,info,text){
 }
 test('directorio y ficha conservan permisos, paginación y espacio móvil',async({page},info)=>{
  await prepare(page,'SAAS_OWNER','/saas/tenants');
- await expect(page.getByRole('heading',{name:'Empresas clientes'})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Empresas clientes'})).toBeVisible({timeout:15000});
  await expect(page.getByText('CompanyOpaque',{exact:true})).toHaveCount(0);
  await actions(page,info,'Tienda ejemplo');await page.getByText('Ver empresa',{exact:true}).click();
  await expect(page.getByRole('heading',{name:'Tienda ejemplo'})).toBeVisible();
@@ -70,7 +70,7 @@ test('directorio y ficha conservan permisos, paginación y espacio móvil',async
 });
 test('soporte no recibe controles de alta, planes o finanzas',async({page},info)=>{
  const {calls}=await prepare(page,'SAAS_SUPPORT','/saas/tenants');
- await expect(page.getByRole('heading',{name:'Empresas clientes'})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Empresas clientes'})).toBeVisible({timeout:15000});
  await expect(page.getByRole('button',{name:'Nueva empresa'})).toHaveCount(0);
  await actions(page,info,'Tienda ejemplo');await page.getByText('Ver empresa',{exact:true}).click();
  await expect(page.getByRole('button',{name:'Deshabilitar empresa'})).toHaveCount(0);

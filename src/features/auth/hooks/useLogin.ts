@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { isAxiosError } from 'axios';
-import { publicApi as api } from '../../public/services/publicService';
+import { submitBrowserCredentials } from '../services/browserSessionService';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { useToast } from '../../../context/ToastContext';
 import { AUTH_ERROR_CODES, type AuthErrorResponse } from '../types';
@@ -33,7 +33,7 @@ export function useLogin() {
     const [username, setUsername] = useState("");
     const [currentPassword, setCurrentPassword] = useState("");
     const [newPassword, setNewPassword] = useState("");
-    
+
     // --- ESTADOS DE UI ---
     const [showPassword, setShowPassword] = useState(false);
     const [showErrorsInChecklist, setShowErrorsInChecklist] = useState(false);
@@ -53,11 +53,11 @@ export function useLogin() {
 
         setIsLoading(true);
         try {
-            const { data } = await api.post('/auth/login', { 
-                username, 
-                password: currentPassword 
+            const data = await submitBrowserCredentials('/auth/login', {
+                username,
+                password: currentPassword
             });
-            
+
             // Si funciona a la primera, lo dejamos entrar
             await loginStore(data.token);
             if (!useAuthStore.getState().isSessionReady) { setErrorMessage('No pudimos cargar tu empresa. Inicia sesi?n nuevamente.'); return; }
@@ -68,10 +68,10 @@ export function useLogin() {
                 const { status, data } = error.response;
                 const errCode = (data?.code || '').toLowerCase();
                 const errMsg = (data?.message || '').toLowerCase();
-                
+
                 // HTTP 428: Precondition Required (password_change_required)
-                const isPasswordChangeRequired = 
-                    status === 428 || 
+                const isPasswordChangeRequired =
+                    status === 428 ||
                     errCode === AUTH_ERROR_CODES.PASSWORD_CHANGE_REQUIRED ||
                     errCode === AUTH_ERROR_CODES.REQUIRES_PASSWORD_CHANGE ||
                     errCode === 'require_password_change';
@@ -93,16 +93,16 @@ export function useLogin() {
                 } else if (status === 403) {
                     // HTTP 403: Forbidden - Cuenta deshabilitada (account_disabled) vs Cuenta bloqueada (account_locked)
                     if (
-                        errCode === AUTH_ERROR_CODES.ACCOUNT_DISABLED || 
-                        errCode === AUTH_ERROR_CODES.USER_DISABLED || 
-                        errMsg.includes('disabled') || 
+                        errCode === AUTH_ERROR_CODES.ACCOUNT_DISABLED ||
+                        errCode === AUTH_ERROR_CODES.USER_DISABLED ||
+                        errMsg.includes('disabled') ||
                         errMsg.includes('deshabilitad')
                     ) {
                         setErrorMessage("Cuenta deshabilitada. Contacte con la administración.");
                     } else if (
-                        errCode === AUTH_ERROR_CODES.ACCOUNT_LOCKED || 
-                        errMsg.includes('locked') || 
-                        errMsg.includes('bloquead') || 
+                        errCode === AUTH_ERROR_CODES.ACCOUNT_LOCKED ||
+                        errMsg.includes('locked') ||
+                        errMsg.includes('bloquead') ||
                         errMsg.includes('attempts')
                     ) {
                         setErrorMessage("Cuenta bloqueada. Contacte con la administración.");
@@ -145,7 +145,7 @@ export function useLogin() {
 
         setIsLoading(true);
         try {
-            const { data } = await api.post('/auth/change-temporary-password', {
+            const data = await submitBrowserCredentials('/auth/change-temporary-password', {
                 username,
                 currentPassword, // Se envía la contraseña actual ingresada en el Paso 1
                 newPassword

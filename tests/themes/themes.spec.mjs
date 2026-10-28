@@ -9,6 +9,8 @@ async function setup(page, options = {}) {
   let saved = options.initial ?? 'light';
   await page.route('**/api/**', async route => {
     const request = route.request();
+    if (route.request().url().endsWith('/auth/csrf')) return route.fulfill({ json: { token: 'csrf-fixture' } });
+    if (route.request().url().endsWith('/auth/logout')) return route.fulfill({ status: 204 });
     if (request.url().endsWith('/auth/profile')) {
       if (options.profileDelay) await options.profileDelay();
       return route.fulfill({ json: { ...profile, theme: options.profileTheme ?? saved } });

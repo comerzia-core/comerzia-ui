@@ -17,6 +17,7 @@ const businessReadPermissions = [
 
 export function useRealtimeConnection(): void {
   const token = useAuthStore(state => state.token);
+  const sessionId = useAuthStore(state => state.sessionId);
   const ready = useAuthStore(state => state.isSessionReady);
   const company = useAuthStore(state => state.userProfile?.companySettings?.id);
   const operational = useAuthStore(state => state.userProfile?.operational);
@@ -25,17 +26,7 @@ export function useRealtimeConnection(): void {
   const hasBusinessReads = businessReadPermissions.some(permission => permissions?.includes(permission));
   const client = useQueryClient();
   // Limpiar la caché al terminar la sesión o el contexto, sin retirar consultas recién montadas.
-  useEffect(() => () => { client.clear(); }, [company, token, client]);
-  useEffect(() => {
-    const onStorage = (event: StorageEvent) => {
-      const state = useAuthStore.getState();
-      if (event.key === 'token' && event.newValue === null && event.oldValue === state.token) {
-        state.logout(localStorage.getItem('sessionRevocationReason') || undefined);
-      }
-    };
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
-  }, []);
+  useEffect(() => () => { client.clear(); }, [company, sessionId, client]);
   useEffect(() => {
     const setStatus = useRealtimeStore.getState().setStatus;
     if (!token || !ready) { setStatus('unavailable'); return; }
@@ -102,7 +93,7 @@ export function useRealtimeConnection(): void {
             } catch { /* El cierre de seguridad sigue aplicándose aunque el aviso no se pueda leer. */ }
             blocked = true;
             const current = useAuthStore.getState();
-            if (current.token === token) current.logout(code);
+            if (current.token === token) current.expireSession(code);
             disconnect();
             setStatus('unavailable');
           } else if (frame.event === 'change') {
@@ -118,7 +109,10 @@ export function useRealtimeConnection(): void {
           && error instanceof RealtimeHttpError && (error.status === 401 || error.status === 403)) {
           blocked = true;
           setStatus('unavailable');
-          if (error.status === 401 && useAuthStore.getState().token === token) useAuthStore.getState().logout(error.code);
+          if (error.status === 401 && useAuthStore.getState().token === token) {
+            if (error.code === 'access_token_expired') void useAuthStore.getState().refreshSession().catch(() => undefined);
+            else useAuthStore.getState().expireSession(error.code);
+          }
         }
       } finally {
         if (active === controller) {
