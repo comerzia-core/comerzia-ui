@@ -132,8 +132,8 @@ export const Header = () => {
             {isDropdownOpen && (
               <ul tabIndex={0} className="menu menu-sm dropdown-content mt-3 z-50 p-2 shadow-xl bg-base-100 rounded-box w-64 border border-base-200 animate-fade-in">
 
-                <li className="menu-title px-4 py-2">
-                  <span className="block text-sm font-bold text-base-content truncate">
+                <li className="menu-title px-4 py-2 w-full min-w-0 max-w-full">
+                  <span className="block w-full min-w-0 text-sm font-bold text-base-content truncate">
                     {userProfile?.fullName || 'Usuario'}
                   </span>
                 </li>

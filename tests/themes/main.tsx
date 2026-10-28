@@ -1,3 +1,5 @@
+import { ComerziaModal } from '../../src/components/ui/ComerziaModal';
+import { ComerziaContextMenu, ContextMenuItem } from '../../src/components/ui/ComerziaContextMenu';
 import { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
@@ -44,6 +46,8 @@ window.themeTest = {
 void useAuthStore.getState().fetchUserProfile();
 
 function App() {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const [value, setValue] = useState('Venta sin guardar');
   return <><Header />
     {new URLSearchParams(location.search).get('view') === 'profile' ? <ProfilePage /> :
@@ -56,6 +60,15 @@ function App() {
           <ComerziaButton label="Acción principal" variant="primary" /> <BtnSave /><BtnDeleteIcon />
         </div>
       </main>}
+    {new URLSearchParams(location.search).get('view') === 'layout' && <>
+      <ComerziaButton label="Abrir opciones" onClick={() => setMenuOpen(true)} />
+      <ComerziaContextMenu isOpen={menuOpen} x={20} y={180} isCentered={innerWidth < 768} onClose={() => setMenuOpen(false)}>
+        <ContextMenuItem label="Editar producto" onClick={() => { setModalOpen(true); setMenuOpen(false); }} />
+      </ComerziaContextMenu>
+      <ComerziaModal isOpen={modalOpen} onClose={() => setModalOpen(false)} title="Detalle de prueba">
+        <ComerziaInput label="Nombre" value={value} onChange={event => setValue(event.target.value)} />
+      </ComerziaModal>
+    </>}
     <ThemePreferencePanel />
   </>;
 }
