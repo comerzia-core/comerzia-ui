@@ -1,9 +1,11 @@
 import { BrowserSessionsPanel } from '../components/BrowserSessionsPanel';
+import { EmailVerificationPanel } from '../components/EmailVerificationPanel';
 import { passwordFeedback } from '../../auth/utils/passwordPolicy';
 import { AppearancePreferences } from '../components/ThemePreferencePanel';
 import { ComerziaButton } from '../../../components/ui/ComerziaButton';
 import { Palette } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { 
   User, 
   ShieldCheck, 
@@ -49,7 +51,13 @@ export const ProfilePage = () => {
   ]);
 
   // Estados de carga y navegación de pestañas
-  const [activeTab, setActiveTab] = useState<'personal' | 'security' | 'appearance'>('personal');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const activeTab = tabParam === 'security' || tabParam === 'appearance' ? tabParam : 'personal';
+  const setActiveTab = (tab: 'personal' | 'security' | 'appearance') => {
+    setSearchParams(previous => { const next = new URLSearchParams(previous); next.set('tab', tab); return next; }, { replace: true });
+  };
+
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSavingProfile, setIsSavingProfile] = useState<boolean>(false);
   const [isChangingPassword, setIsChangingPassword] = useState<boolean>(false);
@@ -706,6 +714,7 @@ export const ProfilePage = () => {
             {/* ======================================================== */}
             {/* TAB 2: SEGURIDAD Y CONTRASEÑA (SISTEMA BALANCEADO EN PC) */}
             {/* ======================================================== */}
+            {activeTab === 'security' && <EmailVerificationPanel loginEmail={profile?.email} />}
             {activeTab === 'security' && <BrowserSessionsPanel />}
             {activeTab === 'security' && (
               <form onSubmit={handleChangePassword} className="space-y-6">

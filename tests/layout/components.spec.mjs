@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 test.beforeEach(async ({page}) => {
-  await page.route('**/api/**',route => route.fulfill({json:route.request().url().endsWith('/auth/profile') ? {
+  await page.route('**/api/**',route => route.request().url().endsWith('/notifications/reconcile')
+    ? route.fulfill({status:204}) : route.fulfill({json:route.request().url().endsWith('/notifications') ? [] : route.request().url().endsWith('/auth/profile') ? {
     id:'owner-a',username:'ana',firstName:'Ana',fullName:'Ana Perez Rodriguez Administracion Comercial de Todas las Sucursales',roles:['OWNER'],permissions:[],theme:'light',
     companySettings:{timezone:'America/La_Paz',currencyCode:'BOB',planTypeCode:701}
   } : {}}));

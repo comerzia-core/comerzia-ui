@@ -4,6 +4,14 @@ const eslint = new ESLint();
 const results = await eslint.lintFiles(['src', 'vite.config.ts']);
 const counts = {};
 const strictPaths = new Set([
+  'src/features/security/hooks/useEmailVerification.ts',
+  'src/features/security/hooks/useUserNotifications.ts',
+  'src/features/security/services/emailVerificationService.ts',
+  'src/features/security/hooks/usePublicEmailVerification.ts',
+  'src/features/security/components/EmailVerificationPanel.tsx',
+  'src/features/security/services/notificationService.ts',
+  'src/components/layout/NotificationBell.tsx',
+  'src/features/public/pages/EmailVerificationPage.tsx',
   'src/lib/axios.ts', 'src/stores/useAuthStore.ts', 'src/routes/ProtectedRoute.tsx',
   'src/features/auth/services/browserSessionService.ts', 'src/features/auth/components/BrowserSessionRuntime.tsx',
   'src/features/security/services/browserSessions.ts', 'src/features/security/hooks/useBrowserSessions.ts',

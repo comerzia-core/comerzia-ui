@@ -18,6 +18,7 @@ const businessReadPermissions = [
 export function useRealtimeConnection(): void {
   const token = useAuthStore(state => state.token);
   const sessionId = useAuthStore(state => state.sessionId);
+  const generation = useAuthStore(state => state.generation);
   const ready = useAuthStore(state => state.isSessionReady);
   const company = useAuthStore(state => state.userProfile?.companySettings?.id);
   const operational = useAuthStore(state => state.userProfile?.operational);
@@ -68,9 +69,12 @@ export function useRealtimeConnection(): void {
       armWatchdog();
       try {
         await readRealtimeStream(token, controller.signal, frame => {
-          if (disposed || controller.signal.aborted) return;
+          if (disposed || controller.signal.aborted || useAuthStore.getState().sessionId !== sessionId
+            || useAuthStore.getState().generation !== generation) return;
           armWatchdog();
           if (frame.event === 'connected') {
+            void client.invalidateQueries({ queryKey: ['user-notifications', sessionId, generation] });
+            void client.invalidateQueries({ queryKey: ['email-verification-status', sessionId, generation] });
             const reconnected = connectedOnce;
             connectedOnce = true;
             attempts = 0;
@@ -82,6 +86,9 @@ export function useRealtimeConnection(): void {
                 void useAuthStore.getState().fetchUserProfile().catch(() => { /* El interceptor mantiene la política de sesión; un fallo de red permite reintentar. */ });
               }
             }
+          } else if (frame.event === 'user-notifications-invalidated') {
+            void client.invalidateQueries({ queryKey: ['user-notifications', sessionId, generation] });
+            void client.invalidateQueries({ queryKey: ['email-verification-status', sessionId, generation] });
           } else if (frame.event === 'subscription-changed') {
             void client.invalidateQueries({ queryKey: ['platform'] });
             if (useAuthStore.getState().token === token) void useAuthStore.getState().fetchUserProfile().catch(() => { /* Se recuperará el perfil al reconectar. */ });
@@ -144,5 +151,5 @@ export function useRealtimeConnection(): void {
       window.removeEventListener('offline', resume);
       document.removeEventListener('visibilitychange', resume);
     };
-  }, [token, ready, company, client, hasBusinessReads, operational]);
+  }, [token, ready, company, client, hasBusinessReads, operational, sessionId, generation]);
 }
