@@ -84,3 +84,19 @@ test('incomplete authentication never exposes business credentials', async ({ pa
   const snapshot = await page.evaluate(() => window.sessionTest.snapshot());
   expect(snapshot.token).toBeNull(); expect(state.reads).toBe(0);
 });
+
+test('a stalled browser lock becomes retryable without bypassing rotation', async ({ page, context }) => {
+  test.setTimeout(40000);
+  await setup(context);
+  await page.addInitScript(() => {
+    void navigator.locks.request('comerzia-browser-authentication', () => new Promise(resolve => {
+      window.releaseAuthenticationLock = resolve;
+    }));
+  });
+  await page.goto('/tests/sessions/index.html');
+  await expect(page.getByRole('status')).toHaveText('temporarily_unavailable', { timeout: 22000 });
+  expect((await page.evaluate(() => window.sessionTest.snapshot())).token).toBeNull();
+  await page.evaluate(() => window.releaseAuthenticationLock());
+  await page.evaluate(() => window.sessionTest.initialize());
+  await expect(page.getByRole('status')).toHaveText('authenticated');
+});

@@ -247,7 +247,10 @@ export const ProfilePage = () => {
       const backendCode = axiosError.response?.data?.code?.toLowerCase();
       const rawMessage = axiosError.response?.data?.message?.toLowerCase() || '';
 
-      if (
+      if (backendCode === 'email_change_requires_verification') {
+        setPersonalErrors(prev => ({ ...prev, email: 'El cambio de correo de acceso requiere un flujo de verificación segura.' }));
+        addToast('El cambio de correo de acceso requiere verificación segura.', 'warning');
+      } else if (
         backendCode === PROFILE_ERROR_CODES.EMAIL_ALREADY_EXISTS || 
         backendCode?.includes('email') || 
         rawMessage.includes('email')

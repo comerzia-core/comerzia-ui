@@ -41,7 +41,7 @@ export function RegistrationPage() {
           {step === 1 && <>{field('username', 'Nombre de usuario', 40, 'username')}<p className="public-field-hint">Será tuyo. También podrás entrar con tu correo.</p>
             <ComerziaInput id="signup-password" name="password" label="Contraseña" type={showPassword ? 'text' : 'password'} autoComplete="new-password" maxLength={64} value={form.password} onChange={event => change('password', event.target.value)} error={errors.password} isRequired shakeKey={shakeKey} disabled={busy}
               rightAction={<PublicAction type="button" className="public-icon-button" onClick={() => setShowPassword(value => !value)} aria-label={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}>{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</PublicAction>} />
-            <p className="public-field-hint">15 a 64 caracteres. Puedes usar una frase.</p><div className="public-privacy-note"><LockKeyhole size={19} /><p>Tu contraseña es privada. No la compartas con nadie.</p></div>
+            <p className="public-field-hint">Mínimo 8 caracteres, con mayúscula, minúscula, número y símbolo.</p><div className="public-privacy-note"><LockKeyhole size={19} /><p>Tu contraseña es privada. No la compartas con nadie.</p></div>
           </>}
           {step === 2 && <>{field('commercialName', 'Nombre de tu empresa', 150, 'organization')}{field('branchName', 'Nombre de tu primera tienda', 100, 'off')}
             <div className="public-setup-summary"><div className="public-setup-title"><Store size={19} /><strong>También dejamos listo</strong></div>

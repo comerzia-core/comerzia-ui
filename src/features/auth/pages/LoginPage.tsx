@@ -21,6 +21,11 @@ export function LoginPage() {
     {currentStep === 'LOGIN' ? <form onSubmit={handleLoginSubmit}>
       <ComerziaInput id="login-username" aria-label="Usuario o correo electrónico" name="username" label="Usuario o correo electrónico" value={username} onChange={event => setUsername(event.target.value)} shakeKey={shakeKey} isRequired disabled={isLoading} autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} />
       <ComerziaInput id="login-password" aria-label="Contraseña" name="password" label="Contraseña" type={showPassword ? 'text' : 'password'} value={currentPassword} onChange={event => setCurrentPassword(event.target.value)} shakeKey={shakeKey} isRequired disabled={isLoading} autoComplete="current-password" rightAction={reveal} />
+      <div className="public-forgot-password-wrap" style={{ textAlign: 'right', margin: '4px 0 12px 0' }}>
+        <Link to="/recuperar-contrasena" className="public-forgot-password-link" style={{ fontSize: '0.85rem', color: 'var(--p, #3b82f6)' }}>
+          ¿Olvidaste tu contraseña?
+        </Link>
+      </div>
       <PublicAction type="submit" busy={isLoading} arrow>{isLoading ? 'Ingresando…' : 'Ir a mi empresa'}</PublicAction>
     </form> : <form onSubmit={handleChangePasswordSubmit}>
       <p className="public-login-alert">Tu contraseña temporal debe cambiarse antes del primer ingreso.</p>

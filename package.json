@@ -25,6 +25,7 @@
     "dev:lan": "vite --host 0.0.0.0",
     "test": "node scripts/test-all.mjs",
     "test:passwords": "node --test tests/passwordPolicy.test.mjs",
+    "test:security-messages": "node --test tests/emailVerification.test.mjs",
     "lint:security": "node scripts/lint-security.mjs",
     "test:sessions": "playwright test --config playwright.sessions.config.mjs",
     "test:email": "playwright test --config playwright.email.config.mjs",

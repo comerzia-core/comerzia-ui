@@ -22,6 +22,18 @@ const strictPaths = new Set([
   'src/features/security/services/userService.ts',
   'src/features/security/components/users/UserRolesModal.tsx',
   'src/features/security/components/users/DemotionBranchModal.tsx', 'vite.config.ts',
+  'src/features/auth/types/passwordReset.ts',
+  'src/features/auth/services/passwordResetService.ts',
+  'src/features/auth/hooks/usePasswordReset.ts',
+  'src/features/public/pages/PasswordResetPage.tsx',
+  'src/features/security/types/emailChange.ts',
+  'src/features/security/services/emailChangeService.ts',
+  'src/features/security/hooks/useEmailChange.ts',
+  'src/features/security/hooks/useEmailChangeConfirmation.ts',
+  'src/features/security/hooks/useEmailChangeRequest.ts',
+  'src/features/security/utils/securityChallengeMessages.ts',
+  'src/features/security/components/EmailChangeModal.tsx',
+  'src/features/public/pages/EmailChangePage.tsx',
 ]);
 const strictFailures = [];
 for (const result of results) {

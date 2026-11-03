@@ -70,6 +70,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
                 session_permissions_changed: 'Tus permisos cambiaron. Inicia sesión nuevamente.',
                 session_access_changed: 'Tu acceso cambió. Ingresa nuevamente.',
                 session_password_changed: 'Tu contraseña cambió. Ingresa nuevamente.',
+                session_email_changed: 'Tu correo de acceso ha cambiado. Ingresa nuevamente.',
                 session_inactive: 'La sesión venció por inactividad.',
                 session_refresh_reused: 'Por seguridad, ingresa nuevamente.',
                 session_expired: 'Tu sesión venció. Ingresa nuevamente.',

@@ -65,7 +65,7 @@ api.interceptors.response.use(
                     return api.request(error.config);
                 }
                 const sessionChanged = typeof code === 'string' && [
-                    'session_permissions_changed', 'session_access_changed', 'session_password_changed', 'company_disabled',
+                    'session_permissions_changed', 'session_access_changed', 'session_password_changed', 'session_email_changed', 'company_disabled',
                 ].includes(code);
                 // Una respuesta de una sesión anterior no debe cerrar una sesión recién iniciada.
                 if (current.token && requestBearer === `Bearer ${current.token}` && (!isCredentialRequest || sessionChanged)) {

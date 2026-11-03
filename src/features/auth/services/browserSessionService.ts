@@ -8,7 +8,7 @@ export interface BrowserAuthentication {
   idleSeconds: number;
 }
 
-const transport = axios.create({ baseURL: import.meta.env.VITE_API_URL, withCredentials: true });
+const transport = axios.create({ baseURL: import.meta.env.VITE_API_URL, withCredentials: true, timeout: 15000 });
 let renewal: Promise<BrowserAuthentication> | null = null;
 
 export async function csrfHeaders(): Promise<Record<string, string>> {
@@ -17,7 +17,7 @@ export async function csrfHeaders(): Promise<Record<string, string>> {
 }
 
 async function exclusive<T>(action: () => Promise<T>): Promise<T> {
-  if (navigator.locks) return navigator.locks.request('comerzia-browser-authentication', action);
+  if (navigator.locks) return navigator.locks.request('comerzia-browser-authentication', { signal: AbortSignal.timeout(15000) }, action);
   // El backend conserva consumo único aunque el navegador no ofrezca coordinación entre pestañas.
   return action();
 }

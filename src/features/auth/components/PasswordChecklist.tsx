@@ -1,5 +1,6 @@
 import { CheckCircle2, XCircle } from "lucide-react";
 import { useMemo } from "react";
+import { passwordChecks } from "../utils/passwordPolicy";
 
 interface Props {
     passwordValue?: string;
@@ -10,10 +11,7 @@ export const PasswordChecklist = ({ passwordValue = "", showErrors }: Props) => 
     // Evaluamos las reglas en tiempo real blindando contra cualquier valor no string
     const val = typeof passwordValue === 'string' ? passwordValue : '';
 
-    const validations = useMemo(() => [
-        { id: 'length', label: 'Entre 15 y 64 caracteres', isValid: Array.from(val).length >= 15 && Array.from(val).length <= 64 },
-        { id: 'bytes', label: 'Hasta 72 bytes UTF-8', isValid: new TextEncoder().encode(val).length <= 72 }
-    ], [val]);
+    const validations = useMemo(() => passwordChecks(val), [val]);
 
     return (
         <div className="bg-base-200/50 rounded-xl p-4 border border-base-200 space-y-2 mt-4 animate-fade-in">

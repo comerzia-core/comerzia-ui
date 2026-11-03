@@ -58,7 +58,7 @@ export const ComerziaInput = forwardRef<HTMLInputElement, Props>(({
       {label && (
         <label htmlFor={props.id} className="label py-1 w-full min-w-0">
           <span className={`label-text font-semibold flex gap-1 ${error ? "text-error" : ""}`}>
-              {label}
+              <span>{label}</span>
               {isRequired && <span className="text-error" title="Campo obligatorio">*</span>}
           </span>
         </label>

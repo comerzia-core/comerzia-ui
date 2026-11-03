@@ -2,33 +2,28 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { MailCheck, CheckCircle2, AlertTriangle, XCircle, ArrowRight, ShieldCheck } from 'lucide-react';
 import { usePublicEmailVerification } from '../../security/hooks/usePublicEmailVerification';
+import { AuthStage } from '../components/AuthStage';
+import { PublicAction } from '../../../components/ui/PublicAction';
 
 export const EmailVerificationPage: React.FC = () => {
   const { token, inspection, loading, confirmed, errorMessage, confirmMutation, handleConfirm } = usePublicEmailVerification();
 
   return (
-    <div className="min-h-screen bg-base-200/50 flex flex-col justify-center items-center p-4">
-      {/* Container */}
-      <div className="w-full max-w-md bg-base-100 shadow-xl border border-base-300 rounded-3xl p-6 sm:p-8 text-center animate-fade-in">
-        {/* Brand Header */}
-        <div className="mb-6 flex justify-center items-center gap-1.5">
-          <span className="text-2xl font-black tracking-tight text-base-content">Comerzia</span>
-          <span className="w-2 h-2 rounded-full bg-primary inline-block"></span>
-        </div>
-
+    <AuthStage>
+      <div className="public-login">
         {/* State 1: No token provided */}
         {!token && (
-          <div className="space-y-4">
+          <div className="space-y-4 text-center animate-fade-in">
             <div className="w-16 h-16 mx-auto bg-error/10 text-error rounded-full flex items-center justify-center">
               <AlertTriangle size={32} />
             </div>
-            <h2 className="text-xl font-bold text-base-content">Enlace incompleto</h2>
+            <h1 className="text-xl font-bold text-base-content">Enlace incompleto</h1>
             <p className="text-sm text-base-content/70">
               No se proporcionó un token de verificación. Si recibiste un correo, asegúrate de hacer clic en el enlace completo.
             </p>
             <div className="pt-4">
-              <Link to="/login" className="btn btn-primary btn-sm rounded-xl w-full">
-                Ir a Iniciar Sesión
+              <Link to="/login" className="public-action" style={{ width: '100%', textDecoration: 'none' }}>
+                Ir a iniciar sesión <ArrowRight size={18} />
               </Link>
             </div>
           </div>
@@ -36,7 +31,7 @@ export const EmailVerificationPage: React.FC = () => {
 
         {/* State 2: Inspecting token */}
         {token && loading && (
-          <div className="space-y-4 py-8">
+          <div className="space-y-4 py-8 text-center">
             <span className="loading loading-spinner loading-lg text-primary"></span>
             <p className="text-sm font-medium text-base-content/70">
               Validando enlace de seguridad...
@@ -46,19 +41,19 @@ export const EmailVerificationPage: React.FC = () => {
 
         {/* State 3: Confirmed successfully */}
         {token && !loading && confirmed && (
-          <div className="space-y-5">
+          <div className="space-y-5 text-center animate-fade-in">
             <div className="w-16 h-16 mx-auto bg-success/15 text-success rounded-full flex items-center justify-center">
               <CheckCircle2 size={36} />
             </div>
-            <h2 className="text-xl font-bold text-base-content">¡Correo Verificado!</h2>
+            <h1 className="text-2xl font-bold text-base-content">¡Correo Verificado!</h1>
             <p className="text-sm text-base-content/70 leading-relaxed">
               Tu dirección de correo electrónico ha sido confirmada exitosamente. Tu cuenta ahora cuenta con este canal verificado para seguridad y notificaciones.
             </p>
-            <div className="pt-3 flex flex-col gap-2">
-              <Link to="/dashboard" className="btn btn-primary rounded-xl gap-2 w-full">
-                Ir al Panel Principal <ArrowRight size={16} />
+            <div className="pt-3 flex flex-col gap-3">
+              <Link to="/dashboard" className="public-action" style={{ width: '100%', textDecoration: 'none' }}>
+                Ir al panel principal <ArrowRight size={18} />
               </Link>
-              <Link to="/login" className="btn btn-ghost btn-sm text-base-content/70">
+              <Link to="/login" className="public-action public-action--back" style={{ width: '100%', textDecoration: 'none' }}>
                 Iniciar sesión con otra cuenta
               </Link>
             </div>
@@ -67,23 +62,23 @@ export const EmailVerificationPage: React.FC = () => {
 
         {/* State 4: Token invalid / expired / consumed error */}
         {token && !loading && !confirmed && errorMessage && (
-          <div className="space-y-4">
+          <div className="space-y-4 text-center animate-fade-in">
             <div className="w-16 h-16 mx-auto bg-error/10 text-error rounded-full flex items-center justify-center">
               <XCircle size={36} />
             </div>
-            <h2 className="text-xl font-bold text-base-content">Enlace No Válido</h2>
+            <h1 className="text-xl font-bold text-base-content">Enlace No Válido</h1>
             <div className="p-3 bg-error/10 text-error rounded-xl text-xs sm:text-sm font-medium text-left">
               {errorMessage}
             </div>
             <p className="text-xs text-base-content/60">
               Los enlaces de verificación son de uso único y expiran por seguridad. Puedes solicitar uno nuevo desde tu perfil de usuario.
             </p>
-            <div className="pt-4 flex flex-col gap-2">
-              <Link to="/login" className="btn btn-primary btn-sm rounded-xl w-full">
-                Iniciar Sesión
+            <div className="pt-4 flex flex-col gap-3">
+              <Link to="/login" className="public-action" style={{ width: '100%', textDecoration: 'none' }}>
+                Iniciar sesión <ArrowRight size={18} />
               </Link>
-              <Link to="/" className="btn btn-ghost btn-sm text-base-content/70">
-                Volver al Inicio
+              <Link to="/" className="public-action public-action--back" style={{ width: '100%', textDecoration: 'none' }}>
+                Volver al inicio
               </Link>
             </div>
           </div>
@@ -91,17 +86,20 @@ export const EmailVerificationPage: React.FC = () => {
 
         {/* State 5: Token valid, ready for user confirmation */}
         {token && !loading && !confirmed && !errorMessage && inspection?.valid && (
-          <div className="space-y-5">
+          <div className="space-y-5 text-center animate-fade-in">
             <div className="w-16 h-16 mx-auto bg-primary/10 text-primary rounded-full flex items-center justify-center">
               <MailCheck size={36} />
             </div>
-            <h2 className="text-xl font-bold text-base-content">Confirmar Verificación</h2>
+            <span className="public-eyebrow">CANAL DE CONTACTO OFICIAL</span>
+            <h1 className="text-2xl font-bold text-base-content">Confirmar verificación</h1>
             <p className="text-sm text-base-content/70">
               Estás a punto de verificar tu dirección de correo electrónico:
             </p>
             {inspection.maskedEmail && (
-              <div className="py-2 px-4 bg-base-200 rounded-xl font-mono text-sm font-bold text-primary inline-block">
-                {inspection.maskedEmail}
+              <div className="bg-base-200/60 p-3 rounded-2xl border border-base-200">
+                <span className="font-mono font-bold text-sm text-base-content">
+                  {inspection.maskedEmail}
+                </span>
               </div>
             )}
             <div className="p-3 bg-base-200/60 rounded-xl text-xs text-base-content/70 flex items-center gap-2 text-left">
@@ -110,34 +108,23 @@ export const EmailVerificationPage: React.FC = () => {
                 Para proteger tu seguridad frente a escáneres automáticos de correo, confirma tu acción haciendo clic abajo.
               </span>
             </div>
-            <div className="pt-2">
-              <button
+            <div className="pt-2 flex flex-col gap-3">
+              <PublicAction
                 type="button"
                 onClick={handleConfirm}
-                disabled={confirmMutation.isPending}
-                className="btn btn-primary rounded-xl w-full gap-2 text-base font-semibold shadow-md shadow-primary/20"
+                busy={confirmMutation.isPending}
+                arrow
+                style={{ width: '100%' }}
               >
-                {confirmMutation.isPending ? (
-                  <>
-                    <span className="loading loading-spinner loading-sm"></span>
-                    Confirmando...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 size={18} />
-                    Confirmar mi correo electrónico
-                  </>
-                )}
-              </button>
+                {confirmMutation.isPending ? 'Confirmando…' : 'Confirmar mi correo electrónico'}
+              </PublicAction>
+              <Link to="/login" className="public-action public-action--back" style={{ width: '100%', textDecoration: 'none' }}>
+                Volver al acceso
+              </Link>
             </div>
           </div>
         )}
       </div>
-
-      {/* Footer */}
-      <footer className="mt-8 text-center text-xs text-base-content/50">
-        &copy; {new Date().getFullYear()} Comerzia SaaS &bull; Seguridad de Identidad
-      </footer>
-    </div>
+    </AuthStage>
   );
 };
