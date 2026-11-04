@@ -1,18 +1,19 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { isAxiosError } from 'axios';
-import { submitBrowserCredentials } from '../services/browserSessionService';
+import { submitBrowserCredentials, verifyMfaLogin, verifyMfaRecovery } from '../services/browserSessionService';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { useToast } from '../../../context/ToastContext';
 import { AUTH_ERROR_CODES, type AuthErrorResponse } from '../types';
 import { passwordFeedback } from '../utils/passwordPolicy';
 
-type AuthStep = 'LOGIN' | 'CHANGE_PASSWORD';
+type AuthStep = 'LOGIN' | 'CHANGE_PASSWORD' | 'MFA_CHALLENGE';
 
 export function useLogin() {
     const navigate = useNavigate();
     const loginStore = useAuthStore(state => state.login);
     const sessionNotice = useAuthStore(state => state.sessionNotice);
+    const authStatus = useAuthStore(state => state.status);
     const { info: toastInfo } = useToast();
 
     // Mostrar aviso de sesión (ej. revocación, cambio de permisos) mediante notificación toast
@@ -24,7 +25,8 @@ export function useLogin() {
     }, [sessionNotice, toastInfo]);
 
     // --- ESTADOS DE FLUJO ---
-    const [currentStep, setCurrentStep] = useState<AuthStep>('LOGIN');
+    const [currentStep, setCurrentStep] = useState<AuthStep>(authStatus === 'mfa_pending' ? 'MFA_CHALLENGE' : 'LOGIN');
+    const [mfaMode, setMfaMode] = useState<'TOTP' | 'RECOVERY'>('TOTP');
     const [isLoading, setIsLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
     const [shakeKey, setShakeKey] = useState(0);
@@ -33,6 +35,8 @@ export function useLogin() {
     const [username, setUsername] = useState("");
     const [currentPassword, setCurrentPassword] = useState("");
     const [newPassword, setNewPassword] = useState("");
+    const [totpCode, setTotpCode] = useState("");
+    const [recoveryCode, setRecoveryCode] = useState("");
 
     // --- ESTADOS DE UI ---
     const [showPassword, setShowPassword] = useState(false);
@@ -58,9 +62,18 @@ export function useLogin() {
                 password: currentPassword
             });
 
+            if (data.mfaRequired || data.authenticationState === 'MFA_PENDING' || !data.token) {
+                useAuthStore.getState().requireAdditionalAuthentication();
+                setCurrentStep('MFA_CHALLENGE');
+                setMfaMode('TOTP');
+                setErrorMessage("");
+                setTotpCode("");
+                return;
+            }
+
             // Si funciona a la primera, lo dejamos entrar
             await loginStore(data.token);
-            if (!useAuthStore.getState().isSessionReady) { setErrorMessage('No pudimos cargar tu empresa. Inicia sesi?n nuevamente.'); return; }
+            if (!useAuthStore.getState().isSessionReady) { setErrorMessage('No pudimos cargar tu empresa. Inicia sesión nuevamente.'); return; }
             navigate('/app', { replace: true });
 
         } catch (error) {
@@ -151,9 +164,18 @@ export function useLogin() {
                 newPassword
             });
 
+            if (data.mfaRequired || data.authenticationState === 'MFA_PENDING' || !data.token) {
+                useAuthStore.getState().requireAdditionalAuthentication();
+                setCurrentStep('MFA_CHALLENGE');
+                setMfaMode('TOTP');
+                setErrorMessage("");
+                setTotpCode("");
+                return;
+            }
+
             // Si es exitoso (200 OK), el backend devuelve el JWT token y entra directamente
             await loginStore(data.token);
-            if (!useAuthStore.getState().isSessionReady) { setErrorMessage('No pudimos cargar tu empresa. Inicia sesi?n nuevamente.'); return; }
+            if (!useAuthStore.getState().isSessionReady) { setErrorMessage('No pudimos cargar tu empresa. Inicia sesión nuevamente.'); return; }
             navigate('/app', { replace: true });
 
         } catch (error) {
@@ -189,8 +211,100 @@ export function useLogin() {
         }
     };
 
-    return { currentStep, setCurrentStep, isLoading, errorMessage, setErrorMessage, shakeKey,
+    // ==========================================
+    // PASO 3: DESAFÍO MFA (TOTP / CÓDIGO DE RECUPERACIÓN)
+    // ==========================================
+    const handleMfaSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setErrorMessage("");
+
+        if (mfaMode === 'TOTP') {
+            const clean = totpCode.trim();
+            if (!clean || clean.length !== 6) {
+                setShakeKey(prev => prev + 1);
+                setErrorMessage("Ingresa el código de 6 dígitos.");
+                return;
+            }
+        } else {
+            const clean = recoveryCode.trim();
+            if (!clean || clean.length < 8) {
+                setShakeKey(prev => prev + 1);
+                setErrorMessage("Ingresa tu código de recuperación.");
+                return;
+            }
+        }
+
+        setIsLoading(true);
+        try {
+            const data = mfaMode === 'TOTP'
+                ? await verifyMfaLogin(totpCode.trim())
+                : await verifyMfaRecovery(recoveryCode.trim());
+
+            if (!data.token) {
+                setErrorMessage("No se pudo completar la verificación.");
+                setShakeKey(prev => prev + 1);
+                return;
+            }
+
+            await loginStore(data.token);
+            if (!useAuthStore.getState().isSessionReady) {
+                setErrorMessage('No pudimos cargar tu empresa. Inicia sesión nuevamente.');
+                return;
+            }
+            navigate('/app', { replace: true });
+
+        } catch (error) {
+            if (isAxiosError<AuthErrorResponse>(error) && error.response) {
+                const { status, data } = error.response;
+                const errCode = (data?.code || '').toLowerCase();
+                const errMsg = (data?.message || '').toLowerCase();
+
+                if (errCode === 'totp_code_replayed' || errMsg.includes('replayed')) {
+                    setErrorMessage("Este código ya fue utilizado. Espera el siguiente código en tu app.");
+                } else if (errCode === 'invalid_totp_code' || errMsg.includes('totp')) {
+                    setErrorMessage("Código incorrecto. Revisa tu aplicación Google Authenticator.");
+                } else if (errCode === 'invalid_recovery_code' || errMsg.includes('recovery')) {
+                    setErrorMessage("Código de recuperación inválido o ya utilizado.");
+                } else if (status === 429) {
+                    setErrorMessage("Demasiados intentos fallidos. Por seguridad, espera 5 minutos.");
+                } else if (errCode === 'session_expired' || status === 401) {
+                    setErrorMessage("El tiempo para verificar expiró. Inicia sesión nuevamente.");
+                    setCurrentStep('LOGIN');
+                } else if (status === 403) {
+                    setErrorMessage("Acceso denegado o sesión modificada. Inicia sesión nuevamente.");
+                    setCurrentStep('LOGIN');
+                } else {
+                    setErrorMessage("No pudimos verificar el código. Intenta nuevamente.");
+                }
+            } else {
+                setErrorMessage("Error de conexión. Intenta nuevamente.");
+            }
+            setShakeKey(prev => prev + 1);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleCancelMfa = async () => {
+        setIsLoading(true);
+        try {
+            await useAuthStore.getState().logout();
+        } finally {
+            setIsLoading(false);
+            setCurrentStep('LOGIN');
+            setErrorMessage("");
+            setTotpCode("");
+            setRecoveryCode("");
+        }
+    };
+
+    return {
+        currentStep, setCurrentStep,
+        mfaMode, setMfaMode,
+        isLoading, errorMessage, setErrorMessage, shakeKey,
         username, setUsername, currentPassword, setCurrentPassword, newPassword, setNewPassword,
+        totpCode, setTotpCode, recoveryCode, setRecoveryCode,
         showPassword, setShowPassword, showErrorsInChecklist, setShowErrorsInChecklist,
-        handleLoginSubmit, handleChangePasswordSubmit };
+        handleLoginSubmit, handleChangePasswordSubmit, handleMfaSubmit, handleCancelMfa
+    };
 }

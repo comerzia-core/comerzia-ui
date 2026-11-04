@@ -115,6 +115,10 @@ export const useAuthStore = create<AuthState>((set, get) => {
                     get().expireSession('session_access_changed');
                     throw new Error('Browser account changed');
                 }
+                if (response.mfaRequired || response.authenticationState === 'MFA_PENDING' || !response.token) {
+                    get().requireAdditionalAuthentication();
+                    return '';
+                }
                 set({ token: response.token, sessionId: response.sessionId,
                     isAuthenticated: true, status: 'authenticated' });
                 return response.token;

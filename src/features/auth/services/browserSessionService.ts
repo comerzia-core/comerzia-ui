@@ -1,11 +1,14 @@
 import axios from 'axios';
 
 export interface BrowserAuthentication {
-  token: string;
+  token: string | null;
   sessionId: string;
   expiresAt: string;
   absoluteExpiresAt: string;
   idleSeconds: number;
+  mfaRequired?: boolean;
+  mfaType?: string;
+  authenticationState?: 'FULLY_AUTHENTICATED' | 'MFA_PENDING' | string;
 }
 
 const transport = axios.create({ baseURL: import.meta.env.VITE_API_URL, withCredentials: true, timeout: 15000 });
@@ -50,7 +53,8 @@ export function authenticationRejected(error: unknown): boolean {
   return axios.isAxiosError(error) && error.response?.status === 401;
 }
 
-export function tokenSessionReference(token: string): string | null {
+export function tokenSessionReference(token: string | null): string | null {
+  if (!token) return null;
   try {
     const payload: unknown = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
     return typeof payload === 'object' && payload !== null && 'sid' in payload && typeof payload.sid === 'string' ? payload.sid : null;
@@ -63,6 +67,27 @@ export function submitBrowserCredentials(path: '/auth/login' | '/auth/change-tem
     const { data } = await transport.post<BrowserAuthentication>(path, body, { headers });
     return data;
   });
+}
+
+export function verifyMfaLogin(code: string): Promise<BrowserAuthentication> {
+  return exclusive(async () => {
+    const headers = await csrfHeaders();
+    const { data } = await transport.post<BrowserAuthentication>('/auth/mfa/verify-login', { code }, { headers });
+    return data;
+  });
+}
+
+export function verifyMfaRecovery(recoveryCode: string): Promise<BrowserAuthentication> {
+  return exclusive(async () => {
+    const headers = await csrfHeaders();
+    const { data } = await transport.post<BrowserAuthentication>('/auth/mfa/verify-recovery', { recoveryCode }, { headers });
+    return data;
+  });
+}
+
+export async function getMfaPendingStatus(): Promise<{ sessionId: string; remainingSeconds: number; mfaRequired: boolean; authenticationState: string }> {
+  const { data } = await transport.get<{ sessionId: string; remainingSeconds: number; mfaRequired: boolean; authenticationState: string }>('/auth/mfa/pending-status');
+  return data;
 }
 
 export function authenticationPending(error: unknown): boolean {

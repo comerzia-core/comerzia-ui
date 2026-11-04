@@ -7,6 +7,7 @@ import {
   UserCog,
   AlertTriangle,
   Calendar,
+  ShieldAlert,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
@@ -31,6 +32,7 @@ interface Props {
   onUnlockRequest: (user: UserResponse) => void;
   onResetPasswordRequest: (user: UserResponse) => void;
   onModifyRolesRequest: (user: UserResponse) => void;
+  onMfaRecoveryRequest?: (user: UserResponse) => void;
 }
 
 export const UsersTable = ({
@@ -43,7 +45,8 @@ export const UsersTable = ({
   onToggleAccessRequest,
   onUnlockRequest,
   onResetPasswordRequest,
-  onModifyRolesRequest
+  onModifyRolesRequest,
+  onMfaRecoveryRequest
 }: Props) => {
   // Estado para el menú contextual (desktop: clic derecho; mobile: centrado en pantalla)
   const [contextMenu, setContextMenu] = useState<{
@@ -385,6 +388,16 @@ export const UsersTable = ({
                 if (contextMenu.user) onModifyRolesRequest(contextMenu.user);
               }}
             />
+
+            {onMfaRecoveryRequest && (
+              <ContextMenuItem
+                icon={ShieldAlert}
+                label="Recuperación MFA"
+                onClick={() => {
+                  if (contextMenu.user) onMfaRecoveryRequest(contextMenu.user);
+                }}
+              />
+            )}
           </>
         )}
       </ComerziaContextMenu>

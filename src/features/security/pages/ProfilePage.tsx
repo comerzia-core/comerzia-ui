@@ -1,5 +1,6 @@
 import { BrowserSessionsPanel } from '../components/BrowserSessionsPanel';
 import { EmailVerificationPanel } from '../components/EmailVerificationPanel';
+import { MfaSecurityPanel } from '../components/MfaSecurityPanel';
 import { passwordFeedback } from '../../auth/utils/passwordPolicy';
 import { AppearancePreferences } from '../components/ThemePreferencePanel';
 import { ComerziaButton } from '../../../components/ui/ComerziaButton';
@@ -718,6 +719,7 @@ export const ProfilePage = () => {
             {/* TAB 2: SEGURIDAD Y CONTRASEÑA (SISTEMA BALANCEADO EN PC) */}
             {/* ======================================================== */}
             {activeTab === 'security' && <EmailVerificationPanel loginEmail={profile?.email} />}
+            {activeTab === 'security' && <MfaSecurityPanel />}
             {activeTab === 'security' && <BrowserSessionsPanel />}
             {activeTab === 'security' && (
               <form onSubmit={handleChangePassword} className="space-y-6">
