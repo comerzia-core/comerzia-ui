@@ -27,6 +27,8 @@
     "test:passwords": "node --test tests/passwordPolicy.test.mjs",
     "test:mfa": "node --test tests/mfaPolicy.test.mjs",
     "test:security-messages": "node --test tests/emailVerification.test.mjs",
+    "test:oidc": "node --test tests/oidcMessages.test.mjs",
+    "test:invitations": "node --test tests/invitations.test.mjs",
     "lint:security": "node scripts/lint-security.mjs",
     "test:sessions": "playwright test --config playwright.sessions.config.mjs",
     "test:email": "playwright test --config playwright.email.config.mjs",
