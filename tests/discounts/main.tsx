@@ -9,7 +9,7 @@ import { ReturnsPage } from '../../src/features/sales/pages/ReturnsPage';
 import type { SalesCatalogItem } from '../../src/features/sales/types/sales';
 import '../../src/index.css';
 
-useAuthStore.setState({ token: 'test-discount-session', isSessionReady: true, isAuthenticated: true, userProfile: {
+useAuthStore.setState({ status: 'authenticated', sessionId: 'test-discount-session', token: 'test-discount-session', isSessionReady: true, isAuthenticated: true, userProfile: {
   id: 'test-user', username: 'seller', firstName: 'Seller', paternalLastName: 'Test', maternalFirstName: null,
   fullName: 'Seller Test', email: 'seller@example.test', imageUrl: null, operational: true, roles: ['OWNER'],
   permissions: ['SAL_SALES_CREATE', 'SAL_SALES_READ', 'SAL_RETURNS_MANAGE'],

@@ -1,3 +1,4 @@
+import { useCatalogAccess } from '../features/storefront/hooks/useCatalogAccess';
 import { useRealtimeConnection } from '../features/realtime/hooks/useRealtimeConnection';
 import { useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
@@ -8,6 +9,7 @@ import { filterMenuTree } from "../services/menuService";
 
 export const DashboardLayout = ({ workspace = "tenant" }: { workspace?: "saas" | "tenant" }) => {
   useRealtimeConnection();
+  const catalogAccess = useCatalogAccess();
   // 1. Consumimos datos y acciones directamente del Estado Global
   const { menuTree, isSessionReady, initializeSession, userProfile } = useAuthStore();
 
@@ -41,7 +43,10 @@ export const DashboardLayout = ({ workspace = "tenant" }: { workspace?: "saas" |
   const isPerpetual = userProfile?.companySettings?.planTypeCode === 705 
     || userProfile?.planTypeCode === 705;
 
-  const baseMenu = menuTree.filter(item => 
+  const hideCatalog = (items: typeof menuTree): typeof menuTree => items
+    .filter(item => item.route !== '/organization/public-catalog' || catalogAccess.allowed)
+    .map(item => item.children ? { ...item, children: hideCatalog(item.children) } : item);
+  const baseMenu = hideCatalog(menuTree).filter(item =>
     workspace === "saas" 
       ? item.route === "/saas" || item.route.startsWith("/saas/") 
       : !item.route.startsWith("/saas")

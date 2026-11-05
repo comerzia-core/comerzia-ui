@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { catalogService } from '../features/storefront/services/catalogService';
 import api from '../lib/axios';
 import { labelService } from '../features/pos/services/labelService';
 import type { DictionaryKey } from '../config/dictionaries';
@@ -27,6 +28,11 @@ export const useDictionaryStore = create<DictionaryState>((set, get) => ({
         return { cache };
     }),
     fetchDictionaries: async (keys: DictionaryKey[], context?: DictionaryContext) => {
+        if(keys.includes('catalog-phone-country') && !get().cache['catalog-phone-country']) {
+            const countries=await catalogService.phoneCountries();
+            set(state=>({cache:{...state.cache,'catalog-phone-country':countries.map(country=>({value:country.code,label:country.name+' (+'+country.callingCode+')'}))}}));
+        }
+        keys=keys.filter(key=>key!=='catalog-phone-country');
         const labelKeys = keys.filter(key => key.startsWith('label-'));
         await Promise.all(labelKeys.map(async key => {
             const cacheKey = dictionaryCacheKey(key, context);

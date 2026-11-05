@@ -1,0 +1,137 @@
+{
+  "generatedAt": "2026-10-28T05:11:24.675844+00:00",
+  "backendFull": {
+    "tests": 283,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1
+  },
+  "backendSecurityFinal": {
+    "tests": 56,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "backendLinuxJava21": {
+    "tests": 283,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 3
+  },
+  "frontend": {
+    "test:checkout": {
+      "passed": 13
+    },
+    "test:public": {
+      "passed": 20
+    },
+    "test:barcodes": {
+      "tests": 11,
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0
+    },
+    "test:scanner-camera": {
+      "tests": 9,
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0
+    },
+    "test:camera": {
+      "passed": 17
+    },
+    "test:labels": {
+      "tests": 2,
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    "test:labels-ui": {
+      "passed": 16
+    },
+    "test:realtime": {
+      "passed": 32
+    },
+    "test:images": {
+      "passed": 20
+    },
+    "test:themes": {
+      "passed": 28
+    },
+    "test:saas": {
+      "passed": 36
+    },
+    "test:returns": {
+      "passed": 26
+    },
+    "test:discounts": {
+      "passed": 22
+    },
+    "test:storefront": {
+      "passed": 24
+    },
+    "test:passwords": {
+      "tests": 1,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    "public-auth-security": {
+      "passed": 8
+    },
+    "container-security": {
+      "passed": 2
+    }
+  },
+  "containers": {
+    "frontend": {
+      "image": "comerzia-security-frontend:stage1",
+      "counts": {},
+      "imageId": "sha256:e81557647e64eb6477cb34709b6aae288b5f2ee932f9c93eb7fffe3f9031d3bf"
+    },
+    "backend": {
+      "image": "comerzia-security-backend:stage1",
+      "counts": {},
+      "imageId": "sha256:2ae34aecadbf9b108942179b9ba6140744fce3acd164be1b24b905a83cab7cad"
+    },
+    "redis": {
+      "image": "comerzia-security-redis:stage1",
+      "counts": {},
+      "imageId": "sha256:171f1f5ee6835301a4e74196b6f46167be6b044820b684a1b5cb2772b7914062"
+    },
+    "mariadb": {
+      "image": "comerzia-mariadb:10.11-security",
+      "counts": {
+        "MEDIUM": 22,
+        "LOW": 20
+      },
+      "imageId": "sha256:9d9a117b4aab7781a84870d6d9dd573baebd0036ffc14758143ebcef59276fc8"
+    }
+  },
+  "runtimeSca": {
+    "packageCount": 159,
+    "uniqueAdvisoryCount": 0
+  },
+  "allSca": {
+    "packageCount": 213,
+    "uniqueAdvisoryCount": 0
+  },
+  "filesByProject": {
+    "comerzia": 83,
+    "comerzia-ui": 48
+  },
+  "productionSmoke": {
+    "profile": "prod",
+    "javaVersion": "21.0.13",
+    "restrictedDatabaseUser": true,
+    "ddlPermissionDenied": true,
+    "schema": "validate",
+    "legacyLogin": 200,
+    "anonymousMetrics": 401,
+    "authorizedMetrics": 200,
+    "untrustedCors": 403,
+    "oversizedAuthentication": 413,
+    "redis": "private ACL-protected network",
+    "seeders": false
+  }
+}

@@ -1,12 +1,9 @@
+.git
 node_modules
 dist
-dist-ssr
-.git
 .env
 .env.*
 !.env.example
 test-results
 playwright-report
-*.log
-.agents
-tests
+**/*.log

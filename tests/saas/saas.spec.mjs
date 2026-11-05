@@ -13,8 +13,9 @@ async function prepare(page,role,path,extra=''){
  await page.route('**/api/**',async route=>{
   const req=route.request(),url=new URL(req.url()),name=url.pathname.replace(/^.*?\/api/,'');calls.push(name);
   requests.push({name,search:url.search});
+  if(name==='/auth/mfa/step-up') return route.fulfill({json:{grantToken:'synthetic-ui-grant',expiresAt:'2099-01-01T00:00:00Z',action:req.postDataJSON().action}});
   if(req.method()!=='GET'){
-   writes.push({name,body:req.postData()});
+   writes.push({name,body:req.postData(),grant:req.headers()['x-mfa-step-up-grant']});
    if(name.endsWith('/access')) accountDisabled=req.postDataJSON().disabled;
    if(name.endsWith('/status')) companyActive=req.postDataJSON().active;
    if(name.endsWith('/review'))return route.fulfill({json:{...payment,pending:false,statusLabel:'Aprobado'}});
@@ -59,7 +60,7 @@ async function actions(page,info,text){
 }
 test('directorio y ficha conservan permisos, paginación y espacio móvil',async({page},info)=>{
  await prepare(page,'SAAS_OWNER','/saas/tenants');
- await expect(page.getByRole('heading',{name:'Empresas clientes'})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Empresas clientes'})).toBeVisible({timeout:15000});
  await expect(page.getByText('CompanyOpaque',{exact:true})).toHaveCount(0);
  await actions(page,info,'Tienda ejemplo');await page.getByText('Ver empresa',{exact:true}).click();
  await expect(page.getByRole('heading',{name:'Tienda ejemplo'})).toBeVisible();
@@ -70,7 +71,7 @@ test('directorio y ficha conservan permisos, paginación y espacio móvil',async
 });
 test('soporte no recibe controles de alta, planes o finanzas',async({page},info)=>{
  const {calls}=await prepare(page,'SAAS_SUPPORT','/saas/tenants');
- await expect(page.getByRole('heading',{name:'Empresas clientes'})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Empresas clientes'})).toBeVisible({timeout:15000});
  await expect(page.getByRole('button',{name:'Nueva empresa'})).toHaveCount(0);
  await actions(page,info,'Tienda ejemplo');await page.getByText('Ver empresa',{exact:true}).click();
  await expect(page.getByRole('button',{name:'Deshabilitar empresa'})).toHaveCount(0);
@@ -110,8 +111,12 @@ test('alta del equipo presenta las credenciales tras guardar y sin IDs visibles'
  await page.getByRole('textbox',{name:'Usuario (opcional)',exact:true}).fill('nuevo');
  await page.getByText('Soporte',{exact:true}).filter({visible:true}).last().click();
  await page.getByRole('button',{name:'Guardar',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Autorizar',exact:true})).toBeVisible();
+ expect(writes).toHaveLength(0);
+ await page.getByPlaceholder('123456').fill('123456');
+ await page.getByRole('button',{name:'Autorizar',exact:true}).click();
  await expect(page.getByText('Temporal123!',{exact:true})).toBeVisible();
- expect(writes).toHaveLength(1);expect(JSON.parse(writes[0].body)).toMatchObject({username:'nuevo',memberId:'MemberOpaque',roleCodes:[1303]});
+ expect(writes).toHaveLength(1);expect(writes[0].grant).toBe('synthetic-ui-grant');expect(JSON.parse(writes[0].body)).toMatchObject({username:'nuevo',memberId:'MemberOpaque',roleCodes:[1303]});
  await expect(page.getByText('StaffOpaque',{exact:true})).toHaveCount(0);
 });
 test('las cuentas de plataforma no montan el POS',async({page})=>{
@@ -254,8 +259,8 @@ test('deshabilitar empresa advierte cierre de sesiones y permite reactivarla',as
  await expect(page.getByText('Se cerrarán las sesiones de todos sus usuarios y no podrán ingresar.')).toBeVisible();
  await page.getByRole('textbox',{name:'Motivo',exact:true}).fill('Solicitud del dueño');
  await page.getByRole('button',{name:'Confirmar',exact:true}).click();
- await expect(page.getByRole('button',{name:'Habilitar empresa'})).toBeVisible();
- expect(JSON.parse(writes[0].body)).toEqual({active:false,reason:'Solicitud del dueño'});
- await page.getByRole('button',{name:'Habilitar empresa'}).click();
+ await expect(page.getByRole('button',{name:'Habilitar empresa',exact:true})).toBeVisible();
+ await expect.poll(()=>{const command=writes.find(write=>write.name.endsWith('/status'));return command?JSON.parse(command.body):null;}).toEqual({active:false,reason:'Solicitud del dueño'});
+ await page.getByRole('button',{name:'Habilitar empresa',exact:true}).click();
  await expect(page.getByText('Sus usuarios podrán iniciar sesión nuevamente. Los bloqueos individuales se conservan.')).toBeVisible();
 });

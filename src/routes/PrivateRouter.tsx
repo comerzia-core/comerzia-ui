@@ -1,3 +1,4 @@
+import { PrivilegedRecoveryPage } from '../features/saas/pages/PrivilegedRecoveryPage';
 import { ThemePreferencePanel } from "../features/security/components/ThemePreferencePanel";
 import { useEffect } from 'react';
 import { SaasLayout } from '../layouts/SaasLayout';
@@ -32,6 +33,7 @@ import { NotFoundPage } from "../features/errors/pages/NotFoundPage";
 import { PermissionGuard } from "./PermissionGuard";
 
 
+import { PublicCatalogPage } from "../features/organization/pages/PublicCatalogPage";
 import { CompanyProfilePage } from "../features/organization/pages/CompanyProfilePage";
 import { BranchesPage } from "../features/organization/pages/BranchesPage";
 import { EmployeePage } from "../features/employees/pages/EmployeePage";
@@ -114,6 +116,7 @@ export default function PrivateRouter() {
                 <Route path="/saas/billing/settings" element={<SaasBillingSettingsPage />} />
                 <Route path="/saas/finances" element={<SaasFinancePage mode="verification" />} />
               </Route>
+              <Route element={<PermissionGuard code="SYS_MFA_PRIVILEGED_RECOVERY" />}><Route path="/saas/security/privileged-recovery" element={<PrivilegedRecoveryPage />} /></Route>
               <Route element={<PermissionGuard code="SYS_TEAM_READ" />}>
                 <Route path="/saas/team/members" element={<SaasStaffPage />} />
                 <Route path="/saas/team/security" element={<SaasTeamPage />} />
@@ -147,6 +150,7 @@ export default function PrivateRouter() {
             <Route path="/dashboard" element={<DashboardPage />} />
 
             {/* --- COMMERCIAL MODULES --- */}
+            <Route element={<PermissionGuard code="ORG_PUBLIC_CATALOG_READ" />}><Route path="/organization/public-catalog" element={<PublicCatalogPage />} /></Route>
             <Route path="/organization/company" element={<CompanyProfilePage />} />
             <Route path="/organization/branches" element={<BranchesPage />} />
 

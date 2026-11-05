@@ -9,13 +9,15 @@ export const platformService = {
   async page<T>(path: string, params: QueryParameters, signal?: AbortSignal): Promise<PageResponse<T>> {
     return this.get<PageResponse<T>>(path, params, signal);
   },
-  async post<T>(path: string, body?: unknown): Promise<T> { return (await api.post<T>(path, body)).data; },
+  async post<T>(path: string, body?: unknown, grant?: string): Promise<T> { return (await api.post<T>(path, body, { headers: grant ? { 'X-Mfa-Step-Up-Grant': grant } : undefined })).data; },
   async put<T>(path: string, body: unknown): Promise<T> { return (await api.put<T>(path, body)).data; },
   async delete(path: string): Promise<void> { await api.delete(path); },
-  async patch<T>(path: string, body: unknown): Promise<T> { return (await api.patch<T>(path, body)).data; },
+  async patch<T>(path: string, body: unknown, grant?: string): Promise<T> { return (await api.patch<T>(path, body, { headers: grant ? { 'X-Mfa-Step-Up-Grant': grant } : undefined })).data; },
 };
 export function platformError(error: unknown): string {
   if (isAxiosError<{ code?: string }>(error)) {
+    if (error.response?.data.code === 'mfa_enrollment_required') return 'Activa 2FA desde Perfil → Seguridad.';
+    if (error.response?.data.code === 'mfa_operation_context_required') return 'Vuelve a confirmar la operación.';
     if (error.response?.data.code === 'email_unavailable') return 'Este correo ya está registrado.';
     if (error.response?.data.code === 'email_required') return 'Indica un correo válido.';
     if (error.response?.data.code === 'username_unavailable') return 'Este usuario ya está reservado.';

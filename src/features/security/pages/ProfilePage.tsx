@@ -1,7 +1,12 @@
+import { BrowserSessionsPanel } from '../components/BrowserSessionsPanel';
+import { EmailVerificationPanel } from '../components/EmailVerificationPanel';
+import { MfaSecurityPanel } from '../components/MfaSecurityPanel';
+import { passwordFeedback } from '../../auth/utils/passwordPolicy';
 import { AppearancePreferences } from '../components/ThemePreferencePanel';
 import { ComerziaButton } from '../../../components/ui/ComerziaButton';
 import { Palette } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { 
   User, 
   ShieldCheck, 
@@ -47,7 +52,13 @@ export const ProfilePage = () => {
   ]);
 
   // Estados de carga y navegación de pestañas
-  const [activeTab, setActiveTab] = useState<'personal' | 'security' | 'appearance'>('personal');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const activeTab = tabParam === 'security' || tabParam === 'appearance' ? tabParam : 'personal';
+  const setActiveTab = (tab: 'personal' | 'security' | 'appearance') => {
+    setSearchParams(previous => { const next = new URLSearchParams(previous); next.set('tab', tab); return next; }, { replace: true });
+  };
+
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSavingProfile, setIsSavingProfile] = useState<boolean>(false);
   const [isChangingPassword, setIsChangingPassword] = useState<boolean>(false);
@@ -88,10 +99,12 @@ export const ProfilePage = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
 
   // Carga inicial del perfil
-  const loadProfile = async () => {
+  useEffect(() => {
+    let active = true;
+    const loadProfile = async () => {
     try {
-      setIsLoading(true);
       const data = await profileService.getMyProfile();
+      if (!active) return;
       setProfile(data);
 
       // Sincronizar avatar
@@ -110,6 +123,7 @@ export const ProfilePage = () => {
         address: data.address || ''
       });
     } catch (error) {
+      if (!active) return;
       console.error('Error fetching user profile:', error);
       const axiosError = error as { response?: { status?: number } };
       if (axiosError.response?.status === 404) {
@@ -120,14 +134,13 @@ export const ProfilePage = () => {
         addToast('Error al cargar el perfil.', 'error');
       }
     } finally {
-      setIsLoading(false);
+      if (active) setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    loadProfile();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    void loadProfile();
+    return () => { active = false; };
+  }, [addToast]);
 
   // Manejador numérico
   const handleNumericInput = (val: string, maxLength: number) => {
@@ -235,7 +248,10 @@ export const ProfilePage = () => {
       const backendCode = axiosError.response?.data?.code?.toLowerCase();
       const rawMessage = axiosError.response?.data?.message?.toLowerCase() || '';
 
-      if (
+      if (backendCode === 'email_change_requires_verification') {
+        setPersonalErrors(prev => ({ ...prev, email: 'El cambio de correo de acceso requiere un flujo de verificación segura.' }));
+        addToast('El cambio de correo de acceso requiere verificación segura.', 'warning');
+      } else if (
         backendCode === PROFILE_ERROR_CODES.EMAIL_ALREADY_EXISTS || 
         backendCode?.includes('email') || 
         rawMessage.includes('email')
@@ -266,13 +282,8 @@ export const ProfilePage = () => {
       errors.currentPassword = 'Ingresa tu contraseña actual';
     }
 
-    if (!passwordForm.newPassword) {
-      errors.newPassword = 'Ingresa una nueva contraseña';
-    } else if (passwordForm.newPassword.length < 8) {
-      errors.newPassword = 'Debe tener al menos 8 caracteres';
-    } else if (passwordForm.newPassword.length > 64) {
-      errors.newPassword = 'No puede superar 64 caracteres';
-    }
+    const newPasswordFeedback = passwordFeedback(passwordForm.newPassword);
+    if (newPasswordFeedback) errors.newPassword = newPasswordFeedback;
 
     if (!passwordForm.confirmPassword) {
       errors.confirmPassword = 'Confirma tu nueva contraseña';
@@ -707,6 +718,9 @@ export const ProfilePage = () => {
             {/* ======================================================== */}
             {/* TAB 2: SEGURIDAD Y CONTRASEÑA (SISTEMA BALANCEADO EN PC) */}
             {/* ======================================================== */}
+            {activeTab === 'security' && <EmailVerificationPanel loginEmail={profile?.email} />}
+            {activeTab === 'security' && <MfaSecurityPanel />}
+            {activeTab === 'security' && <BrowserSessionsPanel />}
             {activeTab === 'security' && (
               <form onSubmit={handleChangePassword} className="space-y-6">
                 
@@ -825,12 +839,12 @@ export const ProfilePage = () => {
 
                       <div className="space-y-2 text-xs">
                         <div className="flex items-center gap-2">
-                          {passwordForm.newPassword.length >= 8 && passwordForm.newPassword.length <= 64 ? (
+                          {!passwordFeedback(passwordForm.newPassword) ? (
                             <CheckCircle2 size={16} className="text-success shrink-0" />
                           ) : (
                             <AlertCircle size={16} className="text-base-content/40 shrink-0" />
                           )}
-                          <span className={passwordForm.newPassword.length >= 8 && passwordForm.newPassword.length <= 64 ? 'text-success font-medium' : 'text-base-content/70'}>
+                          <span className={!passwordFeedback(passwordForm.newPassword) ? 'text-success font-medium' : 'text-base-content/70'}>
                             Mínimo 8 caracteres ({passwordForm.newPassword.length}/64)
                           </span>
                         </div>

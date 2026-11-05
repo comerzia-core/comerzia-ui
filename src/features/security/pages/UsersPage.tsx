@@ -4,6 +4,7 @@ import { Users } from 'lucide-react';
 import { UsersTable } from '../components/users/UsersTable';
 import { UserRolesModal } from '../components/users/UserRolesModal';
 import { UserTemporaryPasswordModal } from '../components/users/UserTemporaryPasswordModal';
+import { UserMfaRecoveryModal } from '../components/users/UserMfaRecoveryModal';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
 import { ComerziaSelect } from '../../../components/ui/ComerziaSelect';
 import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
@@ -62,6 +63,9 @@ export const UsersPage = () => {
   const [resetCredentials, setResetCredentials] = useState<ResetPasswordResponse | null>(null);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState<boolean>(false);
 
+  // Modal de Recuperación Administrativa de MFA (Control Dual)
+  const [isMfaRecoveryModalOpen, setIsMfaRecoveryModalOpen] = useState<boolean>(false);
+
   // --- SOLICITUDES DESDE EL MENÚ CONTEXTUAL ---
   const handleToggleAccessRequest = (user: UserResponse) => {
     setSelectedUser(user);
@@ -81,6 +85,11 @@ export const UsersPage = () => {
   const handleModifyRolesRequest = (user: UserResponse) => {
     setSelectedUser(user);
     setIsRolesModalOpen(true);
+  };
+
+  const handleMfaRecoveryRequest = (user: UserResponse) => {
+    setSelectedUser(user);
+    setIsMfaRecoveryModalOpen(true);
   };
 
   // --- CONFIRMACIÓN Y EJECUCIÓN DE ACCIONES CON ADVERTENCIA ---
@@ -249,6 +258,7 @@ export const UsersPage = () => {
             onUnlockRequest={handleUnlockRequest}
             onResetPasswordRequest={handleResetPasswordRequest}
             onModifyRolesRequest={handleModifyRolesRequest}
+            onMfaRecoveryRequest={handleMfaRecoveryRequest}
           />
         </div>
       </div>
@@ -282,6 +292,14 @@ export const UsersPage = () => {
           refetch();
         }}
         credentials={resetCredentials}
+      />
+
+      {/* MODAL DE RECUPERACIÓN ADMINISTRATIVA DE MFA (CONTROL DUAL) */}
+      <UserMfaRecoveryModal
+        isOpen={isMfaRecoveryModalOpen}
+        onClose={() => setIsMfaRecoveryModalOpen(false)}
+        user={selectedUser}
+        onSuccess={refetch}
       />
     </div>
   );

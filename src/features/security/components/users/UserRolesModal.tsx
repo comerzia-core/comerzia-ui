@@ -1,3 +1,4 @@
+import { isAxiosError } from 'axios';
 import { useState, useEffect } from 'react';
 import { UserCog, Loader2 } from 'lucide-react';
 import { ComerziaModal } from '../../../../components/ui/ComerziaModal';
@@ -15,12 +16,15 @@ interface Props {
   onSuccess: () => void;
 }
 
-export const UserRolesModal = ({ isOpen, onClose, user, onSuccess }: Props) => {
+export const UserRolesModal = (props: Props) => props.isOpen && props.user
+  ? <UserRolesModalContent key={props.user.id} {...props} /> : null;
+
+function UserRolesModalContent({ isOpen, onClose, user, onSuccess }: Props) {
   const { addToast: showToast } = useToast();
 
   const [roles, setRoles] = useState<RoleResponse[]>([]);
   const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>([]);
-  const [isLoadingRoles, setIsLoadingRoles] = useState<boolean>(false);
+  const [isLoadingRoles, setIsLoadingRoles] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [shakeKey, setShakeKey] = useState<number>(0);
 
@@ -28,40 +32,18 @@ export const UserRolesModal = ({ isOpen, onClose, user, onSuccess }: Props) => {
   const [isDemotionModalOpen, setIsDemotionModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
-    if (isOpen && user) {
-      setShakeKey(0);
-      // Inicializar con roleIds si ya existen en el objeto user
-      if (user.roleIds && Array.isArray(user.roleIds)) {
-        setSelectedRoleIds(user.roleIds);
-      }
-      loadRoles();
-    } else {
-      setShakeKey(0);
-    }
-  }, [isOpen, user]);
-
-  const loadRoles = async () => {
-    try {
-      setIsLoadingRoles(true);
-      const allRoles = await userService.getAllRoles();
+    let active = true;
+    userService.getAllRoles().then(allRoles => {
+      if (!active) return;
       setRoles(allRoles);
-
-      // Si el usuario ya trae sus roleIds, los usamos directamente; de lo contrario, fallback por coincidencia
-      if (user?.roleIds && Array.isArray(user.roleIds) && user.roleIds.length > 0) {
-        setSelectedRoleIds(user.roleIds);
-      } else {
-        const initialSelectedIds = allRoles
-          .filter(r => user?.roles?.includes(r.displayName) || user?.roles?.includes(r.name) || user?.roles?.includes(r.id))
-          .map(r => r.id);
-        setSelectedRoleIds(initialSelectedIds);
-      }
-    } catch (error) {
-      console.error('Error loading system roles:', error);
-      showToast('Error al cargar la lista de roles del sistema', 'error');
-    } finally {
-      setIsLoadingRoles(false);
-    }
-  };
+      setSelectedRoleIds(user?.roleIds?.length ? user.roleIds : allRoles
+        .filter(role => user?.roles?.includes(role.displayName) || user?.roles?.includes(role.name) || user?.roles?.includes(role.id))
+        .map(role => role.id));
+    }).catch(error => {
+      if (active) { console.error('Error loading system roles:', error); showToast('No se pudieron cargar los roles.', 'error'); }
+    }).finally(() => { if (active) setIsLoadingRoles(false); });
+    return () => { active = false; };
+  }, [user, showToast]);
 
   const toggleRole = (roleId: string) => {
     setSelectedRoleIds(prev =>
@@ -85,11 +67,11 @@ export const UserRolesModal = ({ isOpen, onClose, user, onSuccess }: Props) => {
       setShakeKey(0);
       onSuccess();
       onClose();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error updating user roles:', error);
 
       // Capturamos si el backend requiere asignación de sucursal por degradación de OWNER
-      const backendMessage = error?.response?.data?.message;
+      const backendMessage = isAxiosError<{ message?: string }>(error) ? error.response?.data?.message : undefined;
       if (backendMessage === 'BRANCH_REQUIRED_FOR_DEMOTION') {
         setIsDemotionModalOpen(true);
         return;
@@ -173,5 +155,4 @@ export const UserRolesModal = ({ isOpen, onClose, user, onSuccess }: Props) => {
       />
     </ComerziaModal>
   );
-};
-
+}

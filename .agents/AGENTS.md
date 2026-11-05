@@ -1,5 +1,9 @@
 # Reglas y Preferencias del Proyecto
 
+- En cambios de autenticación, MFA, permisos, sesiones o sus pruebas, leer y aplicar
+  [Flujos de seguridad y pruebas verificables](rules/security-flows-and-verifiable-tests.md).
+  Complementa estas reglas; no concede autorización para activar producción.
+
 - Usar **siempre** la librería `lucide-react` para los íconos de la interfaz gráfica en lugar de utilizar código SVG plano (Raw SVGs) u otras librerías. Importar el ícono directamente, ejemplo: `import { Barcode } from 'lucide-react'`.
 
 ## Reglas de Oro Arquitectónicas (De ARCHITECTURE.md)

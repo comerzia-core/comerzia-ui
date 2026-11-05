@@ -63,8 +63,9 @@ test('older company profiles retain both prompts', async ({ page }) => {
 for (const mobile of [false, true]) test(`company saves independent switches mobile=${mobile}`, async ({ page }) => {
   await page.setViewportSize(mobile ? { width: 390, height: 844 } : { width: 1280, height: 900 });
   const state = await mockApi(page); await page.goto('/tests/checkout/index.html?view=company');
-  const customer = page.getByText('Registrar cliente al cobrar', { exact: true }).locator('../..');
-  const receipt = page.getByText('Imprimir factura / ticket al cobrar', { exact: true }).locator('../..');
+  await page.getByRole('tab', { name: 'Configuración empresarial' }).click();
+  const customer = page.getByText('Asignación y Registro de Clientes', { exact: true }).locator('../..');
+  const receipt = page.getByText('Impresión de Tickets Térmicos', { exact: true }).locator('../..');
   await customer.getByTitle('Activo', { exact: true }).click();
   await receipt.getByTitle('Activo', { exact: true }).click();
   await page.getByRole('button', { name: 'Guardar Cambios' }).click();

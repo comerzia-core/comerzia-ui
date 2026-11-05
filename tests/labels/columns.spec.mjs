@@ -54,7 +54,8 @@ test('small-roll QR offers optional details and follows backend restrictions whe
   await expect.poll(() => previews.at(-1)).toEqual({ variantId: 'variant', rollSizeId: 'small', includeLogo: false, includePrice: false, includeName: false });
   await page.getByRole('combobox').nth(1).selectOption('tiny');
   for (const name of ['Logo', 'Precio', 'Nombre del producto']) {
-    await expect(toggle(name)).toHaveClass(/cursor-not-allowed/); await toggle(name).click();
+    await expect(toggle(name)).toHaveClass(/cursor-not-allowed/);
+    await expect(toggle(name)).toHaveAttribute('aria-disabled', 'true');
     await expect(toggle(name)).toHaveAttribute('title', 'Inactivo');
   }
   await page.getByRole('combobox').nth(1).selectOption('small');

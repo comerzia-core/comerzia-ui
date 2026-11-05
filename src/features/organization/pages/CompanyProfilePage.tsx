@@ -1,222 +1,17 @@
-import React, { useEffect, useState } from 'react';
 import { Building2, CreditCard, Settings } from 'lucide-react';
-import { companyService } from '../services/companyService';
-import { uploadFile } from '../../shared/services/storageService';
-import { STORAGE_FOLDERS } from '../../../config/storage';
-import { useToast } from '../../../context/ToastContext';
 import { formatDateForUser } from '../../../utils/date';
 import { getCardImageUrl } from '../../../utils/image';
 import { ComerziaSwitch } from '../../../components/ui/ComerziaSwitch';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
-import { ComerziaSingleImageUploader, type SingleImageValue } from '../../../components/ui/ComerziaSingleImageUploader';
+import { ComerziaSingleImageUploader } from '../../../components/ui/ComerziaSingleImageUploader';
 import { BtnSave } from '../../../components/ui/CrudButtons';
-import { useAuthStore } from '../../../stores/useAuthStore';
-import type { TenantCompanyProfileResponse, UpdateCompanySettingsRequest } from '../types/company';
+import { ComerziaButton } from '../../../components/ui/ComerziaButton';
+import { useCompanyProfileSettings } from '../hooks/useCompanyProfileSettings';
 
 export const CompanyProfilePage = () => {
-  const { addToast: showToast } = useToast();
-
-  // Estados de la vista
-  const [profileData, setProfileData] = useState<TenantCompanyProfileResponse | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isSaving, setIsSaving] = useState<boolean>(false);
-  const [companyLogo, setCompanyLogo] = useState<SingleImageValue | null>(null);
-  const [ticketLogo, setTicketLogo] = useState<SingleImageValue | null>(null);
-  const [companyQr, setCompanyQr] = useState<SingleImageValue | null>(null);
-  
-  // Estado para validación visual
-  const [shakeKey, setShakeKey] = useState<number>(0);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
-  // Estado del formulario de configuraciones
-  const [formData, setFormData] = useState<UpdateCompanySettingsRequest>({
-    companyLogoUrl: null,
-    ticketLogoUrl: null,
-    companyQrUrl: null,
-    currencyCode: '',
-    timezone: '',
-    taxName: '',
-    taxPercentage: 0,
-    ticketFooterText: '',
-    defaultMinStock: 0,
-    defaultIdealStock: 0,
-    saleCustomerRegistrationEnabled: true,
-    receiptPrintingEnabled: true
-  });
-
-  const loadProfile = async () => {
-    try {
-      setIsLoading(true);
-      const data = await companyService.getCompanyProfile();
-      setProfileData(data);
-      
-      setCompanyLogo(data.companyLogoUrl ? { preview: data.companyLogoUrl } : null);
-      setTicketLogo(data.ticketLogoUrl ? { preview: data.ticketLogoUrl } : null);
-      setCompanyQr(data.companyQrUrl ? { preview: data.companyQrUrl } : null);
-
-      // Mapeamos los datos al formulario. 
-      // IMPORTANTE: Mantenemos las URLs originales intactas para no sobrescribirlas al guardar.
-      setFormData({
-        companyLogoUrl: data.companyLogoUrl, 
-        ticketLogoUrl: data.ticketLogoUrl,
-        companyQrUrl: data.companyQrUrl,
-        currencyCode: data.currencyCode,
-        timezone: data.timezone,
-        taxName: data.taxName || '',
-        taxPercentage: data.taxPercentage || 0,
-        ticketFooterText: data.ticketFooterText || '',
-        defaultMinStock: data.defaultMinStock ?? 0,
-        defaultIdealStock: data.defaultIdealStock ?? 0,
-        saleCustomerRegistrationEnabled: data.saleCustomerRegistrationEnabled ?? true,
-        receiptPrintingEnabled: data.receiptPrintingEnabled ?? true
-      });
-    } catch (error) {
-      console.error('Error loading company profile:', error);
-      showToast('Error al cargar la información de la empresa', 'error');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadProfile();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: (name === 'taxPercentage' || name === 'defaultMinStock' || name === 'defaultIdealStock')
-        ? (value === '' ? '' : Number(value))
-        : value
-    }));
-    
-    // Limpiar el error del campo al escribir
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
-    }
-  };
-
-  const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
-
-    // Validamos los requeridos según el backend (NotBlank)
-    if (!formData.currencyCode) newErrors.currencyCode = 'El código de moneda es requerido';
-    if (!formData.timezone) newErrors.timezone = 'La zona horaria es requerida';
-
-    const minStockVal = Number(formData.defaultMinStock ?? 0);
-    const idealStockVal = Number(formData.defaultIdealStock ?? 0);
-
-    if (minStockVal < 0) {
-      newErrors.defaultMinStock = 'El stock mínimo no puede ser negativo';
-    }
-    if (idealStockVal < 0) {
-      newErrors.defaultIdealStock = 'El stock ideal no puede ser negativo';
-    }
-    if (idealStockVal > 0 && minStockVal > idealStockVal) {
-      newErrors.defaultMinStock = 'El stock mínimo no puede ser mayor que el stock ideal';
-    }
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      setShakeKey(prev => prev + 1); // Disparamos la vibración (shake) en la UI
-      return false;
-    }
-    return true;
-  };
-
-  const handleSaveSettings = async () => {
-    if (!validateForm()) return;
-
-    try {
-      setIsSaving(true);
-      let finalCompanyLogoUrl: string | null = null;
-      let finalTicketLogoUrl: string | null = null;
-
-      // Subida de logo de la empresa
-      if (companyLogo) {
-        if (companyLogo.file) {
-          try {
-            finalCompanyLogoUrl = await uploadFile(
-              companyLogo.file,
-              STORAGE_FOLDERS.COMPANY,
-              `logo-${profileData?.slug || 'company'}-${Date.now()}`
-            );
-          } catch (uploadErr) {
-            console.error("Error al subir logo de empresa:", uploadErr);
-            showToast("No se pudo subir la imagen del logo", "error");
-            setIsSaving(false);
-            return;
-          }
-        } else if (companyLogo.preview) {
-          finalCompanyLogoUrl = companyLogo.preview;
-        }
-      }
-
-      // Subida de logo de tickets
-      if (ticketLogo) {
-        if (ticketLogo.file) {
-          try {
-            finalTicketLogoUrl = await uploadFile(
-              ticketLogo.file,
-              STORAGE_FOLDERS.COMPANY,
-              `ticket-logo-${profileData?.slug || 'company'}-${Date.now()}`
-            );
-          } catch (uploadErr) {
-            console.error("Error al subir logo de ticket:", uploadErr);
-            showToast("No se pudo subir la imagen del logo de ticket", "error");
-            setIsSaving(false);
-            return;
-          }
-        } else if (ticketLogo.preview) {
-          finalTicketLogoUrl = ticketLogo.preview;
-        }
-      }
-
-      // Subida de código QR de la empresa (para cobros QR)
-      let finalCompanyQrUrl: string | null = null;
-      if (companyQr) {
-        if (companyQr.file) {
-          try {
-            finalCompanyQrUrl = await uploadFile(
-              companyQr.file,
-              STORAGE_FOLDERS.COMPANY,
-              `qr-${profileData?.slug || 'company'}-${Date.now()}`
-            );
-          } catch (uploadErr) {
-            console.error("Error al subir QR de la empresa:", uploadErr);
-            showToast("No se pudo subir la imagen del código QR", "error");
-            setIsSaving(false);
-            return;
-          }
-        } else if (companyQr.preview) {
-          finalCompanyQrUrl = companyQr.preview;
-        }
-      }
-
-      await companyService.updateCompanySettings({
-        ...formData,
-        companyLogoUrl: finalCompanyLogoUrl,
-        ticketLogoUrl: finalTicketLogoUrl,
-        companyQrUrl: finalCompanyQrUrl,
-        defaultMinStock: formData.defaultMinStock != null ? Number(formData.defaultMinStock) : 0,
-        defaultIdealStock: formData.defaultIdealStock != null ? Number(formData.defaultIdealStock) : 0
-      });
-      showToast('Configuración actualizada exitosamente', 'success');
-      
-      // Recargamos el perfil local y global para mantener la UI y el branding sincronizados
-      await Promise.all([
-        loadProfile(),
-        useAuthStore.getState().fetchUserProfile()
-      ]);
-    } catch (error) {
-      console.error('Error updating settings:', error);
-      showToast('Ocurrió un error al actualizar la configuración', 'error');
-    } finally {
-      setIsSaving(false);
-    }
-  };
+  const { profileData, isLoading, isSaving, companyLogo, setCompanyLogo, ticketLogo, setTicketLogo,
+    companyQr, setCompanyQr, shakeKey, errors, formData, setFormData, handleChange, handleSaveSettings,
+    tab, setTab, canManageSettings } = useCompanyProfileSettings();
 
   if (isLoading || !profileData) {
     return (
@@ -244,10 +39,14 @@ export const CompanyProfilePage = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div role="tablist" aria-label="Configuración de empresa" className="flex gap-2 overflow-x-auto">
+        <ComerziaButton role="tab" aria-selected={tab === 'general'} aria-controls="company-general" label="Información general" variant={tab === 'general' ? 'primary' : 'ghost'} onClick={() => setTab('general')} />
+        <ComerziaButton role="tab" aria-selected={tab === 'business'} aria-controls="company-business" label="Configuración empresarial" variant={tab === 'business' ? 'primary' : 'ghost'} onClick={() => setTab('business')} />
+      </div>
+      <div role="tabpanel" id={'company-' + tab} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* COLUMNA IZQUIERDA: Info General y Suscripción (Solo Lectura) */}
-        <div className="lg:col-span-1 space-y-6">
+        {tab === 'general' && <div className="lg:col-span-1 space-y-6">
           
           {/* TARJETA INFO BÁSICA */}
           <div className="card bg-base-100 shadow-sm border border-base-200">
@@ -277,12 +76,7 @@ export const CompanyProfilePage = () => {
                   <span className="text-xs font-semibold text-base-content/50 uppercase">Razón Social</span>
                   <p className="font-medium text-sm">{profileData.legalName}</p>
                 </div>
-                <div>
-                  <span className="text-xs font-semibold text-base-content/50 uppercase">Catálogo Digital</span>
-                  <p className="text-sm mt-1 font-mono text-primary cursor-pointer hover:underline">
-                    www.comerzia.com/{profileData.slug}
-                  </p>
-                </div>
+
               </div>
             </div>
           </div>
@@ -331,38 +125,20 @@ export const CompanyProfilePage = () => {
             </div>
           )}
 
-        </div>
+        </div>}
 
         {/* COLUMNA DERECHA: Formulario de Configuración (Settings) */}
-        <div className="lg:col-span-2">
+        <div className={tab === 'general' ? 'lg:col-span-2' : 'lg:col-span-3'}>
           <div className="card bg-base-100 shadow-sm border border-base-200 h-full">
             <div className="card-body p-6">
               <div className="flex gap-2 items-center mb-6">
                 <Settings className="w-5 h-5 text-base-content/50" />
-                <h2 className="card-title text-lg m-0">Parámetros de Operación</h2>
+                <h2 className="card-title text-lg m-0">{tab === 'general' ? 'Datos e identidad' : 'Configuración empresarial'}</h2>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 mb-6">
+              <fieldset disabled={!canManageSettings || isSaving} className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 mb-6">
                 
-                <div className="md:col-span-2 space-y-3 mb-3">
-                  <div className="flex items-center justify-between gap-4 rounded-xl border border-base-200 p-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold">Registrar cliente al cobrar</p>
-                      <p className="text-xs text-base-content/60">Mostrar el registro de cliente después del pago.</p>
-                    </div>
-                    <ComerziaSwitch checked={formData.saleCustomerRegistrationEnabled ?? true} disabled={isSaving}
-                      onChange={() => setFormData(prev => ({ ...prev, saleCustomerRegistrationEnabled: !prev.saleCustomerRegistrationEnabled }))} />
-                  </div>
-                  <div className="flex items-center justify-between gap-4 rounded-xl border border-base-200 p-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold">Imprimir factura / ticket al cobrar</p>
-                      <p className="text-xs text-base-content/60">Mostrar la impresión y el estado de la tickera.</p>
-                    </div>
-                    <ComerziaSwitch checked={formData.receiptPrintingEnabled ?? true} disabled={isSaving}
-                      onChange={() => setFormData(prev => ({ ...prev, receiptPrintingEnabled: !prev.receiptPrintingEnabled }))} />
-                  </div>
-                </div>
-
+                {tab === 'general' && <>
                 {/* Zona Horaria y Moneda (Solo lectura) */}
                 <ComerziaInput 
                   label="Zona Horaria (Predeterminada)" 
@@ -445,6 +221,8 @@ export const CompanyProfilePage = () => {
                   />
                 </div>
 
+                </>}
+                {tab === 'business' && <>
                 <div className="divider md:col-span-2 my-2 text-xs font-bold text-base-content/40 uppercase tracking-widest text-center whitespace-normal break-words sm:whitespace-nowrap px-1">
                   Inventario y Reabastecimiento por Defecto
                 </div>
@@ -490,6 +268,7 @@ export const CompanyProfilePage = () => {
                       </span>
                     </div>
                     <ComerziaSwitch
+                      disabled={!canManageSettings || isSaving}
                       checked={formData.saleCustomerRegistrationEnabled ?? true}
                       onChange={() => setFormData(prev => ({ ...prev, saleCustomerRegistrationEnabled: !(prev.saleCustomerRegistrationEnabled ?? true) }))}
                     />
@@ -505,16 +284,18 @@ export const CompanyProfilePage = () => {
                       </span>
                     </div>
                     <ComerziaSwitch
+                      disabled={!canManageSettings || isSaving}
                       checked={formData.receiptPrintingEnabled ?? true}
                       onChange={() => setFormData(prev => ({ ...prev, receiptPrintingEnabled: !(prev.receiptPrintingEnabled ?? true) }))}
                     />
                   </div>
                 </div>
-              </div>
+                </>}
+              </fieldset>
 
               {/* ACTION BUTTONS */}
               <div className="card-actions justify-end border-t border-base-200 pt-6 mt-auto w-full">
-                <BtnSave onClick={handleSaveSettings} isLoading={isSaving} label="Guardar Cambios" responsive={false} className="w-full sm:w-auto" />
+                <BtnSave disabled={!canManageSettings} onClick={handleSaveSettings} isLoading={isSaving} label="Guardar Cambios" responsive={false} className="w-full sm:w-auto" />
               </div>
 
             </div>
