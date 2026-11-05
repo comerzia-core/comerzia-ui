@@ -29,6 +29,7 @@ api.interceptors.request.use(
             '/profile/external-identities/google/link/start',
             '/profile/external-identities/google/link/confirm',
             '/profile/password/setup',
+            '/public/employee-invitations/accept',
         ].includes(path)) {
             config.withCredentials = true;
             const headers = await csrfHeaders();
@@ -78,7 +79,8 @@ api.interceptors.response.use(
             const isCredentialRequest = [
                 '/auth/login', '/auth/change-temporary-password',
                 '/public/registrations', '/public/registrations/google',
-                '/auth/oidc/google/complete'
+                '/auth/oidc/google/complete',
+                '/public/employee-invitations/accept'
             ].includes(error.config?.url?.split('?')[0]);
 
             if (status === 401) {

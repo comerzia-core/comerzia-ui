@@ -1,11 +1,16 @@
 // src/features/employees/pages/EmployeePage.tsx
-import { useState, useEffect } from 'react';
-import { Users } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Users, MailPlus, Mail } from 'lucide-react';
 import { EmployeeModal } from '../components/EmployeeModal';
 import { EmployeeTable } from '../components/EmployeeTable';
 import { EmployeeDetailModal } from '../components/EmployeeDetailModal';
+import { InviteEmployeeModal } from '../components/InviteEmployeeModal';
+import { RevokeInvitationModal } from '../components/RevokeInvitationModal';
+import { InvitationsTable } from '../components/InvitationsTable';
 import { employeeService } from '../services/employeeService';
+import { invitationService } from '../services/invitationService';
 import type { EmployeeSummaryResponse, EmployeeCreatedResponse } from '../types/employee';
+import type { TenantEmployeeInvitationResponse } from '../types/invitation';
 import type { PageResponse } from '../../../types/api';
 import { BtnCreate } from '../../../components/ui/CrudButtons';
 import { useToast } from '../../../context/ToastContext';
@@ -62,7 +67,43 @@ export const EmployeePage = () => {
 
   const [credentialsData, setCredentialsData] = useState<EmployeeCreatedResponse | null>(null);
 
+  // Pestañas e Invitaciones
+  const [activeTab, setActiveTab] = useState<'EMPLOYEES' | 'INVITATIONS'>('EMPLOYEES');
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [isRevokeModalOpen, setIsRevokeModalOpen] = useState(false);
+  const [invitationToRevoke, setInvitationToRevoke] = useState<TenantEmployeeInvitationResponse | null>(null);
+  const [invitations, setInvitations] = useState<TenantEmployeeInvitationResponse[]>([]);
+  const [isLoadingInvitations, setIsLoadingInvitations] = useState(false);
+
   const { success, error } = useToast();
+
+  const loadInvitations = useCallback(async () => {
+    setIsLoadingInvitations(true);
+    try {
+      const res = await invitationService.listInvitations(0, 50);
+      setInvitations(res.content || []);
+    } catch {
+      // Si la función está deshabilitada o falla
+      setInvitations([]);
+    } finally {
+      setIsLoadingInvitations(false);
+    }
+  }, []);
+
+  // Cargar lista de invitaciones en segundo plano al montar para el contador
+  useEffect(() => {
+    let active = true;
+    invitationService.listInvitations(0, 50)
+      .then(res => {
+        if (active) setInvitations(res.content || []);
+      })
+      .catch(() => {
+        if (active) setInvitations([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Sincronizar input local con URL si la URL cambia por navegación externa
   useEffect(() => {
@@ -220,61 +261,119 @@ export const EmployeePage = () => {
           </p>
         </div>
         {canManageEmployees && (
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            <button
+              type="button"
+              className="btn btn-outline btn-primary btn-sm gap-1.5 h-10 px-3.5 rounded-xl font-medium"
+              onClick={() => setIsInviteModalOpen(true)}
+            >
+              <MailPlus className="w-4 h-4" />
+              Invitar Colaborador
+            </button>
             <BtnCreate onClick={handleCreate} label="Nuevo Empleado" className="w-full sm:w-auto" />
           </div>
         )}
       </div>
 
-      {/* BARRA DE FILTROS */}
-      <div className="card bg-base-100 p-4 rounded-2xl shadow-xs border border-base-200">
-        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center w-full">
-          <div className="w-full sm:w-80">
-            <ComerziaInput
-              icon="Search"
-              placeholder="Buscar por nombre, CI o celular... (mín. 3 caracteres)"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
+      {/* PESTAÑAS: COLABORADORES ACTIVOS VS INVITACIONES PENDIENTES */}
+      <div className="flex border-b border-base-200 gap-2">
+        <button
+          type="button"
+          className={`pb-3 px-4 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${
+            activeTab === 'EMPLOYEES'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-base-content/60 hover:text-base-content'
+          }`}
+          onClick={() => setActiveTab('EMPLOYEES')}
+        >
+          <Users className="w-4 h-4" />
+          Colaboradores Activos
+        </button>
+        <button
+          type="button"
+          className={`pb-3 px-4 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${
+            activeTab === 'INVITATIONS'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-base-content/60 hover:text-base-content'
+          }`}
+          onClick={() => {
+            setActiveTab('INVITATIONS');
+            loadInvitations();
+          }}
+        >
+          <Mail className="w-4 h-4" />
+          Invitaciones Pendientes
+          {invitations.length > 0 && (
+            <span className="badge badge-primary badge-xs font-mono px-1.5 py-0.5">
+              {invitations.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {activeTab === 'INVITATIONS' ? (
+        <InvitationsTable
+          invitations={invitations}
+          isLoading={isLoadingInvitations}
+          onRefresh={loadInvitations}
+          onRevokeRequest={inv => {
+            setInvitationToRevoke(inv);
+            setIsRevokeModalOpen(true);
+          }}
+        />
+      ) : (
+        <>
+          {/* BARRA DE FILTROS */}
+          <div className="card bg-base-100 p-4 rounded-2xl shadow-xs border border-base-200">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center w-full">
+              <div className="w-full sm:w-80">
+                <ComerziaInput
+                  icon="Search"
+                  placeholder="Buscar por nombre, CI o celular... (mín. 3 caracteres)"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                />
+              </div>
+
+              {hasBranchesPermission && (
+                <div className="w-full sm:w-64">
+                  <ComerziaSelect
+                    placeholder="Todas las sucursales"
+                    enableDefaultOption={true}
+                    value={selectedBranchId}
+                    onChange={e => {
+                      setParams({ branch: e.target.value || null, page: null }, { replace: true });
+                    }}
+                    options={activeBranches.map(b => ({
+                      value: b.id,
+                      label: b.name
+                    }))}
+                    isLoading={isLoadingBranches}
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
-          {hasBranchesPermission && (
-            <div className="w-full sm:w-64">
-              <ComerziaSelect
-                placeholder="Todas las sucursales"
-                enableDefaultOption={true}
-                value={selectedBranchId}
-                onChange={e => {
-                  setParams({ branch: e.target.value || null, page: null }, { replace: true });
-                }}
-                options={activeBranches.map(b => ({
-                  value: b.id,
-                  label: b.name
-                }))}
-                isLoading={isLoadingBranches}
+          {/* CONTENEDOR DE LA TABLA PAGINADA DE EMPLEADOS */}
+          <div className="md:card md:bg-base-100 md:shadow-xs md:border md:border-base-200 md:rounded-2xl md:overflow-hidden">
+            <div className="md:card-body md:p-0">
+              <EmployeeTable
+                data={data}
+                isLoading={isLoading}
+                page={page}
+                pageSize={pageSize}
+                onPageChange={handlePageChange}
+                onPageSizeChange={handlePageSizeChange}
+                onViewDetails={handleViewDetails}
+                onEdit={canManageEmployees ? handleEdit : undefined}
+                onDelete={canManageEmployees ? handleDeleteRequest : undefined}
+                onModifyRoles={canModifyRoles ? handleModifyRoles : undefined}
               />
             </div>
-          )}
-        </div>
-      </div>
-
-      {/* CONTENEDOR DE LA TABLA PAGINADA DE EMPLEADOS */}
-      <div className="md:card md:bg-base-100 md:shadow-xs md:border md:border-base-200 md:rounded-2xl md:overflow-hidden">
-        <div className="md:card-body md:p-0">
-          <EmployeeTable
-            data={data}
-            isLoading={isLoading}
-            page={page}
-            pageSize={pageSize}
-            onPageChange={handlePageChange}
-            onPageSizeChange={handlePageSizeChange}
-            onViewDetails={handleViewDetails}
-            onEdit={canManageEmployees ? handleEdit : undefined}
-            onDelete={canManageEmployees ? handleDeleteRequest : undefined}
-            onModifyRoles={canModifyRoles ? handleModifyRoles : undefined}
-          />
-        </div>
-      </div>
+          </div>
+        </>
+      )}
 
       {/* MODAL CREAR / EDITAR EMPLEADO */}
       <EmployeeModal
@@ -328,6 +427,27 @@ export const EmployeePage = () => {
         cancelText="Cancelar"
         variant={confirmationContent.variant}
         isLoading={isProcessingAction}
+      />
+
+      {/* MODAL INVITAR COLABORADOR */}
+      <InviteEmployeeModal
+        isOpen={isInviteModalOpen}
+        onClose={() => setIsInviteModalOpen(false)}
+        onInvitationCreated={() => {
+          loadInvitations();
+          setActiveTab('INVITATIONS');
+        }}
+      />
+
+      {/* MODAL REVOCAR INVITACIÓN */}
+      <RevokeInvitationModal
+        isOpen={isRevokeModalOpen}
+        onClose={() => {
+          setIsRevokeModalOpen(false);
+          setInvitationToRevoke(null);
+        }}
+        invitation={invitationToRevoke}
+        onRevoked={loadInvitations}
       />
     </div>
   );

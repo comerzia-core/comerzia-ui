@@ -45,6 +45,10 @@ const ACTION_DESCRIPTIONS: Record<MfaStepUpActionType, { title: string; desc: st
   ADMIN_MFA_RECOVERY: {
     title: 'Confirmar recuperación administrativa de MFA',
     desc: 'Esta operación crítica de recuperación de factores requiere validación estricta de tu segundo factor.'
+  },
+  INVITE_EMPLOYEE: {
+    title: 'Confirmar invitación de colaborador',
+    desc: 'La invitación asigna un rol con privilegios sensibles en la empresa y requiere validación de tu segundo factor.'
   }
 };
 

@@ -5,7 +5,8 @@ const defaults: Record<MfaStepUpActionType, string> = {
   DEACTIVATE_MFA: 'POST:/profile/mfa/deactivate',
   MANAGE_SAAS_TEAM: 'POST:/saas/team', ASSIGN_ROLES: 'PUT:/tenant/users',
   UPDATE_USER_ACCESS: 'PATCH:/tenant/users', ADMIN_MFA_RECOVERY: 'POST:/saas/team/recovery/requests',
-  UPDATE_SECURITY_SETTINGS: 'PUT:/saas/billing/settings'
+  UPDATE_SECURITY_SETTINGS: 'PUT:/saas/billing/settings',
+  INVITE_EMPLOYEE: 'POST:/tenant/employee-invitations'
 };
 function canonical(value: unknown): string {
   if (Array.isArray(value)) return '[' + value.map(canonical).join(',') + ']';

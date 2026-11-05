@@ -10,6 +10,7 @@ const EmailVerificationPage = lazy(() => import('../features/public/pages/EmailV
 const PasswordResetPage = lazy(() => import('../features/public/pages/PasswordResetPage').then(module => ({ default: module.PasswordResetPage })));
 const EmailChangePage = lazy(() => import('../features/public/pages/EmailChangePage').then(module => ({ default: module.EmailChangePage })));
 const GoogleAuthResultPage = lazy(() => import('../features/auth/pages/GoogleAuthResultPage').then(module => ({ default: module.GoogleAuthResultPage })));
+const AcceptInvitationPage = lazy(() => import('../features/public/pages/AcceptInvitationPage').then(module => ({ default: module.AcceptInvitationPage })));
 
 export function AppRouter() {
   return <BrowserRouter><Suspense fallback={<div className="public-route-loading" role="status">Cargando…</div>}><Routes>
@@ -21,6 +22,8 @@ export function AppRouter() {
       <Route path="/verificar-email" element={<EmailVerificationPage />} />
       <Route path="/cambiar-email" element={<EmailChangePage />} />
       <Route path="/auth/google/resultado" element={<GoogleAuthResultPage />} />
+      <Route path="/invitacion" element={<AcceptInvitationPage />} />
+      <Route path="/aceptar-invitacion" element={<AcceptInvitationPage />} />
     </Route>
     <Route path="/c/:slug" element={<StorefrontPage />} />
     <Route path="/*" element={<PrivateRouter />} />

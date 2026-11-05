@@ -51,6 +51,18 @@ export function GoogleAuthResultPage() {
           return;
         }
 
+        if (result.status === 'INVITATION_VERIFIED' && result.invitationToken) {
+          navigate('/aceptar-invitacion', {
+            replace: true,
+            state: {
+              googleContinuationToken: result.invitationToken,
+              email: result.email,
+              name: result.name
+            }
+          });
+          return;
+        }
+
         if (result.status === 'LINK_VERIFIED' && result.linkToken) {
           try {
             await confirmGoogleLink(result.linkToken);

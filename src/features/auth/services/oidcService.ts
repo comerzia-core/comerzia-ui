@@ -32,6 +32,16 @@ export async function startGoogleLogin(): Promise<OidcStartResponse> {
   return data;
 }
 
+export async function startGoogleInvitationAuth(): Promise<OidcStartResponse> {
+  const headers = await csrfHeaders();
+  const { data } = await transport.post<OidcStartResponse>(
+    '/auth/oidc/google/start',
+    { purpose: 'INVITATION' },
+    { headers }
+  );
+  return data;
+}
+
 export async function completeGoogleAuth(): Promise<OidcCompleteResponse> {
   const headers = await csrfHeaders();
   const { data } = await transport.post<OidcCompleteResponse>(

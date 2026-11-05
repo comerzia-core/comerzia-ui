@@ -15,7 +15,8 @@ export type OidcCompleteStatus =
   | 'ACCOUNT_LINK_REQUIRED'
   | 'REGISTRATION_REQUIRED'
   | 'LINK_VERIFIED'
-  | 'REAUTH_VERIFIED';
+  | 'REAUTH_VERIFIED'
+  | 'INVITATION_VERIFIED';
 
 export interface OidcAuthData {
   token?: string;
@@ -40,6 +41,7 @@ export interface OidcCompleteResponse {
   name?: string;
   registrationToken?: string;
   linkToken?: string;
+  invitationToken?: string;
   auth?: OidcAuthData;
 }
 
