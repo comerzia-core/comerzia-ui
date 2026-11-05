@@ -152,7 +152,9 @@ export const ProfilePage = () => {
       errors.maternalSurname = 'El apellido no debe superar 45 caracteres';
     }
 
-    if (personalForm.email) {
+    if (!personalForm.email.trim()) {
+      errors.email = 'Indica un correo válido';
+    } else {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(personalForm.email)) {
         errors.email = 'El formato de correo no es válido';
@@ -662,6 +664,7 @@ export const ProfilePage = () => {
 
                     <ComerziaInput
                       label="Correo Electrónico"
+                      isRequired
                       type="email"
                       value={personalForm.email}
                       onChange={e => {

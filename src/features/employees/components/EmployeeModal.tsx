@@ -207,8 +207,8 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
       if (!person.firstName.trim()) return false;
       // Al menos un apellido
       if (!person.paternalSurname.trim() && !person.maternalSurname.trim()) return false;
-      // Email opcional, pero si se escribe debe ser válido
-      if (person.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(person.email)) return false;
+      // La cuenta de acceso requiere un correo válido y único, validado de nuevo por el servidor.
+      if (!person.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(person.email)) return false;
       return true;
     }
 
@@ -315,7 +315,11 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
         return;
       }
 
-      if (apiMsg) {
+      if (errCode === 'email_unavailable') {
+        toastError('Este correo ya está registrado.');
+      } else if (errCode === 'email_required') {
+        toastError('Indica un correo válido.');
+      } else if (apiMsg) {
         toastError(apiMsg);
       } else if (err.response?.data) {
         toastError(JSON.stringify(err.response.data).slice(0, 150));
@@ -428,12 +432,13 @@ export const EmployeeModal = ({ isOpen, onClose, onSaved, employee }: Props) => 
                 />
                 <ComerziaInput
                   label="Email"
+                  isRequired
                   type="email"
                   value={person.email}
                   onChange={e => setPerson({ ...person, email: e.target.value })}
                   shakeKey={shakeKey}
                   error={
-                    person.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(person.email) && shakeKey > 0
+                    (!person.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(person.email)) && shakeKey > 0
                       ? 'Email inválido'
                       : ''
                   }
