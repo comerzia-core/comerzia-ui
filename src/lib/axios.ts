@@ -22,8 +22,13 @@ api.interceptors.request.use(
         const path = config.url?.split('?')[0];
         if (config.method?.toLowerCase() === 'post' && path && [
             '/auth/login', '/auth/change-temporary-password', '/public/registrations',
+            '/public/registrations/google',
             '/auth/logout-all', '/auth/reauthenticate',
             '/profile/mfa/totp/enroll/confirm',
+            '/auth/oidc/google/start', '/auth/oidc/google/complete',
+            '/profile/external-identities/google/link/start',
+            '/profile/external-identities/google/link/confirm',
+            '/profile/password/setup',
         ].includes(path)) {
             config.withCredentials = true;
             const headers = await csrfHeaders();
@@ -70,7 +75,11 @@ api.interceptors.response.use(
             }
             
             // MAGIA AQUÍ: Detectamos si la petición iba dirigida a autenticación
-            const isCredentialRequest = ['/auth/login', '/auth/change-temporary-password', '/public/registrations'].includes(error.config?.url?.split('?')[0]);
+            const isCredentialRequest = [
+                '/auth/login', '/auth/change-temporary-password',
+                '/public/registrations', '/public/registrations/google',
+                '/auth/oidc/google/complete'
+            ].includes(error.config?.url?.split('?')[0]);
 
             if (status === 401) {
                 const current = useAuthStore.getState();

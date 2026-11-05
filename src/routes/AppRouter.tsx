@@ -9,6 +9,7 @@ const StorefrontPage = lazy(() => import('../features/storefront/pages/Storefron
 const EmailVerificationPage = lazy(() => import('../features/public/pages/EmailVerificationPage').then(module => ({ default: module.EmailVerificationPage })));
 const PasswordResetPage = lazy(() => import('../features/public/pages/PasswordResetPage').then(module => ({ default: module.PasswordResetPage })));
 const EmailChangePage = lazy(() => import('../features/public/pages/EmailChangePage').then(module => ({ default: module.EmailChangePage })));
+const GoogleAuthResultPage = lazy(() => import('../features/auth/pages/GoogleAuthResultPage').then(module => ({ default: module.GoogleAuthResultPage })));
 
 export function AppRouter() {
   return <BrowserRouter><Suspense fallback={<div className="public-route-loading" role="status">Cargando…</div>}><Routes>
@@ -19,6 +20,7 @@ export function AppRouter() {
       <Route path="/recuperar-contrasena" element={<PasswordResetPage />} />
       <Route path="/verificar-email" element={<EmailVerificationPage />} />
       <Route path="/cambiar-email" element={<EmailChangePage />} />
+      <Route path="/auth/google/resultado" element={<GoogleAuthResultPage />} />
     </Route>
     <Route path="/c/:slug" element={<StorefrontPage />} />
     <Route path="/*" element={<PrivateRouter />} />

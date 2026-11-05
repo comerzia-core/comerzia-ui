@@ -1,6 +1,7 @@
 import { BrowserSessionsPanel } from '../components/BrowserSessionsPanel';
 import { EmailVerificationPanel } from '../components/EmailVerificationPanel';
 import { MfaSecurityPanel } from '../components/MfaSecurityPanel';
+import { ExternalIdentitiesPanel } from '../components/ExternalIdentitiesPanel';
 import { passwordFeedback } from '../../auth/utils/passwordPolicy';
 import { AppearancePreferences } from '../components/ThemePreferencePanel';
 import { ComerziaButton } from '../../../components/ui/ComerziaButton';
@@ -718,10 +719,18 @@ export const ProfilePage = () => {
             {/* ======================================================== */}
             {/* TAB 2: SEGURIDAD Y CONTRASEÑA (SISTEMA BALANCEADO EN PC) */}
             {/* ======================================================== */}
+            {activeTab === 'security' && (
+              <ExternalIdentitiesPanel
+                hasPassword={profile?.hasPassword ?? true}
+                onPasswordSetupSuccess={() => {
+                  setProfile(prev => (prev ? { ...prev, hasPassword: true } : prev));
+                }}
+              />
+            )}
             {activeTab === 'security' && <EmailVerificationPanel loginEmail={profile?.email} />}
             {activeTab === 'security' && <MfaSecurityPanel />}
             {activeTab === 'security' && <BrowserSessionsPanel />}
-            {activeTab === 'security' && (
+            {activeTab === 'security' && profile?.hasPassword !== false && (
               <form onSubmit={handleChangePassword} className="space-y-6">
                 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">

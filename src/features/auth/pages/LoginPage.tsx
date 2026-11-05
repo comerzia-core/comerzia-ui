@@ -6,6 +6,7 @@ import { ComerziaInput } from '../../../components/ui/ComerziaInput';
 import { PublicAction } from '../../../components/ui/PublicAction';
 import { AuthStage } from '../../public/components/AuthStage';
 import { PasswordChecklist } from '../components/PasswordChecklist';
+import { GoogleSignInButton } from '../components/GoogleSignInButton';
 import { useLogin } from '../hooks/useLogin';
 
 export function LoginPage() {
@@ -96,6 +97,14 @@ export function LoginPage() {
               </Link>
             </div>
             <PublicAction type="submit" busy={isLoading} arrow>{isLoading ? 'Ingresando…' : 'Ir a mi empresa'}</PublicAction>
+            <div className="public-divider" style={{ margin: '20px 0 16px 0' }}>
+              <span>o</span>
+            </div>
+            <GoogleSignInButton
+              label="Continuar con Google"
+              onError={msg => setErrorMessage(msg)}
+              disabled={isLoading}
+            />
           </form>
         )}
 
