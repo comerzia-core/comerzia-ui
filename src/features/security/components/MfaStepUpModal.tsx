@@ -1,11 +1,15 @@
-import React, { useState } from 'react';
-import { ShieldAlert, KeyRound, AlertTriangle, Loader2 } from 'lucide-react';
+import { isValidTotpCode } from '../utils/mfaInput';
+import React, { useEffect, useState } from 'react';
+import { ComerziaModal } from '../../../components/ui/ComerziaModal';
+import { ComerziaInput } from '../../../components/ui/ComerziaInput';
+import { BtnSave, BtnCancel } from '../../../components/ui/CrudButtons';
 import { mfaProfileService } from '../services/mfaProfileService';
 import type { MfaStepUpActionType } from '../types/mfa';
 
 interface MfaStepUpModalProps {
   isOpen: boolean;
   action: MfaStepUpActionType;
+  targetId?: string;
   title?: string;
   description?: string;
   onSuccess: (grantToken: string) => void;
@@ -13,6 +17,7 @@ interface MfaStepUpModalProps {
 }
 
 const ACTION_DESCRIPTIONS: Record<MfaStepUpActionType, { title: string; desc: string }> = {
+  UPDATE_SECURITY_SETTINGS: { title: 'Confirmar configuración sensible', desc: 'Verifica tu autenticador para guardar estos cambios.' },
   ASSIGN_ROLES: {
     title: 'Confirmar asignación de roles',
     desc: 'Esta acción modifica privilegios de acceso críticos en el sistema y requiere validación de tu segundo factor.'
@@ -46,6 +51,7 @@ const ACTION_DESCRIPTIONS: Record<MfaStepUpActionType, { title: string; desc: st
 export const MfaStepUpModal: React.FC<MfaStepUpModalProps> = ({
   isOpen,
   action,
+  targetId,
   title,
   description,
   onSuccess,
@@ -54,6 +60,17 @@ export const MfaStepUpModal: React.FC<MfaStepUpModalProps> = ({
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const escape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault(); event.stopImmediatePropagation();
+      if (!loading) { setCode(''); setError(null); onCancel(); }
+    };
+    window.addEventListener('keydown', escape, true);
+    return () => window.removeEventListener('keydown', escape, true);
+  }, [isOpen, loading, onCancel]);
 
   if (!isOpen) return null;
 
@@ -65,7 +82,7 @@ export const MfaStepUpModal: React.FC<MfaStepUpModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanCode = code.trim().replace(/\s+/g, '');
-    if (cleanCode.length !== 6 || !/^\d+$/.test(cleanCode)) {
+    if (!isValidTotpCode(cleanCode)) {
       setError('Ingresa el código numérico de 6 dígitos.');
       return;
     }
@@ -76,7 +93,7 @@ export const MfaStepUpModal: React.FC<MfaStepUpModalProps> = ({
     try {
       const response = await mfaProfileService.requestStepUp({
         code: cleanCode,
-        action
+        action, targetId
       });
       setCode('');
       onSuccess(response.grantToken);
@@ -106,81 +123,20 @@ export const MfaStepUpModal: React.FC<MfaStepUpModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-      <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700 overflow-hidden transform transition-all">
-        {/* Header */}
-        <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-700 flex items-center gap-3 bg-amber-50/50 dark:bg-amber-950/20">
-          <div className="p-2.5 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 rounded-xl">
-            <ShieldAlert className="w-6 h-6" />
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              {title || config.title}
-            </h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Paso de elevación de seguridad (Step-Up)
-            </p>
-          </div>
-        </div>
-
-        {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
-            {description || config.desc}
-          </p>
-
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-              Código de la aplicación autenticadora
-            </label>
-            <div className="relative">
-              <KeyRound className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                maxLength={6}
-                value={code}
-                onChange={(e) => {
-                  setCode(e.target.value.replace(/\D/g, ''));
-                  setError(null);
-                }}
-                placeholder="123456"
-                autoFocus
-                disabled={loading}
-                className="w-full pl-11 pr-4 py-2.5 text-center tracking-widest text-lg font-mono rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-50"
-              />
-            </div>
-          </div>
-
-          {error && (
-            <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 rounded-xl flex items-start gap-2.5 text-red-700 dark:text-red-400 text-xs">
-              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          <div className="pt-2 flex items-center justify-end gap-3">
-            <button
-              type="button"
-              onClick={handleClose}
-              disabled={loading}
-              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors disabled:opacity-50"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={loading || code.trim().length !== 6}
-              className="inline-flex items-center gap-2 px-5 py-2 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 dark:bg-amber-500 dark:hover:bg-amber-600 rounded-xl shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-              <span>{loading ? 'Verificando...' : 'Autorizar'}</span>
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <ComerziaModal isOpen={isOpen} onClose={handleClose} title={title || config.title} size="sm"
+      actions={<>
+        <BtnCancel responsive={false} onClick={handleClose} disabled={loading} />
+        <BtnSave responsive={false} label="Autorizar" isLoading={loading}
+          disabled={loading || !isValidTotpCode(code)} onClick={handleSubmit} />
+      </>}>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <p className="text-sm text-base-content/70">{description || config.desc}</p>
+        <ComerziaInput label="Código de la app autenticadora" aria-label="Código de la app autenticadora"
+          value={code} inputMode="numeric" autoComplete="one-time-code" maxLength={6}
+          placeholder="123456" autoFocus disabled={loading}
+          onChange={event => { setCode(event.target.value.replace(/\D/g, '')); setError(null); }}
+          error={error || undefined} />
+      </form>
+    </ComerziaModal>
   );
 };
-

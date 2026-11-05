@@ -1,4 +1,10 @@
+import { MfaRecoveryReadinessPanel } from '../../security/components/MfaRecoveryReadinessPanel';
+import { useStepUp } from '../../security/hooks/useStepUp';
+import { MfaStepUpModal } from '../../security/components/MfaStepUpModal';
+import { MfaPreflightPanel } from '../../security/components/MfaPreflightPanel';
+import { useAuthStore } from '../../../stores/useAuthStore';
 import { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { ShieldCheck, Pencil, KeyRound, Unlock, Lock } from 'lucide-react';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
 import { ComerziaSelect } from '../../../components/ui/ComerziaSelect';
@@ -19,6 +25,15 @@ import type { SaasStaffSummary } from '../types/staff';
 import type { PlatformAccount, TemporaryCredentials } from '../types/platform';
 
 export function SaasTeamPage() {
+  const stepUp = useStepUp();
+  const authorize = async (method: string, path: string, body?: unknown) => {
+    const generation = useAuthStore.getState().generation;
+    const grant = await stepUp.requestStepUp('MANAGE_SAAS_TEAM', { targetId: method + ':' + path, body });
+    if (generation !== useAuthStore.getState().generation) throw new Error('step_up_session_changed');
+    return grant;
+  };
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState<'team' | 'security'>(location.pathname.includes('/security') ? 'security' : 'team');
   const query = usePlatformPage<PlatformAccount>('/saas/team');
   const context = useSaasContextMenu<PlatformAccount>();
   const { can } = usePermission();
@@ -44,34 +59,32 @@ export function SaasTeamPage() {
   const [shake, setShake] = useState(0);
   const [credentials, setCredentials] = useState<TemporaryCredentials | null>(null);
 
-  const lock = usePlatformAction(() =>
-    platformService.post('/saas/team/' + encodeURIComponent(lockTarget!.id) + '/lock', {
-      reason,
-    })
-  );
+  const lock = usePlatformAction(async () => {
+    const path = '/saas/team/' + encodeURIComponent(lockTarget!.id) + '/lock';
+    const body = { reason };
+    return platformService.post(path, body, await authorize('POST', path, body));
+  });
 
-  const save = usePlatformAction(async () =>
-    editor === 'new'
-      ? platformService.post<TemporaryCredentials>('/saas/team/accounts', {
-          memberId,
-          username: form.username || null,
-          roleCodes: form.roleCodes,
-        })
-      : platformService.patch<PlatformAccount>(
-          '/saas/team/' + encodeURIComponent((editor as PlatformAccount).id),
-          { roleCodes: form.roleCodes, disabled: form.disabled }
-        )
-  );
+  const save = usePlatformAction(async () => {
+    if (editor === 'new') {
+      const path = '/saas/team/accounts';
+      const body = { memberId, username: form.username || null, roleCodes: [...form.roleCodes] };
+      return platformService.post<TemporaryCredentials>(path, body, await authorize('POST', path, body));
+    }
+    const path = '/saas/team/' + encodeURIComponent((editor as PlatformAccount).id);
+    const body = { roleCodes: [...form.roleCodes], disabled: form.disabled };
+    return platformService.patch<PlatformAccount>(path, body, await authorize('PATCH', path, body));
+  });
 
-  const reset = usePlatformAction((row: PlatformAccount) =>
-    platformService.post<TemporaryCredentials>(
-      '/saas/team/' + encodeURIComponent(row.id) + '/reset-password'
-    )
-  );
+  const reset = usePlatformAction(async (row: PlatformAccount) => {
+    const path = '/saas/team/' + encodeURIComponent(row.id) + '/reset-password';
+    return platformService.post<TemporaryCredentials>(path, undefined, await authorize('POST', path));
+  });
 
-  const unlock = usePlatformAction((row: PlatformAccount) =>
-    platformService.post('/saas/team/' + encodeURIComponent(row.id) + '/unlock')
-  );
+  const unlock = usePlatformAction(async (row: PlatformAccount) => {
+    const path = '/saas/team/' + encodeURIComponent(row.id) + '/unlock';
+    return platformService.post(path, undefined, await authorize('POST', path));
+  });
 
   const openEditor = (row: PlatformAccount | 'new') => {
     setMemberSearch('');
@@ -101,7 +114,7 @@ export function SaasTeamPage() {
           </div>
         </div>
 
-        {can('SYS_TEAM_MANAGE') && (
+        {can('SYS_TEAM_MANAGE') && activeTab === 'team' && (
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <BtnCreate
               responsive={false}
@@ -112,11 +125,44 @@ export function SaasTeamPage() {
         )}
       </div>
 
-      {query.isError && (
-        <div className="alert alert-error text-sm rounded-2xl shadow-xs" role="alert">
-          <span>No se pudo cargar el equipo de plataforma.</span>
-        </div>
-      )}
+      {/* PESTAÑAS DE NAVEGACIÓN */}
+      <div className="flex border-b border-base-200 gap-4">
+        <button
+          type="button"
+          className={`pb-2 px-1 text-sm font-semibold border-b-2 transition-colors ${
+            activeTab === 'team'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-base-content/70 hover:text-base-content'
+          }`}
+          onClick={() => setActiveTab('team')}
+        >
+          Cuentas de plataforma
+        </button>
+        <button
+          type="button"
+          className={`pb-2 px-1 text-sm font-semibold border-b-2 transition-colors ${
+            activeTab === 'security'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-base-content/70 hover:text-base-content'
+          }`}
+          onClick={() => setActiveTab('security')}
+        >
+          Políticas MFA y Preflight
+        </button>
+      </div>
+
+      {activeTab === 'security' ? (
+        <>
+        <MfaRecoveryReadinessPanel />
+        <MfaPreflightPanel />
+        </>
+      ) : (
+        <>
+          {query.isError && (
+            <div className="alert alert-error text-sm rounded-2xl shadow-xs" role="alert">
+              <span>No se pudo cargar el equipo de plataforma.</span>
+            </div>
+          )}
 
       {/* 2. TABLA RESPONSIVA */}
       <ComerziaResponsiveTable
@@ -350,7 +396,13 @@ export function SaasTeamPage() {
           onChange={e => setReason(e.target.value)}
         />
       </ComerziaModal>
+      </>
+      )}
 
+      <MfaStepUpModal
+        isOpen={stepUp.isStepUpOpen} action={stepUp.stepUpAction} targetId={stepUp.stepUpTarget}
+        onSuccess={stepUp.handleSuccess} onCancel={stepUp.handleCancel}
+      />
       <TemporaryCredentialsModal
         value={credentials}
         onClose={() => setCredentials(null)}

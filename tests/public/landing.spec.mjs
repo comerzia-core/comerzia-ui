@@ -27,14 +27,14 @@ async function personal(page) {
 }
 async function access(page) {
   await page.getByLabel('Nombre de usuario', { exact: true }).fill('ana.perez');
-  await page.getByLabel('Contraseña', { exact: true }).fill('StrongPassword123');
+  await page.getByLabel('Contraseña', { exact: true }).fill('StrongPassword123!');
   await page.getByRole('button', { name: 'Continuar', exact: true }).click();
 }
 test.beforeEach(async ({ page }) => { await mocks(page); });
 
 test('landing has four actual plans, full Free row, no private bundle and no overflow', async ({ page }, info) => {
   const privateBundles = []; page.on('request', request => { if (request.url().includes('/src/routes/PrivateRouter')) privateBundles.push(request.url()); });
-  await page.goto('/'); await expect(page.getByRole('heading', { name: 'Tu negocio, en tus manos.' })).toBeVisible();
+  await page.goto('/', { waitUntil: 'domcontentloaded' }); await expect(page.getByRole('heading', { name: 'Tu negocio, en tus manos.' })).toBeVisible();
   await expect(page.locator('.public-plan')).toHaveCount(4); await expect(page.getByText('Perpetuo')).toHaveCount(0);
   await expect(page.locator('.public-plan--free')).toContainText('50 productos');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
@@ -43,14 +43,14 @@ test('landing has four actual plans, full Free row, no private bundle and no ove
 });
 test('public theme stays separate from the saved ERP theme and Google is a placeholder', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('theme', 'cupcake'));
-  await page.goto('/registro'); await expect(page.getByRole('button', { name: /Continuar con Google/ })).toBeDisabled();
+  await page.goto('/registro', { waitUntil: 'domcontentloaded' }); await expect(page.getByRole('button', { name: /Continuar con Google/ })).toBeDisabled();
   await page.getByRole('button', { name: 'Usar modo oscuro' }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   expect(await page.evaluate(() => localStorage.getItem('theme'))).toBe('cupcake');
   await page.reload(); await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 });
 test('registration requires one surname and email and preserves data when moving back', async ({ page }) => {
-  await page.goto('/registro'); await page.getByRole('button', { name: 'Continuar', exact: true }).click();
+  await page.goto('/registro', { waitUntil: 'domcontentloaded' }); await page.getByRole('button', { name: 'Continuar', exact: true }).click();
   await expect(page.getByText('Escribe al menos un apellido.')).toBeVisible();
   await personal(page); await expect(page.getByRole('heading', { name: 'Un acceso solo tuyo.' })).toBeVisible();
   await page.getByRole('button', { name: 'Atrás', exact: true }).click();
@@ -64,7 +64,7 @@ test('registration shows fixed roles and caja, submits once with anonymous heade
     await route.fulfill({ status: 201, json: authenticationFixture('public-signup') });
   });
   await page.route('**/security/menu/my-tree', route => route.fulfill({ json: [] }));
-  await page.goto('/registro'); await personal(page); await access(page);
+  await page.goto('/registro', { waitUntil: 'domcontentloaded' }); await personal(page); await access(page);
   await expect(page.locator('.public-setup-register')).toContainText('CAJA 01 - 001');
   await expect(page.locator('.public-role-list>span')).toHaveCount(4); await expect(page.getByRole('checkbox')).toHaveCount(0);
   await page.getByLabel('Nombre de tu empresa', { exact: true }).fill('Mi negocio');
@@ -79,11 +79,11 @@ test('registration shows fixed roles and caja, submits once with anonymous heade
   await expect(page).toHaveURL(/\/dashboard$/, { timeout: 15000 });
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'cupcake');
   expect(payload.username).toBe('ana.perez'); expect(payload.branchName).toBe('Centro'); expect(payload.roles).toBeUndefined(); expect(payload.planTypeCode).toBeUndefined();
-  expect(await page.evaluate(() => JSON.stringify(localStorage))).not.toContain('StrongPassword123');
+  expect(await page.evaluate(() => JSON.stringify(localStorage))).not.toContain('StrongPassword123!');
 });
 test('duplicate email returns to the correct field without losing company details', async ({ page }) => {
   await page.route('**/public/registrations', route => route.fulfill({ status: 409, json: { code: 'email_unavailable' } }));
-  await page.goto('/registro'); await personal(page); await access(page);
+  await page.goto('/registro', { waitUntil: 'domcontentloaded' }); await personal(page); await access(page);
   await page.getByLabel('Nombre de tu empresa', { exact: true }).fill('Mi negocio');
   await page.getByLabel('Nombre de tu primera tienda', { exact: true }).fill('Centro');
   await page.getByRole('button', { name: 'Crear mi empresa gratis', exact: true }).click();
@@ -96,20 +96,20 @@ test('duplicate email returns to the correct field without losing company detail
 test('login accepts email and preserves mandatory temporary password change', async ({ page }) => {
   let body;
   await page.route('**/auth/login', route => { body = route.request().postDataJSON(); return route.fulfill({ status: 428, json: { code: 'password_change_required' } }); });
-  await page.goto('/login'); await page.getByLabel('Usuario o correo electrónico', { exact: true }).fill('ana@example.test');
+  await page.goto('/login', { waitUntil: 'domcontentloaded' }); await page.getByLabel('Usuario o correo electrónico', { exact: true }).fill('ana@example.test');
   await page.getByLabel('Contraseña', { exact: true }).fill('Temporary123');
   await page.getByRole('button', { name: 'Ir a mi empresa', exact: true }).click();
   await expect(page.getByLabel('Nueva contraseña', { exact: true })).toBeVisible(); expect(body.username).toBe('ana@example.test');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
 });
 test('missing video keeps its image and reduced motion disables video', async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: 'reduce' }); await page.goto('/');
+  await page.emulateMedia({ reducedMotion: 'reduce' }); await page.goto('/', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('.public-media img')).toBeVisible(); await expect(page.locator('video')).toHaveCount(0);
   expect(await page.locator('.public-media img').evaluate(element => element.complete && element.naturalWidth > 0)).toBeTruthy();
 });
 test('an existing session is never replaced by public signup', async ({ page }) => {
   await page.route('**/auth/refresh', route => route.fulfill({ json: authenticationFixture('existing-session') }));
-  await page.goto('/registro');
+  await page.goto('/registro', { waitUntil: 'domcontentloaded' });
   await expect(page.getByRole('heading', { name: 'Ya tienes una sesión abierta.' })).toBeVisible();
   await expect(page.getByRole('textbox')).toHaveCount(0);
   expect(await page.evaluate(() => localStorage.getItem('token'))).toBeNull();
@@ -119,13 +119,13 @@ test('older installed apps open the operational entry rather than the landing', 
     const match = window.matchMedia.bind(window);
     window.matchMedia = query => { const result = match(query); if (query === '(display-mode: standalone)') Object.defineProperty(result, 'matches', { value: true }); return result; };
   });
-  await page.goto('/'); await expect(page).toHaveURL(/\/login$/);
+  await page.goto('/', { waitUntil: 'domcontentloaded' }); await expect(page).toHaveURL(/\/login$/);
   await expect(page.getByRole('heading', { name: 'Qué bueno verte.' })).toBeVisible();
 });
 test('mobile access does not download the hidden decorative video or poster', async ({ page, isMobile }) => {
   const decorative = [];
   page.on('request', request => { if (/merchants-(poster|loop)/.test(request.url())) decorative.push(request.url()); });
-  await page.goto('/login'); await expect(page.getByLabel('Usuario o correo electrónico')).toBeVisible();
+  await page.goto('/login', { waitUntil: 'domcontentloaded' }); await expect(page.getByLabel('Usuario o correo electrónico')).toBeVisible();
   if (isMobile) { expect(decorative).toEqual([]); await expect(page.locator('video')).toHaveCount(0); }
   else await expect(page.locator('.public-auth-story .public-media img')).toBeVisible();
 });

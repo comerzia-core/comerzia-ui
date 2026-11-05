@@ -68,7 +68,8 @@ export const MfaEnrollmentModal: React.FC<MfaEnrollmentModalProps> = ({
       .catch(err => {
         if (!isCancelled) {
           setIsLoading(false);
-          const msg = err?.response?.data?.message || 'Error al iniciar la configuración de MFA.';
+          const msg = err?.response?.data?.code === 'primary_reauthentication_required'
+            ? 'Inicia sesión nuevamente para configurar 2FA.' : 'No pudimos iniciar la configuración de 2FA.';
           setErrorMessage(msg);
         }
       });
@@ -163,7 +164,6 @@ export const MfaEnrollmentModal: React.FC<MfaEnrollmentModalProps> = ({
       const res = await mfaProfileService.confirmTotpEnrollment(cleanCode);
       setRecoveryCodes(res.recoveryCodes || []);
       setStep('RECOVERY_CODES');
-      onSuccess();
     } catch (err: unknown) {
       const resp = (err as { response?: { data?: { code?: string; message?: string } } })?.response?.data;
       if (resp?.code === 'invalid_totp_code') {
@@ -181,12 +181,15 @@ export const MfaEnrollmentModal: React.FC<MfaEnrollmentModalProps> = ({
   const handleCancelAndClose = () => {
     if (step === 'SETUP') {
       mfaProfileService.cancelTotpEnrollment().catch(() => {});
+    } else {
+      onSuccess();
     }
     resetState();
     onClose();
   };
 
   const handleSaveAndClose = () => {
+    onSuccess();
     resetState();
     onClose();
   };

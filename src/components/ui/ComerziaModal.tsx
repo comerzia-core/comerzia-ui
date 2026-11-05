@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useId, type ReactNode } from "react";
 import { X } from "lucide-react";
 
 interface Props {
@@ -14,6 +14,7 @@ interface Props {
 }
 
 export const ComerziaModal = ({ isOpen, onClose, title, children, actions, size = "md", closeOnOutsideClick = false, variant = "form", compact = false }: Props) => {
+    const titleId = useId();
     
     // 1. MANEJO DE TECLA ESC (Manual, ya que quitamos el dialog nativo)
     useEffect(() => {
@@ -60,11 +61,12 @@ export const ComerziaModal = ({ isOpen, onClose, title, children, actions, size 
                 className={`modal-box ${sizeClasses[size]} p-0 overflow-hidden ${compact ? "flex flex-col !max-h-[92dvh]" : ""} ${bgClasses} shadow-2xl relative border ${borderClass}`}
                 role="dialog"
                 aria-modal="true"
+                aria-labelledby={titleId}
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
                 <div className={`${headerBgClass} ${compact ? "px-4 py-3 sm:px-6 shrink-0" : "px-6 py-4"} flex justify-between items-center border-b ${borderClass}`}>
-                    <div className="font-bold text-lg text-base-content flex items-center gap-2 min-w-0">
+                    <div id={titleId} className="font-bold text-lg text-base-content flex items-center gap-2 min-w-0">
                         {title}
                     </div>
                     <button 

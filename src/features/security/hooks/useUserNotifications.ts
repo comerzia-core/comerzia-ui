@@ -33,6 +33,6 @@ export function useUserNotifications() {
   });
   const notifications = (query.data ?? []).map(item => item.type === 'SECURITY_EMAIL_VERIFICATION_RECOMMENDED'
     ? { ...item, title: 'Verifica tu correo', message: 'Protege tu cuenta verificando tu correo. Puedes hacerlo cuando quieras.' }
-    : item);
+    : item.type === 'SECURITY_MFA_RECOVERY' ? { ...item, title: 'Recuperación de seguridad', message: 'Se registró una recuperación de 2FA. Si no la reconoces, contacta a soporte.' } : item);
   return { notifications, dismissMutation, isError: query.isError };
 }

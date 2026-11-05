@@ -1,17 +1,15 @@
 export type MfaEmergencyRequestStatus = 'REQUESTED' | 'APPROVED' | 'EXECUTED' | 'REJECTED' | 'EXPIRED';
 
 export interface MfaEmergencyRequestResponse {
-  id: string;
-  userId: string;
-  requestedByUserId: string;
-  approvedByUserId: string | null;
-  executedByUserId: string | null;
+  publicReference: string;
   status: MfaEmergencyRequestStatus;
   reason: string;
   rejectionReason: string | null;
   expiresAt: string;
   createdAt: string;
-  updatedAt: string | null;
+  executedAt: string | null;
+  rejectedAt: string | null;
+
 }
 
 export interface CreateMfaEmergencyRequest {

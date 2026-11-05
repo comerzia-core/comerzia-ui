@@ -9,8 +9,8 @@ export const mfaAdminRecoveryService = {
   // Tenant endpoints
   getActiveTenantRequest: async (userId: string): Promise<MfaEmergencyRequestResponse | null> => {
     try {
-      const { data } = await api.get<MfaEmergencyRequestResponse>(`/tenant/users/${userId}/mfa-recovery/active`);
-      return data;
+      const { data } = await api.get<MfaEmergencyRequestResponse[]>(`/tenant/users/${userId}/mfa-recovery`);
+      return data.find(item => item.status === 'REQUESTED' || item.status === 'APPROVED') ?? null;
     } catch (err: unknown) {
       const axiosErr = err as { response?: { status?: number } };
       if (axiosErr.response?.status === 204 || axiosErr.response?.status === 404) {
@@ -31,7 +31,7 @@ export const mfaAdminRecoveryService = {
     grantToken: string
   ): Promise<MfaEmergencyRequestResponse> => {
     const { data } = await api.post<MfaEmergencyRequestResponse>(
-      `/tenant/users/${userId}/mfa-recovery`,
+      `/tenant/users/${userId}/mfa-recovery/request`,
       req,
       {
         headers: { 'X-Mfa-Step-Up-Grant': grantToken }
@@ -46,7 +46,7 @@ export const mfaAdminRecoveryService = {
     grantToken: string
   ): Promise<MfaEmergencyRequestResponse> => {
     const { data } = await api.post<MfaEmergencyRequestResponse>(
-      `/tenant/users/${userId}/mfa-recovery/${requestId}/approve`,
+      `/tenant/users/${userId}/mfa-recovery/approve?reference=${encodeURIComponent(requestId)}`,
       null,
       {
         headers: { 'X-Mfa-Step-Up-Grant': grantToken }
@@ -61,7 +61,7 @@ export const mfaAdminRecoveryService = {
     grantToken: string
   ): Promise<MfaEmergencyRequestResponse> => {
     const { data } = await api.post<MfaEmergencyRequestResponse>(
-      `/tenant/users/${userId}/mfa-recovery/${requestId}/execute`,
+      `/tenant/users/${userId}/mfa-recovery/execute?reference=${encodeURIComponent(requestId)}`,
       null,
       {
         headers: { 'X-Mfa-Step-Up-Grant': grantToken }
@@ -73,11 +73,13 @@ export const mfaAdminRecoveryService = {
   rejectTenantRequest: async (
     userId: string,
     requestId: string,
-    req: RejectMfaEmergencyRequest
+    req: RejectMfaEmergencyRequest,
+    grantToken: string
   ): Promise<MfaEmergencyRequestResponse> => {
     const { data } = await api.post<MfaEmergencyRequestResponse>(
-      `/tenant/users/${userId}/mfa-recovery/${requestId}/reject`,
-      req
+      `/tenant/users/${userId}/mfa-recovery/reject?reference=${encodeURIComponent(requestId)}`,
+      { rejectionReason: req.reason },
+      { headers: { 'X-Mfa-Step-Up-Grant': grantToken } }
     );
     return data;
   },
@@ -85,8 +87,8 @@ export const mfaAdminRecoveryService = {
   // SaaS Team endpoints
   getActiveSaasRequest: async (userId: string): Promise<MfaEmergencyRequestResponse | null> => {
     try {
-      const { data } = await api.get<MfaEmergencyRequestResponse>(`/saas/team/${userId}/mfa-recovery/active`);
-      return data;
+      const { data } = await api.get<MfaEmergencyRequestResponse[]>(`/saas/team/${userId}/mfa-recovery`);
+      return data.find(item => item.status === 'REQUESTED' || item.status === 'APPROVED') ?? null;
     } catch (err: unknown) {
       const axiosErr = err as { response?: { status?: number } };
       if (axiosErr.response?.status === 204 || axiosErr.response?.status === 404) {
@@ -107,7 +109,7 @@ export const mfaAdminRecoveryService = {
     grantToken: string
   ): Promise<MfaEmergencyRequestResponse> => {
     const { data } = await api.post<MfaEmergencyRequestResponse>(
-      `/saas/team/${userId}/mfa-recovery`,
+      `/saas/team/${userId}/mfa-recovery/request`,
       req,
       {
         headers: { 'X-Mfa-Step-Up-Grant': grantToken }
@@ -122,7 +124,7 @@ export const mfaAdminRecoveryService = {
     grantToken: string
   ): Promise<MfaEmergencyRequestResponse> => {
     const { data } = await api.post<MfaEmergencyRequestResponse>(
-      `/saas/team/${userId}/mfa-recovery/${requestId}/approve`,
+      `/saas/team/${userId}/mfa-recovery/approve?reference=${encodeURIComponent(requestId)}`,
       null,
       {
         headers: { 'X-Mfa-Step-Up-Grant': grantToken }
@@ -137,7 +139,7 @@ export const mfaAdminRecoveryService = {
     grantToken: string
   ): Promise<MfaEmergencyRequestResponse> => {
     const { data } = await api.post<MfaEmergencyRequestResponse>(
-      `/saas/team/${userId}/mfa-recovery/${requestId}/execute`,
+      `/saas/team/${userId}/mfa-recovery/execute?reference=${encodeURIComponent(requestId)}`,
       null,
       {
         headers: { 'X-Mfa-Step-Up-Grant': grantToken }
@@ -149,11 +151,13 @@ export const mfaAdminRecoveryService = {
   rejectSaasRequest: async (
     userId: string,
     requestId: string,
-    req: RejectMfaEmergencyRequest
+    req: RejectMfaEmergencyRequest,
+    grantToken: string
   ): Promise<MfaEmergencyRequestResponse> => {
     const { data } = await api.post<MfaEmergencyRequestResponse>(
-      `/saas/team/${userId}/mfa-recovery/${requestId}/reject`,
-      req
+      `/saas/team/${userId}/mfa-recovery/reject?reference=${encodeURIComponent(requestId)}`,
+      { rejectionReason: req.reason },
+      { headers: { 'X-Mfa-Step-Up-Grant': grantToken } }
     );
     return data;
   }

@@ -1,4 +1,6 @@
-import { useState, useCallback, useRef } from 'react';
+import { bindMfaOperation } from '../utils/mfaOperation';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { useAuthStore } from '../../../stores/useAuthStore';
 import type { MfaStepUpActionType } from '../types/mfa';
 
 interface StepUpState {
@@ -6,6 +8,7 @@ interface StepUpState {
   action: MfaStepUpActionType;
   title?: string;
   description?: string;
+  targetId?: string;
 }
 
 export const useStepUp = () => {
@@ -14,25 +17,40 @@ export const useStepUp = () => {
     action: 'ASSIGN_ROLES'
   });
 
+  const sequence = useRef(0);
   const resolverRef = useRef<{
     resolve: (grantToken: string) => void;
     reject: (error: Error) => void;
   } | null>(null);
 
   const requestStepUp = useCallback(
-    (action: MfaStepUpActionType, options?: { title?: string; description?: string }): Promise<string> => {
+    async (action: MfaStepUpActionType, options?: { title?: string; description?: string; targetId?: string; body?: unknown }): Promise<string> => {
+      const requestSequence = ++sequence.current;
+      const sessionGeneration = useAuthStore.getState().generation;
+      resolverRef.current?.reject(new Error("step_up_superseded"));
+      resolverRef.current = null;
+      const targetId = await bindMfaOperation(action, options?.targetId, options?.body);
+      if (sequence.current !== requestSequence || useAuthStore.getState().generation !== sessionGeneration) throw new Error("step_up_session_changed");
       return new Promise<string>((resolve, reject) => {
         resolverRef.current = { resolve, reject };
         setState({
           isOpen: true,
           action,
           title: options?.title,
-          description: options?.description
+          description: options?.description,
+          targetId
         });
       });
     },
     []
   );
+
+  const generation = useAuthStore(state => state.generation);
+  useEffect(() => () => {
+    sequence.current++;
+    resolverRef.current?.reject(new Error('step_up_session_changed'));
+    resolverRef.current = null;
+  }, [generation]);
 
   const handleSuccess = useCallback((grantToken: string) => {
     setState((prev) => ({ ...prev, isOpen: false }));
@@ -45,7 +63,7 @@ export const useStepUp = () => {
   const handleCancel = useCallback(() => {
     setState((prev) => ({ ...prev, isOpen: false }));
     if (resolverRef.current) {
-      resolverRef.current.reject(new Error('Step-Up cancelado por el usuario.'));
+      resolverRef.current.reject(new Error('step_up_cancelled'));
       resolverRef.current = null;
     }
   }, []);
@@ -53,6 +71,7 @@ export const useStepUp = () => {
   return {
     isStepUpOpen: state.isOpen,
     stepUpAction: state.action,
+    stepUpTarget: state.targetId,
     stepUpTitle: state.title,
     stepUpDescription: state.description,
     requestStepUp,

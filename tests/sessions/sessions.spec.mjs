@@ -100,3 +100,84 @@ test('a stalled browser lock becomes retryable without bypassing rotation', asyn
   await page.evaluate(() => window.sessionTest.initialize());
   await expect(page.getByRole('status')).toHaveText('authenticated');
 });
+
+
+test('logout succeeds when revocation notification arrives before HTTP response', async ({ page, context }) => {
+  await setup(context); await page.goto('/tests/sessions/index.html');
+  await expect(page.getByRole('status')).toHaveText('authenticated');
+  await page.route('**/api/auth/logout', async route => {
+    await page.evaluate(() => {
+      const channel = new BroadcastChannel('comerzia-session');
+      channel.postMessage({ type: 'logout', sessionId: window.sessionTest.snapshot().sessionId });
+      channel.close();
+    });
+    await expect(page.getByRole('status')).toHaveText('anonymous');
+    await route.fulfill({ status: 204 });
+  });
+  expect(await page.evaluate(() => window.sessionTest.logout())).toBe(true);
+});
+
+test('MFA confirmation adopts a rotated session without losing a draft and logs out the previous tab', async ({ page, context }) => {
+  await setup(context); await page.goto('/tests/sessions/index.html');
+  await expect(page.getByRole('status')).toHaveText('authenticated');
+  const other = await context.newPage(); await other.goto('/tests/sessions/index.html');
+  await expect(other.getByRole('status')).toHaveText('authenticated');
+  await page.getByLabel('Borrador').fill('Venta conservada tras TOTP');
+  expect(await page.evaluate(() => window.sessionTest.completeEnrollment('rotated-mfa-session'))).toBe(true);
+  await expect(page.getByRole('status')).toHaveText('authenticated');
+  await expect(page.getByLabel('Borrador')).toHaveValue('Venta conservada tras TOTP');
+  await expect(other.getByRole('status')).toHaveText('anonymous');
+  expect((await page.evaluate(() => window.sessionTest.snapshot())).sessionId).toBe('rotated-mfa-session');
+  expect(await page.evaluate(() => JSON.stringify({local:localStorage,session:sessionStorage}))).not.toContain('signature');
+});
+
+test('MFA session response for another subject cannot replace the current identity', async ({ page, context }) => {
+  await setup(context); await page.goto('/tests/sessions/index.html');
+  await expect(page.getByRole('status')).toHaveText('authenticated');
+  expect(await page.evaluate(() => window.sessionTest.completeEnrollment('wrong-subject-session','other-account'))).toBe(false);
+  expect((await page.evaluate(() => window.sessionTest.snapshot())).sessionId).toBe('browser-a');
+});
+
+test('a rejected sensitive mutation waits for step-up and retries exactly its captured payload', async ({ page, context }) => {
+  await setup(context);
+  let writes=0;let approvedIntent;
+  await context.route('**/api/auth/mfa/step-up',async route=>{
+    approvedIntent=route.request().postDataJSON();
+    return route.fulfill({json:{grantToken:'fixture-once',expiresAt:'2030-01-01T00:00:00Z',action:'UPDATE_USER_ACCESS'}});
+  });
+  await context.route('**/api/tenant/example-access',async route=>{
+    writes++;
+    expect(route.request().postDataJSON()).toEqual({disabled:true});
+    if(!route.request().headers()['x-mfa-step-up-grant']) return route.fulfill({status:403,json:{code:'mfa_step_up_required',errors:[{field:'actionType',reason:'UPDATE_USER_ACCESS'}]}});
+    expect(route.request().headers()['x-mfa-step-up-grant']).toBe('fixture-once');
+    return route.fulfill({json:{ok:true}});
+  });
+  await page.goto('/tests/sessions/index.html');await expect(page.getByRole('status')).toHaveText('authenticated');
+  await page.evaluate(()=>window.sessionTest.mutate({disabled:true}));
+  await expect(page.getByRole('dialog',{name:'Confirmar modificación de acceso'})).toBeVisible();expect(writes).toBe(1);
+  await page.getByLabel('Código de la app autenticadora').fill('123456');
+  await page.getByRole('button',{name:'Autorizar',exact:true}).click();
+  await expect.poll(()=>page.evaluate(()=>window.sessionTest.writeResult)).toBe('saved');expect(writes).toBe(2);
+  expect(approvedIntent.targetId).toMatch(/^PATCH:\/tenant\/example-access#[0-9a-f]{64}$/);
+});
+
+test('Escape cancels step-up without replaying the mutation or losing the current draft', async ({ page, context }) => {
+  await setup(context);
+  let writes=0;
+  await context.route('**/api/tenant/example-access',async route=>{
+    writes++;
+    return route.fulfill({status:403,json:{code:'mfa_step_up_required',errors:[{field:'actionType',reason:'UPDATE_USER_ACCESS'}]}});
+  });
+  await page.goto('/tests/sessions/index.html');
+  await expect(page.getByRole('status')).toHaveText('authenticated');
+  await page.getByRole('textbox',{name:'Borrador'}).fill('Retain this draft');
+  await page.evaluate(()=>window.sessionTest.mutate({disabled:true}));
+  const dialog=page.getByRole('dialog',{name:'Confirmar modificación de acceso'});
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await expect.poll(()=>page.evaluate(()=>window.sessionTest.writeResult)).toBe('rejected');
+  await expect(page.getByRole('textbox',{name:'Borrador'})).toHaveValue('Retain this draft');
+  await expect(page.getByRole('status')).toHaveText('authenticated');
+  expect(writes).toBe(1);
+});

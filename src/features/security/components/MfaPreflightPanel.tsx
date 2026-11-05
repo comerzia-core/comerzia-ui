@@ -22,6 +22,26 @@ import { mfaPlatformPolicyService } from '../services/mfaPlatformPolicyService';
 import type { MfaPolicyStatusResponse, MfaPreflightResponse } from '../types/mfaPolicy';
 import { formatDateForUser } from '../../../utils/date';
 
+const diagnosticLabels: Record<string, string> = {
+  mfa_database_schema_not_verified: 'No se pudo comprobar el esquema de seguridad de la base de datos.',
+  redis_connectivity_not_verified: 'No se pudo comprobar la conexión con Redis.',
+  mfa_maintenance_tool_unavailable: 'La herramienta de recuperación no está disponible.',
+  totp_key_not_configured: 'Falta configurar una clave TOTP válida.',
+  totp_key_round_trip_failed: 'Falló la comprobación del cifrado TOTP.',
+  totp_key_probe_failed: 'No se pudo comprobar el llavero TOTP.',
+  platform_accounts_require_mfa_enrollment: 'Hay cuentas de plataforma pendientes de activar 2FA.',
+  redis_rate_controls_not_verified: 'Falta comprobar Redis y una operación real de control de intentos.',
+  existing_platform_factor_decryption_failed: 'No se pudo descifrar un autenticador existente. Revisa el llavero.',
+  web_recovery_rehearsal_missing_or_expired: 'Falta un ensayo vigente de recuperación con dos aprobadores.',
+  cli_recovery_rehearsal_missing_or_expired: 'Falta un ensayo vigente de recuperación mediante CLI.',
+  offline_custody_codes_insufficient: 'Debes reponer los códigos de emergencia offline.',
+  two_authorized_mfa_recovery_operators_required: 'Se requieren dos operadores autorizados con 2FA activo.',
+  two_independent_root_recovery_operators_required: 'ROOT necesita dos operadores autorizados distintos de su propia cuenta.',
+  owner_recovery_evidence_approval_required: 'El propietario debe revisar y aprobar las evidencias.',
+  ntp_reference_offset_not_verified: 'No se pudo comprobar el desfase del reloj frente a la referencia NTP.',
+  host_ntp_discipline_requires_infrastructure_verification: 'Verifica también la sincronización NTP del host según la guía de infraestructura.',
+};
+
 export const MfaPreflightPanel: React.FC = () => {
   const { addToast } = useToast();
 
@@ -34,6 +54,7 @@ export const MfaPreflightPanel: React.FC = () => {
   const {
     isStepUpOpen,
     stepUpAction,
+    stepUpTarget,
     stepUpTitle,
     stepUpDescription,
     requestStepUp,
@@ -53,8 +74,8 @@ export const MfaPreflightPanel: React.FC = () => {
           setPolicyStatus(pStatus);
           setPreflight(pPreflight);
         }
-      } catch (err) {
-        console.error('Error fetching MFA platform status:', err);
+      } catch {
+        console.error('Error fetching MFA platform status:');
       } finally {
         if (isMounted) {
           setIsLoading(false);
@@ -72,8 +93,8 @@ export const MfaPreflightPanel: React.FC = () => {
       const result = await mfaPlatformPolicyService.getPreflight();
       setPreflight(result);
       addToast('Diagnóstico preflight actualizado exitosamente.', 'info');
-    } catch (err) {
-      console.error('Error refreshing preflight:', err);
+    } catch {
+      console.error('Error refreshing preflight:');
       addToast('Error al ejecutar el diagnóstico preflight.', 'error');
     } finally {
       setIsEvaluating(false);
@@ -83,9 +104,14 @@ export const MfaPreflightPanel: React.FC = () => {
   const handleTogglePolicy = async () => {
     if (!policyStatus) return;
     const activating = !policyStatus.platformMandatory;
+    if (activating && preflight?.status !== 'READY') {
+      addToast('Completa las comprobaciones antes de activar 2FA obligatorio.', 'warning');
+      return;
+    }
 
     try {
       const grantToken = await requestStepUp('MANAGE_SAAS_TEAM', {
+        targetId: 'POST:/saas/security/mfa/policy/' + (activating ? 'activate' : 'deactivate'),
         title: activating ? 'Confirmar Activación Global de MFA' : 'Confirmar Desactivación de MFA',
         description: activating
           ? 'Esta acción exigirá autenticación MFA obligatoria a todos los administradores SaaS y ROOT. Ingrese su código TOTP para confirmar.'
@@ -107,9 +133,8 @@ export const MfaPreflightPanel: React.FC = () => {
       // Actualizar preflight para reflejar sesiones revocadas o estado actual
       handleRefreshPreflight();
     } catch (err: unknown) {
-      if (err instanceof Error && err.message.includes('cancelado')) return;
-      console.error('Error toggling MFA policy:', err);
-      addToast('Error al modificar la política de plataforma MFA.', 'error');
+      if (err instanceof Error && err.message === 'step_up_cancelled') return;
+      addToast('No se pudo cambiar la política. Actualiza el diagnóstico.', 'error');
     } finally {
       setIsTogglingPolicy(false);
     }
@@ -173,7 +198,7 @@ export const MfaPreflightPanel: React.FC = () => {
 
           <button
             onClick={handleTogglePolicy}
-            disabled={isLoading || isTogglingPolicy}
+            disabled={isLoading || isTogglingPolicy || (!policyStatus?.platformMandatory && preflight?.status !== 'READY')}
             className={`btn btn-sm shrink-0 flex items-center gap-2 text-xs font-semibold ${
               policyStatus?.platformMandatory
                 ? 'btn-outline btn-warning'
@@ -243,7 +268,8 @@ export const MfaPreflightPanel: React.FC = () => {
               </span>
               <ul className="list-disc list-inside text-xs text-error/90 space-y-1">
                 {preflight.blockers.map((b, idx) => (
-                  <li key={idx}>{b}</li>
+                    <li key={idx}>{b === 'emergency_procedure_requires_owner_approval_and_rehearsal'
+                      ? 'Falta completar y comprobar la recuperación de emergencia.' : diagnosticLabels[b] ?? b}</li>
                 ))}
               </ul>
             </div>
@@ -256,7 +282,8 @@ export const MfaPreflightPanel: React.FC = () => {
               </span>
               <ul className="list-disc list-inside text-xs text-base-content/80 space-y-1">
                 {preflight.warnings.map((w, idx) => (
-                  <li key={idx}>{w}</li>
+                    <li key={idx}>{w === 'ntp_synchronization_operational_attestation_recommended'
+                      ? 'Confirma la sincronización horaria del servidor.' : diagnosticLabels[w] ?? w}</li>
                 ))}
               </ul>
             </div>
@@ -353,7 +380,7 @@ export const MfaPreflightPanel: React.FC = () => {
                   <LifeBuoy size={14} className="text-rose-500" /> Contingencia y Respaldo
                 </span>
                 {preflight.emergencyReadiness.breakGlassToolAvailable ? (
-                  <ComerziaBadge label="Listo" variant="success" />
+                  <ComerziaBadge label="Disponible" variant="success" />
                 ) : (
                   <ComerziaBadge label="No Configurado" variant="error" />
                 )}
@@ -373,6 +400,7 @@ export const MfaPreflightPanel: React.FC = () => {
         onCancel={handleStepUpCancel}
         onSuccess={handleStepUpSuccess}
         action={stepUpAction}
+        targetId={stepUpTarget}
         title={stepUpTitle}
         description={stepUpDescription}
       />

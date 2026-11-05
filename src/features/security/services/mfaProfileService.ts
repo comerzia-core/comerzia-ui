@@ -1,4 +1,5 @@
 import api from '../../../lib/axios';
+import { useAuthStore } from '../../../stores/useAuthStore';
 import type {
   MfaStatusResponse,
   TotpEnrollmentStartResponse,
@@ -23,7 +24,10 @@ export const mfaProfileService = {
   },
 
   confirmTotpEnrollment: async (code: string): Promise<TotpEnrollmentConfirmResponse> => {
+    const generation = useAuthStore.getState().generation;
     const { data } = await api.post<TotpEnrollmentConfirmResponse>('/profile/mfa/totp/enroll/confirm', { code });
+    if (!data.token || !data.sessionId || !useAuthStore.getState().acceptMfaEnrollment(data.token, data.sessionId, generation))
+      throw new Error('mfa_enrollment_session_changed');
     return data;
   },
 

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import type { TotpEnrollmentStartResponse } from '../../security/types/mfa';
 
 export interface BrowserAuthentication {
   token: string | null;
@@ -8,7 +9,9 @@ export interface BrowserAuthentication {
   idleSeconds: number;
   mfaRequired?: boolean;
   mfaType?: string;
-  authenticationState?: 'FULLY_AUTHENTICATED' | 'MFA_PENDING' | string;
+  authenticationState?: 'FULLY_AUTHENTICATED' | 'MFA_PENDING' | 'MFA_ENROLLMENT_REQUIRED' | 'RECOVERY_RESTRICTED' | string;
+  recoveryCodes?: string[];
+  message?: string;
 }
 
 const transport = axios.create({ baseURL: import.meta.env.VITE_API_URL, withCredentials: true, timeout: 15000 });
@@ -85,6 +88,29 @@ export function verifyMfaRecovery(recoveryCode: string): Promise<BrowserAuthenti
   });
 }
 
+export function startPendingMfaEnrollment(): Promise<TotpEnrollmentStartResponse> {
+  return exclusive(async () => {
+    const headers = await csrfHeaders();
+    const { data } = await transport.post<TotpEnrollmentStartResponse>('/auth/mfa/enroll/start', {}, { headers });
+    return data;
+  });
+}
+
+export function confirmPendingMfaEnrollment(code: string): Promise<BrowserAuthentication> {
+  return exclusive(async () => {
+    const headers = await csrfHeaders();
+    const { data } = await transport.post<BrowserAuthentication>('/auth/mfa/enroll/confirm', { code }, { headers });
+    return data;
+  });
+}
+
+export function cancelPendingMfaEnrollment(): Promise<void> {
+  return exclusive(async () => {
+    const headers = await csrfHeaders();
+    await transport.post('/auth/mfa/enroll/cancel', {}, { headers });
+  });
+}
+
 export async function getMfaPendingStatus(): Promise<{ sessionId: string; remainingSeconds: number; mfaRequired: boolean; authenticationState: string }> {
   const { data } = await transport.get<{ sessionId: string; remainingSeconds: number; mfaRequired: boolean; authenticationState: string }>('/auth/mfa/pending-status');
   return data;
@@ -92,4 +118,12 @@ export async function getMfaPendingStatus(): Promise<{ sessionId: string; remain
 
 export function authenticationPending(error: unknown): boolean {
   return axios.isAxiosError(error) && error.response?.status === 403 && authenticationErrorCode(error) === 'session_authentication_incomplete';
+}
+
+export function consumeEmergencyMfaAuthorization(authorization: string): Promise<BrowserAuthentication> {
+  return exclusive(async () => {
+    const headers = await csrfHeaders();
+    const { data } = await transport.post<BrowserAuthentication>('/auth/mfa/emergency/consume', { authorization }, { headers });
+    return data;
+  });
 }

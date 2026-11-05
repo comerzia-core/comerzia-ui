@@ -45,6 +45,7 @@ function UserMfaRecoveryModalContent({ isOpen, onClose, user, isSaasScope = fals
   const {
     isStepUpOpen,
     stepUpAction,
+    stepUpTarget,
     stepUpTitle,
     stepUpDescription,
     requestStepUp,
@@ -61,8 +62,8 @@ function UserMfaRecoveryModalContent({ isOpen, onClose, user, isSaasScope = fals
         ? await mfaAdminRecoveryService.getActiveSaasRequest(user.id)
         : await mfaAdminRecoveryService.getActiveTenantRequest(user.id);
       setActiveRequest(data);
-    } catch (err) {
-      console.error('Error fetching active recovery request:', err);
+    } catch {
+      console.error('Error fetching active recovery request:');
       setErrorMsg('No se pudo verificar el estado de solicitudes de recuperación.');
     } finally {
       setIsLoading(false);
@@ -80,9 +81,9 @@ function UserMfaRecoveryModalContent({ isOpen, onClose, user, isSaasScope = fals
       .then((data) => {
         if (isMounted) setActiveRequest(data);
       })
-      .catch((err) => {
+      .catch(() => {
         if (isMounted) {
-          console.error('Error fetching active recovery request:', err);
+          console.error('Error fetching active recovery request:');
           setErrorMsg('No se pudo verificar el estado de solicitudes de recuperación.');
         }
       })
@@ -104,7 +105,9 @@ function UserMfaRecoveryModalContent({ isOpen, onClose, user, isSaasScope = fals
     setErrorMsg(null);
 
     try {
-      const grantToken = await requestStepUp('ADMIN_MFA_RECOVERY', {
+      const grantToken = await requestStepUp(isSaasScope ? 'MANAGE_SAAS_TEAM' : 'ADMIN_MFA_RECOVERY', {
+        targetId: 'POST:' + (isSaasScope ? '/saas/team/' : '/tenant/users/') + user.id + '/mfa-recovery/request',
+        body: { reason },
         title: 'Elevación de Privilegios requerida',
         description: 'Ingrese su código TOTP para iniciar la solicitud de recuperación administrativa.'
       });
@@ -118,8 +121,7 @@ function UserMfaRecoveryModalContent({ isOpen, onClose, user, isSaasScope = fals
       setReason('');
       addToast('Solicitud de recuperación registrada con éxito.', 'success');
     } catch (err: unknown) {
-      if (err instanceof Error && err.message.includes('cancelado')) return;
-      console.error('Error creating recovery request:', err);
+      if (err instanceof Error && err.message === 'step_up_cancelled') return;
       const backendMsg = isAxiosError<{ message?: string }>(err) ? err.response?.data?.message : undefined;
       setErrorMsg(backendMsg || 'Error al registrar la solicitud de recuperación.');
     } finally {
@@ -132,21 +134,21 @@ function UserMfaRecoveryModalContent({ isOpen, onClose, user, isSaasScope = fals
     setErrorMsg(null);
 
     try {
-      const grantToken = await requestStepUp('ADMIN_MFA_RECOVERY', {
+      const grantToken = await requestStepUp(isSaasScope ? 'MANAGE_SAAS_TEAM' : 'ADMIN_MFA_RECOVERY', {
+        targetId: 'POST:' + (isSaasScope ? '/saas/team/' : '/tenant/users/') + user.id + '/mfa-recovery/approve?reference=' + encodeURIComponent(activeRequest.publicReference),
         title: 'Aprobación de Control Dual',
         description: 'Ingrese su código TOTP para aprobar la recuperación como segundo operador.'
       });
 
       setIsSubmitting(true);
       const approved = isSaasScope
-        ? await mfaAdminRecoveryService.approveSaasRequest(user.id, activeRequest.id, grantToken)
-        : await mfaAdminRecoveryService.approveTenantRequest(user.id, activeRequest.id, grantToken);
+        ? await mfaAdminRecoveryService.approveSaasRequest(user.id, activeRequest.publicReference, grantToken)
+        : await mfaAdminRecoveryService.approveTenantRequest(user.id, activeRequest.publicReference, grantToken);
 
       setActiveRequest(approved);
       addToast('Solicitud aprobada exitosamente por el segundo operador.', 'success');
     } catch (err: unknown) {
-      if (err instanceof Error && err.message.includes('cancelado')) return;
-      console.error('Error approving recovery request:', err);
+      if (err instanceof Error && err.message === 'step_up_cancelled') return;
       const backendMsg = isAxiosError<{ message?: string }>(err) ? err.response?.data?.message : undefined;
       setErrorMsg(backendMsg || 'Error al aprobar la solicitud.');
     } finally {
@@ -159,22 +161,22 @@ function UserMfaRecoveryModalContent({ isOpen, onClose, user, isSaasScope = fals
     setErrorMsg(null);
 
     try {
-      const grantToken = await requestStepUp('ADMIN_MFA_RECOVERY', {
+      const grantToken = await requestStepUp(isSaasScope ? 'MANAGE_SAAS_TEAM' : 'ADMIN_MFA_RECOVERY', {
+        targetId: 'POST:' + (isSaasScope ? '/saas/team/' : '/tenant/users/') + user.id + '/mfa-recovery/execute?reference=' + encodeURIComponent(activeRequest.publicReference),
         title: 'Ejecución de Restablecimiento MFA',
         description: 'Confirme con su TOTP para revocar factores y restablecer acceso.'
       });
 
       setIsSubmitting(true);
       const executed = isSaasScope
-        ? await mfaAdminRecoveryService.executeSaasRequest(user.id, activeRequest.id, grantToken)
-        : await mfaAdminRecoveryService.executeTenantRequest(user.id, activeRequest.id, grantToken);
+        ? await mfaAdminRecoveryService.executeSaasRequest(user.id, activeRequest.publicReference, grantToken)
+        : await mfaAdminRecoveryService.executeTenantRequest(user.id, activeRequest.publicReference, grantToken);
 
       setActiveRequest(executed);
       addToast('Recuperación ejecutada: factores revocados y sesiones cerradas.', 'success');
       onSuccess?.();
     } catch (err: unknown) {
-      if (err instanceof Error && err.message.includes('cancelado')) return;
-      console.error('Error executing recovery request:', err);
+      if (err instanceof Error && err.message === 'step_up_cancelled') return;
       const backendMsg = isAxiosError<{ message?: string }>(err) ? err.response?.data?.message : undefined;
       setErrorMsg(backendMsg || 'Error al ejecutar el restablecimiento de emergencia.');
     } finally {
@@ -191,17 +193,20 @@ function UserMfaRecoveryModalContent({ isOpen, onClose, user, isSaasScope = fals
     setErrorMsg(null);
 
     try {
+      const grantToken = await requestStepUp(isSaasScope ? 'MANAGE_SAAS_TEAM' : 'ADMIN_MFA_RECOVERY', {
+        targetId: 'POST:' + (isSaasScope ? '/saas/team/' : '/tenant/users/') + user.id + '/mfa-recovery/reject?reference=' + encodeURIComponent(activeRequest.publicReference),
+        body: { rejectionReason: rejectReason },
+      });
       setIsSubmitting(true);
       const rejected = isSaasScope
-        ? await mfaAdminRecoveryService.rejectSaasRequest(user.id, activeRequest.id, { reason: rejectReason })
-        : await mfaAdminRecoveryService.rejectTenantRequest(user.id, activeRequest.id, { reason: rejectReason });
+        ? await mfaAdminRecoveryService.rejectSaasRequest(user.id, activeRequest.publicReference, { reason: rejectReason }, grantToken)
+        : await mfaAdminRecoveryService.rejectTenantRequest(user.id, activeRequest.publicReference, { reason: rejectReason }, grantToken);
 
       setActiveRequest(rejected);
       setShowRejectInput(false);
       setRejectReason('');
       addToast('Solicitud rechazada.', 'info');
     } catch (err: unknown) {
-      console.error('Error rejecting recovery request:', err);
       const backendMsg = isAxiosError<{ message?: string }>(err) ? err.response?.data?.message : undefined;
       setErrorMsg(backendMsg || 'Error al rechazar la solicitud.');
     } finally {
@@ -246,7 +251,6 @@ function UserMfaRecoveryModalContent({ isOpen, onClose, user, isSaasScope = fals
               <span className="font-semibold text-base-content block">
                 {user?.fullName} (@{user?.username})
               </span>
-              <span className="text-base-content/60 font-mono text-[11px]">ID: {user?.id}</span>
             </div>
             <button
               onClick={loadActiveRequest}
@@ -301,22 +305,14 @@ function UserMfaRecoveryModalContent({ isOpen, onClose, user, isSaasScope = fals
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-[11px] text-base-content/70 pt-1">
-                  <div>
-                    <span className="text-base-content/40 block text-[10px]">Solicitante ID:</span>
-                    <span className="font-mono">{activeRequest.requestedByUserId}</span>
-                  </div>
+
                   <div>
                     <span className="text-base-content/40 block text-[10px]">Expira en:</span>
                     <span className="font-mono flex items-center gap-1">
                       <Clock size={11} /> {formatDateForUser(activeRequest.expiresAt)}
                     </span>
                   </div>
-                  {activeRequest.approvedByUserId && (
-                    <div className="col-span-2 pt-1 border-t border-base-200">
-                      <span className="text-base-content/40 block text-[10px]">Aprobador ID:</span>
-                      <span className="font-mono">{activeRequest.approvedByUserId}</span>
-                    </div>
-                  )}
+
                 </div>
               </div>
 
@@ -394,7 +390,7 @@ function UserMfaRecoveryModalContent({ isOpen, onClose, user, isSaasScope = fals
                   <div>
                     <span className="text-[10px] uppercase font-bold text-base-content/50 block">Última solicitud:</span>
                     <span className="text-base-content/70">
-                      Finalizada el {formatDateForUser(activeRequest.updatedAt || activeRequest.createdAt)}
+                      Finalizada el {formatDateForUser(activeRequest.executedAt || activeRequest.rejectedAt || activeRequest.createdAt)}
                     </span>
                   </div>
                   {getStatusBadge(activeRequest.status)}
@@ -441,6 +437,7 @@ function UserMfaRecoveryModalContent({ isOpen, onClose, user, isSaasScope = fals
         onCancel={handleStepUpCancel}
         onSuccess={handleStepUpSuccess}
         action={stepUpAction}
+        targetId={stepUpTarget}
         title={stepUpTitle}
         description={stepUpDescription}
       />

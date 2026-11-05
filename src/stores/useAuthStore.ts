@@ -7,6 +7,7 @@ import api from '../lib/axios';
 import type { UserProfile, MenuItem } from '../features/auth/types';
 import { getMyMenuTree } from '../services/menuService';
 import { useThemeStore } from './useThemeStore';
+import { jwtDecode } from 'jwt-decode';
 
 interface AuthState {
     token: string | null;
@@ -14,6 +15,7 @@ interface AuthState {
     generation: number;
     status: 'initializing' | 'anonymous' | 'authenticated' | 'mfa_pending' | 'temporarily_unavailable';
     refreshSession: () => Promise<string>;
+    acceptMfaEnrollment: (token: string, sessionId: string, expectedGeneration: number) => boolean;
     expireSession: (reason?: string) => void;
     requireAdditionalAuthentication: () => void;
     sessionNotice: string | null;
@@ -91,7 +93,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
             const { generation, token } = get();
             try {
                 await closeBrowserSession(token);
-                if (generation !== get().generation) return false;
+                if (generation !== get().generation) return get().status === 'anonymous' && get().token === null;
                 get().expireSession(reason);
                 return true;
             } catch {
@@ -104,6 +106,24 @@ export const useAuthStore = create<AuthState>((set, get) => {
             useThemeStore.getState().clearSession();
             set({ token: null, isAuthenticated: false, isSessionReady: false, userProfile: null, menuTree: [],
                 generation: get().generation + 1, status: 'mfa_pending' });
+        },
+        acceptMfaEnrollment: (token, sessionId, expectedGeneration) => {
+            const previous = get();
+            if (previous.generation !== expectedGeneration || !previous.userProfile || !previous.token
+                || tokenSessionReference(token) !== sessionId) return false;
+            try {
+                const claims = jwtDecode<{ userId?: string }>(token);
+                if (claims.userId !== previous.userProfile.id) return false;
+            } catch { return false; }
+            set({ token, sessionId, status: 'authenticated', isAuthenticated: true });
+            const theme = useThemeStore.getState();
+            theme.bindProfile(previous.userProfile.id, previous.userProfile.theme, sessionId, theme.revision);
+            if (previous.sessionId && typeof BroadcastChannel !== 'undefined') {
+                const channel = new BroadcastChannel('comerzia-session');
+                channel.postMessage({ type: 'logout', sessionId: previous.sessionId, reason: 'mfa_factor_changed' });
+                channel.close();
+            }
+            return true;
         },
         refreshSession: async () => {
             const generation = get().generation;

@@ -27,6 +27,8 @@ export interface TotpEnrollmentConfirmResponse {
   status: string;
   recoveryCodes: string[];
   message: string;
+  token?: string;
+  sessionId?: string;
 }
 
 export interface MfaStepUpRequest {
@@ -48,4 +50,5 @@ export type MfaStepUpActionType =
   | 'DEACTIVATE_MFA'
   | 'REGENERATE_RECOVERY_CODES'
   | 'REPLACE_MFA'
-  | 'ADMIN_MFA_RECOVERY';
+  | 'ADMIN_MFA_RECOVERY'
+  | 'UPDATE_SECURITY_SETTINGS';

@@ -4,6 +4,17 @@ const eslint = new ESLint();
 const results = await eslint.lintFiles(['src', 'vite.config.ts']);
 const counts = {};
 const strictPaths = new Set([
+  'src/features/security/utils/mfaOperation.ts',
+  'src/features/security/hooks/useStepUp.ts',
+  'src/features/security/hooks/usePrivilegedRecovery.ts',
+  'src/features/security/services/privilegedRecoveryService.ts',
+  'src/features/security/components/MfaRecoveryReadinessPanel.tsx',
+  'src/features/security/components/MfaPreflightPanel.tsx',
+  'src/features/security/components/MfaStepUpRuntime.tsx',
+  'src/features/security/components/MfaStepUpModal.tsx',
+  'src/features/security/services/stepUpCoordinator.ts',
+  'src/features/saas/pages/PrivilegedRecoveryPage.tsx',
+
   'src/features/security/hooks/useEmailVerification.ts',
   'src/features/security/hooks/useUserNotifications.ts',
   'src/features/security/services/emailVerificationService.ts',

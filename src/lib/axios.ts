@@ -1,7 +1,8 @@
 import axios from 'axios';
 import { useAuthStore } from '../stores/useAuthStore';
 import { csrfHeaders } from '../features/auth/services/browserSessionService';
-declare module 'axios' { interface InternalAxiosRequestConfig { sessionGeneration?: number; sessionRetried?: boolean; } }
+import { authorizeRejectedOperation, isStepUpAction } from '../features/security/services/stepUpCoordinator';
+declare module 'axios' { interface InternalAxiosRequestConfig { sessionGeneration?: number; sessionRetried?: boolean; mfaRetried?: boolean; } }
 
 // 1. Crear instancia base
 const api = axios.create({
@@ -22,6 +23,7 @@ api.interceptors.request.use(
         if (config.method?.toLowerCase() === 'post' && path && [
             '/auth/login', '/auth/change-temporary-password', '/public/registrations',
             '/auth/logout-all', '/auth/reauthenticate',
+            '/profile/mfa/totp/enroll/confirm',
         ].includes(path)) {
             config.withCredentials = true;
             const headers = await csrfHeaders();
@@ -47,6 +49,25 @@ api.interceptors.response.use(
     async (error) => {
         if (error.response) {
             const { status } = error.response;
+            if (status === 403 && error.response.data?.code === 'mfa_step_up_required' && error.config
+                && !error.config.mfaRetried && !error.config.headers?.['X-Mfa-Step-Up-Grant']) {
+                const original = error.config;
+                const state = useAuthStore.getState();
+                const action: unknown = error.response.data.errors?.find((item: { field?: string }) => item.field === 'actionType')?.reason;
+                if (state.token && original.headers?.Authorization === `Bearer ${state.token}`
+                    && original.sessionGeneration === state.generation && isStepUpAction(action)
+                    && typeof original.url === 'string' && /^\/[A-Za-z0-9_/-]+(?:\?[^#]*)?$/.test(original.url)
+                    && !original.params && ['post','put','patch','delete'].includes(original.method)) {
+                    original.mfaRetried = true;
+                    let body: unknown = original.data ?? null;
+                    if (typeof body === 'string') { try { body = JSON.parse(body); } catch { return Promise.reject(error); } }
+                    const grant = await authorizeRejectedOperation({ action, target: original.method.toUpperCase() + ':' + original.url, body });
+                    const current = useAuthStore.getState();
+                    if (current.generation !== state.generation || current.token !== state.token) return Promise.reject(error);
+                    original.headers.set('X-Mfa-Step-Up-Grant', grant);
+                    return api.request(original);
+                }
+            }
             
             // MAGIA AQUÍ: Detectamos si la petición iba dirigida a autenticación
             const isCredentialRequest = ['/auth/login', '/auth/change-temporary-password', '/public/registrations'].includes(error.config?.url?.split('?')[0]);
@@ -68,7 +89,8 @@ api.interceptors.response.use(
                     'session_permissions_changed', 'session_access_changed', 'session_password_changed', 'session_email_changed', 'company_disabled',
                 ].includes(code);
                 // Una respuesta de una sesión anterior no debe cerrar una sesión recién iniciada.
-                if (current.token && requestBearer === `Bearer ${current.token}` && (!isCredentialRequest || sessionChanged)) {
+                if (current.token && requestBearer === `Bearer ${current.token}` && (!isCredentialRequest || sessionChanged)
+                    && !['invalid_totp_code', 'totp_code_replayed'].includes(String(code))) {
                     current.expireSession(typeof code === 'string' ? code : undefined);
                 }
             }

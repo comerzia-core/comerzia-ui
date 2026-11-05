@@ -1,3 +1,4 @@
+import { usePermission } from '../../hooks/usePermission';
 import { NavLink, useLocation } from "react-router-dom";
 import type { MenuItem } from "../../features/auth/types";
 import { IconRenderer } from "../ui/IconRenderer";
@@ -161,6 +162,7 @@ interface Props {
 
 export const SidebarMenu = ({ menuTree, isLoading, isCollapsed, toggleCollapse }: Props) => {
     const { commercialName, logoUrl } = useCompanyContext();
+    const { can } = usePermission();
     const { asideRef } = useMobileDrawerSwipe({ drawerId: 'my-drawer' });
 
     if (isLoading) return <div className="p-4 space-y-4">Loading...</div>;
@@ -205,6 +207,7 @@ export const SidebarMenu = ({ menuTree, isLoading, isCollapsed, toggleCollapse }
                 ${isCollapsed ? 'overflow-visible px-2' : 'overflow-y-auto overflow-x-hidden px-4 no-scrollbar'}
             `}>
                 <ul className="menu px-2 w-full">
+                    {can('SYS_MFA_PRIVILEGED_RECOVERY') && <li><NavLink to="/saas/security/privileged-recovery" onClick={closeMobileDrawer} className="flex gap-3 p-3 rounded-xl text-sm hover:bg-base-200" title="Recuperación privilegiada"><IconRenderer iconName="ShieldCheck" size={20} />{!isCollapsed && 'Recuperación privilegiada'}</NavLink></li>}
                     {Array.isArray(menuTree) && menuTree.map((item) => (
                         <MenuItemRenderer key={item.id} item={item} isCollapsed={isCollapsed} />
                     ))}

@@ -7,7 +7,7 @@ for (const [status, message] of [
 ]) {
   test(`login maps HTTP ${status} without pretending the account was administratively blocked`, async ({ page }) => {
     await page.route('**/auth/login', route => route.fulfill({ status, json: { code: status===429 ? 'authentication_rate_limited' : 'authentication_temporarily_unavailable', message: 'Internal technical details' } }));
-    await page.goto('/login');
+    await page.goto('/login', { waitUntil: 'domcontentloaded' });
     await page.getByLabel('Usuario o correo electrónico', { exact: true }).fill('alice');
     await page.getByLabel('Contraseña', { exact: true }).fill('password');
     await page.getByRole('button', { name: 'Ir a mi empresa', exact: true }).click();
@@ -22,14 +22,14 @@ for (const [status, message] of [
       submitted=route.request().postDataJSON();
       return route.fulfill({status,json:{code:status===429 ? 'authentication_rate_limited' : 'authentication_temporarily_unavailable'}});
     });
-    await page.goto('/login');
+    await page.goto('/login', { waitUntil: 'domcontentloaded' });
     await page.getByLabel('Usuario o correo electrónico', { exact:true }).fill('alice');
     await page.getByLabel('Contraseña', { exact:true }).fill('password');
     await page.getByRole('button', {name:'Ir a mi empresa',exact:true}).click();
-    await page.getByLabel('Nueva contraseña', {exact:true}).fill('a secure password phrase');
+    await page.getByLabel('Nueva contraseña', {exact:true}).fill('A secure password phrase 7!');
     await page.getByRole('button', {name:'Actualizar e ingresar',exact:true}).click();
     await expect(page.getByRole('alert')).toHaveText(message);
     expect(submitted.currentPassword).toBe('password');
-    expect(submitted.newPassword).toBe('a secure password phrase');
+    expect(submitted.newPassword).toBe('A secure password phrase 7!');
   });
 }

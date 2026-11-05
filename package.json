@@ -30,7 +30,8 @@
     "lint:security": "node scripts/lint-security.mjs",
     "test:sessions": "playwright test --config playwright.sessions.config.mjs",
     "test:email": "playwright test --config playwright.email.config.mjs",
-    "test:layout": "npm run build && playwright test --config playwright.layout.config.mjs"
+    "test:layout": "npm run build && playwright test --config playwright.layout.config.mjs",
+    "test:privileged-recovery": "playwright test --config playwright.recovery.config.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.2",

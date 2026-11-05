@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import api from '../../../lib/axios';
+import { MfaStepUpRuntime } from '../../security/components/MfaStepUpRuntime';
 
 export function BrowserSessionRuntime() {
   const sessionId = useAuthStore(state => state.sessionId);
@@ -33,5 +34,5 @@ export function BrowserSessionRuntime() {
       channel?.close();
     };
   }, [sessionId]);
-  return null;
+  return <MfaStepUpRuntime />;
 }
