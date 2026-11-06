@@ -21,7 +21,8 @@ export interface TenantEmployeeInvitationResponse {
 
 export interface CreateTenantInvitationRequest {
   email: string;
-  roleCode: number;
+  roleCode?: number;
+  roleIds?: string[];
   branchId?: string | null;
   employeeId?: string | null;
   requestKey?: string;
