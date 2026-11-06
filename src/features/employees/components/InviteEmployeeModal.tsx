@@ -67,7 +67,7 @@ export const InviteEmployeeModal: React.FC<Props> = ({
       .then(([allRoles, allBranches]) => {
         if (!active) return;
         const delegable = (allRoles || []).filter(
-          r => !['ROOT', 'OWNER'].includes(r.name.toUpperCase()) && !r.name.toUpperCase().startsWith('SAAS_')
+          r => !['ROOT'].includes(r.name.toUpperCase()) && !r.name.toUpperCase().startsWith('SAAS_')
         );
         setRoles(delegable);
         setBranches(allBranches || []);
@@ -82,9 +82,13 @@ export const InviteEmployeeModal: React.FC<Props> = ({
   }, [isOpen, rolesLoaded]);
 
   // Si se selecciona el rol OWNER
-  const isOwnerSelected = selectedRoleIds.some(
-    id => roles.find(r => r.id === id)?.name?.toUpperCase() === 'OWNER'
-  );
+  const isOwnerSelected = selectedRoleIds.some(id => {
+    const r = roles.find(role => role.id === id);
+    if (!r) return false;
+    const name = (r.name || '').toUpperCase();
+    const disp = (r.displayName || '').toUpperCase();
+    return name === 'OWNER' || name === 'DUEÑO' || disp === 'OWNER' || disp === 'DUEÑO' || disp.includes('DUEÑO');
+  });
 
   // Dinámica de asignación de sucursal:
   // Si no es owner y hay roles seleccionados, selecciona la primera por defecto si no hay ninguna elegida

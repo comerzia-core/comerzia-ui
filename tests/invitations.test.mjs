@@ -9,7 +9,7 @@ test('isStepUpAction recognizes INVITE_EMPLOYEE as a valid step-up action', () =
   assert.equal(isStepUpAction(null), false);
 });
 
-test('delegable roles filter excludes privileged ROOT, OWNER, and SAAS_* roles', () => {
+test('delegable roles filter excludes privileged ROOT and SAAS_* roles, keeping OWNER and operational roles', () => {
   const allRoles = [
     { id: '1', name: 'ROOT', displayName: 'Superusuario Root' },
     { id: '2', name: 'OWNER', displayName: 'Dueño de Empresa' },
@@ -21,11 +21,11 @@ test('delegable roles filter excludes privileged ROOT, OWNER, and SAAS_* roles',
   ];
 
   const delegable = allRoles.filter(
-    r => !['ROOT', 'OWNER'].includes(r.name.toUpperCase()) && !r.name.toUpperCase().startsWith('SAAS_')
+    r => !['ROOT'].includes(r.name.toUpperCase()) && !r.name.toUpperCase().startsWith('SAAS_')
   );
 
-  assert.equal(delegable.length, 3);
-  assert.deepEqual(delegable.map(r => r.name), ['SELLER', 'CASHIER', 'BRANCH_MANAGER']);
+  assert.equal(delegable.length, 4);
+  assert.deepEqual(delegable.map(r => r.name), ['OWNER', 'SELLER', 'CASHIER', 'BRANCH_MANAGER']);
 });
 
 test('token extraction pattern captures token in memory and ensures no persistence in storages', () => {
