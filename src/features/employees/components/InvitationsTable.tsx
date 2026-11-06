@@ -1,9 +1,10 @@
 // src/features/employees/components/InvitationsTable.tsx
-import React, { useState } from 'react';
-import { Mail, Clock, RefreshCw, XCircle, Send, CheckCircle2, AlertCircle } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Mail, Clock, Send, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useToast } from '../../../context/ToastContext';
 import { invitationService } from '../services/invitationService';
 import type { TenantEmployeeInvitationResponse } from '../types/invitation';
+import { BtnRefresh, BtnCancel } from '../../../components/ui/CrudButtons';
 
 interface Props {
   invitations: TenantEmployeeInvitationResponse[];
@@ -20,15 +21,20 @@ export const InvitationsTable: React.FC<Props> = ({
 }) => {
   const { success, error: toastError } = useToast();
   const [resendingRef, setResendingRef] = useState<string | null>(null);
-  const [now] = useState(() => Date.now());
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const canAct = (inv: TenantEmployeeInvitationResponse, timestamp: number) => inv.status === 'PENDING' && Date.parse(inv.expiresAt) > timestamp;
 
-  const handleResend = async (inv: TenantEmployeeInvitationResponse) => {
-    if (resendingRef) return;
+  const handleResend = async (inv: TenantEmployeeInvitationResponse, timestamp: number) => {
+    if (resendingRef || !canAct(inv, timestamp)) return;
     setResendingRef(inv.publicReference);
 
     try {
       await invitationService.resendInvitation(inv.publicReference);
-      success(`Invitación reenviada exitosamente a ${inv.email}`);
+      success(`Reenvío solicitado para ${inv.email}. Revisa el estado de envío.`);
       onRefresh();
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { code?: string; message?: string } } };
@@ -95,7 +101,7 @@ export const InvitationsTable: React.FC<Props> = ({
     return (
       <div className="card bg-base-100 p-8 rounded-2xl shadow-xs border border-base-200 text-center">
         <span className="loading loading-spinner loading-md text-primary mx-auto mb-2"></span>
-        <p className="text-sm text-base-content/60">Cargando invitaciones pendientes...</p>
+        <p className="text-sm text-base-content/60">Cargando invitaciones...</p>
       </div>
     );
   }
@@ -106,7 +112,7 @@ export const InvitationsTable: React.FC<Props> = ({
         <div className="w-12 h-12 bg-base-200 rounded-full flex items-center justify-center mx-auto mb-3 text-base-content/40">
           <Mail className="w-6 h-6" />
         </div>
-        <h3 className="font-semibold text-base text-base-content">No hay invitaciones pendientes</h3>
+        <h3 className="font-semibold text-base text-base-content">No hay invitaciones</h3>
         <p className="text-xs text-base-content/60 max-w-sm mx-auto mt-1">
           Cuando invites a nuevos colaboradores para unirse a la empresa, aparecerán aquí para que puedas darles seguimiento.
         </p>
@@ -123,7 +129,8 @@ export const InvitationsTable: React.FC<Props> = ({
               <th>Colaborador / Email</th>
               <th>Rol Asignado</th>
               <th>Sucursal</th>
-              <th>Estado de Envío</th>
+              <th>Estado de invitación</th>
+              <th>Estado de envío</th>
               <th>Vencimiento</th>
               <th className="text-right">Acciones</th>
             </tr>
@@ -152,32 +159,29 @@ export const InvitationsTable: React.FC<Props> = ({
                     {inv.branchName || 'Todas las sucursales'}
                   </span>
                 </td>
+                <td><span className={`badge badge-sm ${inv.status === 'ACCEPTED' ? 'badge-success' : 'badge-outline'}`}>
+                  {({ ACCEPTED: 'Aceptada', REVOKED: 'Revocada', EXPIRED: 'Vencida', PENDING: Date.parse(inv.expiresAt) <= now ? 'Vencida' : 'Pendiente' } as Record<string, string>)[inv.status] || 'Sin verificar'}
+                </span></td>
                 <td>{renderDeliveryBadge(inv.deliveryStatus)}</td>
                 <td className="text-xs text-base-content/70">
-                  {formatExpiry(inv.expiresAt, now)}
+                  {inv.status === 'ACCEPTED' ? 'Completada' : inv.status === 'REVOKED' ? 'Cancelada' : formatExpiry(inv.expiresAt, now)}
                 </td>
                 <td className="text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    <button
+                  {inv.status === 'PENDING' && Date.parse(inv.expiresAt) > now ? <div className="flex items-center justify-end gap-1">
+                    <BtnRefresh label="Reenviar" responsive={false}
                       type="button"
                       className="btn btn-ghost btn-xs text-primary gap-1"
-                      onClick={() => handleResend(inv)}
+                      onClick={() => handleResend(inv, Date.now())}
                       disabled={resendingRef === inv.publicReference}
                       title="Reenviar correo de invitación"
-                    >
-                      <RefreshCw className={`w-3.5 h-3.5 ${resendingRef === inv.publicReference ? 'animate-spin' : ''}`} />
-                      Reenviar
-                    </button>
-                    <button
+                    />
+                    <BtnCancel label="Revocar" responsive={false}
                       type="button"
                       className="btn btn-ghost btn-xs text-error gap-1"
-                      onClick={() => onRevokeRequest(inv)}
+                      onClick={() => { if (canAct(inv, Date.now())) onRevokeRequest(inv); }}
                       title="Revocar invitación"
-                    >
-                      <XCircle className="w-3.5 h-3.5" />
-                      Revocar
-                    </button>
-                  </div>
+                    />
+                  </div> : <span className="text-xs text-base-content/50">Sin acciones pendientes</span>}
                 </td>
               </tr>
             ))}

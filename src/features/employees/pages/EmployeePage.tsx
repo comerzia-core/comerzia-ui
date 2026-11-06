@@ -7,6 +7,7 @@ import { EmployeeDetailModal } from '../components/EmployeeDetailModal';
 import { InviteEmployeeModal } from '../components/InviteEmployeeModal';
 import { RevokeInvitationModal } from '../components/RevokeInvitationModal';
 import { InvitationsTable } from '../components/InvitationsTable';
+import { useInvitationStatusRefresh } from '../hooks/useInvitationStatusRefresh';
 import { employeeService } from '../services/employeeService';
 import { invitationService } from '../services/invitationService';
 import type { EmployeeSummaryResponse, EmployeeCreatedResponse } from '../types/employee';
@@ -74,6 +75,7 @@ export const EmployeePage = () => {
   const [invitationToRevoke, setInvitationToRevoke] = useState<TenantEmployeeInvitationResponse | null>(null);
   const [invitations, setInvitations] = useState<TenantEmployeeInvitationResponse[]>([]);
   const [isLoadingInvitations, setIsLoadingInvitations] = useState(false);
+  useInvitationStatusRefresh(activeTab === 'INVITATIONS', setInvitations);
 
   const { success, error } = useToast();
 
