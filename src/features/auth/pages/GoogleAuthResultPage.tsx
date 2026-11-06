@@ -28,6 +28,8 @@ export function GoogleAuthResultPage() {
 
     async function processComplete() {
       try {
+        // El refresh inicial anónimo puede limpiar continuaciones: debe terminar antes del retorno OAuth.
+        await useAuthStore.getState().initializeSession();
         const result = await completeGoogleAuth();
         setOutcome(result);
 
