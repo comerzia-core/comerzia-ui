@@ -16,7 +16,7 @@ test('local invitation uses production form, strong password and protected reque
     expect(route.request().headers()['x-csrf-token']).toBe('csrf-fixture');
     return route.fulfill({ status: 409, json: { code: 'invitation_capacity_unavailable', message: 'SQL private detail' } });
   });
-  await page.goto(`/aceptar-invitacion#token=${token}`, { waitUntil: 'domcontentloaded' });
+  await page.goto(`/accept-invitation#token=${token}`, { waitUntil: 'domcontentloaded' });
   await expect(page.getByText('Únete a la empresa')).toBeVisible();
   expect(page.url()).not.toContain(token);
   await page.getByPlaceholder('Tu nombre', { exact: true }).fill('Ana');
@@ -33,7 +33,7 @@ test('Google invitation binds token and returns without history or storage secre
   let started, accepted;
   await page.route('**/auth/oidc/google/start', route => {
     started = route.request().postDataJSON();
-    return route.fulfill({ json: { authorizationUrl: 'https://localhost:5201/auth/google/resultado', state: 'state-fixture' } });
+    return route.fulfill({ json: { authorizationUrl: 'https://localhost:5201/auth/google/result', state: 'state-fixture' } });
   });
   await page.route('**/auth/oidc/google/complete', route => route.fulfill({ json: {
     status: 'INVITATION_VERIFIED', continuationToken: continuation, invitationReferenceToken: token,
@@ -42,7 +42,7 @@ test('Google invitation binds token and returns without history or storage secre
     accepted = route.request().postDataJSON();
     return route.fulfill({ status: 409, json: { code: 'invitation_expired' } });
   });
-  await page.goto(`/aceptar-invitacion#token=${token}`, { waitUntil: 'domcontentloaded' });
+  await page.goto(`/accept-invitation#token=${token}`, { waitUntil: 'domcontentloaded' });
   await page.getByRole('button', { name: 'Unirme con Google' }).click();
   await expect(page.getByRole('button', { name: 'Confirmar y unirme con Google' })).toBeVisible();
   expect(started).toEqual({ purpose: 'INVITATION', invitationToken: token });
@@ -61,7 +61,7 @@ for (const status of ['MFA_PENDING', 'MFA_ENROLLMENT_REQUIRED', 'RECOVERY_RESTRI
       enrollmentRequests++;
       return route.fulfill({ json: { secret: 'fixture', otpauthUri: 'otpauth://totp/fixture?secret=JBSWY3DPEHPK3PXP' } });
     });
-    await page.goto('/auth/google/resultado', { waitUntil: 'domcontentloaded' });
+    await page.goto('/auth/google/result', { waitUntil: 'domcontentloaded' });
     await expect(page.getByRole('heading', { name: status === 'MFA_PENDING' ? 'Doble factor' : 'Configura tu segundo factor' })).toBeVisible();
     if (status !== 'MFA_PENDING') await expect.poll(() => enrollmentRequests).toBe(1);
     await expect(page.getByLabel('Usuario o correo electrónico', { exact: true })).toHaveCount(0);

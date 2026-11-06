@@ -25,10 +25,10 @@ for (const mobile of [false, true]) {
   test(`public link protects the token and requires explicit confirmation (${mobile ? 'mobile' : 'desktop'})`, async ({ page }) => {
     await page.setViewportSize(mobile ? { width: 390, height: 844 } : { width: 1366, height: 900 });
     const calls = await mockApi(page);
-    await page.goto(`/verificar-email#token=${token}`);
+    await page.goto(`/verify-email#token=${token}`);
     const confirm = page.getByRole('button', { name: 'Confirmar mi correo electrónico' });
     await expect(confirm).toBeVisible();
-    await expect(page).toHaveURL(/\/verificar-email$/);
+    await expect(page).toHaveURL(/\/verify-email$/);
     expect(calls.filter(call => call.url.endsWith('/confirm'))).toHaveLength(0);
     expect(calls.filter(call => call.url.endsWith('/inspect')).length).toBeGreaterThan(0);
     await confirm.click();
@@ -49,7 +49,7 @@ for (const mobile of [false, true]) {
 
 test('inspection network error produces a recoverable visible state', async ({ page }) => {
   await mockApi(page, 503);
-  await page.goto(`/verificar-email#token=${token}`);
+  await page.goto(`/verify-email#token=${token}`);
   await expect(page.getByText('No se pudo validar el enlace. Intenta nuevamente.')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Confirmar mi correo electrónico' })).toHaveCount(0);
 });

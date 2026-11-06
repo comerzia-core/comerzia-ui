@@ -41,13 +41,13 @@ export function GoogleAuthResultPage() {
 
         if (result.status === 'REGISTRATION_REQUIRED' && result.registrationToken) {
           rememberGoogleRegistration({ registrationToken: result.registrationToken, email: result.email, name: result.name });
-          navigate('/registro', { replace: true });
+          navigate('/register', { replace: true });
           return;
         }
 
         if (result.status === 'INVITATION_VERIFIED' && result.continuationToken && result.invitationReferenceToken) {
           rememberGoogleInvitation({ token: result.invitationReferenceToken, googleContinuationToken: result.continuationToken });
-          navigate('/aceptar-invitacion', { replace: true });
+          navigate('/accept-invitation', { replace: true });
           return;
         }
 

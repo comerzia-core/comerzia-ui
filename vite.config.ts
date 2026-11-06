@@ -17,7 +17,7 @@ export default defineConfig(({ mode }) => {
       transformIndexHtml(html) {
         // El catálogo de arranque y el selector provienen del mismo archivo; no hay listas divergentes.
         const modes = Object.fromEntries(Object.entries(themeCatalog).map(([id, theme]) => [id, theme.mode]));
-        return html.replace('<!-- theme-bootstrap -->', `<script>(function(){var modes=${JSON.stringify(modes)};var theme='light';try{var publicPage=['/','/registro','/login'].includes(location.pathname);var stored=localStorage.getItem(publicPage?'comerzia.public.theme':'theme');if(Object.prototype.hasOwnProperty.call(modes,stored)&&(!publicPage||stored==='light'||stored==='dark'))theme=stored;}catch(e){}var root=document.documentElement;root.dataset.theme=theme;root.dataset.colorScheme=modes[theme];root.style.colorScheme=modes[theme];})();</script>`);
+        return html.replace('<!-- theme-bootstrap -->', `<script>(function(){var modes=${JSON.stringify(modes)};var theme='light';try{var publicPage=['/','/register','/login','/password-reset','/verify-email','/change-email','/auth/google/result','/accept-invitation','/registro','/recuperar-contrasena','/verificar-email','/cambiar-email','/auth/google/resultado','/invitacion','/aceptar-invitacion'].includes(location.pathname);var stored=localStorage.getItem(publicPage?'comerzia.public.theme':'theme');if(Object.prototype.hasOwnProperty.call(modes,stored)&&(!publicPage||stored==='light'||stored==='dark'))theme=stored;}catch(e){}var root=document.documentElement;root.dataset.theme=theme;root.dataset.colorScheme=modes[theme];root.style.colorScheme=modes[theme];})();</script>`);
       },
     },
     react(),

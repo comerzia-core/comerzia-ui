@@ -10,7 +10,7 @@ export function PlanSection() {
       <div className="public-plan-grid">{data?.map(plan => <article key={plan.code} className={`public-plan ${plan.registrationAvailable ? 'public-plan--free' : ''}`}>
         <div><span className="public-plan-label">{plan.registrationAvailable ? 'TU PUNTO DE PARTIDA' : 'PARA SEGUIR CRECIENDO'}</span><h3>{plan.name}</h3><p className="public-plan-price"><span>Bs</span> {Number(plan.monthlyPrice).toLocaleString('es-BO', { maximumFractionDigits: 2 })}<small>/ mes</small></p></div>
         <ul><li><Check size={16} />{plan.maxBranches.toLocaleString('es-BO')} {plan.maxBranches === 1 ? 'tienda' : 'tiendas'}</li><li><Check size={16} />{plan.maxUsers.toLocaleString('es-BO')} {plan.maxUsers === 1 ? 'usuario (tú)' : 'usuarios'}</li><li><Check size={16} />{plan.maxProducts.toLocaleString('es-BO')} productos</li></ul>
-        {plan.registrationAvailable ? <Link className="public-action public-action--outline" to="/registro">Comenzar gratis <ArrowRight size={18} /></Link> : <div className="public-plan-upcoming">Contratación próximamente</div>}
+        {plan.registrationAvailable ? <Link className="public-action public-action--outline" to="/register">Comenzar gratis <ArrowRight size={18} /></Link> : <div className="public-plan-upcoming">Contratación próximamente</div>}
       </article>)}</div>}
     <p className="public-plan-note">El registro inicial incluye Free. Sin tarjeta y sin cobros automáticos.</p>
   </section>;

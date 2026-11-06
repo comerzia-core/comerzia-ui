@@ -17,8 +17,8 @@ test('production display filter excludes platform roles; server remains authorit
   assert.equal(isVisibleInvitationRole({ name: 'SELLER' }), true);
 });
 test('production link parser removes credentials but preserves unrelated query', () => {
-  assert.deepEqual(invitationLink('https://example.test/aceptar-invitacion?lang=es#token=fixture'), { token: 'fixture', cleanPath: '/aceptar-invitacion?lang=es' });
-  assert.deepEqual(invitationLink('https://example.test/aceptar-invitacion?token=legacy&lang=es'), { token: 'legacy', cleanPath: '/aceptar-invitacion?lang=es' });
+  assert.deepEqual(invitationLink('https://example.test/accept-invitation?lang=es#token=fixture'), { token: 'fixture', cleanPath: '/accept-invitation?lang=es' });
+  assert.deepEqual(invitationLink('https://example.test/accept-invitation?token=legacy&lang=es'), { token: 'legacy', cleanPath: '/accept-invitation?lang=es' });
 });
 test('production error mapping has stable Spanish messages and safe unknown fallback', () => {
   assert.match(invitationErrorMessage('invitation_capacity_unavailable'), /propietario.*cupo/);

@@ -92,7 +92,7 @@ export function LoginPage() {
             <ComerziaInput id="login-username" aria-label="Usuario o correo electrónico" name="username" label="Usuario o correo electrónico" value={username} onChange={event => setUsername(event.target.value)} shakeKey={shakeKey} isRequired disabled={isLoading} autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} />
             <ComerziaInput id="login-password" aria-label="Contraseña" name="password" label="Contraseña" type={showPassword ? 'text' : 'password'} value={currentPassword} onChange={event => setCurrentPassword(event.target.value)} shakeKey={shakeKey} isRequired disabled={isLoading} autoComplete="current-password" rightAction={reveal} />
             <div className="public-forgot-password-wrap" style={{ textAlign: 'right', margin: '4px 0 12px 0' }}>
-              <Link to="/recuperar-contrasena" className="public-forgot-password-link" style={{ fontSize: '0.85rem', color: 'var(--p, #3b82f6)' }}>
+              <Link to="/password-reset" className="public-forgot-password-link" style={{ fontSize: '0.85rem', color: 'var(--p, #3b82f6)' }}>
                 ¿Olvidaste tu contraseña?
               </Link>
             </div>
@@ -355,7 +355,7 @@ export function LoginPage() {
         )}
 
         <p className="public-account-link">
-          ¿Aún no tienes tu espacio? <Link to="/registro">Crea tu empresa gratis</Link>
+          ¿Aún no tienes tu espacio? <Link to="/register">Crea tu empresa gratis</Link>
         </p>
       </div>
     </AuthStage>

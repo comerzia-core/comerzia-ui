@@ -100,7 +100,7 @@ export function PasswordResetPage() {
                 </p>
                 <div className="pt-4 flex flex-col gap-3">
                   <Link
-                    to="/recuperar-contrasena"
+                    to="/password-reset"
                     className="public-action"
                     style={{ width: '100%', textDecoration: 'none' }}
                   >

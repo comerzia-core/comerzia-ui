@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { PublicLayout } from '../features/public/components/PublicLayout';
+import { LegacyPublicRedirect } from './LegacyPublicRedirect';
 import { LandingPage } from '../features/public/pages/LandingPage';
 const RegistrationPage = lazy(() => import('../features/public/pages/RegistrationPage').then(module => ({ default: module.RegistrationPage })));
 const LoginPage = lazy(() => import('../features/auth/pages/LoginPage').then(module => ({ default: module.LoginPage })));
@@ -16,14 +17,20 @@ export function AppRouter() {
   return <BrowserRouter><Suspense fallback={<div className="public-route-loading" role="status">Cargando…</div>}><Routes>
     <Route element={<PublicLayout />}>
       <Route path="/" element={<LandingPage />} />
-      <Route path="/registro" element={<RegistrationPage />} />
+      <Route path="/register" element={<RegistrationPage />} />
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/recuperar-contrasena" element={<PasswordResetPage />} />
-      <Route path="/verificar-email" element={<EmailVerificationPage />} />
-      <Route path="/cambiar-email" element={<EmailChangePage />} />
-      <Route path="/auth/google/resultado" element={<GoogleAuthResultPage />} />
-      <Route path="/invitacion" element={<AcceptInvitationPage />} />
-      <Route path="/aceptar-invitacion" element={<AcceptInvitationPage />} />
+      <Route path="/password-reset" element={<PasswordResetPage />} />
+      <Route path="/verify-email" element={<EmailVerificationPage />} />
+      <Route path="/change-email" element={<EmailChangePage />} />
+      <Route path="/auth/google/result" element={<GoogleAuthResultPage />} />
+      <Route path="/accept-invitation" element={<AcceptInvitationPage />} />
+      <Route path="/registro" element={<LegacyPublicRedirect to="/register" />} />
+      <Route path="/recuperar-contrasena" element={<LegacyPublicRedirect to="/password-reset" />} />
+      <Route path="/verificar-email" element={<LegacyPublicRedirect to="/verify-email" />} />
+      <Route path="/cambiar-email" element={<LegacyPublicRedirect to="/change-email" />} />
+      <Route path="/auth/google/resultado" element={<LegacyPublicRedirect to="/auth/google/result" />} />
+      <Route path="/invitacion" element={<LegacyPublicRedirect to="/accept-invitation" />} />
+      <Route path="/aceptar-invitacion" element={<LegacyPublicRedirect to="/accept-invitation" />} />
     </Route>
     <Route path="/c/:slug" element={<StorefrontPage />} />
     <Route path="/*" element={<PrivateRouter />} />
