@@ -1,5 +1,5 @@
 import type { MfaStepUpActionType } from '../types/mfa';
-const defaults: Record<MfaStepUpActionType, string> = {
+const defaults: Partial<Record<MfaStepUpActionType, string>> = {
   REPLACE_MFA: 'POST:/profile/mfa/totp/enroll/start',
   REGENERATE_RECOVERY_CODES: 'POST:/profile/mfa/recovery-codes/regenerate',
   DEACTIVATE_MFA: 'POST:/profile/mfa/deactivate',
@@ -16,7 +16,9 @@ function canonical(value: unknown): string {
   return JSON.stringify(value);
 }
 export async function bindMfaOperation(action: MfaStepUpActionType, target?: string, body?: unknown): Promise<string> {
-  const [path, rawQuery = ''] = (target ?? defaults[action]).split('?');
+  const operationTarget = target ?? defaults[action];
+  if (!operationTarget) throw new Error('mfa_operation_target_required');
+  const [path, rawQuery = ''] = operationTarget.split('?');
   const parameters = new URLSearchParams(rawQuery);
   const query = Object.fromEntries([...new Set(parameters.keys())].sort().map(key => [key, parameters.getAll(key)]));
   let payload: unknown = body ?? null;

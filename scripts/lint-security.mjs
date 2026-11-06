@@ -4,6 +4,8 @@ const eslint = new ESLint();
 const results = await eslint.lintFiles(['src', 'vite.config.ts']);
 const counts = {};
 const strictPaths = new Set([
+  'src/features/auth/utils/oidcContinuation.ts',
+  'src/features/employees/utils/invitationFlow.ts',
   'src/features/security/utils/mfaOperation.ts',
   'src/features/security/hooks/useStepUp.ts',
   'src/features/security/hooks/usePrivilegedRecovery.ts',

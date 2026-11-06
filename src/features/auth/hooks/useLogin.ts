@@ -1,6 +1,6 @@
 import { isValidTotpCode, isValidRecoveryCode } from '../../security/utils/mfaInput';
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { isAxiosError } from 'axios';
 import {
     submitBrowserCredentials,
@@ -22,6 +22,10 @@ export type EnrollmentSubStep = 'SETUP' | 'RECOVERY_CODES';
 
 export function useLogin() {
     const navigate = useNavigate();
+    const location = useLocation();
+    const pendingState = (location.state as { federatedMfa?: { status?: string } } | null)?.federatedMfa?.status;
+    const pendingEnrollment = pendingState === 'MFA_ENROLLMENT_REQUIRED' || pendingState === 'RECOVERY_RESTRICTED';
+    const pendingEnrollmentStarted = useRef(false);
     const loginStore = useAuthStore(state => state.login);
     const sessionNotice = useAuthStore(state => state.sessionNotice);
     const authStatus = useAuthStore(state => state.status);
@@ -36,7 +40,7 @@ export function useLogin() {
     }, [sessionNotice, toastInfo]);
 
     // --- ESTADOS DE FLUJO ---
-    const [currentStep, setCurrentStep] = useState<AuthStep>(authStatus === 'mfa_pending' ? 'MFA_CHALLENGE' : 'LOGIN');
+    const [currentStep, setCurrentStep] = useState<AuthStep>(pendingEnrollment ? 'MFA_ENROLLMENT' : pendingState === 'MFA_PENDING' || authStatus === 'mfa_pending' ? 'MFA_CHALLENGE' : 'LOGIN');
     const [mfaMode, setMfaMode] = useState<'TOTP' | 'RECOVERY' | 'EMERGENCY'>('TOTP');
     const [isLoading, setIsLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
@@ -75,6 +79,13 @@ export function useLogin() {
                 setErrorMessage(msg);
             });
     };
+
+    useEffect(() => {
+        if (pendingEnrollment && !pendingEnrollmentStarted.current) {
+            pendingEnrollmentStarted.current = true;
+            loadPendingEnrollment();
+        }
+    }, [pendingEnrollment]);
 
     // ==========================================
     // PASO 1: LOGIN NORMAL

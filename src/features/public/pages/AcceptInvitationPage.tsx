@@ -19,6 +19,8 @@ import { ComerziaInput } from '../../../components/ui/ComerziaInput';
 import { PasswordChecklist } from '../../auth/components/PasswordChecklist';
 import { useAcceptInvitation } from '../hooks/useAcceptInvitation';
 import { useAuthStore } from '../../../stores/useAuthStore';
+import { PublicAction } from '../../../components/ui/PublicAction';
+import { passwordFeedback } from '../../auth/utils/passwordPolicy';
 
 export const AcceptInvitationPage: React.FC = () => {
   const {
@@ -66,8 +68,9 @@ export const AcceptInvitationPage: React.FC = () => {
       setFormValidationErrors('El nombre de usuario debe tener al menos 3 caracteres.');
       return;
     }
-    if (!password || password.length < 8) {
-      setFormValidationErrors('La contraseña debe tener al menos 8 caracteres.');
+    const feedback = passwordFeedback(password);
+    if (feedback) {
+      setFormValidationErrors(feedback);
       return;
     }
     if (password !== confirmPassword) {
@@ -216,7 +219,7 @@ export const AcceptInvitationPage: React.FC = () => {
                   </div>
                 </div>
 
-                <button
+                <PublicAction
                   type="button"
                   className="public-action"
                   style={{ width: '100%' }}
@@ -225,16 +228,16 @@ export const AcceptInvitationPage: React.FC = () => {
                 >
                   {submitting ? 'Aceptando invitación...' : 'Aceptar invitación con mi cuenta'}
                   <ArrowRight size={18} />
-                </button>
+                </PublicAction>
 
                 <div className="text-center pt-1">
-                  <button
+                  <PublicAction
                     type="button"
                     className="text-xs text-base-content/60 hover:text-base-content underline"
                     onClick={() => useAuthStore.getState().logout()}
                   >
                     ¿No es tu cuenta? Cerrar sesión
-                  </button>
+                  </PublicAction>
                 </div>
               </div>
             ) : googleContinuationToken ? (
@@ -245,7 +248,7 @@ export const AcceptInvitationPage: React.FC = () => {
                   <div>Tu cuenta de Google ha sido verificada. Haz clic abajo para confirmar tu ingreso.</div>
                 </div>
 
-                <button
+                <PublicAction
                   type="button"
                   className="public-action"
                   style={{ width: '100%' }}
@@ -254,13 +257,13 @@ export const AcceptInvitationPage: React.FC = () => {
                 >
                   {submitting ? 'Confirmando...' : 'Confirmar y unirme con Google'}
                   <ArrowRight size={18} />
-                </button>
+                </PublicAction>
               </div>
             ) : (
               /* Subcaso C: Nuevo usuario local o Google */
               <div className="space-y-5 pt-1">
                 {/* Opción Google */}
-                <button
+                <PublicAction
                   type="button"
                   onClick={startGoogleAcceptance}
                   disabled={submitting}
@@ -269,7 +272,7 @@ export const AcceptInvitationPage: React.FC = () => {
                 >
                   <img src="/media/landing/google-g.png" width={18} height={18} alt="" />
                   <span>Unirme con Google</span>
-                </button>
+                </PublicAction>
 
                 <div className="public-divider">
                   <span>o crea tu contraseña</span>
@@ -344,13 +347,14 @@ export const AcceptInvitationPage: React.FC = () => {
                         disabled={submitting}
                         required
                       />
-                      <button
+                      <PublicAction
                         type="button"
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-base-content/50 hover:text-base-content"
+                        aria-label={showPassword ? "Ocultar contrase?a" : "Mostrar contrase?a"}
+                        className="!w-auto !p-1 absolute right-3 top-1/2 -translate-y-1/2 text-base-content/50 hover:text-base-content"
                         onClick={() => setShowPassword(!showPassword)}
                       >
                         {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                      </button>
+                      </PublicAction>
                     </div>
                   </div>
 
@@ -371,7 +375,7 @@ export const AcceptInvitationPage: React.FC = () => {
                   <PasswordChecklist passwordValue={password} showErrors={Boolean(formValidationErrors)} />
 
                   <div className="pt-2">
-                    <button
+                    <PublicAction
                       type="submit"
                       className="public-action"
                       style={{ width: '100%' }}
@@ -379,7 +383,7 @@ export const AcceptInvitationPage: React.FC = () => {
                     >
                       {submitting ? 'Creando cuenta...' : 'Aceptar invitación y crear cuenta'}
                       <ArrowRight size={18} />
-                    </button>
+                    </PublicAction>
                   </div>
                 </form>
 

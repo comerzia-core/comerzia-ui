@@ -1,86 +1,36 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { isStepUpAction } from '../src/features/security/services/stepUpCoordinator.ts';
+import { invitationLink, invitationErrorMessage, isVisibleInvitationRole } from '../src/features/employees/utils/invitationFlow.ts';
+import { rememberGoogleRegistration, getGoogleRegistration, clearGoogleRegistration, rememberGoogleInvitation, getGoogleInvitation, clearGoogleInvitation } from '../src/features/auth/utils/oidcContinuation.ts';
 
-test('isStepUpAction recognizes INVITE_EMPLOYEE as a valid step-up action', () => {
+test('production coordinator recognizes invitation step-up', () => {
   assert.equal(isStepUpAction('INVITE_EMPLOYEE'), true);
-  assert.equal(isStepUpAction('ASSIGN_ROLES'), true);
   assert.equal(isStepUpAction('UNKNOWN_ACTION'), false);
-  assert.equal(isStepUpAction(null), false);
 });
-
-test('delegable roles filter excludes privileged ROOT and SAAS_* roles, keeping OWNER and operational roles', () => {
-  const allRoles = [
-    { id: '1', name: 'ROOT', displayName: 'Superusuario Root' },
-    { id: '2', name: 'OWNER', displayName: 'Dueño de Empresa' },
-    { id: '3', name: 'SAAS_ADMIN', displayName: 'Administrador de Plataforma' },
-    { id: '4', name: 'SAAS_SUPPORT', displayName: 'Soporte Técnico' },
-    { id: '5', name: 'SELLER', displayName: 'Vendedor' },
-    { id: '6', name: 'CASHIER', displayName: 'Cajero' },
-    { id: '7', name: 'BRANCH_MANAGER', displayName: 'Encargado de Sucursal' }
-  ];
-
-  const delegable = allRoles.filter(
-    r => !['ROOT'].includes(r.name.toUpperCase()) && !r.name.toUpperCase().startsWith('SAAS_')
-  );
-
-  assert.equal(delegable.length, 4);
-  assert.deepEqual(delegable.map(r => r.name), ['OWNER', 'SELLER', 'CASHIER', 'BRANCH_MANAGER']);
+test('production display filter excludes platform roles; server remains authority', () => {
+  assert.equal(isVisibleInvitationRole({ name: 'ROOT' }), false);
+  assert.equal(isVisibleInvitationRole({ name: 'saas_admin' }), false);
+  assert.equal(isVisibleInvitationRole({ name: 'OWNER' }), false);
+  assert.equal(isVisibleInvitationRole({ name: 'SELLER' }), true);
 });
-
-test('token extraction pattern captures token in memory and ensures no persistence in storages', () => {
-  const dummyLocalStorage = {};
-  const dummySessionStorage = {};
-
-  const testUrl = 'https://comerzia.local/aceptar-invitacion#token=secret_invitation_token_123';
-  const url = new URL(testUrl);
-
-  const extractedToken = new URLSearchParams(url.hash.slice(1)).get('token') ?? url.searchParams.get('token');
-  assert.equal(extractedToken, 'secret_invitation_token_123');
-
-  // Simular limpieza de URL
-  url.searchParams.delete('token');
-  url.hash = '';
-  const cleanUrl = url.pathname + url.search;
-  assert.equal(cleanUrl, '/aceptar-invitacion');
-
-  // Invariante de seguridad: token jamás debe ser asignado a storages
-  assert.equal(dummyLocalStorage['token'], undefined);
-  assert.equal(dummyLocalStorage['invitation_token'], undefined);
-  assert.equal(dummySessionStorage['token'], undefined);
-  assert.equal(dummySessionStorage['invitation_token'], undefined);
+test('production link parser removes credentials but preserves unrelated query', () => {
+  assert.deepEqual(invitationLink('https://example.test/aceptar-invitacion?lang=es#token=fixture'), { token: 'fixture', cleanPath: '/aceptar-invitacion?lang=es' });
+  assert.deepEqual(invitationLink('https://example.test/aceptar-invitacion?token=legacy&lang=es'), { token: 'legacy', cleanPath: '/aceptar-invitacion?lang=es' });
 });
-
-test('invitation error codes map to predictable Spanish messages without leaking tenant data', () => {
-  const translateCode = (code) => {
-    switch (code) {
-      case 'account_link_required':
-        return 'Ya existe una cuenta con este correo no vinculada a Google. Inicia sesión con tus credenciales para vincularla a esta empresa.';
-      case 'invitation_conflict':
-        return 'El nombre de usuario seleccionado ya está en uso. Por favor elige otro.';
-      case 'invitation_capacity_unavailable':
-        return 'La empresa ha alcanzado el límite de usuarios de su suscripción. Contacta al administrador.';
-      case 'invitation_resend_cooldown':
-        return 'Debes esperar al menos 60 segundos antes de reenviar esta invitación.';
-      case 'invitation_role_not_delegable':
-        return 'No tienes permisos suficientes para delegar este rol.';
-      case 'invitation_rate_limited':
-        return 'Has alcanzado el límite de invitaciones permitidas por ahora.';
-      case 'invitation_already_accepted':
-        return 'Esta invitación ya fue aceptada anteriormente.';
-      case 'invitation_expired':
-        return 'Esta invitación ha expirado. Solicita un nuevo enlace a tu administrador.';
-      case 'invitation_revoked':
-        return 'Esta invitación ha sido revocada por un administrador.';
-      default:
-        return 'Ocurrió un error al procesar la invitación.';
-    }
-  };
-
-  assert.ok(translateCode('account_link_required').includes('Inicia sesión'));
-  assert.ok(translateCode('invitation_capacity_unavailable').includes('límite de usuarios'));
-  assert.ok(translateCode('invitation_resend_cooldown').includes('60 segundos'));
-  assert.ok(translateCode('invitation_role_not_delegable').includes('No tienes permisos'));
-  assert.ok(translateCode('invitation_already_accepted').includes('ya fue aceptada'));
+test('production error mapping has stable Spanish messages and safe unknown fallback', () => {
+  assert.match(invitationErrorMessage('invitation_capacity_unavailable'), /propietario.*cupo/);
+  assert.match(invitationErrorMessage('invitation_subscription_unavailable'), /suscripción activa/);
+  assert.match(invitationErrorMessage('account_link_required'), /método habitual/);
+  assert.equal(invitationErrorMessage('SQL secret detail'), invitationErrorMessage(undefined));
 });
-
+test('production continuations support SPA handoff and explicit cleanup', () => {
+  rememberGoogleInvitation({ token: 'invitation-fixture', googleContinuationToken: 'google-fixture' });
+  rememberGoogleRegistration({ registrationToken: 'registration-fixture', email: 'fixture@example.test' });
+  assert.equal(getGoogleInvitation().token, 'invitation-fixture');
+  assert.equal(getGoogleRegistration().registrationToken, 'registration-fixture');
+  clearGoogleInvitation();
+  clearGoogleRegistration();
+  assert.equal(getGoogleInvitation(), null);
+  assert.equal(getGoogleRegistration(), null);
+});

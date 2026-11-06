@@ -9,6 +9,7 @@ import { useToast } from '../../../context/ToastContext';
 import { invitationService } from '../services/invitationService';
 import { userService } from '../../security/services/userService';
 import { branchService } from '../../organization/services/branchService';
+import { invitationErrorMessage, isVisibleInvitationRole } from '../utils/invitationFlow';
 import type { RoleResponse } from '../../security/types/user';
 import type { TenantActiveBranchResponse } from '../../organization/types/branch';
 
@@ -66,9 +67,7 @@ export const InviteEmployeeModal: React.FC<Props> = ({
     ])
       .then(([allRoles, allBranches]) => {
         if (!active) return;
-        const delegable = (allRoles || []).filter(
-          r => !['ROOT'].includes(r.name.toUpperCase()) && !r.name.toUpperCase().startsWith('SAAS_')
-        );
+        const delegable = (allRoles || []).filter(isVisibleInvitationRole);
         setRoles(delegable);
         setBranches(allBranches || []);
       })
@@ -92,20 +91,11 @@ export const InviteEmployeeModal: React.FC<Props> = ({
 
   // Dinámica de asignación de sucursal:
   // Si no es owner y hay roles seleccionados, selecciona la primera por defecto si no hay ninguna elegida
-  useEffect(() => {
-    if (selectedRoleIds.length > 0 && !isOwnerSelected) {
-      if (!selectedBranchId && branches.length > 0) {
-        setSelectedBranchId(branches[0].id);
-      }
-    } else if (isOwnerSelected) {
-      setSelectedBranchId('');
-    }
-  }, [selectedRoleIds, isOwnerSelected, branches, selectedBranchId]);
-
   const toggleRole = (roleId: string) => {
-    setSelectedRoleIds(prev =>
-      prev.includes(roleId) ? prev.filter(id => id !== roleId) : [...prev, roleId]
-    );
+    const nextIds = selectedRoleIds.includes(roleId)
+      ? selectedRoleIds.filter(id => id !== roleId) : [...selectedRoleIds, roleId];
+    setSelectedRoleIds(nextIds);
+    setSelectedBranchId(nextIds.length === 0 ? '' : selectedBranchId || branches[0]?.id || '');
     setErrorMessage(null);
   };
 
@@ -149,22 +139,7 @@ export const InviteEmployeeModal: React.FC<Props> = ({
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { code?: string; message?: string } } };
       const code = axiosErr.response?.data?.code;
-      const apiMsg = axiosErr.response?.data?.message;
-
-      let userMsg = 'No se pudo enviar la invitación. Inténtalo de nuevo.';
-      if (code === 'invitation_capacity_unavailable') {
-        userMsg = 'No cuentas con cupos de usuarios disponibles en tu suscripción.';
-      } else if (code === 'invitation_conflict') {
-        userMsg = 'Ya existe un usuario o una invitación pendiente para este correo.';
-      } else if (code === 'invitation_role_not_delegable') {
-        userMsg = 'No tienes permisos suficientes para delegar los roles seleccionados.';
-      } else if (code === 'invitation_rate_limited') {
-        userMsg = 'Has alcanzado el límite de invitaciones permitidas por ahora.';
-      } else if (code === 'invitation_unavailable') {
-        userMsg = 'El sistema de invitaciones se encuentra temporalmente deshabilitado.';
-      } else if (apiMsg) {
-        userMsg = apiMsg;
-      }
+      const userMsg = invitationErrorMessage(code);
 
       setErrorMessage(userMsg);
       setShakeKey(k => k + 1);

@@ -7,6 +7,7 @@ import { completeGoogleAuth, confirmGoogleLink } from '../services/oidcService';
 import { resolveOidcMessage } from '../utils/oidcMessages';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import type { OidcCompleteResponse } from '../types/oidc';
+import { rememberGoogleRegistration, rememberGoogleInvitation } from '../utils/oidcContinuation';
 
 export function GoogleAuthResultPage() {
   const [searchParams] = useSearchParams();
@@ -36,30 +37,15 @@ export function GoogleAuthResultPage() {
           return;
         }
 
-        if (result.status === 'REGISTRATION_REQUIRED') {
-          // Redirigir a /registro preservando los datos de la continuación en sesión de navegación
-          navigate('/registro', {
-            replace: true,
-            state: {
-              googleRegistration: {
-                registrationToken: result.registrationToken,
-                email: result.email,
-                name: result.name
-              }
-            }
-          });
+        if (result.status === 'REGISTRATION_REQUIRED' && result.registrationToken) {
+          rememberGoogleRegistration({ registrationToken: result.registrationToken, email: result.email, name: result.name });
+          navigate('/registro', { replace: true });
           return;
         }
 
-        if (result.status === 'INVITATION_VERIFIED' && result.invitationToken) {
-          navigate('/aceptar-invitacion', {
-            replace: true,
-            state: {
-              googleContinuationToken: result.invitationToken,
-              email: result.email,
-              name: result.name
-            }
-          });
+        if (result.status === 'INVITATION_VERIFIED' && result.continuationToken && result.invitationReferenceToken) {
+          rememberGoogleInvitation({ token: result.invitationReferenceToken, googleContinuationToken: result.continuationToken });
+          navigate('/aceptar-invitacion', { replace: true });
           return;
         }
 
@@ -77,6 +63,7 @@ export function GoogleAuthResultPage() {
         }
 
         if (result.status === 'MFA_PENDING' || result.status === 'MFA_ENROLLMENT_REQUIRED' || result.status === 'RECOVERY_RESTRICTED') {
+          useAuthStore.getState().requireAdditionalAuthentication();
           navigate('/login', {
             replace: true,
             state: {

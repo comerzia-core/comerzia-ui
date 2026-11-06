@@ -1,6 +1,7 @@
 import { useRef, useState, useMemo } from 'react';
 import { isAxiosError } from 'axios';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { getGoogleRegistration, clearGoogleRegistration } from '../../auth/utils/oidcContinuation';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { publicService } from '../services/publicService';
 import { registerGoogle } from '../../auth/services/oidcService';
@@ -11,10 +12,7 @@ const emptyForm: RegistrationForm = { firstName: '', paternalSurname: '', matern
 
 export function useRegistration() {
   const navigate = useNavigate();
-  const location = useLocation();
-  const googleRegistration = useMemo(() => {
-    return (location.state as { googleRegistration?: { registrationToken: string; email?: string; name?: string } })?.googleRegistration;
-  }, [location.state]);
+  const [googleRegistration] = useState(getGoogleRegistration);
 
   const isGoogle = Boolean(googleRegistration?.registrationToken);
 
@@ -80,6 +78,7 @@ export function useRegistration() {
           requestKey: requestKey.current
         };
         const response = await registerGoogle(payload);
+        clearGoogleRegistration();
         setForm(emptyForm);
         if (response.token) {
           await useAuthStore.getState().login(response.token);

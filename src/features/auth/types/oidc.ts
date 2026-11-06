@@ -41,7 +41,8 @@ export interface OidcCompleteResponse {
   name?: string;
   registrationToken?: string;
   linkToken?: string;
-  invitationToken?: string;
+  continuationToken?: string;
+  invitationReferenceToken?: string;
   auth?: OidcAuthData;
 }
 

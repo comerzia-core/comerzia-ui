@@ -1,4 +1,5 @@
 export const OIDC_ERROR_MESSAGES: Record<string, string> = {
+  primary_reauthentication_required: 'Esta operación requiere un inicio de sesión reciente. Cierra sesión, vuelve a entrar con tu método habitual y regresa a Perfil > Seguridad dentro de cinco minutos.',
   oidc_cancelled: 'Has cancelado la autenticación con Google.',
   oidc_validation_failed: 'No se pudo verificar la autenticidad de la cuenta de Google. Reintenta.',
   oidc_transaction_invalid: 'La sesión de autenticación con Google ha expirado o no es válida. Por favor, reintenta.',
