@@ -12,6 +12,8 @@ test('production display filter excludes platform roles; server remains authorit
   assert.equal(isVisibleInvitationRole({ name: 'ROOT' }), false);
   assert.equal(isVisibleInvitationRole({ name: 'saas_admin' }), false);
   assert.equal(isVisibleInvitationRole({ name: 'OWNER' }), false);
+  assert.equal(isVisibleInvitationRole({ name: 'OWNER' }, true), true);
+  assert.equal(isVisibleInvitationRole({ name: 'ROOT' }, true), false);
   assert.equal(isVisibleInvitationRole({ name: 'SELLER' }), true);
 });
 test('production link parser removes credentials but preserves unrelated query', () => {

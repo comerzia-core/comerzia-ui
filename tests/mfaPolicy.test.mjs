@@ -2,6 +2,23 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { isValidTotpCode, isValidRecoveryCode } from '../src/features/security/utils/mfaInput.ts';
+import { getMfaPreflightDiagnostics } from '../src/features/security/utils/mfaPreflightDiagnostics.ts';
+
+test('preflight diagnostics show one actionable Spanish message per code, prioritizing blockers', () => {
+  const code = 'two_authorized_mfa_recovery_operators_required';
+  const result = getMfaPreflightDiagnostics([code, code], [code, 'ntp_reference_offset_not_verified', 'ntp_reference_offset_not_verified']);
+  assert.equal(result.blockers.length, 1);
+  assert.equal(result.warnings.length, 1);
+  assert.equal(result.blockers[0].label, 'Se requieren dos operadores autorizados con 2FA activo.');
+  assert.match(result.blockers[0].action, /dos personas distintas/);
+  assert.equal(result.warnings[0].code, 'ntp_reference_offset_not_verified');
+});
+
+test('unknown preflight code is not displayed as an unexplained technical message', () => {
+  const result = getMfaPreflightDiagnostics(['future_server_diagnostic'], []);
+  assert.equal(result.blockers[0].label.includes('future_server_diagnostic'), false);
+  assert.match(result.blockers[0].action, /responsable de seguridad/);
+});
 
 test('TOTP 6-digit code format validation', () => {
   // Valid codes (including with leading zeros)

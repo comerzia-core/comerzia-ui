@@ -21,26 +21,7 @@ import { MfaStepUpModal } from './MfaStepUpModal';
 import { mfaPlatformPolicyService } from '../services/mfaPlatformPolicyService';
 import type { MfaPolicyStatusResponse, MfaPreflightResponse } from '../types/mfaPolicy';
 import { formatDateForUser } from '../../../utils/date';
-
-const diagnosticLabels: Record<string, string> = {
-  mfa_database_schema_not_verified: 'No se pudo comprobar el esquema de seguridad de la base de datos.',
-  redis_connectivity_not_verified: 'No se pudo comprobar la conexión con Redis.',
-  mfa_maintenance_tool_unavailable: 'La herramienta de recuperación no está disponible.',
-  totp_key_not_configured: 'Falta configurar una clave TOTP válida.',
-  totp_key_round_trip_failed: 'Falló la comprobación del cifrado TOTP.',
-  totp_key_probe_failed: 'No se pudo comprobar el llavero TOTP.',
-  platform_accounts_require_mfa_enrollment: 'Hay cuentas de plataforma pendientes de activar 2FA.',
-  redis_rate_controls_not_verified: 'Falta comprobar Redis y una operación real de control de intentos.',
-  existing_platform_factor_decryption_failed: 'No se pudo descifrar un autenticador existente. Revisa el llavero.',
-  web_recovery_rehearsal_missing_or_expired: 'Falta un ensayo vigente de recuperación con dos aprobadores.',
-  cli_recovery_rehearsal_missing_or_expired: 'Falta un ensayo vigente de recuperación mediante CLI.',
-  offline_custody_codes_insufficient: 'Debes reponer los códigos de emergencia offline.',
-  two_authorized_mfa_recovery_operators_required: 'Se requieren dos operadores autorizados con 2FA activo.',
-  two_independent_root_recovery_operators_required: 'ROOT necesita dos operadores autorizados distintos de su propia cuenta.',
-  owner_recovery_evidence_approval_required: 'El propietario debe revisar y aprobar las evidencias.',
-  ntp_reference_offset_not_verified: 'No se pudo comprobar el desfase del reloj frente a la referencia NTP.',
-  host_ntp_discipline_requires_infrastructure_verification: 'Verifica también la sincronización NTP del host según la guía de infraestructura.',
-};
+import { getMfaPreflightDiagnostics } from '../utils/mfaPreflightDiagnostics';
 
 export const MfaPreflightPanel: React.FC = () => {
   const { addToast } = useToast();
@@ -94,6 +75,7 @@ export const MfaPreflightPanel: React.FC = () => {
       setPreflight(result);
       addToast('Diagnóstico preflight actualizado exitosamente.', 'info');
     } catch {
+      setPreflight(null);
       console.error('Error refreshing preflight:');
       addToast('Error al ejecutar el diagnóstico preflight.', 'error');
     } finally {
@@ -140,6 +122,8 @@ export const MfaPreflightPanel: React.FC = () => {
     }
   };
 
+  const diagnostics = getMfaPreflightDiagnostics(preflight?.blockers ?? [], preflight?.warnings ?? []);
+
   return (
     <div className="space-y-6">
       {/* Header Card */}
@@ -178,14 +162,18 @@ export const MfaPreflightPanel: React.FC = () => {
               <span className="font-semibold text-base-content text-sm">
                 Obligatoriedad Global en Plataforma SaaS:
               </span>
-              {policyStatus?.platformMandatory ? (
+              {!policyStatus ? (
+                <ComerziaBadge label="SIN VERIFICAR" variant="neutral" />
+              ) : policyStatus.platformMandatory ? (
                 <ComerziaBadge label="ACTIVA (OBLIGATORIO)" variant="success" />
               ) : (
                 <ComerziaBadge label="DESACTIVADA (OPT-IN)" variant="warning" />
               )}
             </div>
             <p className="text-base-content/70 text-[11px] leading-relaxed">
-              {policyStatus?.platformMandatory
+              {!policyStatus
+                ? 'No se pudo consultar la política. Recarga esta página antes de intentar modificarla.'
+                : policyStatus.platformMandatory
                 ? 'Las cuentas ROOT y SAAS_* deben tener un factor MFA activo para acceder a funciones administrativas de plataforma. Nuevas sesiones sin factor son dirigidas exclusivamente al flujo de enrolamiento.'
                 : 'MFA se encuentra en modo compatible/opt-in para cuentas sin factor. Las cuentas con factor previamente confirmado mantienen la exigencia de TOTP en todo momento.'}
             </p>
@@ -198,7 +186,7 @@ export const MfaPreflightPanel: React.FC = () => {
 
           <button
             onClick={handleTogglePolicy}
-            disabled={isLoading || isTogglingPolicy || (!policyStatus?.platformMandatory && preflight?.status !== 'READY')}
+            disabled={isLoading || isEvaluating || !policyStatus || isTogglingPolicy || (!policyStatus?.platformMandatory && preflight?.status !== 'READY')}
             className={`btn btn-sm shrink-0 flex items-center gap-2 text-xs font-semibold ${
               policyStatus?.platformMandatory
                 ? 'btn-outline btn-warning'
@@ -220,6 +208,14 @@ export const MfaPreflightPanel: React.FC = () => {
             )}
           </button>
         </div>
+        <p className="text-xs text-base-content/70">
+          El autenticador TOTP funciona tanto en desarrollo como en producción. Estos controles preparan la activación
+          obligatoria para toda la plataforma y evitan perder el acceso administrativo. Las cuentas con 2FA confirmado
+          siguen solicitando su código aunque la obligatoriedad global esté desactivada.
+        </p>
+        {!policyStatus?.platformMandatory && preflight?.status !== 'READY' && !isLoading && (
+          <p className="text-xs text-base-content/70">Resuelve los bloqueos y pulsa Diagnóstico antes de activar la obligatoriedad. El servidor vuelve a comprobar los requisitos al activarla.</p>
+        )}
       </div>
 
       {/* Preflight Diagnostics Section */}
@@ -261,29 +257,27 @@ export const MfaPreflightPanel: React.FC = () => {
           </div>
 
           {/* Blockers & Warnings */}
-          {preflight.blockers && preflight.blockers.length > 0 && (
+          {diagnostics.blockers.length > 0 && (
             <div className="p-4 bg-error/10 border border-error/30 rounded-xl space-y-2">
               <span className="text-xs font-bold text-error flex items-center gap-1.5 uppercase">
-                <AlertTriangle size={15} /> Bloqueos Técnicos ({preflight.blockers.length}):
+                <AlertTriangle size={15} /> Bloqueos Técnicos ({diagnostics.blockers.length}):
               </span>
               <ul className="list-disc list-inside text-xs text-error/90 space-y-1">
-                {preflight.blockers.map((b, idx) => (
-                    <li key={idx}>{b === 'emergency_procedure_requires_owner_approval_and_rehearsal'
-                      ? 'Falta completar y comprobar la recuperación de emergencia.' : diagnosticLabels[b] ?? b}</li>
+                {diagnostics.blockers.map(item => (
+                  <li key={item.code}><strong>{item.label}</strong><p className="mt-1 ml-4 font-normal">{item.action}</p></li>
                 ))}
               </ul>
             </div>
           )}
 
-          {preflight.warnings && preflight.warnings.length > 0 && (
+          {diagnostics.warnings.length > 0 && (
             <div className="p-4 bg-warning/10 border border-warning/30 rounded-xl space-y-2">
               <span className="text-xs font-bold text-warning flex items-center gap-1.5 uppercase">
-                <AlertTriangle size={15} /> Advertencias Operativas ({preflight.warnings.length}):
+                <AlertTriangle size={15} /> Advertencias Operativas ({diagnostics.warnings.length}):
               </span>
               <ul className="list-disc list-inside text-xs text-base-content/80 space-y-1">
-                {preflight.warnings.map((w, idx) => (
-                    <li key={idx}>{w === 'ntp_synchronization_operational_attestation_recommended'
-                      ? 'Confirma la sincronización horaria del servidor.' : diagnosticLabels[w] ?? w}</li>
+                {diagnostics.warnings.map(item => (
+                  <li key={item.code}><strong>{item.label}</strong><p className="mt-1 ml-4 font-normal">{item.action}</p></li>
                 ))}
               </ul>
             </div>
@@ -340,13 +334,13 @@ export const MfaPreflightPanel: React.FC = () => {
                 {preflight.clock.utcSynchronized ? (
                   <ComerziaBadge label="Sincronizado" variant="success" />
                 ) : (
-                  <ComerziaBadge label="Desincronizado" variant="error" />
+                  <ComerziaBadge label="Sin verificar" variant="warning" />
                 )}
               </div>
               <div className="space-y-1 text-base-content/70 text-[11px]">
                 <p>UTC servidor: <strong className="font-mono text-base-content">{formatDateForUser(preflight.clock.utcNow)}</strong></p>
                 <p>Zona del host: <span className="font-mono">{preflight.clock.timezone}</span></p>
-                <p>Sincronización RFC 6238: Conforme (paso 30s)</p>
+                <p>{preflight.clock.utcSynchronized ? 'Desfase dentro del margen comprobado frente a la referencia NTP.' : 'La medición no está verificada: revisa la referencia NTP, su conectividad y el reloj.'}</p>
               </div>
             </div>
 
@@ -393,7 +387,12 @@ export const MfaPreflightPanel: React.FC = () => {
             </div>
           </div>
         </div>
-      ) : null}
+      ) : (
+        <div role="alert" className="p-4 bg-warning/10 border border-warning/30 rounded-xl text-sm">
+          No se pudo consultar el diagnóstico de seguridad. Comprueba la conexión y pulsa Diagnóstico para reintentar.
+          La activación permanecerá bloqueada hasta obtener una evaluación válida del servidor.
+        </div>
+      )}
 
       <MfaStepUpModal
         isOpen={isStepUpOpen}

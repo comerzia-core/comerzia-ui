@@ -5,6 +5,7 @@ import { ComerziaModal } from '../../../components/ui/ComerziaModal';
 import { ComerziaInput } from '../../../components/ui/ComerziaInput';
 import { ComerziaSelectableCard } from '../../../components/ui/ComerziaSelectableCard';
 import { BtnSave, BtnCancel } from '../../../components/ui/CrudButtons';
+import { useAuthStore } from '../../../stores/useAuthStore';
 import { useToast } from '../../../context/ToastContext';
 import { invitationService } from '../services/invitationService';
 import { userService } from '../../security/services/userService';
@@ -25,6 +26,7 @@ export const InviteEmployeeModal: React.FC<Props> = ({
   onInvitationCreated
 }) => {
   const { success, error: toastError } = useToast();
+  const canInviteOwner = useAuthStore(state => state.hasRole('OWNER'));
 
   const [email, setEmail] = useState('');
   const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>([]);
@@ -67,7 +69,7 @@ export const InviteEmployeeModal: React.FC<Props> = ({
     ])
       .then(([allRoles, allBranches]) => {
         if (!active) return;
-        const delegable = (allRoles || []).filter(isVisibleInvitationRole);
+        const delegable = (allRoles || []).filter(role => isVisibleInvitationRole(role, canInviteOwner));
         setRoles(delegable);
         setBranches(allBranches || []);
       })
@@ -78,15 +80,13 @@ export const InviteEmployeeModal: React.FC<Props> = ({
     return () => {
       active = false;
     };
-  }, [isOpen, rolesLoaded]);
+  }, [isOpen, rolesLoaded, canInviteOwner]);
 
   // Si se selecciona el rol OWNER
   const isOwnerSelected = selectedRoleIds.some(id => {
     const r = roles.find(role => role.id === id);
     if (!r) return false;
-    const name = (r.name || '').toUpperCase();
-    const disp = (r.displayName || '').toUpperCase();
-    return name === 'OWNER' || name === 'DUEÑO' || disp === 'OWNER' || disp === 'DUEÑO' || disp.includes('DUEÑO');
+    return r.name.toUpperCase() === 'OWNER';
   });
 
   // Dinámica de asignación de sucursal:
@@ -95,7 +95,8 @@ export const InviteEmployeeModal: React.FC<Props> = ({
     const nextIds = selectedRoleIds.includes(roleId)
       ? selectedRoleIds.filter(id => id !== roleId) : [...selectedRoleIds, roleId];
     setSelectedRoleIds(nextIds);
-    setSelectedBranchId(nextIds.length === 0 ? '' : selectedBranchId || branches[0]?.id || '');
+    const ownerSelected = nextIds.some(id => roles.find(role => role.id === id)?.name.toUpperCase() === 'OWNER');
+    setSelectedBranchId(ownerSelected || nextIds.length === 0 ? '' : selectedBranchId || branches[0]?.id || '');
     setErrorMessage(null);
   };
 
@@ -239,6 +240,9 @@ export const InviteEmployeeModal: React.FC<Props> = ({
               <strong className="font-semibold">Ámbito Corporativo Global:</strong>
               <p className="text-[11px] opacity-80 mt-0.5">
                 El rol de Dueño opera sobre toda la empresa y no requiere asignación a una sucursal específica.
+              </p>
+              <p className="text-[11px] opacity-80 mt-1">
+                Para invitar a otro dueño necesitas activar 2FA en Perfil → Seguridad y confirmar la operación con tu app autenticadora.
               </p>
             </div>
           </div>

@@ -5,9 +5,9 @@ export function invitationLink(href: string): { token: string | null; cleanPath:
   return { token, cleanPath: url.pathname + url.search };
 }
 
-export function isVisibleInvitationRole(role: { name: string }): boolean {
+export function isVisibleInvitationRole(role: { name: string }, actorIsOwner = false): boolean {
   const name = role.name.toUpperCase();
-  return name !== 'ROOT' && name !== 'OWNER' && !name.startsWith('SAAS_');
+  return name !== 'ROOT' && !name.startsWith('SAAS_') && (name !== 'OWNER' || actorIsOwner);
 }
 
 export function invitationErrorMessage(code: string | undefined): string {
