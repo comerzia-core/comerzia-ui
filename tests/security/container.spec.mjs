@@ -1,5 +1,9 @@
 import { test, expect } from '@playwright/test';
+import { mockAnonymousSession } from '../fixtures/browserSession.mjs';
 test('production CSP preserves login, theme bootstrap and camera permissions without inline script bypass', async ({ page }) => {
+  // La imagen aislada prueba CSP y assets reales; la API no forma parte de este contenedor.
+  await mockAnonymousSession(page);
+  await page.route('**/auth/identity-options', route => route.fulfill({ json: { googleEnabled: false } }));
   const violations=[];
   await page.addInitScript(() => localStorage.setItem('comerzia.public.theme', 'dark'));
   page.on('console', message => { if (message.type()==='error' && /Content Security Policy|violates.*directive/.test(message.text())) violations.push(message.text()); });

@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "security:final": "node scripts/security-final.mjs",
     "dev": "vite",
     "build": "tsc -b && vite build && node scripts/check-built-css.mjs",
     "lint": "eslint .",

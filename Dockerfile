@@ -23,7 +23,8 @@ RUN npm run build && node scripts/write-security-headers.mjs
 # ETAPA 2: Servidor Web (Nginx)
 FROM nginxinc/nginx-unprivileged:stable-alpine@sha256:f5116ed4606f3eb015dd4a8e28cb9b351476dc0ad4bc6e9f93b19cec130cdf03
 USER root
-RUN apk upgrade --no-cache
+# Exigir el parche evita reutilizar una capa anterior vulnerable de Alpine.
+RUN apk upgrade --no-cache && apk add --no-cache 'libexpat>=2.10.0-r0'
 
 # Copiamos nuestra config de Nginx
 COPY nginx.conf /etc/nginx/conf.d/default.conf

@@ -56,8 +56,24 @@ test('profile access expiration renews but permission denial does not', async ({
 });
 test('two tabs serialize rotation and server logout reaches both', async ({ page, context }) => {
   const state = await setup(context); const other = await context.newPage();
+  const events = [];
+  const started = Date.now();
+  for (const event of ['request', 'requestfinished', 'requestfailed']) context.on(event, request => {
+    const path = new URL(request.url()).pathname;
+    if (path.startsWith('/api/')) events.push({ event, path, elapsedMs: Date.now() - started });
+  });
   await Promise.all([page.goto('/tests/sessions/index.html'), other.goto('/tests/sessions/index.html')]);
-  await expect(page.getByRole('status')).toHaveText('authenticated'); await expect(other.getByRole('status')).toHaveText('authenticated');
+  try {
+    await expect(page.getByRole('status')).toHaveText('authenticated'); await expect(other.getByRole('status')).toHaveText('authenticated');
+  } catch (failure) {
+    // Diagnóstico sin JWT, cookies ni cuerpos de solicitudes.
+    const tabs = await Promise.all([page, other].map(tab => tab.evaluate(async () => ({
+      status: document.querySelector('[role="status"]')?.textContent,
+      locks: navigator.locks ? await navigator.locks.query() : null,
+    }))));
+    await test.info().attach('bootstrap-timing', { body: JSON.stringify({ events, tabs, renewals: state.renewals, inflight: state.inflight }), contentType: 'application/json' });
+    throw failure;
+  }
   expect(state.maxInflight).toBe(1);
   expect(await page.evaluate(() => window.sessionTest.logout())).toBe(true);
   await expect(other.getByRole('status')).toHaveText('anonymous'); await other.reload();

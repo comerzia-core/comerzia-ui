@@ -25,7 +25,8 @@ jobs:
       - run: npm audit --audit-level=high
       - run: node scripts/lint-security.mjs
       - run: npx playwright install --with-deps chromium
-      - run: npm test
+      - name: Security regression stages 0-6 (stage 7 excluded)
+        run: npm run security:final
       - run: npm run build
       - name: Reject accidental public secret variables
         run: |
