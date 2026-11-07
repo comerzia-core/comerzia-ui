@@ -8,13 +8,15 @@ interface GoogleSignInButtonProps {
   className?: string;
   onError?: (message: string) => void;
   disabled?: boolean;
+  variant?: 'public' | 'daisy';
 }
 
 export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
   label = 'Continuar con Google',
   className = '',
   onError,
-  disabled = false
+  disabled = false,
+  variant = 'public'
 }) => {
   const [enabled, setEnabled] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
@@ -51,8 +53,25 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
     }
   };
 
-  // Si aún está consultando o no está habilitado, se renderiza deshabilitado o con indicación de proximamente
+  const isDaisy = variant === 'daisy';
+
+  // Si no está habilitado en el backend
   if (enabled === false) {
+    if (isDaisy) {
+      return (
+        <button
+          type="button"
+          disabled
+          className={`btn btn-outline border-base-300 opacity-60 cursor-not-allowed w-full flex items-center justify-center gap-3 text-base-content font-medium ${className}`}
+          aria-label={`${label} (No disponible)`}
+        >
+          <img src="/media/landing/google-g.png" width={18} height={18} alt="" />
+          <span>{label}</span>
+          <span className="badge badge-sm badge-ghost text-xs">No disponible</span>
+        </button>
+      );
+    }
+
     return (
       <button
         type="button"
@@ -63,6 +82,26 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
         <img src="/media/landing/google-g.png" width={18} height={18} alt="" />
         <span>{label}</span>
         <small>Próximamente</small>
+      </button>
+    );
+  }
+
+  if (isDaisy) {
+    return (
+      <button
+        type="button"
+        onClick={handleClick}
+        disabled={disabled || loading || enabled === null}
+        className={`btn btn-outline border-base-300 bg-base-100 hover:bg-base-200 hover:border-base-300 hover:text-base-content text-base-content w-full flex items-center justify-center gap-3 font-medium transition-colors shadow-xs normal-case ${loading ? 'opacity-80' : ''} ${className}`}
+        aria-label={label}
+        aria-busy={loading}
+      >
+        {loading ? (
+          <Loader2 size={18} className="animate-spin text-primary" />
+        ) : (
+          <img src="/media/landing/google-g.png" width={18} height={18} alt="Google" />
+        )}
+        <span>{loading ? 'Conectando con Google…' : label}</span>
       </button>
     );
   }
