@@ -44,7 +44,7 @@ export async function startGoogleInvitationAuth(invitationToken: string): Promis
 
 export async function completeGoogleAuth(): Promise<OidcCompleteResponse> {
   const headers = await csrfHeaders();
-  const { data } = await transport.post<OidcCompleteResponse>(
+  const { data } = await api.post<OidcCompleteResponse>(
     '/auth/oidc/google/complete',
     {},
     { headers }
@@ -99,3 +99,9 @@ export async function registerGoogle(payload: PublicGoogleRegistrationPayload): 
   return data;
 }
 
+
+export async function startGoogleReauthentication(): Promise<OidcStartResponse> {
+  const headers = await csrfHeaders();
+  const { data } = await api.post<OidcStartResponse>('/profile/reauthentication/google/start', {}, { headers, withCredentials: true });
+  return data;
+}

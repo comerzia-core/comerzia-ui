@@ -9,6 +9,7 @@ import { useToast } from '../../../context/ToastContext';
 import {
   getMyExternalIdentities,
   startGoogleLink,
+  startGoogleReauthentication,
   unlinkExternalIdentity,
   setupInitialPassword
 } from '../../auth/services/oidcService';
@@ -27,6 +28,7 @@ export const ExternalIdentitiesPanel: React.FC<ExternalIdentitiesPanelProps> = (
   const { addToast } = useToast();
   const [identities, setIdentities] = useState<ExternalIdentityItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [linking, setLinking] = useState(false);
   const [identityToUnlink, setIdentityToUnlink] = useState<ExternalIdentityItem | null>(null);
   const [unlinking, setUnlinking] = useState(false);
@@ -40,10 +42,12 @@ export const ExternalIdentitiesPanel: React.FC<ExternalIdentitiesPanelProps> = (
   const fetchIdentities = async () => {
     try {
       setLoading(true);
+      setLoadError(false);
       const data = await getMyExternalIdentities();
       setIdentities(data || []);
     } catch {
-      // Ignorar fallo de carga no crítico
+      setIdentities([]);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -56,7 +60,7 @@ export const ExternalIdentitiesPanel: React.FC<ExternalIdentitiesPanelProps> = (
         const data = await getMyExternalIdentities();
         if (active) setIdentities(data || []);
       } catch {
-        // Ignorar fallo de carga no crítico
+        if (active) setLoadError(true);
       } finally {
         if (active) setLoading(false);
       }
@@ -65,6 +69,19 @@ export const ExternalIdentitiesPanel: React.FC<ExternalIdentitiesPanelProps> = (
       active = false;
     };
   }, []);
+
+  const handleReauthenticate = async () => {
+    if (linking) return;
+    setLinking(true);
+    try {
+      const { authorizationUrl } = await startGoogleReauthentication();
+      window.location.assign(authorizationUrl);
+    } catch (error: unknown) {
+      setLinking(false);
+      const code = (error as { response?: { data?: { code?: string } } })?.response?.data?.code;
+      addToast(resolveOidcMessage(code, 'No se pudo confirmar tu identidad con Google.'), 'error');
+    }
+  };
 
   const handleStartLink = async () => {
     if (linking) return;
@@ -141,9 +158,20 @@ export const ExternalIdentitiesPanel: React.FC<ExternalIdentitiesPanelProps> = (
         </div>
       </div>
 
+      {googleIdentity && (
+        <div className="mb-4">
+          <ComerziaButton type="button" variant="secondary" label="Confirmar identidad con Google" isLoading={linking} onClick={handleReauthenticate} />
+          <p className="text-sm mt-2">Confirma tu identidad antes de realizar cambios de seguridad. Si Google solicita un acceso reciente, vuelve a autenticarte en Google y reintenta.</p>
+        </div>
+      )}
       {loading ? (
         <div className="flex items-center justify-center py-6 text-base-content/60">
           <Loader2 size={24} className="animate-spin mr-2" /> Cargando identidades…
+        </div>
+      ) : loadError ? (
+        <div role="alert">
+          <p>No se pudieron consultar tus métodos de acceso.</p>
+          <ComerziaButton type="button" label="Reintentar consulta" variant="secondary" onClick={() => void fetchIdentities()} />
         </div>
       ) : (
         <div className="space-y-4">
@@ -170,6 +198,8 @@ export const ExternalIdentitiesPanel: React.FC<ExternalIdentitiesPanelProps> = (
             <div>
               {googleIdentity ? (
                 <ComerziaButton
+                  label="Desvincular"
+                  icon={<Trash2 size={14} />}
                   variant="ghost"
                   className="btn-sm text-error hover:bg-error/10 border border-error/30"
                   onClick={() => setIdentityToUnlink(googleIdentity)}
@@ -180,6 +210,9 @@ export const ExternalIdentitiesPanel: React.FC<ExternalIdentitiesPanelProps> = (
                 </ComerziaButton>
               ) : (
                 <ComerziaButton
+                  label="Vincular Google"
+                  icon={<Plus size={14} />}
+                  isLoading={linking}
                   variant="primary"
                   className="btn-sm"
                   onClick={handleStartLink}
@@ -239,6 +272,8 @@ export const ExternalIdentitiesPanel: React.FC<ExternalIdentitiesPanelProps> = (
                   autoComplete="new-password"
                 />
                 <ComerziaButton
+                  label="Establecer contraseña"
+                  isLoading={settingPassword}
                   type="submit"
                   variant="primary"
                   className="btn-sm"
@@ -268,6 +303,7 @@ export const ExternalIdentitiesPanel: React.FC<ExternalIdentitiesPanelProps> = (
             <ComerziaButton
               variant="ghost"
               className="btn-sm"
+              label="Cancelar"
               onClick={() => setIdentityToUnlink(null)}
               disabled={unlinking}
             >
@@ -276,6 +312,8 @@ export const ExternalIdentitiesPanel: React.FC<ExternalIdentitiesPanelProps> = (
             <ComerziaButton
               variant="delete"
               className="btn-sm"
+              label="Confirmar desvinculación"
+              isLoading={unlinking}
               onClick={handleConfirmUnlink}
               disabled={unlinking}
             >

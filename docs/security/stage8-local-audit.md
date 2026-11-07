@@ -1,5 +1,8 @@
 # Stage 8 local security regression
 
+Historical review. Updated results and remediation are in
+[stage8-local-closure.md](stage8-local-closure.md).
+
 Date: 2026-11-06. Branch: `feature/security-hardening`. Run `npm run security:final`
 for an explicit regression of stages 0–6. Stage 7 email login OTP/Magic Link and
 human ROOT recovery/global activation are excluded. The general `npm test`

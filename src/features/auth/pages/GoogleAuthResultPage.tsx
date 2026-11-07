@@ -51,6 +51,11 @@ export function GoogleAuthResultPage() {
           return;
         }
 
+        if (result.status === 'REAUTH_VERIFIED') {
+          navigate('/profile?tab=security', { replace: true });
+          return;
+        }
+
         if (result.status === 'LINK_VERIFIED' && result.linkToken) {
           try {
             await confirmGoogleLink(result.linkToken);
