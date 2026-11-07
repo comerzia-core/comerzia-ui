@@ -3,6 +3,8 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { PublicLayout } from '../features/public/components/PublicLayout';
 import { LegacyPublicRedirect } from './LegacyPublicRedirect';
 import { LandingPage } from '../features/public/pages/LandingPage';
+import { PrivacyPolicyPage } from '../features/public/pages/PrivacyPolicyPage';
+import { TermsAndConditionsPage } from '../features/public/pages/TermsAndConditionsPage';
 const RegistrationPage = lazy(() => import('../features/public/pages/RegistrationPage').then(module => ({ default: module.RegistrationPage })));
 const LoginPage = lazy(() => import('../features/auth/pages/LoginPage').then(module => ({ default: module.LoginPage })));
 const PrivateRouter = lazy(() => import('./PrivateRouter'));
@@ -17,6 +19,8 @@ export function AppRouter() {
   return <BrowserRouter><Suspense fallback={<div className="public-route-loading" role="status">Cargando…</div>}><Routes>
     <Route element={<PublicLayout />}>
       <Route path="/" element={<LandingPage />} />
+      <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+      <Route path="/terms-and-conditions" element={<TermsAndConditionsPage />} />
       <Route path="/register" element={<RegistrationPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/password-reset" element={<PasswordResetPage />} />
