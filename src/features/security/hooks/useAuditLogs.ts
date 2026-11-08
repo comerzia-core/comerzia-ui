@@ -21,7 +21,6 @@ export const useAuditLogs = ({ initialPageSize = 5 }: UseAuditLogsOptions = {}) 
   const loadAuditLogs = useCallback(
     async (currentPage: number, currentSize: number) => {
       try {
-        setIsLoading(true);
         const response = await auditService.getCompanyAuditLogs(currentPage, currentSize);
         setData(response);
       } catch (error) {
@@ -39,15 +38,20 @@ export const useAuditLogs = ({ initialPageSize = 5 }: UseAuditLogsOptions = {}) 
   }, [loadAuditLogs, page, pageSize]);
 
   const handlePageChange = (newPage: number) => {
+    if (newPage === page) return;
+    setIsLoading(true);
     setPage(newPage);
   };
 
   const handlePageSizeChange = (newSize: number) => {
+    if (newSize === pageSize && page === 0) return;
+    setIsLoading(true);
     setPageSize(newSize);
     setPage(0);
   };
 
   const refetch = () => {
+    setIsLoading(true);
     loadAuditLogs(page, pageSize);
   };
 
@@ -65,7 +69,7 @@ export const useAuditLogs = ({ initialPageSize = 5 }: UseAuditLogsOptions = {}) 
         log.entity?.toLowerCase().includes(query) ||
         log.ipAddress?.toLowerCase().includes(query)
     );
-  }, [data?.content, searchQuery]);
+  }, [data, searchQuery]);
 
   return {
     data: data ? { ...data, content: filteredContent } : null,

@@ -6,7 +6,7 @@ export default defineConfig({
   timeout: 30000,
   workers: 1,
   use: {
-    channel: "msedge",
+    channel: process.env.PLAYWRIGHT_BROWSER_CHANNEL || 'msedge',
     headless: true,
     ignoreHTTPSErrors: true,
     baseURL: "https://localhost:5181",

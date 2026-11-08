@@ -1,0 +1,48 @@
+name: Frontend security regression
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 10 * * 1'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PLAYWRIGHT_BROWSER_CHANNEL: chromium
+      VITE_API_URL: /api
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: python3 scripts/check_tracked_secrets.py
+      - run: npm ci
+      - run: npm audit --audit-level=high
+      - run: node scripts/lint-security.mjs
+      - run: npx playwright install --with-deps chromium
+      - name: Security regression stages 0-6 (stage 7 excluded)
+        run: npm run security:final
+      - run: npm run build
+      - name: Reject accidental public secret variables
+        run: |
+          if VITE_JWT_SECRET=not-a-real-secret npm run build; then exit 1; fi
+      - name: Scan production image
+        run: |
+          docker build --build-arg VITE_API_URL=/api -t comerzia-security-frontend:ci .
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.76.1@sha256:790fd66d1697395d8693d1acaa1ea702406a20f109b6fc7bac8db623eca6c06c image --pkg-types os --scanners vuln --exit-code 1 --severity HIGH,CRITICAL comerzia-security-frontend:ci
+      - name: Production browser security checks
+        run: |
+          docker run -d --name frontend-security -p 127.0.0.1:18081:8080 comerzia-security-frontend:ci
+          npx playwright test --config playwright.security.config.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: frontend-test-evidence
+          path: |
+            test-results
+            playwright-report

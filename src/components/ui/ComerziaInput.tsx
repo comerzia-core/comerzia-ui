@@ -1,6 +1,7 @@
-import React, { forwardRef } from "react";
-import { IconRenderer } from "./IconRenderer";
+import React, { forwardRef, lazy, Suspense } from "react";
 import { useShake } from "../../hooks/useShake";
+
+const IconRenderer = lazy(() => import('./IconRenderer').then(module => ({ default: module.IconRenderer })));
 
 interface Props extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -55,9 +56,9 @@ export const ComerziaInput = forwardRef<HTMLInputElement, Props>(({
     // ❌ Fuera el key dinámico. ✅ Solo aplicamos la clase CSS.
     <div className={`form-control w-full min-w-0 ${isShaking ? "animate-shake" : ""}`}>
       {label && (
-        <label className="label py-1 w-full min-w-0">
+        <label htmlFor={props.id} className="label py-1 w-full min-w-0">
           <span className={`label-text font-semibold flex gap-1 ${error ? "text-error" : ""}`}>
-              {label}
+              <span>{label}</span>
               {isRequired && <span className="text-error" title="Campo obligatorio">*</span>}
           </span>
         </label>
@@ -66,6 +67,9 @@ export const ComerziaInput = forwardRef<HTMLInputElement, Props>(({
       <div className="relative flex items-center w-full min-w-0">
         <input
           ref={ref}
+          aria-label={label}
+          aria-required={isRequired || undefined}
+          aria-invalid={error ? true : undefined}
           className={`
             input input-bordered w-full min-w-0 transition-all duration-200
             bg-base-100 text-base-content
@@ -87,7 +91,7 @@ export const ComerziaInput = forwardRef<HTMLInputElement, Props>(({
 
         {icon && (
           <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-base-content/50">
-             {typeof icon === 'string' ? <IconRenderer iconName={icon} size={18} /> : icon}
+             {typeof icon === 'string' ? <Suspense fallback={<span className="w-[18px] h-[18px]" aria-hidden="true" />}><IconRenderer iconName={icon} size={18} /></Suspense> : icon}
           </div>
         )}
 

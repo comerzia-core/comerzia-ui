@@ -26,6 +26,8 @@ playwright-report
 *.sw?
 
 .env
+.env.*
+!.env.example
 
 frontend_replenishment_guide.md
 frontend_valuation_guide.md

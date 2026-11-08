@@ -3,6 +3,7 @@
  * Evita hardcodear strings en las vistas.
  */
 export const DICTIONARIES = {
+    CATALOG_PHONE_COUNTRY: "catalog-phone-country",
     RECOVERY_ENTITY: "recovery-entity",
     SAAS_TEAM_ROLE: "saas-team-role",
     SUBSCRIPTION_PAYMENT_METHOD: "subscription-payment-method",

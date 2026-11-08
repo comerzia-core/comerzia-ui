@@ -2,7 +2,7 @@
   "name": "Comerzia ERP",
   "short_name": "Comerzia",
   "description": "Sistema ERP y Punto de Venta Comerzia",
-  "start_url": "/",
+  "start_url": "/app",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#3b82f6",

@@ -17,7 +17,7 @@ const permissions = ['SAL_SALES_READ', 'SAL_SALES_READ_ALL', 'SAL_SELLERS_READ',
   'POS_SHIFTS_READ_ALL', 'POS_SHIFTS_MANAGE_OWN'];
 if (role !== 'CASHIER') permissions.push('POS_SHIFTS_REOPEN', 'POS_SHIFTS_MANAGE_ALL', 'SAL_RETURNS_MANAGE_ALL');
 if (role === 'OWNER') permissions.push('SWITCH_BRANCH', 'POS_CASH_REGISTERS_REOPEN');
-useAuthStore.setState({ token: 'test-return-session', isSessionReady: true, isAuthenticated: true, userProfile: {
+useAuthStore.setState({ status: 'authenticated', sessionId: 'test-return-session', token: 'test-return-session', isSessionReady: true, isAuthenticated: true, userProfile: {
   id: 'test-user', username: 'beta', firstName: 'Beta', paternalLastName: 'Test', maternalFirstName: null,
   fullName: 'Beta Test', email: 'beta@example.test', imageUrl: null, operational: true, roles: [role], permissions,
   companySettings: { id: 'company', commercialName: 'Test', currencyCode: 'BOB', timezone: 'America/La_Paz', logoUrl: null },

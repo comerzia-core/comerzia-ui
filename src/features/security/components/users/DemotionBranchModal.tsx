@@ -19,44 +19,28 @@ interface Props {
   onSuccess: () => void;
 }
 
-export const DemotionBranchModal = ({
-  isOpen,
-  onClose,
-  user,
-  roleIds,
-  onSuccess
-}: Props) => {
+export const DemotionBranchModal = (props: Props) => props.isOpen && props.user
+  ? <DemotionBranchModalContent key={props.user.id} {...props} /> : null;
+
+function DemotionBranchModalContent({ isOpen, onClose, user, roleIds, onSuccess }: Props) {
   const { addToast: showToast } = useToast();
 
   const [branches, setBranches] = useState<BranchResponse[]>([]);
   const [selectedBranchId, setSelectedBranchId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [isLoadingBranches, setIsLoadingBranches] = useState<boolean>(false);
+  const [isLoadingBranches, setIsLoadingBranches] = useState<boolean>(true);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [shakeKey, setShakeKey] = useState<number>(0);
 
   useEffect(() => {
-    if (isOpen) {
-      setSelectedBranchId(null);
-      setSearchQuery('');
-      setShakeKey(0);
-      loadBranches();
-    }
-  }, [isOpen]);
-
-  const loadBranches = async () => {
-    try {
-      setIsLoadingBranches(true);
-      // Obtenemos las sucursales activas del tenant
-      const res = await branchService.getBranches(0, 50, true);
-      setBranches(res.content || []);
-    } catch (error) {
-      console.error('Error loading tenant branches for demotion:', error);
-      showToast('Error al cargar la lista de sucursales disponibles', 'error');
-    } finally {
-      setIsLoadingBranches(false);
-    }
-  };
+    let active = true;
+    branchService.getBranches(0, 50, true).then(response => {
+      if (active) setBranches(response.content || []);
+    }).catch(error => {
+      if (active) { console.error('Error loading tenant branches:', error); showToast('No se pudieron cargar las tiendas.', 'error'); }
+    }).finally(() => { if (active) setIsLoadingBranches(false); });
+    return () => { active = false; };
+  }, [showToast]);
 
   const filteredBranches = useMemo(() => {
     if (!searchQuery.trim()) return branches;
@@ -180,4 +164,4 @@ export const DemotionBranchModal = ({
       </div>
     </ComerziaModal>
   );
-};
+}

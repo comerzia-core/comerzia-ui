@@ -1,4 +1,6 @@
+import { useToast } from '../../context/ToastContext';
 import { RealtimeStatusIndicator } from '../../features/realtime/components/RealtimeStatusIndicator';
+import { NotificationBell } from './NotificationBell';
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../stores/useAuthStore";
@@ -14,6 +16,7 @@ import { getThumbnailUrl } from "../../utils/image";
 
 export const Header = () => {
   const userProfile = useAuthStore((state) => state.userProfile);
+  const toast = useToast();
   const logout = useAuthStore((state) => state.logout);
   const currentTime = useCurrentTime();
   const navigate = useNavigate();
@@ -30,9 +33,9 @@ export const Header = () => {
     if (modal) modal.showModal();
   };
 
-  const handleConfirmLogout = () => {
-    logout();
-    navigate('/login');
+  const handleConfirmLogout = async () => {
+    if (await logout()) navigate('/login');
+    else toast.error('No se pudo cerrar la sesión. Reintenta.');
   };
 
   // Función auxiliar para cerrar el menú manualmente al hacer clic en un link
@@ -93,6 +96,7 @@ export const Header = () => {
         {/* DERECHA */}
         <div className="flex items-center gap-2 shrink-0">
           <RealtimeStatusIndicator />
+          <NotificationBell />
 
           {/* TELÓN DE FONDO (BACKDROP OSCURO Y DIFUMINADO) EN MOBILE */}
           {isDropdownOpen && (
@@ -130,8 +134,8 @@ export const Header = () => {
             {isDropdownOpen && (
               <ul tabIndex={0} className="menu menu-sm dropdown-content mt-3 z-50 p-2 shadow-xl bg-base-100 rounded-box w-64 border border-base-200 animate-fade-in">
 
-                <li className="menu-title px-4 py-2">
-                  <span className="block text-sm font-bold text-base-content truncate">
+                <li className="menu-title px-4 py-2 w-full min-w-0 max-w-full">
+                  <span className="block w-full min-w-0 text-sm font-bold text-base-content truncate">
                     {userProfile?.fullName || 'Usuario'}
                   </span>
                 </li>

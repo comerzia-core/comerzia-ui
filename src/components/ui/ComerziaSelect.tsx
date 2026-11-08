@@ -1,4 +1,4 @@
-import React, { forwardRef } from "react";
+import React, { forwardRef, useId } from "react";
 import { useShake } from "../../hooks/useShake";
 
 export interface SelectOption {
@@ -26,11 +26,13 @@ export const ComerziaSelect = forwardRef<HTMLSelectElement, Props>(({
 }, ref) => {
     
     const isShaking = useShake(shakeKey);
+    const generatedId = useId();
+    const selectId = props.id || generatedId;
 
     return (
         <div className={`form-control w-full min-w-0 ${isShaking ? "animate-shake" : ""}`}>
             {label && (
-                <label className="label py-1 w-full min-w-0">
+                <label htmlFor={selectId} className="label py-1 w-full min-w-0">
                     <span className={`label-text font-semibold flex gap-1 ${error ? "text-error" : ""}`}>
                         {label}
                         {isRequired && <span className="text-error" title="Campo obligatorio">*</span>}
@@ -52,6 +54,7 @@ export const ComerziaSelect = forwardRef<HTMLSelectElement, Props>(({
                 disabled={isLoading}
                 // Si React Hook Form envía un valor o defaultValue, se aplica naturalemente aquí
                 {...props} 
+                id={selectId}
             >
                 {/* Opción Placeholder neutral (value vacío) */}
                 <option disabled={isLoading || !enableDefaultOption} value="" className="bg-base-100 text-base-content/60">

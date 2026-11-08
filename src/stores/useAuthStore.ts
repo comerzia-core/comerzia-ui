@@ -1,12 +1,24 @@
 import { create } from 'zustand';
+import { clearGoogleRegistration, clearGoogleInvitation } from '../features/auth/utils/oidcContinuation';
+import { refreshBrowserSession, closeBrowserSession, authenticationRejected, authenticationErrorCode, tokenSessionReference, authenticationPending } from '../features/auth/services/browserSessionService';
+let initialization: Promise<void> | null = null;
+localStorage.removeItem('token');
 import api from '../lib/axios';
 // Importamos estrictamente desde tu archivo central de tipos
 import type { UserProfile, MenuItem } from '../features/auth/types';
 import { getMyMenuTree } from '../services/menuService';
 import { useThemeStore } from './useThemeStore';
+import { jwtDecode } from 'jwt-decode';
 
 interface AuthState {
     token: string | null;
+    sessionId: string | null;
+    generation: number;
+    status: 'initializing' | 'anonymous' | 'authenticated' | 'mfa_pending' | 'temporarily_unavailable';
+    refreshSession: () => Promise<string>;
+    acceptMfaEnrollment: (token: string, sessionId: string, expectedGeneration: number) => boolean;
+    expireSession: (reason?: string) => void;
+    requireAdditionalAuthentication: () => void;
     sessionNotice: string | null;
     isAuthenticated: boolean;
     userProfile: UserProfile | null;
@@ -15,7 +27,7 @@ interface AuthState {
     
     // Acciones del store
     login: (token: string) => Promise<void>;
-    logout: (reason?: string) => void;
+    logout: (reason?: string) => Promise<boolean>;
     initializeSession: () => Promise<void>;
     fetchUserProfile: () => Promise<void>;
     fetchMenuTree: () => Promise<void>;
@@ -25,10 +37,10 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>((set, get) => {
     // Recuperación inicial del token desde el almacenamiento local
-    const storedToken = localStorage.getItem('token');
+    const storedToken = null;
     
     return {
-        token: storedToken,
+        token: storedToken, sessionId: null, generation: 0, status: 'initializing',
         sessionNotice: sessionStorage.getItem('sessionNotice'),
         isAuthenticated: !!storedToken,
         userProfile: null,
@@ -37,10 +49,14 @@ export const useAuthStore = create<AuthState>((set, get) => {
 
         login: async (token: string) => {
             useThemeStore.getState().clearSession();
-            localStorage.setItem('token', token);
-            set({ token, isAuthenticated: true, isSessionReady: false });
+            initialization = null;
+            set({ token, sessionId: tokenSessionReference(token), generation: get().generation + 1, status: 'authenticated', isAuthenticated: true, isSessionReady: false });
             
             // Inmediatamente disparamos la orquestación para cargar perfil y menú
+            if (typeof BroadcastChannel !== 'undefined') {
+                const channel = new BroadcastChannel('comerzia-session');
+                channel.postMessage({ type: 'account-changed', sessionId: get().sessionId }); channel.close();
+            }
             await get().initializeSession();
             if (get().token === token && get().isSessionReady) {
                 sessionStorage.removeItem('sessionNotice');
@@ -49,61 +65,121 @@ export const useAuthStore = create<AuthState>((set, get) => {
             }
         },
 
-        logout: (reason?: string) => {
+        expireSession: (reason?: string) => {
+            clearGoogleRegistration();
+            clearGoogleInvitation();
+            const previousSession = get().sessionId;
             useThemeStore.getState().clearSession();
             const notices: Record<string, string> = {
                 company_disabled: 'Tu empresa está deshabilitada. Contacta con soporte.',
                 session_permissions_changed: 'Tus permisos cambiaron. Inicia sesión nuevamente.',
-                session_access_changed: 'Tu acceso cambió. Inicia sesión nuevamente.',
-                session_password_changed: 'Tu contraseña cambió. Inicia sesión nuevamente.',
+                session_access_changed: 'Tu acceso cambió. Ingresa nuevamente.',
+                session_password_changed: 'Tu contraseña cambió. Ingresa nuevamente.',
+                session_email_changed: 'Tu correo de acceso ha cambiado. Ingresa nuevamente.',
+                session_inactive: 'La sesión venció por inactividad.',
+                session_refresh_reused: 'Por seguridad, ingresa nuevamente.',
+                session_expired: 'Tu sesión venció. Ingresa nuevamente.',
             };
-            const candidate = reason ? notices[reason] : undefined;
-            const notice = typeof candidate === 'string' ? candidate : undefined;
-            const stored = localStorage.getItem('token');
-            const ownsStoredSession = stored === get().token;
+            const notice = reason ? notices[reason] : undefined;
             if (notice) sessionStorage.setItem('sessionNotice', notice);
             else sessionStorage.removeItem('sessionNotice');
-            // Un cierre tardío en otra pestaña no debe borrar el token de un login nuevo.
-            if (!stored || ownsStoredSession) {
-                if (notice && reason) localStorage.setItem('sessionRevocationReason', reason);
-                else localStorage.removeItem('sessionRevocationReason');
-                if (ownsStoredSession) localStorage.removeItem('token');
+            set({ token: null, sessionId: null, generation: get().generation + 1,
+                status: 'anonymous', isAuthenticated: false, userProfile: null,
+                menuTree: [], isSessionReady: false, sessionNotice: notice ?? null });
+            if (previousSession && typeof BroadcastChannel !== 'undefined') {
+                const channel = new BroadcastChannel('comerzia-session');
+                channel.postMessage({ type: 'logout', sessionId: previousSession, reason }); channel.close();
             }
-            set({ 
-                token: null,
-                sessionNotice: notice || null,
-                isAuthenticated: false, 
-                userProfile: null, 
-                menuTree: [], 
-                isSessionReady: false 
-            });
+        },
+
+        logout: async (reason?: string) => {
+            const { generation, token } = get();
+            try {
+                await closeBrowserSession(token);
+                if (generation !== get().generation) return get().status === 'anonymous' && get().token === null;
+                get().expireSession(reason);
+                return true;
+            } catch {
+                if (generation === get().generation) set({ sessionNotice: 'No se pudo cerrar la sesión. Reintenta.' });
+                return false;
+            }
+        },
+
+        requireAdditionalAuthentication: () => {
+            useThemeStore.getState().clearSession();
+            set({ token: null, isAuthenticated: false, isSessionReady: false, userProfile: null, menuTree: [],
+                generation: get().generation + 1, status: 'mfa_pending' });
+        },
+        acceptMfaEnrollment: (token, sessionId, expectedGeneration) => {
+            const previous = get();
+            if (previous.generation !== expectedGeneration || !previous.userProfile || !previous.token
+                || tokenSessionReference(token) !== sessionId) return false;
+            try {
+                const claims = jwtDecode<{ userId?: string }>(token);
+                if (claims.userId !== previous.userProfile.id) return false;
+            } catch { return false; }
+            set({ token, sessionId, status: 'authenticated', isAuthenticated: true });
+            const theme = useThemeStore.getState();
+            theme.bindProfile(previous.userProfile.id, previous.userProfile.theme, sessionId, theme.revision);
+            if (previous.sessionId && typeof BroadcastChannel !== 'undefined') {
+                const channel = new BroadcastChannel('comerzia-session');
+                channel.postMessage({ type: 'logout', sessionId: previous.sessionId, reason: 'mfa_factor_changed' });
+                channel.close();
+            }
+            return true;
+        },
+        refreshSession: async () => {
+            const generation = get().generation;
+            const previousSession = get().sessionId;
+            try {
+                const response = await refreshBrowserSession();
+                if (generation !== get().generation) throw new Error('Session changed during renewal');
+                if (previousSession && previousSession !== response.sessionId) {
+                    get().expireSession('session_access_changed');
+                    throw new Error('Browser account changed');
+                }
+                if (response.mfaRequired || response.authenticationState === 'MFA_PENDING' || !response.token) {
+                    get().requireAdditionalAuthentication();
+                    return '';
+                }
+                set({ token: response.token, sessionId: response.sessionId,
+                    isAuthenticated: true, status: 'authenticated' });
+                return response.token;
+            } catch (error: unknown) {
+                if (generation === get().generation) {
+                    if (authenticationPending(error)) get().requireAdditionalAuthentication();
+                    else if (authenticationRejected(error)) get().expireSession(previousSession ? authenticationErrorCode(error) : undefined);
+                    else set({ status: 'temporarily_unavailable' });
+                }
+                throw error;
+            }
         },
 
         initializeSession: async () => {
-            const token = get().token;
-            if (!token) return;
-            try {
-                // Ejecutamos ambas peticiones en paralelo para optimizar el tiempo de carga
-                await Promise.all([
-                    get().fetchUserProfile(),
-                    get().fetchMenuTree()
-                ]);
-                
-                // Si ambas promesas se resuelven, la sesión está lista para renderizar la UI
-                if (get().token === token) set({ isSessionReady: true });
-            } catch {
-                console.error("Session initialization failed.");
-                
-                // Si falla la carga vital, forzamos el cierre de sesión por seguridad
-                if (get().token === token) get().logout();
-            }
+            if (initialization) return initialization;
+            const generation = get().generation;
+            const task = (async () => {
+                try {
+                    if (!get().token) await get().refreshSession();
+                    if (generation !== get().generation) return;
+                    await Promise.all([get().fetchUserProfile(), get().fetchMenuTree()]);
+                    if (generation === get().generation) set({ isSessionReady: true, status: 'authenticated' });
+                } catch (error: unknown) {
+                    if (generation !== get().generation) return;
+                    if (authenticationRejected(error)) get().expireSession(authenticationErrorCode(error));
+                    else set({ status: 'temporarily_unavailable' });
+                }
+            })();
+            initialization = task;
+            try { await task; } finally { if (initialization === task) initialization = null; }
         },
 
         fetchUserProfile: async () => {
             const token = get().token;
+            const sessionId = get().sessionId;
             const themeRevision = useThemeStore.getState().revision;
             const { data } = await api.get<UserProfile>('/auth/profile');
-            if (token && get().token === token) {
+            if (token && sessionId && get().sessionId === sessionId) {
                 let planTypeCode = data.companySettings?.planTypeCode ?? data.planTypeCode;
                 if (data.companySettings && planTypeCode === undefined) {
                     try {
@@ -127,16 +203,17 @@ export const useAuthStore = create<AuthState>((set, get) => {
                     ? { ...data, planTypeCode, companySettings: { ...data.companySettings, planTypeCode } }
                     : data;
 
+                if (get().sessionId !== sessionId) return;
                 set({ userProfile: updatedProfile });
-                useThemeStore.getState().bindProfile(data.id, data.theme, token, themeRevision);
+                useThemeStore.getState().bindProfile(data.id, data.theme, sessionId, themeRevision);
             }
         },
 
         fetchMenuTree: async () => {
             // Utilizamos el servicio que ya limpia la estructura del backend
-            const token = get().token;
+            const sessionId = get().sessionId;
             const tree = await getMyMenuTree();
-            if (token && get().token === token) set({ menuTree: tree });
+            if (sessionId && get().sessionId === sessionId) set({ menuTree: tree });
         },
 
         hasRole: (role: string) => {

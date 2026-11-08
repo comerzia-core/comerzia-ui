@@ -1,347 +1,363 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { isAxiosError } from "axios";
-import { AlertTriangle, Eye, EyeOff, Lock, User, Key } from "lucide-react";
-import api from "../../../lib/axios";
-import { useAuthStore } from "../../../stores/useAuthStore";
-import { useToast } from "../../../context/ToastContext";
-import { PasswordChecklist } from "../components/PasswordChecklist";
-import { AUTH_ERROR_CODES, type AuthErrorResponse } from "../types";
+import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Eye, EyeOff, ShieldCheck, KeyRound, Copy, Check, Download, Key, Loader2 } from 'lucide-react';
+import { BrowserQRCodeSvgWriter } from '@zxing/library';
+import { ComerziaInput } from '../../../components/ui/ComerziaInput';
+import { PublicAction } from '../../../components/ui/PublicAction';
+import { AuthStage } from '../../public/components/AuthStage';
+import { PasswordChecklist } from '../components/PasswordChecklist';
+import { GoogleSignInButton } from '../components/GoogleSignInButton';
+import { useLogin } from '../hooks/useLogin';
 
-// Asumimos que tienes tu componente de input y botón. 
-// Sustituye por tus importaciones reales de src/components/ui/
-import { ComerziaInput } from "../../../components/ui/ComerziaInput"; 
-import { BtnLogin } from "../../../components/ui/CrudButtons";
+export function LoginPage() {
+  const login = useLogin();
+  const {
+    currentStep, setCurrentStep, mfaMode, setMfaMode, isLoading, errorMessage, setErrorMessage, shakeKey,
+    username, setUsername, currentPassword, setCurrentPassword, newPassword, setNewPassword,
+    totpCode, setTotpCode, recoveryCode, setRecoveryCode,
+    showPassword, setShowPassword, showErrorsInChecklist, setShowErrorsInChecklist,
+    handleLoginSubmit, handleChangePasswordSubmit, handleMfaSubmit, handleCancelMfa,
+    // Enrollment state & actions
+    enrollmentSubStep,
+    enrollmentData, enrollmentCode, setEnrollmentCode,
+    enrollmentRecoveryCodes, copiedKey, copiedCodes,
+    handleConfirmEnrollment, handleFinishEnrollment, handleCancelEnrollment,
+    handleCopyKey, handleCopyCodes, handleDownloadCodes
+  } = login;
 
-type AuthStep = 'LOGIN' | 'CHANGE_PASSWORD';
+  const [showManualKey, setShowManualKey] = useState(false);
+  const qrContainerRef = useRef<HTMLDivElement>(null);
 
-export const LoginPage = () => {
-    const navigate = useNavigate();
-    const loginStore = useAuthStore(state => state.login);
-    const sessionNotice = useAuthStore(state => state.sessionNotice);
-    const { info: toastInfo } = useToast();
+  useEffect(() => {
+    document.title =
+      currentStep === 'MFA_CHALLENGE' ? 'Verificación de dos pasos | Comerzia' :
+      currentStep === 'MFA_ENROLLMENT' ? 'Configuración obligatoria de MFA | Comerzia' :
+      'Ingresa a tu empresa | Comerzia';
+  }, [currentStep]);
 
-    // Mostrar aviso de sesión (ej. revocación, cambio de permisos) mediante notificación toast
-    useEffect(() => {
-        if (sessionNotice) {
-            toastInfo(sessionNotice);
-            useAuthStore.setState({ sessionNotice: null });
-        }
-    }, [sessionNotice, toastInfo]);
+  // Render QR Code locally via @zxing/library
+  useEffect(() => {
+    if (currentStep === 'MFA_ENROLLMENT' && enrollmentSubStep === 'SETUP' && enrollmentData?.otpauthUri && qrContainerRef.current) {
+      try {
+        const writer = new BrowserQRCodeSvgWriter();
+        const svg = writer.write(enrollmentData.otpauthUri, 180, 180);
+        qrContainerRef.current.innerHTML = '';
+        qrContainerRef.current.appendChild(svg);
+      } catch {
+        // Fallback handled by manual key
+      }
+    }
+  }, [currentStep, enrollmentSubStep, enrollmentData]);
 
-    // --- ESTADOS DE FLUJO ---
-    const [currentStep, setCurrentStep] = useState<AuthStep>('LOGIN');
-    const [isLoading, setIsLoading] = useState(false);
-    const [errorMessage, setErrorMessage] = useState("");
-    const [shakeKey, setShakeKey] = useState(0);
+  const reveal = (
+    <PublicAction
+      type="button"
+      className="public-icon-button"
+      onClick={() => setShowPassword(!showPassword)}
+      aria-label={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+    >
+      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+    </PublicAction>
+  );
 
-    // --- ESTADOS DE FORMULARIO ---
-    const [username, setUsername] = useState("");
-    const [currentPassword, setCurrentPassword] = useState("");
-    const [newPassword, setNewPassword] = useState("");
-    
-    // --- ESTADOS DE UI ---
-    const [showPassword, setShowPassword] = useState(false);
-    const [showErrorsInChecklist, setShowErrorsInChecklist] = useState(false);
+  return (
+    <AuthStage>
+      <div className="public-login">
+        <span className="public-eyebrow">
+          {currentStep === 'MFA_CHALLENGE' ? 'SEGURIDAD ADICIONAL' :
+           currentStep === 'MFA_ENROLLMENT' ? (enrollmentSubStep === 'SETUP' ? 'POLÍTICA OBLIGATORIA DE ACCESO' : 'CÓDIGOS DE RESPALDO') :
+           'TU NEGOCIO TE ESPERA'}
+        </span>
+        <h1>
+          {currentStep === 'LOGIN' ? 'Qué bueno verte.' :
+           currentStep === 'CHANGE_PASSWORD' ? 'Un acceso más seguro.' :
+           currentStep === 'MFA_CHALLENGE' ? 'Doble factor' :
+           (enrollmentSubStep === 'SETUP' ? 'Configura tu segundo factor' : 'Códigos de respaldo generados')}
+        </h1>
+        <p className="public-form-description">
+          {currentStep === 'LOGIN' ? 'Entra y continúa donde lo dejaste.' :
+           currentStep === 'CHANGE_PASSWORD' ? 'Actualiza tu contraseña temporal para continuar.' :
+           currentStep === 'MFA_CHALLENGE' ? (mfaMode === 'TOTP'
+             ? 'Ingresa el código de 6 dígitos generado por tu aplicación autenticadora.'
+             : 'Ingresa uno de tus códigos de recuperación de respaldo.') :
+           (enrollmentSubStep === 'SETUP'
+             ? 'Escanea el código QR con Google Authenticator para habilitar tu cuenta.'
+             : 'Guarda estos códigos de recuperación en un lugar seguro. Solo se muestran una vez.')}
+        </p>
 
-    // ==========================================
-    // PASO 1: LOGIN NORMAL
-    // ==========================================
-    const handleLoginSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setErrorMessage("");
+        {errorMessage && <div className="public-form-error" role="alert">{errorMessage}</div>}
 
-        if (!username || !currentPassword) {
-            setShakeKey(prev => prev + 1);
-            setErrorMessage("Por favor, complete todos los campos.");
-            return;
-        }
-
-        setIsLoading(true);
-        try {
-            const { data } = await api.post('/auth/login', { 
-                username, 
-                password: currentPassword 
-            });
-            
-            // Si funciona a la primera, lo dejamos entrar
-            await loginStore(data.token);
-            navigate('/', { replace: true });
-
-        } catch (error) {
-            if (isAxiosError<AuthErrorResponse>(error) && error.response) {
-                const { status, data } = error.response;
-                const errCode = (data?.code || '').toLowerCase();
-                const errMsg = (data?.message || '').toLowerCase();
-                
-                // HTTP 428: Precondition Required (password_change_required)
-                const isPasswordChangeRequired = 
-                    status === 428 || 
-                    errCode === AUTH_ERROR_CODES.PASSWORD_CHANGE_REQUIRED ||
-                    errCode === AUTH_ERROR_CODES.REQUIRES_PASSWORD_CHANGE ||
-                    errMsg.includes('temporary password');
-
-                if (errCode === 'company_disabled') {
-                    setErrorMessage('Tu empresa está deshabilitada. Contacta con soporte.');
-                    setShakeKey(prev => prev + 1);
-                } else if (isPasswordChangeRequired) {
-                    setCurrentStep('CHANGE_PASSWORD');
-                    setErrorMessage(""); // Limpiamos el mensaje de error para cambiar limpiamente de vista
-                } else if (status === 401) {
-                    // HTTP 401: Unauthorized - Credenciales incorrectas
-                    setErrorMessage("Usuario o contraseña incorrectos.");
-                    setShakeKey(prev => prev + 1);
-                } else if (status === 403) {
-                    // HTTP 403: Forbidden - Cuenta deshabilitada (account_disabled) vs Cuenta bloqueada (account_locked)
-                    if (
-                        errCode === AUTH_ERROR_CODES.ACCOUNT_DISABLED || 
-                        errCode === AUTH_ERROR_CODES.USER_DISABLED || 
-                        errMsg.includes('disabled') || 
-                        errMsg.includes('deshabilitad')
-                    ) {
-                        setErrorMessage("Cuenta deshabilitada. Contacte con la administración.");
-                    } else if (
-                        errCode === AUTH_ERROR_CODES.ACCOUNT_LOCKED || 
-                        errMsg.includes('locked') || 
-                        errMsg.includes('bloquead') || 
-                        errMsg.includes('attempts')
-                    ) {
-                        setErrorMessage("Cuenta bloqueada. Contacte con la administración.");
-                    } else {
-                        setErrorMessage("Acceso denegado. No tiene permisos suficientes para ingresar.");
-                    }
-                    setShakeKey(prev => prev + 1);
-                } else if (status === 400) {
-                    setErrorMessage(data?.message || "Usuario o contraseña incorrectos.");
-                    setShakeKey(prev => prev + 1);
-                } else {
-                    // Para otros errores (ej. 500) usamos el mensaje del backend o uno genérico
-                    setErrorMessage(data?.message || "Error al intentar iniciar sesión.");
-                    setShakeKey(prev => prev + 1);
-                }
-            } else {
-                setErrorMessage("Error de red. Por favor, intente nuevamente.");
-                setShakeKey(prev => prev + 1);
-            }
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    // ==========================================
-    // PASO 2: CAMBIO DE CONTRASEÑA OBLIGATORIO
-    // ==========================================
-    const handleChangePasswordSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setShowErrorsInChecklist(true);
-        setErrorMessage("");
-
-        // Validaciones Manuales de la Expresión Regular
-        const isValid = 
-            newPassword.length >= 8 && newPassword.length <= 64 &&
-            /[A-Z]/.test(newPassword) && 
-            /[a-z]/.test(newPassword) && 
-            /\d/.test(newPassword);
-
-        if (!isValid) {
-            setShakeKey(prev => prev + 1);
-            return;
-        }
-
-        setIsLoading(true);
-        try {
-            const { data } = await api.post('/auth/change-temporary-password', {
-                username,
-                currentPassword, // Se envía la contraseña actual ingresada en el Paso 1
-                newPassword
-            });
-
-            // Si es exitoso (200 OK), el backend devuelve el JWT token y entra directamente
-            await loginStore(data.token);
-            navigate('/', { replace: true });
-
-        } catch (error) {
-            if (isAxiosError<AuthErrorResponse>(error) && error.response) {
-                const { status, data } = error.response;
-                if (data?.code === 'company_disabled') {
-                    setErrorMessage('Tu empresa está deshabilitada. Contacta con soporte.');
-                } else if (status === 400) {
-                    setErrorMessage(data?.message || "Credenciales incorrectas o la cuenta no requiere cambio de contraseña.");
-                } else if (status === 401) {
-                    if (data?.code === AUTH_ERROR_CODES.USER_DISABLED || data?.message?.toLowerCase().includes('disabled')) {
-                        setErrorMessage("Cuenta deshabilitada. Contacte con la administración.");
-                    } else {
-                        setErrorMessage("Credenciales incorrectas.");
-                    }
-                } else if (status === 403) {
-                    setErrorMessage("Acceso denegado. No tiene permisos suficientes.");
-                } else if (status === 404) {
-                    setErrorMessage("Usuario no encontrado.");
-                } else {
-                    setErrorMessage(data?.message || "Error al cambiar la contraseña. Por favor, intente nuevamente.");
-                }
-            } else {
-                setErrorMessage("Error de red. Por favor, intente nuevamente.");
-            }
-            setShakeKey(prev => prev + 1);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    return (
-        <div className="min-h-screen bg-base-200 flex items-center justify-center p-4">
-            <div className="card w-full max-w-md bg-base-100 shadow-xl border border-base-300">
-                <div className="card-body">
-                    {/* LOGO AREA */}
-                    <div className="text-center mb-6">
-                        <div className="w-16 h-16 bg-primary text-primary-content rounded-2xl mx-auto flex items-center justify-center mb-4 shadow-lg">
-                            <Lock size={32} />
-                        </div>
-                        <h2 className="text-2xl font-black">Comerzia ERP</h2>
-                        <p className="text-base-content/60 text-sm">
-                            {currentStep === 'LOGIN' 
-                                ? "Inicia sesión en tu cuenta" 
-                                : "Actualiza tu contraseña temporal"}
-                        </p>
-                    </div>
-
-                    {/* ALERTA DE ERROR GENERAL */}
-                    {errorMessage && (
-                        <div className="alert alert-error text-sm rounded-xl py-3 animate-shake mb-4">
-                            <span>{errorMessage}</span>
-                        </div>
-                    )}
-
-                    {/* --- RENDERIZADO DEL PASO 1: LOGIN --- */}
-                    {currentStep === 'LOGIN' && (
-                        <form onSubmit={handleLoginSubmit} className="space-y-4">
-                            <ComerziaInput
-                                id="login-username"
-                                aria-label="Usuario"
-                                name="username"
-                                label="Usuario"
-                                type="text"
-                                icon={<User size={18} />} 
-                                value={username}
-                                onChange={(e) => setUsername(e.target.value)}
-                                shakeKey={shakeKey}
-                                isRequired
-                                disabled={isLoading}
-                                autoComplete="username"
-                                autoCapitalize="none"
-                                autoCorrect="off"
-                                spellCheck={false}
-                            />
-
-                            <ComerziaInput
-                                id="login-password"
-                                aria-label="Contraseña"
-                                name="password"
-                                label="Contraseña"
-                                type={showPassword ? "text" : "password"}
-                                icon={<Key size={18} />}
-                                value={currentPassword}
-                                onChange={(e) => setCurrentPassword(e.target.value)}
-                                shakeKey={shakeKey}
-                                isRequired
-                                disabled={isLoading}
-                                autoComplete="current-password"
-                                rightAction={
-                                    <button 
-                                        type="button"
-                                        tabIndex={-1}
-                                        onClick={() => setShowPassword(!showPassword)}
-                                        className="text-base-content/50 hover:text-primary transition-colors p-1"
-                                        title={showPassword ? "Ocultar contraseña" : "Ver contraseña"}
-                                    >
-                                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                                    </button>
-                                }
-                            />
-
-                            <BtnLogin 
-                                type="submit" 
-                                label="Iniciar Sesión" 
-                                className={`btn btn-primary w-full mt-6 ${isLoading ? 'loading' : ''}`}
-                                disabled={isLoading}
-                            />
-                        </form>
-                    )}
-
-                    {/* --- RENDERIZADO DEL PASO 2: CHANGE PASSWORD --- */}
-                    {currentStep === 'CHANGE_PASSWORD' && (
-                        <form onSubmit={handleChangePasswordSubmit} className="space-y-4 animate-fade-in">
-                            <div className="alert bg-warning/10 border border-warning/30 text-base-content rounded-xl py-3 mb-4 flex items-start shadow-sm">
-                                <AlertTriangle size={18} className="text-warning shrink-0 mt-0.5" />
-                                <span className="text-sm font-medium leading-snug">
-                                    Por su seguridad, debe cambiar la contraseña por defecto antes de continuar.
-                                </span>
-                            </div>
-
-                            <ComerziaInput
-                                id="new-password"
-                                name="newPassword"
-                                label="Nueva Contraseña"
-                                type={showPassword ? "text" : "password"}
-                                icon={<Lock size={18} />}
-                                value={newPassword}
-                                onChange={(e) => {
-                                    setNewPassword(e.target.value);
-                                    setShowErrorsInChecklist(false);
-                                }}
-                                shakeKey={shakeKey}
-                                isRequired
-                                disabled={isLoading}
-                                autoComplete="new-password"
-                                autoCapitalize="none"
-                                autoCorrect="off"
-                                spellCheck={false}
-                                rightAction={
-                                    <button 
-                                        type="button"
-                                        tabIndex={-1}
-                                        onClick={() => setShowPassword(!showPassword)}
-                                        className="text-base-content/50 hover:text-primary transition-colors p-1"
-                                        title={showPassword ? "Ocultar contraseña" : "Ver contraseña"}
-                                    >
-                                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                                    </button>
-                                }
-                            />
-
-                            <PasswordChecklist 
-                                passwordValue={newPassword} 
-                                showErrors={showErrorsInChecklist} 
-                            />
-
-                            <div className="flex gap-2 mt-6">
-                                <button 
-                                    type="button" 
-                                    onClick={() => {
-                                        setCurrentStep('LOGIN');
-                                        setErrorMessage("");
-                                        setNewPassword("");
-                                        setShowErrorsInChecklist(false);
-                                    }}
-                                    className="btn btn-ghost flex-1"
-                                    disabled={isLoading}
-                                >
-                                    Cancelar
-                                </button>
-                                
-                                <BtnLogin 
-                                    type="submit" 
-                                    label="Actualizar e Iniciar Sesión"
-                                    className={`btn btn-primary flex-1 ${isLoading ? 'loading' : ''}`}
-                                    disabled={isLoading}                                
-                                />
-                            </div>
-                        </form>
-                    )}
-
-                </div>
+        {currentStep === 'LOGIN' && (
+          <form onSubmit={handleLoginSubmit}>
+            <ComerziaInput id="login-username" aria-label="Usuario o correo electrónico" name="username" label="Usuario o correo electrónico" value={username} onChange={event => setUsername(event.target.value)} shakeKey={shakeKey} isRequired disabled={isLoading} autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} />
+            <ComerziaInput id="login-password" aria-label="Contraseña" name="password" label="Contraseña" type={showPassword ? 'text' : 'password'} value={currentPassword} onChange={event => setCurrentPassword(event.target.value)} shakeKey={shakeKey} isRequired disabled={isLoading} autoComplete="current-password" rightAction={reveal} />
+            <div className="public-forgot-password-wrap" style={{ textAlign: 'right', margin: '4px 0 12px 0' }}>
+              <Link to="/password-reset" className="public-forgot-password-link" style={{ fontSize: '0.85rem', color: 'var(--p, #3b82f6)' }}>
+                ¿Olvidaste tu contraseña?
+              </Link>
             </div>
-        </div>
-    );
-};
+            <PublicAction type="submit" busy={isLoading} arrow>{isLoading ? 'Ingresando…' : 'Ir a mi empresa'}</PublicAction>
+            <div className="public-divider" style={{ margin: '20px 0 16px 0' }}>
+              <span>o</span>
+            </div>
+            <GoogleSignInButton
+              label="Continuar con Google"
+              onError={msg => setErrorMessage(msg)}
+              disabled={isLoading}
+            />
+          </form>
+        )}
+
+        {currentStep === 'CHANGE_PASSWORD' && (
+          <form onSubmit={handleChangePasswordSubmit}>
+            <p className="public-login-alert">Tu contraseña temporal debe cambiarse antes del primer ingreso.</p>
+            <ComerziaInput id="new-password" name="newPassword" label="Nueva contraseña" type={showPassword ? 'text' : 'password'} value={newPassword} onChange={event => { setNewPassword(event.target.value); setShowErrorsInChecklist(false); }} shakeKey={shakeKey} isRequired disabled={isLoading} autoComplete="new-password" autoCapitalize="none" autoCorrect="off" spellCheck={false} rightAction={reveal} />
+            <PasswordChecklist passwordValue={newPassword} showErrors={showErrorsInChecklist} />
+            <PublicAction type="submit" busy={isLoading} arrow>Actualizar e ingresar</PublicAction>
+            <PublicAction type="button" className="public-action--back public-login-back" disabled={isLoading} onClick={() => { setCurrentStep('LOGIN'); setErrorMessage(''); setNewPassword(''); setShowErrorsInChecklist(false); }}>Volver al acceso</PublicAction>
+          </form>
+        )}
+
+        {currentStep === 'MFA_CHALLENGE' && (
+          <form onSubmit={handleMfaSubmit}>
+            {mfaMode === 'TOTP' ? (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', color: 'var(--text-secondary, #64748b)' }}>
+                  <ShieldCheck size={20} style={{ color: 'var(--brand-primary, #10b981)' }} />
+                  <span style={{ fontSize: '0.9rem' }}>Abre Google Authenticator u otra app TOTP</span>
+                </div>
+                <ComerziaInput
+                  id="mfa-totp-code"
+                  name="totpCode"
+                  label="Código de verificación (6 dígitos)"
+                  value={totpCode}
+                  onChange={event => setTotpCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                  shakeKey={shakeKey}
+                  isRequired
+                  disabled={isLoading}
+                  autoComplete="one-time-code"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="000000"
+                />
+                <div style={{ margin: '8px 0 16px 0', textAlign: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={() => { setMfaMode('RECOVERY'); setErrorMessage(''); }}
+                    style={{ background: 'none', border: 'none', color: 'var(--brand-primary, #10b981)', fontSize: '0.85rem', cursor: 'pointer', textDecoration: 'underline' }}
+                    disabled={isLoading}
+                  >
+                    ¿No puedes acceder a tu app? Usar código de recuperación
+                  </button>
+                </div>
+                <PublicAction type="submit" busy={isLoading} arrow>{isLoading ? 'Verificando…' : 'Verificar e ingresar'}</PublicAction>
+              </>
+            ) : (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', color: 'var(--text-secondary, #64748b)' }}>
+                  <KeyRound size={20} style={{ color: 'var(--brand-primary, #10b981)' }} />
+                  <span style={{ fontSize: '0.9rem' }}>{mfaMode === 'EMERGENCY' ? 'Usa la autorización temporal entregada por el procedimiento de recuperación' : 'Ingresa uno de tus 10 códigos de respaldo de un solo uso'}</span>
+                </div>
+                <ComerziaInput
+                  id="mfa-recovery-code"
+                  name="recoveryCode"
+                  label={mfaMode === 'EMERGENCY' ? 'Autorización temporal' : 'Código de recuperación'}
+                  maxLength={mfaMode === 'EMERGENCY' ? 64 : 32}
+                  type="password"
+                  value={recoveryCode}
+                  onChange={event => setRecoveryCode(event.target.value.trim())}
+                  shakeKey={shakeKey}
+                  isRequired
+                  disabled={isLoading}
+                  autoComplete="off"
+                  placeholder="xxxx-xxxx-xx"
+                />
+                <div style={{ margin: '8px 0 16px 0', textAlign: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={() => { setMfaMode('TOTP'); setErrorMessage(''); }}
+                    style={{ background: 'none', border: 'none', color: 'var(--brand-primary, #10b981)', fontSize: '0.85rem', cursor: 'pointer', textDecoration: 'underline' }}
+                    disabled={isLoading}
+                  >
+                    Volver a código de app autenticadora
+                  </button>
+                </div>
+                <PublicAction type="submit" busy={isLoading} arrow>{isLoading ? 'Verificando…' : 'Verificar código de respaldo'}</PublicAction>
+              </>
+            )}
+            <button type="button" className="btn btn-ghost btn-sm w-full mt-3" disabled={isLoading}
+              onClick={() => { setMfaMode('EMERGENCY'); setRecoveryCode(''); setErrorMessage(''); }}>
+              Tengo una autorización de recuperación
+            </button>
+            <PublicAction type="button" className="public-action--back public-login-back" disabled={isLoading} onClick={handleCancelMfa}>
+              Cancelar y volver al acceso
+            </PublicAction>
+          </form>
+        )}
+
+        {currentStep === 'MFA_ENROLLMENT' && enrollmentSubStep === 'SETUP' && (
+          <form onSubmit={handleConfirmEnrollment}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '12px 0 20px 0' }}>
+              <div
+                ref={qrContainerRef}
+                style={{
+                  background: '#ffffff',
+                  padding: '12px',
+                  borderRadius: '12px',
+                  border: '1px solid #e2e8f0',
+                  minHeight: '180px',
+                  minWidth: '180px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                {!enrollmentData && <Loader2 className="animate-spin text-primary" size={32} />}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowManualKey(!showManualKey)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--brand-primary, #10b981)',
+                  fontSize: '0.85rem',
+                  cursor: 'pointer',
+                  marginTop: '10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <Key size={14} />
+                {showManualKey ? 'Ocultar clave manual' : '¿No puedes escanear? Ingresar clave manual'}
+              </button>
+
+              {showManualKey && enrollmentData?.secret && (
+                <div style={{ width: '100%', marginTop: '10px', background: '#f8fafc', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <code style={{ fontSize: '0.85rem', letterSpacing: '1px', wordBreak: 'break-all' }}>
+                      {enrollmentData.secret}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={handleCopyKey}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
+                      title="Copiar clave"
+                    >
+                      {copiedKey ? <Check size={16} className="text-success" /> : <Copy size={16} />}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <ComerziaInput
+              id="mfa-enroll-confirm-code"
+              name="enrollmentCode"
+              label="Código de 6 dígitos mostrado en tu app"
+              value={enrollmentCode}
+              onChange={event => setEnrollmentCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+              shakeKey={shakeKey}
+              isRequired
+              disabled={isLoading}
+              autoComplete="one-time-code"
+              inputMode="numeric"
+              maxLength={6}
+              placeholder="000000"
+            />
+
+            <PublicAction type="submit" busy={isLoading} arrow>
+              {isLoading ? 'Verificando y activando…' : 'Activar e ingresar'}
+            </PublicAction>
+
+            <PublicAction
+              type="button"
+              className="public-action--back public-login-back"
+              disabled={isLoading}
+              onClick={handleCancelEnrollment}
+            >
+              Cancelar y volver al acceso
+            </PublicAction>
+          </form>
+        )}
+
+        {currentStep === 'MFA_ENROLLMENT' && enrollmentSubStep === 'RECOVERY_CODES' && (
+          <div>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, 1fr)',
+                gap: '8px',
+                background: '#f8fafc',
+                padding: '16px',
+                borderRadius: '8px',
+                border: '1px solid #cbd5e1',
+                margin: '16px 0'
+              }}
+            >
+              {enrollmentRecoveryCodes.map((code, idx) => (
+                <div key={idx} style={{ fontFamily: 'monospace', fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>
+                  {idx + 1}. {code}
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+              <button
+                type="button"
+                onClick={handleCopyCodes}
+                style={{
+                  flex: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid #cbd5e1',
+                  background: '#ffffff',
+                  cursor: 'pointer',
+                  fontSize: '0.85rem'
+                }}
+              >
+                {copiedCodes ? <Check size={16} className="text-success" /> : <Copy size={16} />}
+                {copiedCodes ? 'Copiados' : 'Copiar códigos'}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDownloadCodes}
+                style={{
+                  flex: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid #cbd5e1',
+                  background: '#ffffff',
+                  cursor: 'pointer',
+                  fontSize: '0.85rem'
+                }}
+              >
+                <Download size={16} />
+                Descargar .txt
+              </button>
+            </div>
+
+            <PublicAction type="button" busy={isLoading} arrow onClick={handleFinishEnrollment}>
+              {isLoading ? 'Iniciando sesión…' : 'Continuar a mi empresa'}
+            </PublicAction>
+          </div>
+        )}
+
+        <p className="public-account-link">
+          ¿Aún no tienes tu espacio? <Link to="/register">Crea tu empresa gratis</Link>
+        </p>
+      </div>
+    </AuthStage>
+  );
+}

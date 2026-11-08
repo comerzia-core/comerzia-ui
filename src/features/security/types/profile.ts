@@ -20,6 +20,7 @@ export interface MyProfileResponse {
   documentExtension: DictionaryResponse | null;
   address: string | null;
   imageUrl: string | null;
+  hasPassword?: boolean;
 }
 
 export interface UpdateMyProfileRequest {
