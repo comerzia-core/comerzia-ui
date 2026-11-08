@@ -17,6 +17,8 @@ interface MfaStepUpModalProps {
 }
 
 const ACTION_DESCRIPTIONS: Record<MfaStepUpActionType, { title: string; desc: string }> = {
+  LINK_EXTERNAL_IDENTITY: { title: 'Vincular cuenta de Google', desc: 'Confirma con tu autenticador antes de agregar este método de acceso.' },
+  UNLINK_EXTERNAL_IDENTITY: { title: 'Desvincular cuenta de Google', desc: 'Confirma con tu autenticador antes de retirar este método de acceso.' },
   UPDATE_SECURITY_SETTINGS: { title: 'Confirmar configuración sensible', desc: 'Verifica tu autenticador para guardar estos cambios.' },
   ASSIGN_ROLES: {
     title: 'Confirmar asignación de roles',
@@ -45,6 +47,10 @@ const ACTION_DESCRIPTIONS: Record<MfaStepUpActionType, { title: string; desc: st
   ADMIN_MFA_RECOVERY: {
     title: 'Confirmar recuperación administrativa de MFA',
     desc: 'Esta operación crítica de recuperación de factores requiere validación estricta de tu segundo factor.'
+  },
+  INVITE_EMPLOYEE: {
+    title: 'Confirmar invitación de colaborador',
+    desc: 'La invitación asigna un rol con privilegios sensibles en la empresa y requiere validación de tu segundo factor.'
   }
 };
 

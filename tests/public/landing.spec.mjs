@@ -43,14 +43,14 @@ test('landing has four actual plans, full Free row, no private bundle and no ove
 });
 test('public theme stays separate from the saved ERP theme and Google is a placeholder', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('theme', 'cupcake'));
-  await page.goto('/registro', { waitUntil: 'domcontentloaded' }); await expect(page.getByRole('button', { name: /Continuar con Google/ })).toBeDisabled();
+  await page.goto('/register', { waitUntil: 'domcontentloaded' }); await expect(page.getByRole('button', { name: /Continuar con Google/ })).toBeDisabled();
   await page.getByRole('button', { name: 'Usar modo oscuro' }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   expect(await page.evaluate(() => localStorage.getItem('theme'))).toBe('cupcake');
   await page.reload(); await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 });
 test('registration requires one surname and email and preserves data when moving back', async ({ page }) => {
-  await page.goto('/registro', { waitUntil: 'domcontentloaded' }); await page.getByRole('button', { name: 'Continuar', exact: true }).click();
+  await page.goto('/register', { waitUntil: 'domcontentloaded' }); await page.getByRole('button', { name: 'Continuar', exact: true }).click();
   await expect(page.getByText('Escribe al menos un apellido.')).toBeVisible();
   await personal(page); await expect(page.getByRole('heading', { name: 'Un acceso solo tuyo.' })).toBeVisible();
   await page.getByRole('button', { name: 'Atrás', exact: true }).click();
@@ -64,7 +64,7 @@ test('registration shows fixed roles and caja, submits once with anonymous heade
     await route.fulfill({ status: 201, json: authenticationFixture('public-signup') });
   });
   await page.route('**/security/menu/my-tree', route => route.fulfill({ json: [] }));
-  await page.goto('/registro', { waitUntil: 'domcontentloaded' }); await personal(page); await access(page);
+  await page.goto('/register', { waitUntil: 'domcontentloaded' }); await personal(page); await access(page);
   await expect(page.locator('.public-setup-register')).toContainText('CAJA 01 - 001');
   await expect(page.locator('.public-role-list>span')).toHaveCount(4); await expect(page.getByRole('checkbox')).toHaveCount(0);
   await page.getByLabel('Nombre de tu empresa', { exact: true }).fill('Mi negocio');
@@ -83,7 +83,7 @@ test('registration shows fixed roles and caja, submits once with anonymous heade
 });
 test('duplicate email returns to the correct field without losing company details', async ({ page }) => {
   await page.route('**/public/registrations', route => route.fulfill({ status: 409, json: { code: 'email_unavailable' } }));
-  await page.goto('/registro', { waitUntil: 'domcontentloaded' }); await personal(page); await access(page);
+  await page.goto('/register', { waitUntil: 'domcontentloaded' }); await personal(page); await access(page);
   await page.getByLabel('Nombre de tu empresa', { exact: true }).fill('Mi negocio');
   await page.getByLabel('Nombre de tu primera tienda', { exact: true }).fill('Centro');
   await page.getByRole('button', { name: 'Crear mi empresa gratis', exact: true }).click();
@@ -109,7 +109,7 @@ test('missing video keeps its image and reduced motion disables video', async ({
 });
 test('an existing session is never replaced by public signup', async ({ page }) => {
   await page.route('**/auth/refresh', route => route.fulfill({ json: authenticationFixture('existing-session') }));
-  await page.goto('/registro', { waitUntil: 'domcontentloaded' });
+  await page.goto('/register', { waitUntil: 'domcontentloaded' });
   await expect(page.getByRole('heading', { name: 'Ya tienes una sesión abierta.' })).toBeVisible();
   await expect(page.getByRole('textbox')).toHaveCount(0);
   expect(await page.evaluate(() => localStorage.getItem('token'))).toBeNull();

@@ -1,5 +1,7 @@
 # Instrucciones del proyecto frontend
 
+Aplicar siempre `.agents/rules/english-code-and-routes.md`: identificadores técnicos y rutas canónicas en inglés; comentarios explicativos en español cuando correspondan. No crear enums de rutas.
+
 Leer `.agents/AGENTS.md`, sus reglas y
 `.agents/rules/security-flows-and-verifiable-tests.md` antes de modificar flujos de
 autenticación, autorizaciones, administración sensible o sus pruebas.

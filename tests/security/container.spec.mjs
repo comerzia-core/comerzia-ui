@@ -1,5 +1,9 @@
 import { test, expect } from '@playwright/test';
+import { mockAnonymousSession } from '../fixtures/browserSession.mjs';
 test('production CSP preserves login, theme bootstrap and camera permissions without inline script bypass', async ({ page }) => {
+  // La imagen aislada prueba CSP y assets reales; la API no forma parte de este contenedor.
+  await mockAnonymousSession(page);
+  await page.route('**/auth/identity-options', route => route.fulfill({ json: { googleEnabled: false } }));
   const violations=[];
   await page.addInitScript(() => localStorage.setItem('comerzia.public.theme', 'dark'));
   page.on('console', message => { if (message.type()==='error' && /Content Security Policy|violates.*directive/.test(message.text())) violations.push(message.text()); });
@@ -9,6 +13,8 @@ test('production CSP preserves login, theme bootstrap and camera permissions wit
   expect(response.headers()['content-security-policy']).not.toContain("'unsafe-eval'");
   expect(response.headers()['permissions-policy']).toContain('camera=(self)');
   expect(response.headers()['x-content-type-options']).toBe('nosniff');
+  expect(response.headers()['cross-origin-opener-policy']).toBe('same-origin');
+  expect(response.headers()['cross-origin-resource-policy']).toBe('same-origin');
   await expect(page.getByLabel('Usuario o correo electrónico', { exact: true })).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('data-theme','dark');
   expect(violations).toEqual([]);

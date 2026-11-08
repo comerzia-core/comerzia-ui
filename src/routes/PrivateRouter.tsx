@@ -18,6 +18,7 @@ import { SaasFinancePage } from '../features/saas/pages/SaasFinancePage';
 import { SaasAuditPage } from '../features/saas/pages/SaasAuditPage';
 import { SaasRecoveryPage } from '../features/saas/pages/SaasRecoveryPage';
 import { SaasTechnicalPage } from '../features/saas/pages/SaasTechnicalPage';
+import { SaasPlatformSettingsPage } from '../features/saas/pages/SaasPlatformSettingsPage';
 import { SaasCitiesPage } from '../features/saas/pages/SaasCitiesPage';
 import { SaasBillingHistoryPage } from '../features/saas/pages/SaasBillingHistoryPage';
 import { SaasBillingSettingsPage } from '../features/saas/pages/SaasBillingSettingsPage';
@@ -135,6 +136,10 @@ export default function PrivateRouter() {
               <Route element={<PermissionGuard code="SYS_TECHNICAL_READ" />}>
                 <Route path="/saas/system/technical" element={<SaasTechnicalPage />} />
                 <Route path="/saas/technical" element={<SaasTechnicalPage />} />
+              </Route>
+              <Route element={<PermissionGuard code="SYS_PLATFORM_SETTINGS_VIEW" />}>
+                <Route path="/saas/system/platform-settings" element={<SaasPlatformSettingsPage />} />
+                <Route path="/saas/platform-settings" element={<SaasPlatformSettingsPage />} />
               </Route>
               <Route element={<PermissionGuard code="GEN_CITIES_READ" />}>
                 <Route path="/saas/system/cities" element={<SaasCitiesPage />} />

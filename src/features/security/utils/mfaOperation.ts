@@ -1,11 +1,12 @@
 import type { MfaStepUpActionType } from '../types/mfa';
-const defaults: Record<MfaStepUpActionType, string> = {
+const defaults: Partial<Record<MfaStepUpActionType, string>> = {
   REPLACE_MFA: 'POST:/profile/mfa/totp/enroll/start',
   REGENERATE_RECOVERY_CODES: 'POST:/profile/mfa/recovery-codes/regenerate',
   DEACTIVATE_MFA: 'POST:/profile/mfa/deactivate',
   MANAGE_SAAS_TEAM: 'POST:/saas/team', ASSIGN_ROLES: 'PUT:/tenant/users',
   UPDATE_USER_ACCESS: 'PATCH:/tenant/users', ADMIN_MFA_RECOVERY: 'POST:/saas/team/recovery/requests',
-  UPDATE_SECURITY_SETTINGS: 'PUT:/saas/billing/settings'
+  UPDATE_SECURITY_SETTINGS: 'PUT:/saas/billing/settings',
+  INVITE_EMPLOYEE: 'POST:/tenant/employee-invitations'
 };
 function canonical(value: unknown): string {
   if (Array.isArray(value)) return '[' + value.map(canonical).join(',') + ']';
@@ -15,7 +16,9 @@ function canonical(value: unknown): string {
   return JSON.stringify(value);
 }
 export async function bindMfaOperation(action: MfaStepUpActionType, target?: string, body?: unknown): Promise<string> {
-  const [path, rawQuery = ''] = (target ?? defaults[action]).split('?');
+  const operationTarget = target ?? defaults[action];
+  if (!operationTarget) throw new Error('mfa_operation_target_required');
+  const [path, rawQuery = ''] = operationTarget.split('?');
   const parameters = new URLSearchParams(rawQuery);
   const query = Object.fromEntries([...new Set(parameters.keys())].sort().map(key => [key, parameters.getAll(key)]));
   let payload: unknown = body ?? null;

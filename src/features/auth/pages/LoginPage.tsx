@@ -6,6 +6,7 @@ import { ComerziaInput } from '../../../components/ui/ComerziaInput';
 import { PublicAction } from '../../../components/ui/PublicAction';
 import { AuthStage } from '../../public/components/AuthStage';
 import { PasswordChecklist } from '../components/PasswordChecklist';
+import { GoogleSignInButton } from '../components/GoogleSignInButton';
 import { useLogin } from '../hooks/useLogin';
 
 export function LoginPage() {
@@ -91,11 +92,19 @@ export function LoginPage() {
             <ComerziaInput id="login-username" aria-label="Usuario o correo electrónico" name="username" label="Usuario o correo electrónico" value={username} onChange={event => setUsername(event.target.value)} shakeKey={shakeKey} isRequired disabled={isLoading} autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} />
             <ComerziaInput id="login-password" aria-label="Contraseña" name="password" label="Contraseña" type={showPassword ? 'text' : 'password'} value={currentPassword} onChange={event => setCurrentPassword(event.target.value)} shakeKey={shakeKey} isRequired disabled={isLoading} autoComplete="current-password" rightAction={reveal} />
             <div className="public-forgot-password-wrap" style={{ textAlign: 'right', margin: '4px 0 12px 0' }}>
-              <Link to="/recuperar-contrasena" className="public-forgot-password-link" style={{ fontSize: '0.85rem', color: 'var(--p, #3b82f6)' }}>
+              <Link to="/password-reset" className="public-forgot-password-link" style={{ fontSize: '0.85rem', color: 'var(--p, #3b82f6)' }}>
                 ¿Olvidaste tu contraseña?
               </Link>
             </div>
             <PublicAction type="submit" busy={isLoading} arrow>{isLoading ? 'Ingresando…' : 'Ir a mi empresa'}</PublicAction>
+            <div className="public-divider" style={{ margin: '20px 0 16px 0' }}>
+              <span>o</span>
+            </div>
+            <GoogleSignInButton
+              label="Continuar con Google"
+              onError={msg => setErrorMessage(msg)}
+              disabled={isLoading}
+            />
           </form>
         )}
 
@@ -346,7 +355,7 @@ export function LoginPage() {
         )}
 
         <p className="public-account-link">
-          ¿Aún no tienes tu espacio? <Link to="/registro">Crea tu empresa gratis</Link>
+          ¿Aún no tienes tu espacio? <Link to="/register">Crea tu empresa gratis</Link>
         </p>
       </div>
     </AuthStage>

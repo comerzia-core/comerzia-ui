@@ -4,6 +4,8 @@ const eslint = new ESLint();
 const results = await eslint.lintFiles(['src', 'vite.config.ts']);
 const counts = {};
 const strictPaths = new Set([
+  'src/features/auth/utils/oidcContinuation.ts',
+  'src/features/employees/utils/invitationFlow.ts',
   'src/features/security/utils/mfaOperation.ts',
   'src/features/security/hooks/useStepUp.ts',
   'src/features/security/hooks/usePrivilegedRecovery.ts',
@@ -45,6 +47,22 @@ const strictPaths = new Set([
   'src/features/security/utils/securityChallengeMessages.ts',
   'src/features/security/components/EmailChangeModal.tsx',
   'src/features/public/pages/EmailChangePage.tsx',
+
+  // Etapa 6: OIDC, Google Auth, identidades externas e invitaciones
+  'src/features/auth/types/oidc.ts',
+  'src/features/auth/services/oidcService.ts',
+  'src/features/auth/utils/oidcMessages.ts',
+  'src/features/auth/components/GoogleSignInButton.tsx',
+  'src/features/auth/pages/GoogleAuthResultPage.tsx',
+  'src/features/security/components/ExternalIdentitiesPanel.tsx',
+  'src/features/security/types/mfa.ts',
+  'src/features/employees/types/invitation.ts',
+  'src/features/employees/services/invitationService.ts',
+  'src/features/employees/components/InviteEmployeeModal.tsx',
+  'src/features/employees/components/RevokeInvitationModal.tsx',
+  'src/features/employees/components/InvitationsTable.tsx',
+  'src/features/public/hooks/useAcceptInvitation.ts',
+  'src/features/public/pages/AcceptInvitationPage.tsx',
 ]);
 const strictFailures = [];
 for (const result of results) {

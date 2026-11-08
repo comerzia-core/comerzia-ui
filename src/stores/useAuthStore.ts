@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { clearGoogleRegistration, clearGoogleInvitation } from '../features/auth/utils/oidcContinuation';
 import { refreshBrowserSession, closeBrowserSession, authenticationRejected, authenticationErrorCode, tokenSessionReference, authenticationPending } from '../features/auth/services/browserSessionService';
 let initialization: Promise<void> | null = null;
 localStorage.removeItem('token');
@@ -65,6 +66,8 @@ export const useAuthStore = create<AuthState>((set, get) => {
         },
 
         expireSession: (reason?: string) => {
+            clearGoogleRegistration();
+            clearGoogleInvitation();
             const previousSession = get().sessionId;
             useThemeStore.getState().clearSession();
             const notices: Record<string, string> = {

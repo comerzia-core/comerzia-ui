@@ -26,7 +26,8 @@ async function prepare(page,role,path,extra=''){
   }
   let result;
   if(name.endsWith('/realtime/stream'))return route.fulfill({contentType:'text/event-stream',body:'event: connected\ndata: {}\n\n'});
-  if(name==='/generic/dictionaries')result=dictionaries;
+  if(name==='/profile/mfa')result={configured:true,status:'ACTIVE'};
+  else if(name==='/generic/dictionaries')result=dictionaries;
   else if(name==='/saas/directory'||name==='/saas/companies')result=paged([company]);
   else if(name==='/saas/companies/CompanyOpaque')result={...company,status:companyActive};
   else if(name==='/saas/plans')result=[{code:701,name:'Free',monthlyPrice:0,maxBranches:1,maxUsers:1,maxProducts:50,requiresExpiry:false,unlimited:false},{code:702,name:'Inicial',monthlyPrice:49,maxBranches:1,maxUsers:3,maxProducts:500,requiresExpiry:true,unlimited:false}];
@@ -92,13 +93,18 @@ test('QR envía una solicitud solo al confirmar y evita endpoints anteriores',as
  expect(writes[0].body).toContain('expectedAmount');
  expect(writes.some(x=>x.name.includes('change-plan')||x.name.endsWith('/payments'))).toBe(false);
 });
-test('aprobar requiere confirmar la verificación bancaria',async({page},info)=>{
+test('payment approval requires bank verification and MFA',async({page},info)=>{
  const {writes,calls}=await prepare(page,'SAAS_OWNER','/saas/finances');
  await actions(page,info,'Inicial');await page.getByText('Ver solicitud',{exact:true}).click();
  await page.getByRole('button',{name:'Aprobar',exact:true}).click();expect(writes).toHaveLength(0);
  await page.getByText('Verifiqué esta transferencia en la cuenta bancaria',{exact:true}).click();
  await page.getByRole('button',{name:'Aprobar',exact:true}).click();
+ await expect(page.getByLabel('Código de la app autenticadora',{exact:true})).toBeVisible();
+ expect(writes).toHaveLength(0);
+ await page.getByLabel('Código de la app autenticadora',{exact:true}).fill('123456');
+ await page.getByRole('button',{name:'Autorizar',exact:true}).click();
  await expect.poll(()=>writes.length).toBe(1);
+ expect(writes[0].grant).toBe('synthetic-ui-grant');
  expect(JSON.parse(writes[0].body)).toMatchObject({approved:true,bankVerified:true,receivedAmount:49});
  await expect(page.getByText('Pago de Tienda ejemplo',{exact:true})).toHaveCount(0);
  expect(calls).not.toContain('/saas/finances');

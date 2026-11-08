@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "security:final": "node scripts/security-final.mjs",
     "dev": "vite",
     "build": "tsc -b && vite build && node scripts/check-built-css.mjs",
     "lint": "eslint .",
@@ -26,7 +27,10 @@
     "test": "node scripts/test-all.mjs",
     "test:passwords": "node --test tests/passwordPolicy.test.mjs",
     "test:mfa": "node --test tests/mfaPolicy.test.mjs",
+    "test:preflight-ui": "playwright test --config playwright.preflight.config.mjs",
     "test:security-messages": "node --test tests/emailVerification.test.mjs",
+    "test:oidc": "node --test tests/oidcMessages.test.mjs",
+    "test:invitations": "node --test tests/invitations.test.mjs",
     "lint:security": "node scripts/lint-security.mjs",
     "test:sessions": "playwright test --config playwright.sessions.config.mjs",
     "test:email": "playwright test --config playwright.email.config.mjs",
@@ -61,14 +65,22 @@
     "@vitejs/plugin-react-swc": "^4.3.3",
     "autoprefixer": "^10.6.2",
     "daisyui": "5.5.14",
-    "eslint": "^9.39.5",
+    "eslint": "10.14.0",
     "eslint-plugin-react-hooks": "^7.1.1",
-    "eslint-plugin-react-refresh": "^0.4.26",
+    "eslint-plugin-react-refresh": "0.5.7",
     "globals": "^16.5.0",
     "postcss": "^8.5.32",
     "tailwindcss": "^3.4.19",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.72.1",
     "vite": "^7.3.7"
+  },
+  "overrides": {
+    "@typescript-eslint/typescript-estree": {
+      "minimatch": "11.0.5"
+    },
+    "eslint": {
+      "minimatch": "11.0.5"
+    }
   }
 }

@@ -10,5 +10,6 @@ export function authorizeRejectedOperation(intent: StepUpIntent): Promise<string
 }
 export function isStepUpAction(value: unknown): value is MfaStepUpActionType {
   return typeof value === 'string' && ['ASSIGN_ROLES','UPDATE_USER_ACCESS','MANAGE_SAAS_TEAM',
-    'DEACTIVATE_MFA','REGENERATE_RECOVERY_CODES','REPLACE_MFA','ADMIN_MFA_RECOVERY','UPDATE_SECURITY_SETTINGS'].includes(value);
+    'DEACTIVATE_MFA','REGENERATE_RECOVERY_CODES','REPLACE_MFA','ADMIN_MFA_RECOVERY','UPDATE_SECURITY_SETTINGS',
+    'INVITE_EMPLOYEE','LINK_EXTERNAL_IDENTITY','UNLINK_EXTERNAL_IDENTITY'].includes(value);
 }

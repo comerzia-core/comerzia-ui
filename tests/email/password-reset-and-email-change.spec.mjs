@@ -6,7 +6,7 @@ const otherToken = 'b'.repeat(64);
 test.describe('Ciclo 04: Recuperación de Contraseña y Cambio Seguro de Email', () => {
   test('network failure does not claim accepted or delivered recovery instructions', async ({ page }) => {
     await page.route('**/api/public/password-reset/request', route => route.abort());
-    await page.goto('/recuperar-contrasena');
+    await page.goto('/password-reset');
     await page.locator('#reset-email').fill('person@example.test');
     await page.getByRole('button', { name: 'Enviar enlace de recuperación' }).click();
     await expect(page.getByText('Sin conexión. Intenta nuevamente.')).toBeVisible();
@@ -28,7 +28,7 @@ test.describe('Ciclo 04: Recuperación de Contraseña y Cambio Seguro de Email',
     const forgotLink = page.getByRole('link', { name: '¿Olvidaste tu contraseña?' });
     await expect(forgotLink).toBeVisible();
     await forgotLink.click();
-    await expect(page).toHaveURL(/\/recuperar-contrasena$/);
+    await expect(page).toHaveURL(/\/password-reset$/);
     await expect(page.getByRole('heading', { name: '¿Olvidaste tu contraseña?' })).toBeVisible();
   });
 
@@ -45,7 +45,7 @@ test.describe('Ciclo 04: Recuperación de Contraseña y Cambio Seguro de Email',
         });
       });
 
-      await page.goto('/recuperar-contrasena');
+      await page.goto('/password-reset');
       await page.locator('#reset-email').fill('usuario@empresa.com');
       await page.getByRole('button', { name: 'Enviar enlace de recuperación' }).click();
 
@@ -68,7 +68,7 @@ test.describe('Ciclo 04: Recuperación de Contraseña y Cambio Seguro de Email',
       });
     });
 
-    await page.goto('/recuperar-contrasena');
+    await page.goto('/password-reset');
     await page.locator('#reset-email').fill('spam@empresa.com');
     await page.getByRole('button', { name: 'Enviar enlace de recuperación' }).click();
 
@@ -98,10 +98,10 @@ test.describe('Ciclo 04: Recuperación de Contraseña y Cambio Seguro de Email',
         });
       });
 
-      await page.goto(`/recuperar-contrasena#token=${testToken}`);
+      await page.goto(`/password-reset#token=${testToken}`);
 
       // URL scrubbed inmediatamente
-      await expect(page).toHaveURL(/\/recuperar-contrasena$/);
+      await expect(page).toHaveURL(/\/password-reset$/);
 
       // Verificación de memoria limpia (el token no viaja a storage)
       const storage = await page.evaluate(() => JSON.stringify({ local: { ...localStorage }, session: { ...sessionStorage } }));
@@ -135,7 +135,7 @@ test.describe('Ciclo 04: Recuperación de Contraseña y Cambio Seguro de Email',
       });
     });
 
-    await page.goto(`/recuperar-contrasena#token=${testToken}`);
+    await page.goto(`/password-reset#token=${testToken}`);
     await expect(page.getByRole('heading', { name: 'Enlace No Válido o Expirado' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Solicitar un nuevo enlace' })).toBeVisible();
   });
@@ -162,10 +162,10 @@ test.describe('Ciclo 04: Recuperación de Contraseña y Cambio Seguro de Email',
         });
       });
 
-      await page.goto(`/cambiar-email#token=${otherToken}`);
+      await page.goto(`/change-email#token=${otherToken}`);
 
       // URL scrubbed
-      await expect(page).toHaveURL(/\/cambiar-email$/);
+      await expect(page).toHaveURL(/\/change-email$/);
 
       // Verificación de email enmascarado
       await expect(page.getByText('n***@comerzia.com')).toBeVisible();
@@ -203,7 +203,7 @@ test.describe('Ciclo 04: Recuperación de Contraseña y Cambio Seguro de Email',
       });
     });
 
-    await page.goto(`/cambiar-email#token=${otherToken}`);
+    await page.goto(`/change-email#token=${otherToken}`);
     await page.getByRole('button', { name: 'Confirmar mi nuevo correo electrónico' }).click();
 
     await expect(page.getByRole('heading', { name: 'Aislamiento de Sesión' })).toBeVisible();
