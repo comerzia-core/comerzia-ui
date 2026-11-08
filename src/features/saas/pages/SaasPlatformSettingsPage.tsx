@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Sliders, Shield, Store, Globe, Building2, AlertCircle, Save } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../../lib/axios';
@@ -29,28 +29,6 @@ export function SaasPlatformSettingsPage() {
         }
     });
 
-    const [form, setForm] = useState<SaasPlatformSettings>({
-        platformMode: 'PRIVATE',
-        publicRegistrationEnabled: false,
-        publicLandingEnabled: false,
-        publicCatalogsEnabled: false,
-        platformBrandName: 'Comerzia ERP',
-        registrationDisabledMessage: 'El registro público de empresas se encuentra inhabilitado en esta plataforma.'
-    });
-
-    useEffect(() => {
-        if (settings) {
-            setForm({
-                platformMode: settings.platformMode || 'PRIVATE',
-                publicRegistrationEnabled: Boolean(settings.publicRegistrationEnabled),
-                publicLandingEnabled: Boolean(settings.publicLandingEnabled),
-                publicCatalogsEnabled: Boolean(settings.publicCatalogsEnabled),
-                platformBrandName: settings.platformBrandName || 'Comerzia ERP',
-                registrationDisabledMessage: settings.registrationDisabledMessage || 'El registro público de empresas se encuentra inhabilitado en esta plataforma.'
-            });
-        }
-    }, [settings]);
-
     const mutation = useMutation({
         mutationFn: async (updated: SaasPlatformSettings) => {
             const res = await api.put('/saas/settings/platform', updated);
@@ -64,6 +42,50 @@ export function SaasPlatformSettingsPage() {
         onError: () => {
             toastError('No se pudieron guardar los ajustes de plataforma.');
         }
+    });
+
+    if (isLoading || !settings) {
+        return (
+            <div className="flex items-center justify-center py-20 gap-3 text-base-content/60">
+                <span className="loading loading-spinner loading-md text-primary" />
+                <span className="text-sm font-medium">Cargando ajustes de plataforma…</span>
+            </div>
+        );
+    }
+
+    if (isError) {
+        return (
+            <div className="alert alert-error text-sm rounded-2xl shadow-xs" role="alert">
+                <AlertCircle size={18} />
+                <span>No se pudieron consultar los ajustes de plataforma. Verifica tus permisos de SAAS_OWNER.</span>
+            </div>
+        );
+    }
+
+    return (
+        <PlatformSettingsForm
+            key={settings.updatedAt || settings.platformMode}
+            initialSettings={settings}
+            isSaving={mutation.isPending}
+            onSave={(formData) => mutation.mutate(formData)}
+        />
+    );
+}
+
+interface PlatformSettingsFormProps {
+    initialSettings: SaasPlatformSettings;
+    isSaving: boolean;
+    onSave: (formData: SaasPlatformSettings) => void;
+}
+
+function PlatformSettingsForm({ initialSettings, isSaving, onSave }: PlatformSettingsFormProps) {
+    const [form, setForm] = useState<SaasPlatformSettings>({
+        platformMode: initialSettings.platformMode || 'PRIVATE',
+        publicRegistrationEnabled: Boolean(initialSettings.publicRegistrationEnabled),
+        publicLandingEnabled: Boolean(initialSettings.publicLandingEnabled),
+        publicCatalogsEnabled: Boolean(initialSettings.publicCatalogsEnabled),
+        platformBrandName: initialSettings.platformBrandName || 'Comerzia ERP',
+        registrationDisabledMessage: initialSettings.registrationDisabledMessage || 'El registro público de empresas se encuentra inhabilitado en esta plataforma.'
     });
 
     const applyPreset = (mode: 'PRIVATE' | 'PUBLIC') => {
@@ -87,26 +109,8 @@ export function SaasPlatformSettingsPage() {
 
     const handleSave = (e: React.FormEvent) => {
         e.preventDefault();
-        mutation.mutate(form);
+        onSave(form);
     };
-
-    if (isLoading) {
-        return (
-            <div className="flex items-center justify-center py-20 gap-3 text-base-content/60">
-                <span className="loading loading-spinner loading-md text-primary" />
-                <span className="text-sm font-medium">Cargando ajustes de plataforma…</span>
-            </div>
-        );
-    }
-
-    if (isError) {
-        return (
-            <div className="alert alert-error text-sm rounded-2xl shadow-xs" role="alert">
-                <AlertCircle size={18} />
-                <span>No se pudieron consultar los ajustes de plataforma. Verifica tus permisos de SAAS_OWNER.</span>
-            </div>
-        );
-    }
 
     return (
         <div className="space-y-6 w-full animate-fade-in">
@@ -127,11 +131,11 @@ export function SaasPlatformSettingsPage() {
                 <button
                     type="button"
                     onClick={handleSave}
-                    disabled={mutation.isPending}
+                    disabled={isSaving}
                     className="btn btn-primary gap-2 shadow-sm rounded-xl px-5"
                 >
                     <Save size={18} />
-                    {mutation.isPending ? 'Guardando…' : 'Guardar cambios'}
+                    {isSaving ? 'Guardando…' : 'Guardar cambios'}
                 </button>
             </div>
 
