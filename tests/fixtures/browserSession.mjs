@@ -4,6 +4,13 @@ export function authenticationFixture(reference = 'browser-fixture') {
     expiresAt: '2030-01-01T00:05:00Z', absoluteExpiresAt: '2030-01-01T08:00:00Z', idleSeconds: 1800 };
 }
 export async function mockAnonymousSession(page) {
+  await page.route('**/public/platform/config', route => route.fulfill({ json: {
+    platformMode: 'PUBLIC',
+    publicRegistrationEnabled: true,
+    publicLandingEnabled: true,
+    publicCatalogsEnabled: true,
+    brandName: 'Comerzia'
+  } }));
   await page.route('**/auth/csrf', route => route.fulfill({ json: { token: 'csrf-fixture' } }));
   await page.route('**/auth/refresh', route => route.fulfill({ status: 401, json: { code: 'session_expired' } }));
   await page.route('**/auth/logout', route => route.fulfill({ status: 204 }));
