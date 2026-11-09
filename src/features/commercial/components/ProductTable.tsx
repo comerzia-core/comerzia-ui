@@ -65,6 +65,7 @@ export const ProductTable = ({
 
   const { hasPermission, hasRole } = useAuthStore();
   const canManage = hasPermission('COM_CATALOG_MANAGE');
+  const canReadInactive = hasPermission('COM_PRODUCTS_READ_ALL');
   const canPrint = hasRole('OWNER') && hasPermission(PERMISSIONS.HARDWARE.PRINT_EXECUTE);
   const { error: toastError, success: toastSuccess } = useToast();
 
@@ -137,12 +138,12 @@ export const ProductTable = ({
 
   useEffect(() => {
     loadData();
-  }, [categoryId, segmentId, brandId, searchTerm, page, size, refreshKey, canManage]);
+  }, [categoryId, segmentId, brandId, searchTerm, page, size, refreshKey, canReadInactive]);
 
   const loadData = async (background = false) => {
     if (!background) setIsLoading(true);
     try {
-      const activeOnly = canManage ? false : undefined;
+      const activeOnly = canReadInactive ? false : undefined;
       const cleanSearch = searchTerm?.trim();
       const q = cleanSearch && cleanSearch.length >= 3 ? cleanSearch : undefined;
 

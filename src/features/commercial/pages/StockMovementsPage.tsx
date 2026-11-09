@@ -1,3 +1,4 @@
+import { InactiveProductNotice } from '../components/InactiveProductNotice';
 import { ProductVariantImage } from '../components/ProductVariantImage';
 import { isTransientRefreshFailure } from '../../realtime/utils/refreshErrors';
 import { useState, useEffect, useMemo } from 'react';
@@ -695,6 +696,7 @@ export const StockMovementsPage = () => {
       </div>
 
       {/* 3. CONTENIDO: PRODUCTO ESCANEADO O LISTADO INICIAL (PENDIENTES DE COSTO) */}
+      {productData && productData.status === false && <InactiveProductNotice />}
       {scannedVariant && productData ? (
         <div className="space-y-4 animate-slide-up">
           {/* Barra Contextual de la Variante Escaneada y Acciones */}

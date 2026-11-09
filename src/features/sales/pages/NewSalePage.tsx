@@ -1,3 +1,4 @@
+import { InactiveProductNotice } from '../../commercial/components/InactiveProductNotice';
 import { ProductVariantImage } from '../../commercial/components/ProductVariantImage';
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -130,6 +131,7 @@ export const NewSalePage = () => {
   const [isLoadingInit, setIsLoadingInit] = useState(true);
   const [initError, setInitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [inactiveSelection, setInactiveSelection] = useState(false);
 
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
 
@@ -263,6 +265,7 @@ export const NewSalePage = () => {
   };
 
   const handleProductSelect = (product: SalesProductResponse) => {
+    setInactiveSelection(product.status === false);
     const validPrices = product.activePrices?.filter(p => p.salePrice != null) || [];
     if (validPrices.length === 0) {
       toastError('Este producto no tiene precios activos configurados.');
@@ -459,6 +462,7 @@ export const NewSalePage = () => {
         {/* Tarjeta de Búsqueda */}
         {/* Componente Buscador Optimizado (Nombre, SKU, Barcode, Cámara) */}
         <div className="bg-base-100 p-4 sm:p-5 rounded-2xl border border-base-200 shadow-sm">
+          {inactiveSelection && <InactiveProductNotice />}
           <CommercialProductSearchBar
             onSearchBarcode={handleScanBarcode}
             onSelectSuggestion={handleSelectSuggestion}

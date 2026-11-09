@@ -133,6 +133,7 @@ export interface ScannerStockBranchResponse {
 }
 
 export interface ScannerVariantDetailResponse {
+  status: boolean;
   variantId: string;
   variantName: string;
   sku: string;
@@ -144,6 +145,7 @@ export interface ScannerVariantDetailResponse {
 }
 
 export interface ScannerSiblingVariantResponse {
+  status: boolean;
   variantId: string;
   variantName: string;
   sku: string;
@@ -161,6 +163,7 @@ export interface ScannerProductResponse {
 }
 
 export interface ProductVariantIdentityResponse {
+  status: boolean;
   variantId: string;
   productId: string;
   productName: string;

@@ -23,6 +23,7 @@ interface Props {
     canManage?: boolean;
     showStatusSwitch?: boolean;
     deleteMessage?: string;
+    statusChangeMessage?: (active: boolean) => string;
     entityName?: string;
     error?: string;
     placeholder?: string;
@@ -44,6 +45,7 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
     canManage = true,
     showStatusSwitch = true,
     deleteMessage,
+    statusChangeMessage,
     entityName = "Elemento",
     error,
     placeholder = "Buscar o crear...",
@@ -57,6 +59,8 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [isCreating, setIsCreating] = useState(false);
+    const [pendingStatus, setPendingStatus] = useState<{ id: string | number; name: string; active: boolean } | null>(null);
+    const [isChangingStatus, setIsChangingStatus] = useState(false);
     
     // Inline Edit State
     const [editOptionId, setEditOptionId] = useState<string | number | null>(null);
@@ -339,7 +343,12 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
                                                 >
                                                     <ComerziaSwitch 
                                                         checked={editOptionStatus} 
-                                                        onChange={() => setEditOptionStatus(!editOptionStatus)} 
+                                                        onChange={() => {
+                                                            if (statusChangeMessage) {
+                                                                setPendingStatus({ id: opt.value, name: editOptionLabel.trim(), active: !editOptionStatus });
+                                                                setIsOpen(false);
+                                                            } else setEditOptionStatus(!editOptionStatus);
+                                                        }}
                                                     />
                                                 </div>}
                                             </div>
@@ -424,6 +433,21 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
                 </div>, document.body
             )}
             
+            <ConfirmationModal isOpen={pendingStatus !== null}
+                title="Cambiar estado" variant="warning"
+                message={pendingStatus && statusChangeMessage ? statusChangeMessage(pendingStatus.active) : ''}
+                confirmText="Aplicar cambio" isLoading={isChangingStatus}
+                onClose={() => { if (!isChangingStatus) setPendingStatus(null); }}
+                onConfirm={async () => {
+                    if (!pendingStatus || !onUpdate || isChangingStatus) return;
+                    setIsChangingStatus(true);
+                    try {
+                        await onUpdate(pendingStatus.id, pendingStatus.name, pendingStatus.active);
+                        setPendingStatus(null);
+                    } catch {
+                        // El consumidor muestra el error y la confirmación permite reintentar.
+                    } finally { setIsChangingStatus(false); }
+                }} />
             <ConfirmationModal
                 isOpen={isDeletingId !== null}
                 onClose={() => setIsDeletingId(null)}
