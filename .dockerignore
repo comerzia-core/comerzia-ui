@@ -7,3 +7,13 @@ dist
 test-results
 playwright-report
 **/*.log
+.idea
+.run
+.vscode
+coverage
+artifacts
+backups
+.local-certs
+**/*.sql.gz
+**/*.aesgcm
+**/*.dpapi

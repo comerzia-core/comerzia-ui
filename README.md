@@ -1,4 +1,19 @@
-# React + TypeScript + Vite
+# Comerzia frontend
+
+El trabajo cotidiano se realiza en `work/daily-development`. Los cambios probados
+se integran en `develop`, se ensayan en Docker local y después se promueven a `main`
+para publicación autorizada. El merge a main puede activar Netlify.
+
+Para desarrollo, ejecutar `npm run dev`. Las variables públicas se cargan desde
+`.env.local` y el ejemplo disponible es `.env.example`. El backend se ejecuta desde
+IntelliJ o con `python scripts/run_local.py` dentro del repositorio backend.
+
+La guía completa y los comandos de respaldo/restauración se versionan en el
+repositorio backend `comerzia-core`, archivo `docs/development-and-release-workflow.md`.
+En el workspace actual su ruta relativa desde este repositorio es
+`../comerzia/docs/development-and-release-workflow.md`.
+
+## Referencia de la plantilla original
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
