@@ -176,15 +176,20 @@ export function useBarcodeScanner({ onScanSuccess, onScanError, formats = DEFAUL
         catch { /* El lector vuelve a comprobar la reproducción del video. */ }
         if (disposed) { stop(); return; }
         setIsLoading(false);
-        const optical = await initializeScannerOptics(track);
-        if (disposed) { stop(); return; }
-        setHasTorch(optical.available);
-        setIsTorchStateKnown(typeof optical.enabled === "boolean");
-        setIsTorchOn(optical.enabled === true);
-        torchRequestedRef.current = optical.enabled ?? true;
-        torchChangingRef.current = false;
-        setIsTorchChanging(false);
-        if (disposed) { stop(); return; }
+        // Un controlador que deje pendientes los ajustes ópticos no debe detener la lectura.
+        void initializeScannerOptics(track).then(optical => {
+          if (disposed || streamRef.current !== stream) return;
+          setHasTorch(optical.available);
+          setIsTorchStateKnown(typeof optical.enabled === "boolean");
+          setIsTorchOn(optical.enabled === true);
+          torchRequestedRef.current = optical.enabled ?? true;
+        }).catch(error => {
+          console.debug("Camera optical initialization unavailable:", error);
+        }).finally(() => {
+          if (disposed || streamRef.current !== stream) return;
+          torchChangingRef.current = false;
+          setIsTorchChanging(false);
+        });
 
         // Motor nativo acelerado por hardware (Chromium / Android NPU) para QR y barras curvados
         const nativeDetector = createNativeBarcodeDetector();

@@ -20,7 +20,7 @@ test.beforeEach(async ({ page }) => {
       if (scenario === "slow-enumeration") await new Promise(resolve => setTimeout(resolve, 1800));
       return devices();
     } });
-    if (scenario === "both-readers") window.BarcodeDetector = class {
+    if (scenario === "both-readers" || scenario === "pending-optics") window.BarcodeDetector = class {
       async detect() { window.cameraTest.nativeReads++; return []; }
     };
     Object.defineProperty(navigator.mediaDevices, "getUserMedia", { value: async constraints => {
@@ -52,6 +52,7 @@ test.beforeEach(async ({ page }) => {
       track.getCapabilities = () => ({ torch: supportsTorch, focusMode: ["continuous"], zoom: { min: 1, max: 4 } });
       track.getConstraints = () => structuredClone(currentConstraints);
       track.applyConstraints = async constraints => {
+        if (scenario === "pending-optics") return new Promise(() => {});
         if (track.readyState === "ended") throw new DOMException("The camera track has stopped.","AbortError");
         window.cameraTest.opticalConstraints.push(constraints);
         currentConstraints = structuredClone(constraints);
@@ -145,10 +146,10 @@ test("Camera and flashlight controls sit inside the image and toggle illuminatio
   await expect(page.getByRole("button", { name: "Apagar luz" })).toHaveAttribute("aria-pressed","true");
 });
 
-for (const [filename, expectedCode] of [["barcode7003000100006.json","7003000100006"],["label31x57.json","12345678"],["label30x20-qr.json","7003000100006"],["label32x12-qr.json","7003000100006"]]) {
-  test("A live camera frame from " + filename + " emits " + expectedCode + " once and releases the camera", async ({ page }) => {
-    const fixture = JSON.parse(readFileSync(new URL("../../../comerzia/build/label-validation/" + filename,import.meta.url),"utf8"));
-    const scenario = filename === "barcode7003000100006.json" ? "both-readers" : filename === "label32x12-qr.json" ? "unsupported-torch" : "";
+for (const [filename, expectedCode, scenarioOverride] of [["barcode7003000100006.json","7003000100006"],["label31x57.json","12345678"],["label30x20-qr.json","7003000100006"],["label32x12-qr.json","7003000100006"],["barcode7003000100006.json","7003000100006","pending-optics"]]) {
+  test("A live camera frame from " + filename + " emits " + expectedCode + " once and releases the camera" + (scenarioOverride ? " with pending optics" : ""), async ({ page }) => {
+    const fixture = JSON.parse(readFileSync(new URL("../fixtures/barcode-labels/" + filename,import.meta.url),"utf8"));
+    const scenario = scenarioOverride || (filename === "barcode7003000100006.json" ? "both-readers" : filename === "label32x12-qr.json" ? "unsupported-torch" : "");
     await page.goto("/tests/camera/index.html?scenario=" + scenario);
     await expectLiveVideo(page);
     await page.evaluate(fixture => {
@@ -170,7 +171,7 @@ for (const [filename, expectedCode] of [["barcode7003000100006.json","7003000100
     },fixture);
     await expect.poll(() => page.evaluate(() => document.body.dataset.scanned)).toBe(expectedCode);
     expect(await page.evaluate(() => document.body.dataset.scanCount)).toBe("1");
-    if (scenario === "both-readers") expect(await page.evaluate(() => window.cameraTest.nativeReads)).toBeGreaterThan(0);
+    if (scenario === "both-readers" || scenario === "pending-optics") expect(await page.evaluate(() => window.cameraTest.nativeReads)).toBeGreaterThan(0);
     expect(await page.evaluate(() => window.cameraTest.streams.every(stream =>
       stream.getTracks().every(track => track.readyState === "ended")))).toBe(true);
   });
