@@ -4,13 +4,21 @@ import { MailCheck, CheckCircle2, AlertTriangle, XCircle, ArrowRight, ShieldAler
 import { useEmailChangeConfirmation } from '../../security/hooks/useEmailChangeConfirmation';
 import { AuthStage } from '../components/AuthStage';
 import { PublicAction } from '../../../components/ui/PublicAction';
-export const EmailChangePage: React.FC = () => {
-  const { token, inspection, loading, confirmed, isConfirming, errorMessage, isSessionMismatch, isAuthenticated, logout, handleConfirm } = useEmailChangeConfirmation();
+import { BtnSave, BtnCancel } from '../../../components/ui/CrudButtons';
+import { usePlatformConfig } from '../../../hooks/usePlatformConfig';
+import { PublicLayout } from '../components/PublicLayout';
 
-  return (
-    <AuthStage>
-      <div className="public-login">
-        {/* State 1: No token provided */}
+export const EmailChangePage: React.FC = () => {
+  const { data: config } = usePlatformConfig();
+  const privateMode = config ? config.platformMode === 'PRIVATE' || !config.publicLandingEnabled : true;
+  const { token, inspection, loading, confirmed, isConfirming, errorMessage, isSessionMismatch, isAuthenticated, logout, handleConfirm } = useEmailChangeConfirmation();
+  const actionClass = privateMode ? 'btn btn-primary w-full' : 'public-action';
+  const backClass = privateMode ? 'btn btn-ghost w-full' : 'public-action public-action--back';
+
+  const content = (
+    <AuthStage privateMode={privateMode} brandName={config?.brandName}>
+      <div className={privateMode ? 'space-y-4' : 'public-login'}>
+        {/* Enlace sin token de confirmación. */}
         {!token && (
           <div className="space-y-4 text-center animate-fade-in">
             <div className="w-16 h-16 mx-auto bg-error/10 text-error rounded-full flex items-center justify-center">
@@ -21,14 +29,14 @@ export const EmailChangePage: React.FC = () => {
               No se proporcionó un token de cambio de correo. Si recibiste un correo, haz clic en el enlace completo.
             </p>
             <div className="pt-4">
-              <Link to="/login" className="public-action" style={{ width: '100%', textDecoration: 'none' }}>
+              <Link to="/login" className={actionClass} style={{ width: '100%', textDecoration: 'none' }}>
                 Ir a iniciar sesión <ArrowRight size={18} />
               </Link>
             </div>
           </div>
         )}
 
-        {/* State 2: Inspecting token */}
+        {/* Inspección del enlace. */}
         {token && loading && (
           <div className="space-y-4 py-8 text-center">
             <span className="loading loading-spinner loading-lg text-primary"></span>
@@ -38,7 +46,7 @@ export const EmailChangePage: React.FC = () => {
           </div>
         )}
 
-        {/* State 3: Confirmed successfully */}
+        {/* Cambio confirmado. */}
         {token && !loading && confirmed && (
           <div className="space-y-5 text-center animate-fade-in">
             <div className="w-16 h-16 mx-auto bg-success/15 text-success rounded-full flex items-center justify-center">
@@ -49,14 +57,14 @@ export const EmailChangePage: React.FC = () => {
               Tu correo de acceso ha sido actualizado exitosamente. Por seguridad, tus sesiones anteriores han sido revocadas.
             </p>
             <div className="pt-3">
-              <Link to="/login" className="public-action" style={{ width: '100%', textDecoration: 'none' }}>
+              <Link to="/login" className={actionClass} style={{ width: '100%', textDecoration: 'none' }}>
                 Iniciar sesión con tu nuevo correo <ArrowRight size={18} />
               </Link>
             </div>
           </div>
         )}
 
-        {/* State 4: Error / Invalid / Session Mismatch */}
+        {/* Enlace inválido o sesión de otra cuenta. */}
         {token && !loading && !confirmed && errorMessage && (
           <div className="space-y-4 text-center animate-fade-in">
             <div className="w-16 h-16 mx-auto bg-error/10 text-error rounded-full flex items-center justify-center">
@@ -73,15 +81,16 @@ export const EmailChangePage: React.FC = () => {
                 <p className="text-xs text-base-content/70">
                   Por seguridad, no puedes confirmar el cambio de correo de otra cuenta mientras tienes una sesión abierta diferente.
                 </p>
-                {isAuthenticated && (
-                  <button
+                {isAuthenticated && (privateMode ?
+                  <BtnCancel label="Cerrar sesión actual" onClick={() => void logout()} className="w-full" /> :
+                  <PublicAction
                     type="button"
                     onClick={() => void logout()}
                     className="public-action public-action--back"
                     style={{ width: '100%' }}
                   >
                     <LogOut size={16} /> Cerrar sesión actual
-                  </button>
+                  </PublicAction>
                 )}
               </div>
             ) : (
@@ -90,23 +99,23 @@ export const EmailChangePage: React.FC = () => {
               </p>
             )}
             <div className="pt-4 flex flex-col gap-3">
-              <Link to="/login" className="public-action" style={{ width: '100%', textDecoration: 'none' }}>
+              <Link to="/login" className={actionClass} style={{ width: '100%', textDecoration: 'none' }}>
                 Ir a iniciar sesión <ArrowRight size={18} />
               </Link>
-              <Link to="/" className="public-action public-action--back" style={{ width: '100%', textDecoration: 'none' }}>
+              <Link to="/" className={backClass} style={{ width: '100%', textDecoration: 'none' }}>
                 Volver al inicio
               </Link>
             </div>
           </div>
         )}
 
-        {/* State 5: Token valid, ready for user confirmation */}
+        {/* Enlace válido, pendiente de confirmación explícita. */}
         {token && !loading && !confirmed && !errorMessage && inspection?.valid && (
           <div className="space-y-5 text-center animate-fade-in">
             <div className="w-16 h-16 mx-auto bg-primary/10 text-primary rounded-full flex items-center justify-center">
               <MailCheck size={36} />
             </div>
-            <span className="public-eyebrow">CONFIRMACIÓN DE IDENTIDAD</span>
+            <span className={privateMode ? 'text-xs font-semibold text-primary tracking-wide' : 'public-eyebrow'}>CONFIRMACIÓN DE IDENTIDAD</span>
             <h1 className="text-2xl font-bold text-base-content">Confirmar nuevo correo</h1>
             <p className="text-sm text-base-content/70">
               Estás a punto de confirmar tu nueva dirección de correo de acceso:
@@ -128,7 +137,8 @@ export const EmailChangePage: React.FC = () => {
             </div>
 
             <div className="pt-2 flex flex-col gap-3">
-              <PublicAction
+              {privateMode ? <BtnSave label="Confirmar mi nuevo correo electrónico" onClick={handleConfirm}
+                isLoading={isConfirming} className="w-full" /> : <PublicAction
                 type="button"
                 onClick={handleConfirm}
                 busy={isConfirming}
@@ -136,8 +146,8 @@ export const EmailChangePage: React.FC = () => {
                 style={{ width: '100%' }}
               >
                 {isConfirming ? 'Confirmando nuevo correo…' : 'Confirmar mi nuevo correo electrónico'}
-              </PublicAction>
-              <Link to="/login" className="public-action public-action--back" style={{ width: '100%', textDecoration: 'none' }}>
+              </PublicAction>}
+              <Link to="/login" className={backClass} style={{ width: '100%', textDecoration: 'none' }}>
                 Volver al acceso
               </Link>
             </div>
@@ -146,4 +156,5 @@ export const EmailChangePage: React.FC = () => {
       </div>
     </AuthStage>
   );
+  return privateMode ? content : <PublicLayout>{content}</PublicLayout>;
 };

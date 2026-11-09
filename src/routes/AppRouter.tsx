@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { BrowserRouter, Route, Routes, Navigate } from 'react-router-dom';
 import { PublicLayout } from '../features/public/components/PublicLayout';
 import { LegacyPublicRedirect } from './LegacyPublicRedirect';
+import { LoginRoute } from './LoginRoute';
 import { LandingPage } from '../features/public/pages/LandingPage';
 import { PrivacyPolicyPage } from '../features/public/pages/PrivacyPolicyPage';
 import { TermsAndConditionsPage } from '../features/public/pages/TermsAndConditionsPage';
@@ -34,18 +35,20 @@ export function AppRouter() {
           {isPrivate ? (
             <>
               <Route path="/" element={<Navigate to="/login" replace />} />
-              <Route path="/login" element={<PrivateLoginPage />} />
+              <Route path="/login" element={<LoginRoute><PrivateLoginPage /></LoginRoute>} />
               <Route path="/register" element={<Navigate to="/login" replace />} />
               <Route path="/registro" element={<Navigate to="/login" replace />} />
             </>
           ) : (
             <Route element={<PublicLayout />}>
               <Route path="/" element={<LandingPage />} />
-              <Route path="/login" element={<LoginPage />} />
+              <Route path="/login" element={<LoginRoute><LoginPage /></LoginRoute>} />
               <Route path="/register" element={isRegEnabled ? <RegistrationPage /> : <Navigate to="/login" replace />} />
               <Route path="/registro" element={<LegacyPublicRedirect to="/register" />} />
             </Route>
           )}
+
+          <Route path="/change-email" element={<EmailChangePage />} />
 
           {/* Rutas públicas compartidas de identidad, recuperación y legal */}
           <Route element={<PublicLayout />}>
@@ -53,7 +56,6 @@ export function AppRouter() {
             <Route path="/terms-and-conditions" element={<TermsAndConditionsPage />} />
             <Route path="/password-reset" element={<PasswordResetPage />} />
             <Route path="/verify-email" element={<EmailVerificationPage />} />
-            <Route path="/change-email" element={<EmailChangePage />} />
             <Route path="/auth/google/result" element={<GoogleAuthResultPage />} />
             <Route path="/accept-invitation" element={<AcceptInvitationPage />} />
             <Route path="/recuperar-contrasena" element={<LegacyPublicRedirect to="/password-reset" />} />

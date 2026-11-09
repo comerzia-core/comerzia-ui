@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { Moon, Sun } from 'lucide-react';
 import { PublicAction } from '../../../components/ui/PublicAction';
@@ -9,7 +9,7 @@ import '../styles/legal.css';
 export function PublicBrand() {
   return <Link to="/" className="public-brand" aria-label="Comerzia, inicio"><img src="/shop_trim.png" alt="" width={32} height={32} />comerzia</Link>;
 }
-export function PublicLayout() {
+export function PublicLayout({ children }: { children?: ReactNode }) {
   const { theme, toggle } = usePublicAppearance();
   const location = useLocation();
   useEffect(() => {
@@ -24,7 +24,7 @@ export function PublicLayout() {
     <div className="public-theme-toggle"><PublicAction type="button" className="public-icon-button" onClick={toggle} aria-label={theme === 'light' ? 'Usar modo oscuro' : 'Usar modo claro'}>
       {theme === 'light' ? <Moon size={19} /> : <Sun size={19} />}
     </PublicAction></div>
-    <Outlet />
+    {children ?? <Outlet />}
     {!['/privacy-policy', '/terms-and-conditions'].includes(location.pathname) && <nav className="public-legal-links" aria-label="Documentos legales"><Link to="/privacy-policy">Política de privacidad</Link><Link to="/terms-and-conditions">Términos y condiciones</Link></nav>}
   </div>;
 }
