@@ -18,7 +18,7 @@ export function GoogleAuthResultPage() {
   const queryError = searchParams.get('error');
 
   const { data: platformConfig } = usePlatformConfig();
-  const isPrivate = platformConfig ? (platformConfig.platformMode === 'PRIVATE' || !platformConfig.publicLandingEnabled) : true;
+  const isPrivate = platformConfig ? (platformConfig.platformMode === 'PRIVATE') : true;
   const brandName = platformConfig?.brandName || 'Comerzia ERP';
 
   const [isLoading, setIsLoading] = useState(!queryError);

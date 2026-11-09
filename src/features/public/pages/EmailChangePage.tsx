@@ -6,11 +6,10 @@ import { AuthStage } from '../components/AuthStage';
 import { PublicAction } from '../../../components/ui/PublicAction';
 import { BtnSave, BtnCancel } from '../../../components/ui/CrudButtons';
 import { usePlatformConfig } from '../../../hooks/usePlatformConfig';
-import { PublicLayout } from '../components/PublicLayout';
 
 export const EmailChangePage: React.FC = () => {
   const { data: config } = usePlatformConfig();
-  const privateMode = config ? config.platformMode === 'PRIVATE' || !config.publicLandingEnabled : true;
+  const privateMode = config ? config.platformMode === 'PRIVATE' : true;
   const { token, inspection, loading, confirmed, isConfirming, errorMessage, isSessionMismatch, isAuthenticated, logout, handleConfirm } = useEmailChangeConfirmation();
   const actionClass = privateMode ? 'btn btn-primary w-full' : 'public-action';
   const backClass = privateMode ? 'btn btn-ghost w-full' : 'public-action public-action--back';
@@ -156,5 +155,5 @@ export const EmailChangePage: React.FC = () => {
       </div>
     </AuthStage>
   );
-  return privateMode ? content : <PublicLayout>{content}</PublicLayout>;
+  return content;
 };
