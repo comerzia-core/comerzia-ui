@@ -27,9 +27,9 @@ test('private homepage and legal routes use the corporate presentation',async({p
   await expect(page.getByRole('heading',{name:'Catálogo y variantes'})).toBeVisible();
   await page.screenshot({path:test.info().outputPath('private-landing.png'),fullPage:true});
   await page.goto('/privacy-policy');
-  await expect(page.getByRole('heading',{level:1})).toContainText('Instalación privada');
+  await expect(page.getByRole('heading',{level:1})).toHaveText('Política de Privacidad de Comerzia');
   await page.goto('/terms-and-conditions');
-  await expect(page.getByRole('heading',{level:1})).toContainText('Instalación privada');
+  await expect(page.getByRole('heading',{level:1})).toHaveText('Términos y Condiciones de Comerzia');
 });
 
 test('public mode keeps its commercial homepage and legal documents',async({page})=>{
