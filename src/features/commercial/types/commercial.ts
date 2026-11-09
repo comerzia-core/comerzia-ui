@@ -28,7 +28,7 @@ export interface ProductResponse {
   id: string;
   name: string;
   description?: string;
-  variantType: number;
+  variantType: string;
   variantName: string;
   status: boolean;
   brand: BrandResponse;
@@ -102,7 +102,7 @@ export interface CreateFullVariantRequest {
 export interface CreateFullProductRequest {
   name: string;
   description?: string;
-  variantType: number;
+  variantType: string;
   brandId: string;
   variants: CreateFullVariantRequest[];
 }

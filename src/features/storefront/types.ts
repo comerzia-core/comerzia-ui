@@ -8,7 +8,7 @@ export interface Catalog {
 export interface ProductCard { id: string; name: string; brand: string; imageUrl: string | null; fromPrice: number; variantCount: number }
 export interface SalePrice { id: string; name: string; equivalenceFactor: number; salePrice: number }
 export interface Variant { id: string; name: string; description: string | null; imageUrl: string | null; prices: SalePrice[] }
-export interface Product { id: string; name: string; description: string | null; brand: string; variants: Variant[]; variantPage: number; variantPages: number; variantCount: number }
+export interface Product { id: string; name: string; description: string | null; brand: string; variantTypeName: string; variants: Variant[]; variantPage: number; variantPages: number; variantCount: number }
 export interface Draft { revision: number; slug: string; title: string; description: string; template: Catalog['template']; whatsappCountry: string; whatsapp: string; showPaymentQr: boolean }
 export interface Administration { eligible: boolean; published: boolean; publicUrl: string | null; draft: Draft; templates: { code: Draft['template']; label: string; description: string }[] }
 export interface VariantSelection { id: string; productName: string; name: string; imageUrl: string | null; visible: boolean; active: boolean }

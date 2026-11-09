@@ -20,6 +20,8 @@ interface Props {
     onUpdate?: (id: string | number, newLabel: string, status: boolean) => Promise<void>;
     onDelete?: (id: string | number) => Promise<void>;
     canManage?: boolean;
+    showStatusSwitch?: boolean;
+    deleteMessage?: string;
     entityName?: string;
     error?: string;
     placeholder?: string;
@@ -39,6 +41,8 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
     onUpdate,
     onDelete,
     canManage = true,
+    showStatusSwitch = true,
+    deleteMessage,
     entityName = "Elemento",
     error,
     placeholder = "Buscar o crear...",
@@ -286,7 +290,7 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
                                                         if (e.key === 'Escape') setEditOptionId(null);
                                                     }}
                                                 />
-                                                <div 
+                                                {showStatusSwitch && <div
                                                     className="flex-shrink-0" 
                                                     onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
                                                     onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
@@ -295,7 +299,7 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
                                                         checked={editOptionStatus} 
                                                         onChange={() => setEditOptionStatus(!editOptionStatus)} 
                                                     />
-                                                </div>
+                                                </div>}
                                             </div>
                                             {onDelete && (
                                                 <BtnDelete 
@@ -383,7 +387,7 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
                 onClose={() => setIsDeletingId(null)}
                 onConfirm={handleConfirmDelete}
                 title={`Eliminar ${entityName}`}
-                message={`¿Estás seguro de eliminar este registro de ${entityName}? Si hay productos asociados a este registro, se perderán o desvincularán.`}
+                message={deleteMessage ?? `¿Estás seguro de eliminar este registro de ${entityName}? Si hay productos asociados a este registro, se perderán o desvincularán.`}
                 confirmText="Sí, eliminar"
             />
         </div>
