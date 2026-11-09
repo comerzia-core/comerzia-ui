@@ -165,7 +165,8 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
     const handleUpdate = async () => {
         if (!editOptionId || !onUpdate) return;
         const opt = options.find(o => o.value === editOptionId);
-        if (opt && (opt.label !== editOptionLabel.trim() || opt.status !== editOptionStatus) && editOptionLabel.trim() !== "") {
+        const statusChanged = showStatusSwitch && opt?.status !== editOptionStatus;
+        if (opt && (opt.label !== editOptionLabel.trim() || statusChanged) && editOptionLabel.trim() !== "") {
             try {
                 await onUpdate(editOptionId, editOptionLabel.trim(), editOptionStatus);
                 // If it was the selected one, update local search term

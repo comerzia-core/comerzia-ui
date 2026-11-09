@@ -40,13 +40,14 @@ test('create and rename inline without a status switch', async ({ page }) => {
 });
 
 test('referenced deletion displays a warning and preserves selection', async ({ page }) => {
-  await setup(page);
+  const state = await setup(page);
   await page.locator('input').first().click();
   await page.getByTitle('Editar tipo de variante').first().click({ force: true });
   await page.getByRole('button', { name: 'Eliminar tipo de variante', exact: true }).click();
   await page.getByRole('button', { name: 'Sí, eliminar', exact: true }).click();
   await expect(page.getByText(/Reasigna primero todos los productos/)).toBeVisible();
   await expect(page.locator('output')).toHaveText('used');
+  expect(state.writes.map(write => write.method)).toEqual(['DELETE']);
 });
 
 test('read-only catalog users can select but have no master mutation actions', async ({ page }) => {
