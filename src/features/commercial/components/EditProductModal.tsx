@@ -39,7 +39,7 @@ export const EditProductModal = ({ isOpen, onClose, onSuccess, product }: Props)
     } else {
       setShakeKey(0);
     }
-  }, [isOpen, product]);
+  }, [isOpen, product?.id, product?.name, product?.description, product?.variantType, product?.status]);
 
   const handleSubmit = async () => {
     if (!name.trim()) {

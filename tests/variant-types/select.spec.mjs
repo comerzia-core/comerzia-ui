@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-async function setup(page, readOnly = false) {
+async function setup(page, readOnly = false, edit = false) {
   const state = { writes: [], rows: [{ id: 'used', name: 'Color' }, { id: 'free', name: 'Material' }] };
   await page.route('**/api/tenant/variant-types**', async route => {
     const request = route.request();
@@ -17,8 +17,8 @@ async function setup(page, readOnly = false) {
     else state.rows = state.rows.map(row => row.id === id ? { ...row, name } : row);
     return route.fulfill({ json: { id: request.method() === 'POST' ? 'new' : id, name } });
   });
-  await page.goto('/tests/variant-types/index.html' + (readOnly ? '?readonly' : ''));
-  await expect(page.locator('input').first()).toHaveValue('Color');
+  await page.goto('/tests/variant-types/index.html' + (edit ? '?edit' : readOnly ? '?readonly' : ''));
+  await expect(page.getByPlaceholder('Buscar o crear...')).toHaveValue('Color');
   return state;
 }
 
@@ -37,6 +37,44 @@ test('create and rename inline without a status switch', async ({ page }) => {
   await edit.press('Enter');
   await expect.poll(() => state.writes.length).toBe(2);
   expect(state.writes.map(write => write.data)).toEqual([{ name: 'TEXTURA' }, { name: 'ACABADO' }]);
+});
+
+test('new type stays selected in edit modal through a background product refresh and is saved', async ({ page }) => {
+  await setup(page, false, true);
+  let saved;
+  await page.route('**/api/tenant/products/product', route => {
+    saved = route.request().postDataJSON();
+    return route.fulfill({ json: {} });
+  });
+  await page.getByLabel('Nombre del Producto').fill('Product edited');
+  const input = page.getByPlaceholder('Buscar o crear...');
+  await input.click();
+  await input.fill('Textura');
+  await page.getByText(/Crear.*TEXTURA/).click();
+  await expect(input).toHaveValue('TEXTURA');
+  await page.evaluate(() => window.dispatchEvent(new Event('fixture-product-refresh')));
+  await expect(input).toHaveValue('TEXTURA');
+  await expect(page.getByLabel('Nombre del Producto')).toHaveValue('PRODUCT EDITED');
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click();
+  await expect.poll(() => saved?.variantType).toBe('new');
+});
+
+test('long options escape modal clipping and remain scrollable and clickable', async ({ page }) => {
+  const state = await setup(page);
+  state.rows.push(...Array.from({ length: 40 }, (_, index) => ({ id: 'type-' + index, name: 'Type ' + index })));
+  await page.goto('/tests/variant-types/index.html?edit');
+  const input = page.getByPlaceholder('Buscar o crear...');
+  await expect(input).toHaveValue('Color');
+  await input.click();
+  await input.fill('Type');
+  const last = page.getByText('Type 39', { exact: true });
+  await last.scrollIntoViewIfNeeded();
+  expect(await last.evaluate(element => element.closest('[role="dialog"]') === null)).toBe(true);
+  const bounds = await last.boundingBox();
+  expect(bounds.y).toBeGreaterThanOrEqual(0);
+  expect(bounds.y + bounds.height).toBeLessThanOrEqual(page.viewportSize().height);
+  await last.click();
+  await expect(input).toHaveValue('Type 39');
 });
 
 test('referenced deletion displays a warning and preserves selection', async ({ page }) => {
