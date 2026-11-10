@@ -20,6 +20,9 @@ test.beforeEach(async ({ page }) => {
       if (scenario === "slow-enumeration") await new Promise(resolve => setTimeout(resolve, 1800));
       return devices();
     } });
+    if (scenario === "late-native") window.BarcodeDetector = class {
+      detect() { window.cameraTest.nativeReads++; return new Promise(resolve => { window.cameraTest.resolveNative = resolve; }); }
+    };
     if (scenario === "both-readers" || scenario === "pending-optics") window.BarcodeDetector = class {
       async detect() { window.cameraTest.nativeReads++; return []; }
     };
@@ -146,12 +149,15 @@ test("Camera and flashlight controls sit inside the image and toggle illuminatio
   await expect(page.getByRole("button", { name: "Apagar luz" })).toHaveAttribute("aria-pressed","true");
 });
 
-for (const [filename, expectedCode, scenarioOverride] of [["barcode7003000100006.json","7003000100006"],["label31x57.json","12345678"],["label30x20-qr.json","7003000100006"],["label32x12-qr.json","7003000100006"],["barcode7003000100006.json","7003000100006","pending-optics"]]) {
-  test("A live camera frame from " + filename + " emits " + expectedCode + " once and releases the camera" + (scenarioOverride ? " with pending optics" : ""), async ({ page }) => {
+for (const [filename, expectedCode, scenarioOverride] of [["barcode7003000100006.json","7003000100006"],["label31x57.json","12345678"],["label30x20-qr.json","7003000100006"],["label32x12-qr.json","7003000100006"],["barcode7003000100006.json","7003000100006","pending-optics"],["barcode7003000100006.json","7003000100006","late-native"]]) {
+  test("A live camera frame from " + filename + " emits " + expectedCode + " once and releases the camera" + (scenarioOverride ? " with " + scenarioOverride : ""), async ({ page }) => {
     const fixture = JSON.parse(readFileSync(new URL("../fixtures/barcode-labels/" + filename,import.meta.url),"utf8"));
     const scenario = scenarioOverride || (filename === "barcode7003000100006.json" ? "both-readers" : filename === "label32x12-qr.json" ? "unsupported-torch" : "");
     await page.goto("/tests/camera/index.html?scenario=" + scenario);
     await expectLiveVideo(page);
+    if (scenario === "late-native") {
+      await expect.poll(() => page.evaluate(() => window.cameraTest.nativeReads)).toBeGreaterThan(0);
+    }
     await page.evaluate(fixture => {
       const packed = Uint8Array.from(atob(fixture.bitmapBase64), char => char.charCodeAt(0));
       const canvas = document.createElement("canvas");
@@ -172,6 +178,11 @@ for (const [filename, expectedCode, scenarioOverride] of [["barcode7003000100006
     await expect.poll(() => page.evaluate(() => document.body.dataset.scanned)).toBe(expectedCode);
     expect(await page.evaluate(() => document.body.dataset.scanCount)).toBe("1");
     if (scenario === "both-readers" || scenario === "pending-optics") expect(await page.evaluate(() => window.cameraTest.nativeReads)).toBeGreaterThan(0);
+    if (scenario === "late-native") {
+      await page.evaluate(code => window.cameraTest.resolveNative([{ rawValue: code }]), expectedCode);
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      expect(await page.evaluate(() => document.body.dataset.scanCount)).toBe("1");
+    }
     expect(await page.evaluate(() => window.cameraTest.streams.every(stream =>
       stream.getTracks().every(track => track.readyState === "ended")))).toBe(true);
   });

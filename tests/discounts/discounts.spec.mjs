@@ -36,6 +36,29 @@ async function openCart(page, quantity = 1, discount = 0) {
   await expect(page.getByRole('heading', { name: 'Nueva Venta (Registro)' })).toBeVisible();
   await page.evaluate(({ quantity, discount }) => window.discountTest.seed(quantity, discount), { quantity, discount });
 }
+
+test('each scan adds one unit and increments an existing cart line once', async ({ page }) => {
+  await mockApi(page);
+  await page.route('**/api/tenant/sales-catalog/barcodes/CODE', route => route.fulfill({ json: {
+    variantId: 'variant', sku: 'SKU', name: 'Producto prueba', nameVariant: 'Unidad', status: true,
+    availableStock: 100, activePrices: [{ id: 'active', priceTypeId: 'price', priceTypeName: 'Unidad', salePrice: 35, discountPrice: 30, equivalenceFactor: 1 }],
+  } }));
+  await openCart(page, 2);
+  const input = page.getByPlaceholder('Buscar producto por nombre o escanear...');
+  await input.fill('CODE');
+  await input.dispatchEvent('keydown', { key: 'Enter', repeat: true });
+  expect(await page.evaluate(() => window.discountTest.snapshot().items[0].quantity)).toBe(2);
+  await input.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.discountTest.snapshot().items[0].quantity)).toBe(3);
+  await input.fill('CODE');
+  await input.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.discountTest.snapshot().items[0].quantity)).toBe(4);
+  expect(await page.evaluate(() => window.discountTest.snapshot().items.length)).toBe(1);
+  await page.evaluate(() => window.discountTest.quantity(0));
+  await input.fill('CODE');
+  await input.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.discountTest.snapshot().items[0]?.quantity)).toBe(1);
+});
 async function discountInput(page) {
   await page.getByText('+ Agregar descuento', { exact: true }).filter({ visible: true }).click();
   return page.getByRole('textbox', { name: 'Descuento de Producto prueba' }).filter({ visible: true });

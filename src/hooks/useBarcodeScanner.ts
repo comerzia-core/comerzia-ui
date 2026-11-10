@@ -199,6 +199,8 @@ export function useBarcodeScanner({ onScanSuccess, onScanError, formats = DEFAUL
             if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && !video.paused) {
               try {
                 const barcodes = await nativeDetector.detect(video);
+                // ZXing puede haber terminado mientras esperábamos al lector nativo.
+                if (disposed || !nativeScanning) return;
                 if (barcodes.length > 0 && barcodes[0].rawValue?.trim()) {
                   const code = barcodes[0].rawValue.trim();
                   nativeScanning = false;

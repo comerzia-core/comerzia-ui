@@ -121,6 +121,8 @@ export const CommercialProductSearchBar = ({
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
+      e.preventDefault();
+      if (e.repeat) return;
       const trimmed = term.trim();
       if (!trimmed) return;
       setIsOpen(false);
