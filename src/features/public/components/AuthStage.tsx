@@ -1,3 +1,4 @@
+import { usePlatformConfig } from '../../../hooks/usePlatformConfig';
 import { useEffect, type ReactNode } from 'react';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { PublicAction } from '../../../components/ui/PublicAction';
@@ -7,8 +8,11 @@ import { PublicBrand } from './PublicLayout';
 import { LockKeyhole } from 'lucide-react';
 import { BtnRefresh } from '../../../components/ui/CrudButtons';
 
-export function AuthStage({ children, privateMode = false, brandName = 'Comerzia ERP' }:
+export function AuthStage({ children, privateMode: privateOverride, brandName: brandOverride }:
   { children: ReactNode; privateMode?: boolean; brandName?: string }) {
+  const { data: config } = usePlatformConfig();
+  const privateMode = privateOverride ?? config?.platformMode === 'PRIVATE';
+  const brandName = brandOverride ?? config?.brandName ?? 'Comerzia ERP';
   const status = useAuthStore(state => state.status);
   const initialize = useAuthStore(state => state.initializeSession);
   useEffect(() => { if (status === 'initializing') void initialize(); }, [status, initialize]);

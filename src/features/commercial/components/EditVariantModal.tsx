@@ -119,7 +119,8 @@ export const EditVariantModal = ({ isOpen, onClose, onSuccess, productId, produc
             finalImageUrl = await uploadFile(
               selectedImage.file,
               STORAGE_FOLDERS.PRODUCTS,
-              `${cleanProd}-${cleanVar}-${Date.now()}`
+              `${cleanProd}-${cleanVar}-${Date.now()}`,
+              true
             );
           } catch (uploadErr) {
             console.error("Error al subir imagen:", uploadErr);
@@ -234,7 +235,7 @@ export const EditVariantModal = ({ isOpen, onClose, onSuccess, productId, produc
           </div>
         )}
 
-        <ComerziaSingleImageUploader
+        <ComerziaSingleImageUploader cropAspect="portrait"
           enableImageZoom
           label="Imagen de la Variante (Opcional)"
           value={selectedImage}

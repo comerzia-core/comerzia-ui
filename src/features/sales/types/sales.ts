@@ -10,6 +10,7 @@ export interface ActivePriceResponse {
 }
 
 export interface SalesProductResponse {
+  status: boolean;
   variantId: string;
   sku: string;
   name: string;
@@ -20,6 +21,7 @@ export interface SalesProductResponse {
 }
 
 export interface SalesCatalogSuggestionResponse {
+  status: boolean;
   variantId: string;
   label: string;
   barCode?: string;

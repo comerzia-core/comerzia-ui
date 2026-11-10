@@ -17,13 +17,13 @@ export function StorefrontPage({ preview = false }: { preview?: boolean }) {
   const state = useStorefront(slug, preview);
   const appearance = useStoreTheme();
   const { catalog, products, filters, filter, search, setSearch, cart } = state;
-  const [product, setProduct] = useState<string | null>(null);
+  const { product, openProduct: setProduct } = state;
   const [showCart, setShowCart] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const data = catalog.data;
   const money = (value: number) => new Intl.NumberFormat('es-BO', { style: 'currency', currency: data?.currency || 'BOB' }).format(value);
   useEffect(() => { if (data && !preview) document.title = data.title + ' · Catálogo'; }, [data, preview]);
-  useEffect(() => { if (products.isError) { setProduct(null); setShowCart(false); } }, [products.isError]);
+  useEffect(() => { if (products.isError) { setProduct(null); setShowCart(false); } }, [products.isError, setProduct]);
   if (catalog.isError || !data) return <main className="storefront" data-store-theme="light"><div className="store-state" role={catalog.isError ? 'alert' : 'status'}>{catalog.isError ? 'Este catálogo no está disponible.' : 'Preparando el catálogo…'}</div></main>;
   const segments = data.facets.segments.filter(item => !filters.category || item.parentId === filters.category);
   const brands = data.facets.brands.filter(item => !filters.segment || item.parentId === filters.segment);
@@ -39,7 +39,7 @@ export function StorefrontPage({ preview = false }: { preview?: boolean }) {
     </section>
     <section className="store-products" id="store-products" aria-busy={products.isFetching}><div className="store-results"><span>{products.data?.totalElements ?? 0} productos</span>{products.isFetching && <span role="status">Actualizando…</span>}</div>
       {products.isError ? <div className="store-empty" role="alert"><h2>{catalogError(products.error)}</h2><StoreButton onClick={() => { void catalog.refetch(); void products.refetch(); }}>Intentar nuevamente <ArrowRight size={16} /></StoreButton></div> : products.isPending ? <div className="store-grid" aria-label="Cargando productos">{Array.from({ length: 8 }, (_, i) => <div key={i} className="store-skeleton" />)}</div> : !products.data?.content.length ? <div className="store-empty"><Search size={34} strokeWidth={1} /><h2>No encontramos productos.</h2><p>Prueba otra categoría o búsqueda.</p></div> : <div className="store-grid">{products.data.content.map((item, index) => <StoreButton className="store-product-card" key={item.id} onClick={() => setProduct(item.id)} aria-label={'Ver ' + item.name}>
-        <div className="store-product-photo"><StoreImage url={item.imageUrl} alt={item.name} eager={index < 4} /><span className="store-card-open"><ArrowUpRight size={19} /></span>{item.variantCount > 1 && <small>{item.variantCount} variantes</small>}</div><div className="store-card-info"><span>{item.brand}</span><h2>{item.name}</h2><p>{item.variantCount > 1 && <small>Desde </small>}{money(item.fromPrice)}</p></div>
+        <div className="store-product-photo"><StoreImage preset="productPortrait" url={item.imageUrl} alt={item.name} eager={index < 4} /><span className="store-card-open"><ArrowUpRight size={19} /></span>{item.variantCount > 1 && <small>{item.variantCount} variantes</small>}</div><div className="store-card-info"><span>{item.brand}</span><h2>{item.name}</h2><p>{item.variantCount > 1 && <small>Desde </small>}{money(item.fromPrice)}</p></div>
       </StoreButton>)}</div>}
       {products.data && products.data.totalPages > 1 && <nav className="store-pagination" aria-label="Páginas de productos"><StoreButton aria-label="Página anterior" disabled={filters.page === 0 || products.isFetching} onClick={() => filter('page', filters.page - 1)}><ArrowLeft size={18} /></StoreButton><span>{filters.page + 1} / {products.data.totalPages}</span><StoreButton aria-label="Página siguiente" disabled={filters.page + 1 >= products.data.totalPages || products.isFetching} onClick={() => filter('page', filters.page + 1)}><ArrowRight size={18} /></StoreButton></nav>}
     </section>
@@ -48,7 +48,7 @@ export function StorefrontPage({ preview = false }: { preview?: boolean }) {
       <div className="store-price-inputs"><ComerziaInput type="number" label="Precio desde" min="0" step="0.01" value={filters.minPrice} onChange={event => filter('minPrice', event.target.value)} /><ComerziaInput type="number" label="Hasta" min="0" step="0.01" value={filters.maxPrice} onChange={event => filter('maxPrice', event.target.value)} /></div>
       <fieldset className="store-options"><legend>Ordenar</legend><div><StoreButton className="store-choice" aria-pressed={filters.order === 'name'} onClick={() => filter('order', 'name')}>Nombre</StoreButton><StoreButton className="store-choice" aria-pressed={filters.order === 'price-asc'} onClick={() => filter('order', 'price-asc')}>Menor precio</StoreButton><StoreButton className="store-choice" aria-pressed={filters.order === 'price-desc'} onClick={() => filter('order', 'price-desc')}>Mayor precio</StoreButton></div></fieldset>
       <StoreButton className="store-primary" onClick={() => setShowFilters(false)}>Ver productos <Check size={17} /></StoreButton></div></StoreDialog>}
-    {product && <ProductDialog key={product} slug={slug} preview={preview} id={product} currency={data.currency} onClose={() => setProduct(null)} onAdd={state.add} />}
+    {product && <ProductDialog key={product} slug={slug} preview={preview} id={product} currency={data.currency} selection={state.selection} onSelection={state.selectProduct} onClose={() => setProduct(null)} onAdd={state.add} />}
     {showCart && <CartDialog slug={slug} preview={preview} currency={data.currency} lines={cart} quantity={state.quantity} onClose={() => setShowCart(false)} />}
     {count > 0 && !showCart && <StoreButton className="store-mobile-cart store-primary" onClick={() => setShowCart(true)}><ShoppingBag size={18} /><span>Ver mi pedido</span><b>{money(cart.reduce((total, item) => total + Math.round(item.unitPrice * 100) * item.quantity, 0) / 100)}</b><ChevronDown size={16} /></StoreButton>}
   </main>;

@@ -121,6 +121,8 @@ export const CommercialProductSearchBar = ({
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
+      e.preventDefault();
+      if (e.repeat) return;
       const trimmed = term.trim();
       if (!trimmed) return;
       setIsOpen(false);
@@ -185,7 +187,7 @@ export const CommercialProductSearchBar = ({
           <ul className="p-2 space-y-1">
             {suggestions.map((sug, index) => (
               <ComerziaImageSearchOption key={sug.variantId} number={index + 1} label={sug.label}
-                description={sug.description} onSelect={() => handleSelectSuggestion(sug)}
+                inactive={sug.status === false} description={sug.description} onSelect={() => handleSelectSuggestion(sug)}
                 image={<ProductVariantImage src={sug.imageUrl} alt={sug.label} className="w-full h-full" />} />
             ))}
           </ul>

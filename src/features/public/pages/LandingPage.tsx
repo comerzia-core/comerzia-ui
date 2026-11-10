@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { ArrowDown, ArrowRight, ChartNoAxesCombined, Palette, Store } from 'lucide-react';
 import { BackgroundMedia } from '../components/BackgroundMedia';
 import { PublicBrand } from '../components/PublicLayout';
@@ -7,9 +7,7 @@ import { ProductDemo } from '../components/ProductDemo';
 import { PlanSection } from '../components/PlanSection';
 
 export function LandingPage() {
-  const standalone = matchMedia('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
   useEffect(() => { document.title = 'Comerzia · Tu negocio, en tus manos'; }, []);
-  if (standalone) return <Navigate to="/app" replace />;
   return <>
     <section className="public-hero"><BackgroundMedia />
       <header className="public-nav public-container"><PublicBrand /><nav aria-label="Navegación principal"><a href="#producto">Cómo funciona</a><a href="#planes">Planes</a><Link className="public-nav-login" to="/app">Ir a mi empresa <ArrowUp /></Link></nav></header>

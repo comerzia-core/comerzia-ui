@@ -5,12 +5,19 @@ const metadata = { slug: 'tienda-demo', canonicalSlug: 'tienda-demo', title: 'Ca
   facets: { categories: [{ id: 'cat1', name: 'Bebidas', parentId: null }, { id: 'cat2', name: 'Hogar', parentId: null }],
     segments: [{ id: 'seg1', name: 'Cafés', parentId: 'cat1' }, { id: 'seg2', name: 'Objetos', parentId: 'cat2' }], brands: [{ id: 'br1', name: 'Origen', parentId: 'seg1' }] } };
 const cards = Array.from({ length: 8 }, (_, index) => ({ id: 'prod' + (index + 1), name: ['Café de altura', 'Taza de cerámica', 'Café del valle', 'Vaso de vidrio', 'Cacao de origen', 'Taza pequeña', 'Infusión natural', 'Café en grano'][index], brand: 'Origen', imageUrl: null, fromPrice: 35 + index * 5, variantCount: index === 0 ? 2 : 1 }));
-const detail = { id: 'prod1', name: 'Café de altura', brand: 'Origen', description: 'Un café para disfrutar despacio.', variants: [
-  { id: 'var1', name: 'Molido', description: 'Tueste medio.', imageUrl: null, prices: [{ id: 'price1', name: 'Unidad', equivalenceFactor: 1, salePrice: 35 }, { id: 'price2', name: 'Caja', equivalenceFactor: 6, salePrice: 180 }] },
+const detail = { id: 'prod1', name: 'Café de altura', brand: 'Origen', description: 'Un café para disfrutar despacio.', variantPage: 0, variantPages: 1, variantCount: 2, variants: [
+  { id: 'var1', name: 'Molido', description: 'Tueste medio.', imageUrl: 'https://res.cloudinary.com/test-cloud/image/upload/v123/product.webp', prices: [{ id: 'price1', name: 'Unidad', equivalenceFactor: 1, salePrice: 35 }, { id: 'price2', name: 'Caja', equivalenceFactor: 6, salePrice: 180 }] },
   { id: 'var2', name: 'En grano', description: '', imageUrl: null, prices: [{ id: 'price1', name: 'Unidad', equivalenceFactor: 1, salePrice: 40 }] },
 ] };
 async function mock(page, overrides = {}) {
   const calls = [];
+  await page.route('https://res.cloudinary.com/test-cloud/image/upload/**', route => route.fulfill({
+    contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1200"><rect width="900" height="1200" fill="blue"/></svg>',
+  }));
+  await page.route('**/api/public/platform/config', route => route.fulfill({ json: {
+    platformMode: 'PUBLIC', brandName: 'Fixture ERP', publicCatalogsEnabled: true,
+    publicLandingEnabled: true, publicRegistrationEnabled: false,
+  } }));
   await page.route('**/api/public/catalogs/**', async route => {
     const request = route.request(), url = new URL(request.url());
     expect(request.headers().authorization).toBeUndefined();
@@ -21,7 +28,12 @@ async function mock(page, overrides = {}) {
       const lines = body.items.map(item => ({ ...item, name: 'Café de altura · Molido', presentation: item.priceTypeId === 'price2' ? 'Caja' : 'Unidad', unitPrice: item.priceTypeId === 'price2' ? 180 : 36, total: (item.priceTypeId === 'price2' ? 180 : 36) * item.quantity }));
       return route.fulfill({ json: { items: lines, total: lines.reduce((sum, line) => sum + line.total, 0), currency: 'BOB', whatsapp: '59170000000', paymentQrUrl: null, message: 'Hola, confirmo mi pedido de Café de altura. Total estimado actualizado.' } });
     }
-    if (url.pathname.endsWith('/products/prod1')) return route.fulfill({ json: detail });
+    if (url.pathname.endsWith('/products/prod1')) {
+      const variantPage = Number(url.searchParams.get('variantPage') || 0);
+      return route.fulfill({ json: overrides.paginated ? { ...detail, variantPage, variantPages: 2, variantCount: 3,
+        variants: variantPage === 1 ? [{ ...detail.variants[0], id: 'varLate', name: 'Variante posterior' }] : detail.variants } : detail });
+    }
+    if (url.pathname.includes('/products/')) return route.fulfill({ status: 404, json: { code: 'catalog_unavailable' } });
     if (url.pathname.endsWith('/products')) {
       const filtered = cards.filter(item => !url.searchParams.get('q') || item.name.toLowerCase().includes(url.searchParams.get('q').toLowerCase()));
       return route.fulfill({ json: { content: filtered, number: 0, size: 24, totalPages: 1, totalElements: filtered.length } });
@@ -36,6 +48,8 @@ test('public catalog loads independently of ERP session, filters cascade and rem
   const calls = await mock(page);
   await page.goto('/c/tienda-demo'); await expect(page.getByRole('heading', { name: 'Casa Origen.' })).toBeVisible();
   await expect(page.locator('.store-product-card')).toHaveCount(8);
+  const photo = await page.locator('.store-product-photo').first().boundingBox();
+  expect(photo.width / photo.height).toBeCloseTo(3 / 4, 2);
   await page.getByRole('button', { name: 'Bebidas', exact: true }).click();
   await page.getByRole('button', { name: 'Cafés', exact: true }).click();
   await expect.poll(() => calls.some(call => call.params.category === 'cat1' && call.params.segment === 'seg1')).toBeTruthy();
@@ -56,6 +70,15 @@ test('variant and presentation selection builds a cart and backend review drives
   const calls = await mock(page); await page.goto('/c/tienda-demo');
   await page.getByRole('button', { name: 'Ver Café de altura', exact: true }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
+  const photo = page.locator('.store-detail-image img');
+  await expect(photo).toBeVisible();
+  await expect(photo).toHaveCSS('object-fit', 'cover');
+  await expect(photo).toHaveAttribute('srcset', /w_300,h_400.*300w.*w_600,h_800.*600w.*w_900,h_1200.*900w/);
+  const frame = await page.locator('.store-detail-image').boundingBox();
+  const photoBounds = await photo.boundingBox();
+  expect(photoBounds.width).toBeCloseTo(frame.width, 0);
+  expect(photoBounds.height).toBeCloseTo(frame.height, 0);
+
   await page.getByRole('button', { name: /^Caja/ }).click();
   await page.getByRole('button', { name: 'Aumentar cantidad', exact: true }).click();
   await page.getByRole('button', { name: 'Agregar', exact: true }).click();
@@ -88,6 +111,8 @@ for (const template of ['STUDIO', 'BOUTIQUE', 'MENU']) test('template ' + templa
   await page.reload();
   await expect(page.locator('.storefront')).toHaveAttribute('data-store-theme', 'dark');
   await expect(page.locator('.store-product-card')).toHaveCount(8);
+  const photo = await page.locator('.store-product-photo').first().boundingBox();
+  expect(photo.width / photo.height).toBeCloseTo(3 / 4, 2);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBeTruthy();
   await page.screenshot({ path: 'test-results/storefront/' + info.project.name + '-' + template + '-dark.png', fullPage: true });
 });
@@ -96,4 +121,64 @@ test('unavailable catalog displays a neutral state without private account detai
   await mock(page, { unavailable: true }); await page.goto('/c/tienda-demo');
   await expect(page.getByRole('alert')).toHaveText('Este catálogo no está disponible.');
   await expect(page.locator('.store-product-card')).toHaveCount(0);
+});
+
+test('shared catalog URL restores filters, product, variant and browser history', async ({ page, context }) => {
+  const calls = await mock(page);
+  await page.goto('/c/tienda-demo');
+  await page.getByRole('button', { name: 'Bebidas', exact: true }).click();
+  await page.getByRole('button', { name: 'Cafés', exact: true }).click();
+  await page.getByRole('button', { name: 'Filtros', exact: true }).click();
+  await page.getByRole('button', { name: 'Origen', exact: true }).click();
+  await page.getByRole('button', { name: 'Mayor precio', exact: true }).click();
+  await page.getByRole('button', { name: 'Ver productos', exact: true }).click();
+  await page.getByRole('searchbox', { name: 'Buscar productos' }).fill('Café');
+  await expect.poll(() => new URL(page.url()).searchParams.get('q')).toBe('Café');
+  await page.getByRole('button', { name: 'Ver Café de altura', exact: true }).click();
+  await expect.poll(() => new URL(page.url()).searchParams.get('variant')).toBe('var1');
+  await page.getByRole('button', { name: 'En grano', exact: true }).click();
+  await expect.poll(() => new URL(page.url()).searchParams.get('variant')).toBe('var2');
+  const shared = page.url();
+  expect(Object.fromEntries(new URL(shared).searchParams)).toMatchObject({ category: 'cat1', segment: 'seg1', brand: 'br1', order: 'price-desc', q: 'Café', product: 'prod1', variant: 'var2', priceType: 'price1' });
+  await page.goBack();
+  await expect(page.getByRole('button', { name: 'Molido', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await page.goForward();
+  await expect(page.getByRole('button', { name: 'En grano', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'En grano', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  expect(calls.some(call => call.params.category === 'cat1' && call.params.segment === 'seg1' && call.params.brand === 'br1' && call.params.q === 'Café')).toBeTruthy();
+  const recipient = await context.newPage();
+  await mock(recipient);
+  await recipient.goto(shared);
+  await expect(recipient.getByRole('button', { name: 'En grano', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await recipient.getByRole('button', { name: 'Cerrar', exact: true }).click();
+  await expect(recipient.getByRole('dialog')).toHaveCount(0);
+  expect(new URL(recipient.url()).searchParams.has('product')).toBe(false);
+  await expect(recipient.getByRole('button', { name: 'Bebidas', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(recipient.getByRole('button', { name: 'Cafés', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await recipient.close();
+});
+
+test('shared variant page and presentation restore without selecting another page', async ({ page }) => {
+  await mock(page, { paginated: true });
+  await page.goto('/c/tienda-demo?product=prod1&variant=varLate&variantPage=1&priceType=price2');
+  await expect(page.locator('.store-variant-name')).toContainText('Variante posterior');
+  await expect(page.getByRole('button', { name: 'Caja × 6 u.' })).toHaveAttribute('aria-pressed', 'true');
+  await page.reload();
+  await expect(page.locator('.store-variant-name')).toContainText('Variante posterior');
+  expect(new URL(page.url()).searchParams.get('variantPage')).toBe('1');
+  await page.getByRole('button', { name: 'Variantes anteriores' }).click();
+  await expect.poll(() => new URL(page.url()).searchParams.get('variant')).toBe('var1');
+  expect(new URL(page.url()).searchParams.has('variantPage')).toBe(false);
+});
+
+test('unavailable shared selection offers a valid variant or a closable product error', async ({ page }) => {
+  await mock(page);
+  await page.goto('/c/tienda-demo?product=prod1&variant=removedVariant');
+  await expect(page.getByRole('status').filter({ hasText: 'La variante del enlace ya no está disponible' })).toBeVisible();
+  await expect.poll(() => new URL(page.url()).searchParams.get('variant')).toBe('var1');
+  await page.goto('/c/tienda-demo?product=removedProduct');
+  await expect(page.getByRole('alert')).toContainText('ya no está disponible');
+  await page.getByRole('button', { name: 'Cerrar', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Ver Café de altura', exact: true })).toBeVisible();
 });

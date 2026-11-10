@@ -6,7 +6,7 @@ async function setup(page, allowedPermissions = permissions, eligible = true, ta
   const calls = [];
   const draft = { revision: 0, slug: 'mi-tienda', title: 'Mi tienda', description: '', template: 'STUDIO', whatsappCountry: 'BO', whatsapp: '70000000', showPaymentQr: false };
   const state = { eligible, published: false, publicUrl: null, draft, templates: [{ code: 'STUDIO', label: 'Estudio', description: 'Limpio y esencial' }, { code: 'BOUTIQUE', label: 'Boutique', description: 'Imágenes protagonistas' }] };
-  const variants = [{ id: 'VariantOpaque', productName: 'Café', name: 'Molido', imageUrl: null, visible: false, active: true }, { id: 'SecondOpaque', productName: 'Café', name: 'Grano', imageUrl: null, visible: false, active: true }];
+  const variants = [{ id: 'VariantOpaque', productName: 'Café', name: 'Molido', imageUrl: null, visible: false, active: true, hasActivePrice: false }, { id: 'SecondOpaque', productName: 'Café', name: 'Grano', imageUrl: null, visible: false, active: true, hasActivePrice: true }];
   const summary = () => { const visible = variants.filter(item => item.visible).length; return { total: 2, visible, enabled: visible === 0 ? false : visible === 2 ? true : null }; };
   await page.route('**/api/**', async route => {
     const request = route.request(), url = new URL(request.url()), path = url.pathname;
@@ -50,6 +50,7 @@ test('owner configures country, customizes variants and confirms publication', a
   if(info.project.name === 'mobile') await page.locator('article').filter({ hasText: 'Café' }).click();
   else await page.getByRole('row').filter({ hasText: 'Café' }).click({ button: 'right' });
   await page.getByRole('button', { name: 'Personalizar variantes', exact: true }).click();
+  await expect(page.getByText('Sin precio vigente mayor que cero. Configura un precio para mostrarla en el catálogo.', { exact: true })).toHaveCount(1);
   await page.getByRole('switch', { name: 'Publicar variante Molido' }).click();
   await expect.poll(() => calls.some(call => call.action === 'variant')).toBeTruthy();
   await page.getByRole('button', { name: 'Cerrar ventana', exact: true }).click();

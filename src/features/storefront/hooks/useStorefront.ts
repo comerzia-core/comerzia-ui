@@ -1,21 +1,16 @@
 import { useEffect, useState } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { catalogService } from '../services/catalogService';
-import type { CartLine, Filters, SalePrice, Variant } from '../types';
+import type { CartLine, SalePrice, Variant } from '../types';
 
-const emptyFilters: Filters = { q: '', category: '', segment: '', brand: '', minPrice: '', maxPrice: '', order: 'name', page: 0 };
+import { useStorefrontNavigation } from './useStorefrontNavigation';
 
 export function useStorefront(slug: string, preview: boolean) {
-  const [filters, setFilters] = useState<Filters>(emptyFilters);
-  const [search, setSearch] = useState('');
+  const navigation = useStorefrontNavigation();
+  const { filters } = navigation;
   const [cart, setCart] = useState<CartLine[]>([]);
   const catalog = useQuery({ queryKey: ['storefront', preview ? 'preview' : slug], queryFn: ({ signal }) => catalogService.catalog(slug, preview, signal), staleTime: 0, retry: false });
   const canonicalSlug = catalog.data?.canonicalSlug || slug;
-  useEffect(() => { setFilters(emptyFilters); setSearch(''); }, [slug, preview]);
-  useEffect(() => {
-    const timeout = setTimeout(() => setFilters(current => current.q === search ? current : { ...current, q: search, page: 0 }), 300);
-    return () => clearTimeout(timeout);
-  }, [search]);
   const products = useQuery({ queryKey: ['storefront-products', preview ? 'preview' : slug, filters], enabled: !!catalog.data,
     queryFn: ({ signal }) => catalogService.products(slug, preview, filters, signal), placeholderData: keepPreviousData, retry: false });
   useEffect(() => {
@@ -44,7 +39,5 @@ export function useStorefront(slug: string, preview: boolean) {
     if (line.variantId !== variant || line.priceTypeId !== type) return [line];
     return value <= 0 ? [] : [{ ...line, quantity: Math.min(999, Math.floor(value)) }];
   }));
-  const filter = (key: keyof Filters, value: string | number) => setFilters(current => ({ ...current, [key]: value, ...(key === 'page' ? {} : { page: 0 }),
-    ...(key === 'category' ? { segment: '', brand: '' } : key === 'segment' ? { brand: '' } : {}) }));
-  return { catalog, products, filters, filter, search, setSearch, cart, add, quantity, canonicalSlug };
+  return { catalog, products, ...navigation, cart, add, quantity, canonicalSlug };
 }
