@@ -11,7 +11,7 @@ export interface Variant { id: string; name: string; description: string | null;
 export interface Product { id: string; name: string; description: string | null; brand: string; variantTypeName: string; variants: Variant[]; variantPage: number; variantPages: number; variantCount: number }
 export interface Draft { revision: number; slug: string; title: string; description: string; template: Catalog['template']; whatsappCountry: string; whatsapp: string; showPaymentQr: boolean }
 export interface Administration { eligible: boolean; published: boolean; publicUrl: string | null; draft: Draft; templates: { code: Draft['template']; label: string; description: string }[] }
-export interface VariantSelection { id: string; productName: string; name: string; imageUrl: string | null; visible: boolean; active: boolean }
+export interface VariantSelection { id: string; productName: string; name: string; imageUrl: string | null; visible: boolean; active: boolean; hasActivePrice: boolean }
 export interface CartLine { variantId: string; priceTypeId: string; name: string; presentation: string; quantity: number; unitPrice: number; imageUrl: string | null }
 export interface CheckoutLine { variantId: string; priceTypeId: string; name: string; presentation: string; quantity: number; unitPrice: number; total: number }
 export interface Checkout { items: CheckoutLine[]; total: number; currency: string; whatsapp: string; paymentQrUrl: string | null; message: string }
