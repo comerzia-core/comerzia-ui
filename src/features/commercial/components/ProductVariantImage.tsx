@@ -1,4 +1,7 @@
+import type { ComponentProps } from 'react';
 import { ComerziaZoomableImage } from '../../../components/ui/ComerziaZoomableImage';
 
-/** Solo las fotos de variantes incorporan ampliación; los perfiles mantienen su presentación. */
-export const ProductVariantImage = ComerziaZoomableImage;
+/** Miniatura completa; el visor conserva su versión ampliada independiente. */
+export function ProductVariantImage(props: ComponentProps<typeof ComerziaZoomableImage>) {
+  return <ComerziaZoomableImage preset="thumbnailFit" fit="contain" {...props} />;
+}

@@ -87,6 +87,10 @@ test('el navegador comparte descargas simultáneas y reutiliza caché; una nueva
   await expect(page.getByRole('dialog').locator('img')).toBeVisible();
   await page.keyboard.press('Escape');
   expect((await (await request.get('http://127.0.0.1:5189/stats')).json())['/product.svg']).toBe(1);
+  await page.reload();
+  await expect(page.getByTestId('list').locator('img').first()).toBeVisible();
+  await expect.poll(() => page.getByTestId('list').locator('img').first().evaluate(image => image.complete)).toBeTruthy();
+  expect((await (await request.get('http://127.0.0.1:5189/stats')).json())['/product.svg']).toBe(1);
   await page.getByRole('button', { name: 'Nueva versión', exact: true }).click();
   await expect.poll(async () => (await (await request.get('http://127.0.0.1:5189/stats')).json())['/version2.svg']).toBe(1);
 });
@@ -256,3 +260,11 @@ async function drag(page, project, from, to) {
     await page.mouse.up();
   }
 }
+
+test('variant thumbnail preserves complete image and avoids automatic subject zoom', async ({ page }) => {
+  await page.goto(base);
+  await expect(page.getByTestId('list').locator('img').first()).toHaveCSS('object-fit', 'contain');
+  const transformed = await page.evaluate(() => window.imageTest.optimize('https://res.cloudinary.com/test/image/upload/v123/product.webp', 'thumbnailFit'));
+  expect(transformed).toContain('/c_limit,w_120,h_120,f_auto,q_auto/v123/');
+  expect(transformed).not.toContain('c_thumb');
+});
