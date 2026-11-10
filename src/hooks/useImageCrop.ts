@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
 
-const RATIO = 3 / 4;
 export type CropCorner = 'nw' | 'ne' | 'sw' | 'se';
 interface Crop { x: number; y: number; width: number; height: number }
 interface Gesture { pointerId: number; x: number; y: number; crop: Crop; corner?: CropCorner }
 const clamp = (value: number, maximum: number) => Math.max(0, Math.min(value, maximum));
 
-export function useImageCrop(file: File, onComplete: (file: File | null) => void) {
+export function useImageCrop(file: File, onComplete: (file: File | null) => void, aspect: 'portrait' | 'square' = 'portrait') {
+  const ratio = aspect === 'square' ? 1 : 3 / 4;
   const imageRef = useRef<HTMLImageElement>(null);
   const gesture = useRef<Gesture | null>(null);
   const [source, setSource] = useState('');
@@ -19,8 +19,8 @@ export function useImageCrop(file: File, onComplete: (file: File | null) => void
     const url = URL.createObjectURL(file);
     const photo = new Image();
     photo.onload = () => {
-      const width = Math.min(photo.naturalWidth, photo.naturalHeight * RATIO);
-      const height = width / RATIO;
+      const width = Math.min(photo.naturalWidth, photo.naturalHeight * ratio);
+      const height = width / ratio;
       setImage(photo);
       setCrop({ x: (photo.naturalWidth - width) / 2, y: (photo.naturalHeight - height) / 2, width, height });
     };
@@ -32,7 +32,7 @@ export function useImageCrop(file: File, onComplete: (file: File | null) => void
       photo.onerror = null;
       URL.revokeObjectURL(url);
     };
-  }, [file]);
+  }, [file, ratio]);
 
   const resize = (original: Crop, corner: CropCorner, requestedWidth: number): Crop => {
     if (!image) return original;
@@ -41,14 +41,14 @@ export function useImageCrop(file: File, onComplete: (file: File | null) => void
     const anchorX = left ? original.x + original.width : original.x;
     const anchorY = top ? original.y + original.height : original.y;
     const maximum = Math.min(left ? anchorX : image.naturalWidth - anchorX,
-      (top ? anchorY : image.naturalHeight - anchorY) * RATIO);
+      (top ? anchorY : image.naturalHeight - anchorY) * ratio);
     // Mantener espacio para arrastrar el centro incluso en pantallas pequeñas.
     const displayedWidth = imageRef.current?.getBoundingClientRect().width || image.naturalWidth;
     const minimum = Math.min(maximum, Math.max(
-      Math.min(image.naturalWidth, image.naturalHeight * RATIO) / 10,
+      Math.min(image.naturalWidth, image.naturalHeight * ratio) / 10,
       image.naturalWidth * 72 / displayedWidth));
     const width = Math.max(minimum, Math.min(requestedWidth, maximum));
-    const height = width / RATIO;
+    const height = width / ratio;
     return { x: left ? anchorX - width : anchorX, y: top ? anchorY - height : anchorY, width, height };
   };
 
@@ -70,7 +70,7 @@ export function useImageCrop(file: File, onComplete: (file: File | null) => void
     if (current.corner) {
       const horizontal = current.corner.endsWith('w') ? -dx : dx;
       const vertical = current.corner.startsWith('n') ? -dy : dy;
-      setCrop(resize(current.crop, current.corner, current.crop.width + (horizontal + vertical * RATIO) / 2));
+      setCrop(resize(current.crop, current.corner, current.crop.width + (horizontal + vertical * ratio) / 2));
     } else {
       setCrop({ ...current.crop, x: clamp(current.crop.x + dx, image.naturalWidth - current.crop.width),
         y: clamp(current.crop.y + dy, image.naturalHeight - current.crop.height) });
@@ -91,7 +91,7 @@ export function useImageCrop(file: File, onComplete: (file: File | null) => void
     if (!image || saving) return;
     const canvas = document.createElement('canvas');
     canvas.width = 900;
-    canvas.height = 1200;
+    canvas.height = aspect === 'square' ? 900 : 1200;
     const context = canvas.getContext('2d');
     if (!context) { setError('No se pudo preparar la imagen. Intenta nuevamente.'); return; }
     context.drawImage(image, crop.x, crop.y, crop.width, crop.height, 0, 0, canvas.width, canvas.height);
@@ -106,5 +106,5 @@ export function useImageCrop(file: File, onComplete: (file: File | null) => void
     }, 'image/png');
   };
 
-  return { imageRef, source, image, crop, error, saving, start, move, end, nudge, grow, save };
+  return { imageRef, source, image, crop, ratio, error, saving, start, move, end, nudge, grow, save };
 }

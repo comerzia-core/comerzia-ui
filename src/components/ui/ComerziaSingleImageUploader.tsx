@@ -21,7 +21,7 @@ interface Props {
   compact?: boolean;
   helperText?: string;
   enableImageZoom?: boolean;
-  cropPortrait?: boolean;
+  cropAspect?: 'portrait' | 'square';
 }
 
 export const ComerziaSingleImageUploader = ({
@@ -32,7 +32,7 @@ export const ComerziaSingleImageUploader = ({
   shakeKey,
   compact = false,
   helperText,
-  cropPortrait = false,
+  cropAspect,
   enableImageZoom = false
 }: Props) => {
   const [cropFile, setCropFile] = useState<File | null>(null);
@@ -59,7 +59,7 @@ export const ComerziaSingleImageUploader = ({
 
       // Reiniciar permite volver a elegir la misma foto después de cancelar.
       e.target.value = '';
-      if (cropPortrait) { setCropFile(file); return; }
+      if (cropAspect) { setCropFile(file); return; }
       await applyFile(file);
     }
     // Reset inputs
@@ -95,7 +95,7 @@ export const ComerziaSingleImageUploader = ({
 
   return (
     <div className={`space-y-2 ${shakeKey ? 'animate-shake' : ''}`}>
-      {cropFile && <ComerziaImageCropper file={cropFile} onComplete={file => {
+      {cropFile && <ComerziaImageCropper file={cropFile} aspect={cropAspect} onComplete={file => {
         setCropFile(null);
         if (file) void applyFile(file);
       }} />}

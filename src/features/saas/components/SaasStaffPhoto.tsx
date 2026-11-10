@@ -12,7 +12,7 @@ export function SaasStaffPhoto({ id, imageUrl }: { id: string; imageUrl: string 
     await platformService.post('/saas/team/members/' + encodeURIComponent(id) + '/photo', body);
   });
   const remove = usePlatformAction(() => platformService.delete('/saas/team/members/' + encodeURIComponent(id) + '/photo'));
-  return <div className="space-y-3 mb-5"><ComerziaSingleImageUploader label="Foto del colaborador" compact enableImageZoom={false}
+  return <div className="space-y-3 mb-5"><ComerziaSingleImageUploader cropAspect="square" label="Foto del colaborador" compact enableImageZoom={false}
     value={selected ?? (imageUrl ? { preview: imageUrl } : null)} onChange={value => {
       if (save.isPending || remove.isPending) return;
       if (value === null && !selected && imageUrl) remove.mutate(undefined); else setSelected(value);

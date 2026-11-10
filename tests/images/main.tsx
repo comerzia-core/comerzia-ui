@@ -25,7 +25,7 @@ function CropHarness() {
   const [result, setResult] = useState('');
   const [changes, setChanges] = useState(0);
   const [pixel, setPixel] = useState('');
-  return <ToastProvider><ComerziaSingleImageUploader cropPortrait label="Foto de producto" onChange={async value => {
+  return <ToastProvider><ComerziaSingleImageUploader cropAspect={new URLSearchParams(location.search).get('aspect') === 'square' ? 'square' : 'portrait'} label="Foto de producto" onChange={async value => {
     if (!value?.file) return;
     const bitmap = await createImageBitmap(value.file);
     setResult(`${bitmap.width}x${bitmap.height}`);

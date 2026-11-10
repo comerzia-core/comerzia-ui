@@ -758,7 +758,7 @@ export const BulkUploadModal = ({ isOpen, onClose, onSuccess }: Props) => {
                           {/* 2. Carga / Captura de Foto (Solo si falta) */}
                           {item.missingImage ? (
                             <div className="bg-base-200/40 rounded-xl p-3 border border-base-300/80 shadow-2xs">
-                              <ComerziaSingleImageUploader cropPortrait
+                              <ComerziaSingleImageUploader cropAspect="portrait"
                                 enableImageZoom
                                 label="Foto de la Variante"
                                 value={data.image}

@@ -235,7 +235,7 @@ export const EditVariantModal = ({ isOpen, onClose, onSuccess, productId, produc
           </div>
         )}
 
-        <ComerziaSingleImageUploader cropPortrait
+        <ComerziaSingleImageUploader cropAspect="portrait"
           enableImageZoom
           label="Imagen de la Variante (Opcional)"
           value={selectedImage}
