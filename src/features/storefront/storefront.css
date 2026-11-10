@@ -19,3 +19,7 @@
 /* Encuadre uniforme de productos en todas las plantillas. */
 .storefront .store-product-photo{aspect-ratio:3/4}
 .store-product-photo .store-image img{object-fit:cover}
+
+/* El detalle ocupa su marco manteniendo el formato vertical en escritorio y móvil. */
+.storefront .store-detail-image{aspect-ratio:3/4;padding:0;max-height:none;overflow:hidden}
+.store-detail-image .store-image img{object-fit:cover}

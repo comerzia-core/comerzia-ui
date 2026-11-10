@@ -6,11 +6,14 @@ const metadata = { slug: 'tienda-demo', canonicalSlug: 'tienda-demo', title: 'Ca
     segments: [{ id: 'seg1', name: 'Cafés', parentId: 'cat1' }, { id: 'seg2', name: 'Objetos', parentId: 'cat2' }], brands: [{ id: 'br1', name: 'Origen', parentId: 'seg1' }] } };
 const cards = Array.from({ length: 8 }, (_, index) => ({ id: 'prod' + (index + 1), name: ['Café de altura', 'Taza de cerámica', 'Café del valle', 'Vaso de vidrio', 'Cacao de origen', 'Taza pequeña', 'Infusión natural', 'Café en grano'][index], brand: 'Origen', imageUrl: null, fromPrice: 35 + index * 5, variantCount: index === 0 ? 2 : 1 }));
 const detail = { id: 'prod1', name: 'Café de altura', brand: 'Origen', description: 'Un café para disfrutar despacio.', variants: [
-  { id: 'var1', name: 'Molido', description: 'Tueste medio.', imageUrl: null, prices: [{ id: 'price1', name: 'Unidad', equivalenceFactor: 1, salePrice: 35 }, { id: 'price2', name: 'Caja', equivalenceFactor: 6, salePrice: 180 }] },
+  { id: 'var1', name: 'Molido', description: 'Tueste medio.', imageUrl: 'https://res.cloudinary.com/test-cloud/image/upload/v123/product.webp', prices: [{ id: 'price1', name: 'Unidad', equivalenceFactor: 1, salePrice: 35 }, { id: 'price2', name: 'Caja', equivalenceFactor: 6, salePrice: 180 }] },
   { id: 'var2', name: 'En grano', description: '', imageUrl: null, prices: [{ id: 'price1', name: 'Unidad', equivalenceFactor: 1, salePrice: 40 }] },
 ] };
 async function mock(page, overrides = {}) {
   const calls = [];
+  await page.route('https://res.cloudinary.com/test-cloud/image/upload/**', route => route.fulfill({
+    contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1200"><rect width="900" height="1200" fill="blue"/></svg>',
+  }));
   await page.route('**/api/public/platform/config', route => route.fulfill({ json: {
     platformMode: 'PUBLIC', brandName: 'Fixture ERP', publicCatalogsEnabled: true,
     publicLandingEnabled: true, publicRegistrationEnabled: false,
@@ -62,6 +65,15 @@ test('variant and presentation selection builds a cart and backend review drives
   const calls = await mock(page); await page.goto('/c/tienda-demo');
   await page.getByRole('button', { name: 'Ver Café de altura', exact: true }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
+  const photo = page.locator('.store-detail-image img');
+  await expect(photo).toBeVisible();
+  await expect(photo).toHaveCSS('object-fit', 'cover');
+  await expect(photo).toHaveAttribute('srcset', /w_300,h_400.*300w.*w_600,h_800.*600w.*w_900,h_1200.*900w/);
+  const frame = await page.locator('.store-detail-image').boundingBox();
+  const photoBounds = await photo.boundingBox();
+  expect(photoBounds.width).toBeCloseTo(frame.width, 0);
+  expect(photoBounds.height).toBeCloseTo(frame.height, 0);
+
   await page.getByRole('button', { name: /^Caja/ }).click();
   await page.getByRole('button', { name: 'Aumentar cantidad', exact: true }).click();
   await page.getByRole('button', { name: 'Agregar', exact: true }).click();
