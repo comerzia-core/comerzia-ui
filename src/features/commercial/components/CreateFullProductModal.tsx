@@ -279,7 +279,8 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
               finalImageUrl = await uploadFile(
                 imgItem.file,
                 STORAGE_FOLDERS.PRODUCTS,
-                `${cleanProductName}-${cleanVariantName}-${Date.now()}`
+                `${cleanProductName}-${cleanVariantName}-${Date.now()}`,
+              true
               );
             } catch (uploadErr) {
               console.error("Error al subir imagen de variante:", uploadErr);
@@ -598,7 +599,7 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
 
                   {/* Imagen de la variante */}
                   <div className="md:col-span-1">
-                    <ComerziaSingleImageUploader
+                    <ComerziaSingleImageUploader cropPortrait
                       enableImageZoom
                       label="Imagen Variante"
                       value={variantImages[index]}

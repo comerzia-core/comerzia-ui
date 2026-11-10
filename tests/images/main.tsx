@@ -21,11 +21,24 @@ api.defaults.baseURL = `${window.location.origin}/api`;
 useAuthStore.setState({ isSessionReady: true, isAuthenticated: true });
 const imageUrl = 'http://127.0.0.1:5189/product.svg';
 
+function CropHarness() {
+  const [result, setResult] = useState('');
+  const [changes, setChanges] = useState(0);
+  return <ToastProvider><ComerziaSingleImageUploader cropPortrait label="Foto de producto" onChange={async value => {
+    if (!value?.file) return;
+    const bitmap = await createImageBitmap(value.file);
+    setResult(`${bitmap.width}x${bitmap.height}`);
+    setChanges(count => count + 1);
+    bitmap.close();
+  }} /><output>{result}</output><span data-testid="crop-changes">{changes}</span></ToastProvider>;
+}
+
 function App() {
   const [count, setCount] = useState(2);
   const [selected, setSelected] = useState(0);
   const [saleOpen, setSaleOpen] = useState(true);
   const view = new URLSearchParams(location.search).get('view');
+  if (view === 'crop') return <CropHarness />;
   if (view === 'uploader') return <ToastProvider>
     <ComerziaSingleImageUploader enableImageZoom value={{ preview: imageUrl }} label="Foto variante" onChange={() => setSelected(value => value + 1)} />
     <ComerziaSingleImageUploader value={{ preview: imageUrl }} label="Perfil" onChange={() => setSelected(value => value + 1)} />

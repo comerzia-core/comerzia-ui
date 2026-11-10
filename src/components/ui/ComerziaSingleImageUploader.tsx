@@ -1,4 +1,5 @@
-import { useRef } from "react";
+import { ComerziaImageCropper } from './ComerziaImageCropper';
+import { useRef, useState } from "react";
 import { ImagePlus, FileImage, AlertCircle, Camera } from "lucide-react";
 import { MAX_FILE_SIZE_BYTES, MAX_FILE_SIZE_MB, ALLOWED_IMAGE_TYPES } from "../../config/storage";
 import { useToast } from "../../context/ToastContext";
@@ -20,6 +21,7 @@ interface Props {
   compact?: boolean;
   helperText?: string;
   enableImageZoom?: boolean;
+  cropPortrait?: boolean;
 }
 
 export const ComerziaSingleImageUploader = ({
@@ -30,8 +32,10 @@ export const ComerziaSingleImageUploader = ({
   shakeKey,
   compact = false,
   helperText,
+  cropPortrait = false,
   enableImageZoom = false
 }: Props) => {
+  const [cropFile, setCropFile] = useState<File | null>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const { error: toastError } = useToast();
@@ -53,24 +57,26 @@ export const ComerziaSingleImageUploader = ({
         return;
       }
 
-      // 3. Optimización en el cliente antes de la subida (150 - 300 KB, máx 1600px)
-      const optimizedFile = await compressImageFile(file);
-
-      // 4. Validar que cumpla con el límite de backend (5MB)
-      if (optimizedFile.size > MAX_FILE_SIZE_BYTES) {
-        toastError(`La imagen supera el límite de ${MAX_FILE_SIZE_MB}MB.`);
-        return;
-      }
-
-      // Crear objeto local con preview
-      onChange({
-        file: optimizedFile,
-        preview: URL.createObjectURL(optimizedFile)
-      });
+      // Reiniciar permite volver a elegir la misma foto después de cancelar.
+      e.target.value = '';
+      if (cropPortrait) { setCropFile(file); return; }
+      await applyFile(file);
     }
     // Reset inputs
     if (galleryInputRef.current) galleryInputRef.current.value = "";
     if (cameraInputRef.current) cameraInputRef.current.value = "";
+  };
+
+  const applyFile = async (file: File) => {
+    const optimizedFile = await compressImageFile(file);
+    if (optimizedFile.size > MAX_FILE_SIZE_BYTES) {
+      toastError(`La imagen supera el límite de ${MAX_FILE_SIZE_MB}MB.`);
+      return;
+    }
+    onChange({
+      file: optimizedFile,
+      preview: URL.createObjectURL(optimizedFile)
+    });
   };
 
   const handleRemove = () => {
@@ -89,6 +95,10 @@ export const ComerziaSingleImageUploader = ({
 
   return (
     <div className={`space-y-2 ${shakeKey ? 'animate-shake' : ''}`}>
+      {cropFile && <ComerziaImageCropper file={cropFile} onComplete={file => {
+        setCropFile(null);
+        if (file) void applyFile(file);
+      }} />}
       {label && (
         <label className="label py-1">
           <span className="label-text font-medium flex items-center gap-2 text-sm text-base-content/80">

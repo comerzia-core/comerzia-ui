@@ -8,7 +8,8 @@ interface UploadResponse {
 export const uploadFile = async (
   file: File,
   folder: string,
-  customName?: string
+  customName?: string,
+  productPortrait = false
 ): Promise<string> => {
   // Optimización previa al envío: Acondicionar la imagen en el cliente (150 - 300 KB, máx 1600px)
   const fileToUpload = await compressImageFile(file);
@@ -31,6 +32,7 @@ export const uploadFile = async (
   const { data } = await api.post<UploadResponse>('/shared/storage/upload', formData, {
     params: {
       folder,
+      productPortrait,
       ...(sanitizedCustomName ? { customName: sanitizedCustomName } : {})
     },
     headers: { 'Content-Type': 'multipart/form-data' }

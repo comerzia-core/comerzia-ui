@@ -8,6 +8,7 @@
 // ============================================================================
 
 export const CLOUDINARY_PRESETS = {
+  productPortrait: 'c_fill,w_600,h_800,g_auto,f_auto,q_auto',
   /**
    * Thumbnail (120x120px): Recorte inteligente enfocado automáticamente (g_auto).
    * Peso promedio: 8 - 15 KB.

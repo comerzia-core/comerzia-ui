@@ -169,3 +169,42 @@ test('se puede ampliar la foto en formularios de variantes sin modificarla ni am
   await expect(page.locator('output')).toHaveText('0');
   await expect(page.getByRole('button', { name: 'Ampliar imagen: Perfil', exact: true })).toHaveCount(0);
 });
+
+
+test('product photos crop horizontal, vertical and square sources and allow cancellation', async ({ page }) => {
+  await page.goto(`${base}?view=crop`);
+  const input = page.locator('input[type=file]').first();
+  let changes = 0;
+  for (const [width, height] of [[1600, 900], [900, 1600], [1200, 1200]]) {
+    const data = await page.evaluate(([width, height]) => {
+      const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
+      const context = canvas.getContext('2d');
+      context.fillStyle = 'red'; context.fillRect(0, 0, width, height);
+      context.fillStyle = 'blue'; context.fillRect(width / 2, 0, width / 2, height);
+      return canvas.toDataURL('image/png').split(',')[1];
+    }, [width, height]);
+    const file = { name: 'photo.png', mimeType: 'image/png', buffer: Buffer.from(data, 'base64') };
+    await input.setInputFiles(file);
+    const dialog = page.getByRole('dialog', { name: 'Encuadrar foto del producto' });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Usar foto' })).toBeEnabled();
+    await dialog.getByRole('slider', { name: 'Zoom', exact: true }).fill('2');
+    await dialog.getByRole('slider', { name: 'Posición horizontal', exact: true }).fill('100');
+    await expect.poll(() => dialog.locator('canvas').evaluate(canvas => Array.from(canvas.getContext('2d').getImageData(450, 600, 1, 1).data).slice(0, 3))).toEqual([0, 0, 255]);
+    await dialog.getByRole('button', { name: 'Usar foto' }).click();
+    await expect(page.locator('output')).toHaveText('900x1200');
+    await expect(page.getByTestId('crop-changes')).toHaveText(String(++changes));
+    await expect(dialog).toHaveCount(0);
+    await input.setInputFiles(file);
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole('button', { name: 'Cancelar' }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(page.locator('output')).toHaveText('900x1200');
+    await expect(page.getByTestId('crop-changes')).toHaveText(String(changes));
+  }
+  await input.setInputFiles({ name: 'broken.jpg', mimeType: 'image/jpeg', buffer: Buffer.from('invalid') });
+  await expect(page.getByRole('alert')).toContainText('No se pudo abrir');
+  await expect(page.getByRole('button', { name: 'Usar foto' })).toBeDisabled();
+  await page.getByRole('button', { name: 'Cancelar' }).click();
+  await expect(page.getByTestId('crop-changes')).toHaveText(String(changes));
+});

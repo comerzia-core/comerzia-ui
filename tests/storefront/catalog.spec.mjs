@@ -11,6 +11,10 @@ const detail = { id: 'prod1', name: 'Café de altura', brand: 'Origen', descript
 ] };
 async function mock(page, overrides = {}) {
   const calls = [];
+  await page.route('**/api/public/platform/config', route => route.fulfill({ json: {
+    platformMode: 'PUBLIC', brandName: 'Fixture ERP', publicCatalogsEnabled: true,
+    publicLandingEnabled: true, publicRegistrationEnabled: false,
+  } }));
   await page.route('**/api/public/catalogs/**', async route => {
     const request = route.request(), url = new URL(request.url());
     expect(request.headers().authorization).toBeUndefined();
@@ -36,6 +40,8 @@ test('public catalog loads independently of ERP session, filters cascade and rem
   const calls = await mock(page);
   await page.goto('/c/tienda-demo'); await expect(page.getByRole('heading', { name: 'Casa Origen.' })).toBeVisible();
   await expect(page.locator('.store-product-card')).toHaveCount(8);
+  const photo = await page.locator('.store-product-photo').first().boundingBox();
+  expect(photo.width / photo.height).toBeCloseTo(3 / 4, 2);
   await page.getByRole('button', { name: 'Bebidas', exact: true }).click();
   await page.getByRole('button', { name: 'Cafés', exact: true }).click();
   await expect.poll(() => calls.some(call => call.params.category === 'cat1' && call.params.segment === 'seg1')).toBeTruthy();
@@ -88,6 +94,8 @@ for (const template of ['STUDIO', 'BOUTIQUE', 'MENU']) test('template ' + templa
   await page.reload();
   await expect(page.locator('.storefront')).toHaveAttribute('data-store-theme', 'dark');
   await expect(page.locator('.store-product-card')).toHaveCount(8);
+  const photo = await page.locator('.store-product-photo').first().boundingBox();
+  expect(photo.width / photo.height).toBeCloseTo(3 / 4, 2);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBeTruthy();
   await page.screenshot({ path: 'test-results/storefront/' + info.project.name + '-' + template + '-dark.png', fullPage: true });
 });
