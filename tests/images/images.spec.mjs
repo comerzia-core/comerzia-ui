@@ -171,7 +171,7 @@ test('se puede ampliar la foto en formularios de variantes sin modificarla ni am
 });
 
 
-test('product photos crop horizontal, vertical and square sources and allow cancellation', async ({ page }) => {
+test('product photos crop horizontal, vertical and square sources and allow cancellation', async ({ page }, info) => {
   await page.goto(`${base}?view=crop`);
   const input = page.locator('input[type=file]').first();
   let changes = 0;
@@ -187,13 +187,38 @@ test('product photos crop horizontal, vertical and square sources and allow canc
     await input.setInputFiles(file);
     const dialog = page.getByRole('dialog', { name: 'Encuadrar foto del producto' });
     await expect(dialog).toBeVisible();
-    await expect(dialog.getByRole('button', { name: 'Usar foto' })).toBeEnabled();
-    await dialog.getByRole('slider', { name: 'Zoom', exact: true }).fill('2');
-    await dialog.getByRole('slider', { name: 'Posición horizontal', exact: true }).fill('100');
-    await expect.poll(() => dialog.locator('canvas').evaluate(canvas => Array.from(canvas.getContext('2d').getImageData(450, 600, 1, 1).data).slice(0, 3))).toEqual([0, 0, 255]);
-    await dialog.getByRole('button', { name: 'Usar foto' }).click();
+    await expect(dialog.getByRole('button', { name: 'Guardar foto' })).toBeEnabled();
+    await expect(dialog.getByRole('img', { name: 'Foto original del producto' })).toBeVisible();
+    await expect(dialog.locator('input[type=range]')).toHaveCount(0);
+    await expect(dialog.getByTestId('crop-grid').locator('div')).toHaveCount(4);
+    const frame = dialog.getByRole('group', { name: 'Área de recorte' });
+    const initial = await frame.boundingBox();
+    const handle = await dialog.getByRole('slider', { name: 'Redimensionar desde esquina inferior derecha' }).boundingBox();
+    await drag(page, info.project.name, { x: handle.x + handle.width / 2, y: handle.y + handle.height / 2 },
+      { x: handle.x + handle.width / 2 - initial.width * 0.45, y: handle.y + handle.height / 2 - initial.height * 0.45 });
+    const smaller = await frame.boundingBox();
+    expect(smaller.width).toBeLessThan(initial.width * 0.7);
+    expect(smaller.width / smaller.height).toBeCloseTo(3 / 4, 2);
+    const resizedHandle = await dialog.getByRole('slider', { name: 'Redimensionar desde esquina inferior derecha' }).boundingBox();
+    await drag(page, info.project.name, { x: resizedHandle.x + 16, y: resizedHandle.y + 16 },
+      { x: resizedHandle.x + 16 + initial.width * 0.15, y: resizedHandle.y + 16 + initial.height * 0.15 });
+    const larger = await frame.boundingBox();
+    expect(larger.width).toBeGreaterThan(smaller.width);
+    expect(larger.width / larger.height).toBeCloseTo(3 / 4, 2);
+    const stage = await dialog.getByTestId('crop-stage').boundingBox();
+    await drag(page, info.project.name, { x: larger.x + larger.width / 2, y: larger.y + larger.height / 2 },
+      { x: stage.x + stage.width + 50, y: larger.y + larger.height / 2 });
+    const moved = await frame.boundingBox();
+    expect(moved.x).toBeGreaterThan(smaller.x);
+    expect(moved.x + moved.width).toBeLessThanOrEqual(stage.x + stage.width + 1);
+    expect(moved.y + moved.height).toBeLessThanOrEqual(stage.y + stage.height + 1);
+    await dialog.screenshot({ path: `test-results/crop-frame-${info.project.name}.png` });
+    await dialog.getByRole('button', { name: 'Guardar foto' }).click();
     await expect(page.locator('output')).toHaveText('900x1200');
     await expect(page.getByTestId('crop-changes')).toHaveText(String(++changes));
+    const pixel = JSON.parse(await page.getByTestId('crop-pixel').textContent());
+    expect(pixel[0]).toBeLessThan(10); expect(pixel[2]).toBeGreaterThan(245);
+    expect(pixel[3]).toBe(255);
     await expect(dialog).toHaveCount(0);
     await input.setInputFiles(file);
     await expect(dialog).toBeVisible();
@@ -204,7 +229,27 @@ test('product photos crop horizontal, vertical and square sources and allow canc
   }
   await input.setInputFiles({ name: 'broken.jpg', mimeType: 'image/jpeg', buffer: Buffer.from('invalid') });
   await expect(page.getByRole('alert')).toContainText('No se pudo abrir');
-  await expect(page.getByRole('button', { name: 'Usar foto' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Guardar foto' })).toBeDisabled();
   await page.getByRole('button', { name: 'Cancelar' }).click();
   await expect(page.getByTestId('crop-changes')).toHaveText(String(changes));
 });
+
+async function drag(page, project, from, to) {
+  if (project === 'mobile') {
+    const session = await page.context().newCDPSession(page);
+    await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ ...from, id: 1 }] });
+    for (let step = 1; step <= 8; step++) {
+      await session.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{
+        x: from.x + (to.x - from.x) * step / 8,
+        y: from.y + (to.y - from.y) * step / 8, id: 1,
+      }] });
+    }
+    await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await session.detach();
+  } else {
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(to.x, to.y, { steps: 8 });
+    await page.mouse.up();
+  }
+}

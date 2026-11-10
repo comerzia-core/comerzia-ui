@@ -24,13 +24,18 @@ const imageUrl = 'http://127.0.0.1:5189/product.svg';
 function CropHarness() {
   const [result, setResult] = useState('');
   const [changes, setChanges] = useState(0);
+  const [pixel, setPixel] = useState('');
   return <ToastProvider><ComerziaSingleImageUploader cropPortrait label="Foto de producto" onChange={async value => {
     if (!value?.file) return;
     const bitmap = await createImageBitmap(value.file);
     setResult(`${bitmap.width}x${bitmap.height}`);
     setChanges(count => count + 1);
+    const canvas = document.createElement('canvas'); canvas.width = bitmap.width; canvas.height = bitmap.height;
+    const context = canvas.getContext('2d')!;
+    context.drawImage(bitmap, 0, 0);
+    setPixel(JSON.stringify(Array.from(context.getImageData(450, 600, 1, 1).data)));
     bitmap.close();
-  }} /><output>{result}</output><span data-testid="crop-changes">{changes}</span></ToastProvider>;
+  }} /><output>{result}</output><span data-testid="crop-changes">{changes}</span><span data-testid="crop-pixel">{pixel}</span></ToastProvider>;
 }
 
 function App() {
