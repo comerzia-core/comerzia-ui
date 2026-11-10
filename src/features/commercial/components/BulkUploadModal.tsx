@@ -284,7 +284,8 @@ export const BulkUploadModal = ({ isOpen, onClose, onSuccess }: Props) => {
           finalImageUrl = await uploadFile(
             data.image.file,
             STORAGE_FOLDERS.PRODUCTS,
-            `${cleanProd}-${cleanVar}-${Date.now()}`
+            `${cleanProd}-${cleanVar}-${Date.now()}`,
+              true
           );
         } catch (uploadErr) {
           console.error('Error subiendo imagen:', uploadErr);
@@ -757,7 +758,7 @@ export const BulkUploadModal = ({ isOpen, onClose, onSuccess }: Props) => {
                           {/* 2. Carga / Captura de Foto (Solo si falta) */}
                           {item.missingImage ? (
                             <div className="bg-base-200/40 rounded-xl p-3 border border-base-300/80 shadow-2xs">
-                              <ComerziaSingleImageUploader
+                              <ComerziaSingleImageUploader cropAspect="portrait"
                                 enableImageZoom
                                 label="Foto de la Variante"
                                 value={data.image}

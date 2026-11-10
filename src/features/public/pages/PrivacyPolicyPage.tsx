@@ -1,3 +1,4 @@
+import { PrivateLegalDocument } from '../components/PrivateLegalDocument';
 import { LegalDocument, type LegalSection } from '../components/LegalDocument';
 
 const sections: LegalSection[] = [
@@ -302,9 +303,10 @@ const sections: LegalSection[] = [
   }
 ];
 
-export function PrivacyPolicyPage() {
+export function PrivacyPolicyPage({ privateDesign = false }: { privateDesign?: boolean } = {}) {
+  const Document = privateDesign ? PrivateLegalDocument : LegalDocument;
   return (
-    <LegalDocument
+    <Document
       title="Política de Privacidad de Comerzia"
       introduction="Versión 1.0 — En vigor desde el 7 de noviembre de 2026. Documento informativo oficial sobre el tratamiento, seguridad y protección de datos personales en la plataforma Comerzia (Bolivia)."
       sections={sections}

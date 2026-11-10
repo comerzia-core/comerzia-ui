@@ -33,7 +33,7 @@ export function CatalogProductSelection() {
     <ComerziaSwitch ariaLabel={'Publicar ' + item.name} checked={item.visible} isLoading={state.busy} disabled={!canManage} onChange={() => { void state.product(item.id, !item.visible); }} />;
   const columns: Column<ProductSelection>[] = [
     { header: 'Producto', render: item => <div className="flex items-center gap-3 min-w-0">{item.imageUrl && <img src={getThumbnailUrl(item.imageUrl)} alt="" loading="lazy" className="w-10 h-10 object-contain rounded-lg" />}<div><p className="font-medium">{item.name}</p><p className="text-xs text-base-content/50">{item.brand}</p></div></div> },
-    { header: 'Variantes', render: item => <span className="text-xs">{item.visibleVariantCount} de {item.variantCount} visibles</span> },
+    { header: 'Variantes', render: item => <span className="text-xs">{item.visibleVariantCount} de {item.variantCount} seleccionadas</span> },
     { header: 'Público', render: visible },
   ];
   const facets = state.facets.data;
@@ -60,7 +60,7 @@ export function CatalogProductSelection() {
     <div className="md:hidden space-y-3">
       {state.products.isPending ? <p role="status">Cargando productos…</p> : !page?.content.length ? <p className="text-sm text-base-content/60 py-6 text-center">No se encontraron productos.</p> : page.content.map((item, index) => <article key={item.id} onClick={event => openContext(event, item, true)} onContextMenu={event => openContext(event, item, true)} className="bg-base-100 p-4 rounded-2xl border border-base-200 shadow-xs space-y-3 cursor-pointer">
         <div className="flex items-center gap-3"><span className="text-xs text-base-content/40">{state.page * state.pageSize + index + 1}</span>{item.imageUrl && <img src={getThumbnailUrl(item.imageUrl)} alt="" loading="lazy" className="w-10 h-10 object-contain rounded-lg" />}<div className="min-w-0 flex-1"><h3 className="text-sm font-semibold truncate">{item.name}</h3><p className="text-xs text-base-content/50">{item.brand}</p></div>{visible(item)}</div>
-        <p className="text-xs text-base-content/60">{item.visibleVariantCount} de {item.variantCount} variantes visibles</p>
+        <p className="text-xs text-base-content/60">{item.visibleVariantCount} de {item.variantCount} variantes seleccionadas</p>
       </article>)}
       {page && page.totalPages > 1 && <footer className="flex items-center justify-between gap-2 whitespace-nowrap rounded-2xl border border-base-200 bg-base-100 p-3 text-xs">
         <ComerziaButton variant="ghost" isIconOnly aria-label="Productos anteriores" icon={<ArrowLeft size={16} />} disabled={state.page === 0 || state.products.isFetching} onClick={() => state.setPage(state.page - 1)} />
@@ -83,7 +83,7 @@ function VariantEditor({ item, canManage, busy, onChange, onClose }: { item: Pro
   const company = useAuthStore(state => state.userProfile?.companySettings?.id);
   const variants = useQuery({ queryKey: ['catalog-variants', company, item.id, page, pageSize], queryFn: ({ signal }) => catalogService.productVariants(item.id, page, pageSize, signal) });
   const columns: Column<VariantSelection>[] = [
-    { header: 'Variante', render: variant => <span>{variant.name}{!variant.active && <small className="text-base-content/50"> · Inactiva</small>}</span> },
+    { header: 'Variante', render: variant => <span>{variant.name}{!variant.active && <small className="text-base-content/50"> · Inactiva</small>}{!variant.hasActivePrice && <small className="block text-warning">Sin precio vigente mayor que cero. Configura un precio para mostrarla en el catálogo.</small>}</span> },
     { header: 'Público', render: variant => <ComerziaSwitch ariaLabel={'Publicar variante ' + variant.name} checked={variant.visible} disabled={!canManage} isLoading={busy} onChange={() => { void onChange(variant.id, !variant.visible); }} /> },
   ];
   return <ComerziaModal isOpen onClose={onClose} title={item.name} size="lg" variant="view">

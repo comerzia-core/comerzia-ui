@@ -16,8 +16,7 @@ import type {
 } from '../types/commercial';
 import { useToast } from '../../../context/ToastContext';
 import { generateSku } from '../../../utils/skuGenerator';
-import { useLoadDictionaries } from '../../../hooks/useLoadDictionaries';
-import { DICTIONARIES } from '../../../config/dictionaries';
+import { VariantTypeSelect } from './VariantTypeSelect';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { ComerziaSingleImageUploader, type SingleImageValue } from '../../../components/ui/ComerziaSingleImageUploader';
 import { BarcodeScannerModal } from '../../../components/ui/BarcodeScannerModal';
@@ -60,8 +59,6 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
   const [variantImages, setVariantImages] = useState<(SingleImageValue | null)[]>([null]);
   const [scanningVariantIndex, setScanningVariantIndex] = useState<number | null>(null);
 
-  const { options, isLoading: isLoadingDict } = useLoadDictionaries([DICTIONARIES.VARIANT_TYPE]);
-  const variantTypeOptions = options[DICTIONARIES.VARIANT_TYPE] || [];
 
   const { userProfile } = useAuthStore();
   const currencyCode = userProfile?.companySettings?.currencyCode || 'USD';
@@ -282,7 +279,8 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
               finalImageUrl = await uploadFile(
                 imgItem.file,
                 STORAGE_FOLDERS.PRODUCTS,
-                `${cleanProductName}-${cleanVariantName}-${Date.now()}`
+                `${cleanProductName}-${cleanVariantName}-${Date.now()}`,
+              true
               );
             } catch (uploadErr) {
               console.error("Error al subir imagen de variante:", uploadErr);
@@ -318,7 +316,7 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
       await commercialService.createFullProduct({
         name,
         description: description || undefined,
-        variantType: Number(variantType),
+        variantType,
         brandId,
         variants: processedVariants
       });
@@ -476,16 +474,7 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
               shakeKey={shakeKey}
               isRequired
             />
-            <ComerziaSelect
-              label="Tipo de Variante"
-              options={variantTypeOptions}
-              isLoading={isLoadingDict}
-              value={variantType}
-              onChange={(e) => setVariantType(e.target.value)}
-              error={!variantType && shakeKey > 0 ? "Requerido" : ""}
-              shakeKey={shakeKey}
-              isRequired
-            />
+            <VariantTypeSelect isOpen={isOpen} value={variantType} onChange={setVariantType} shakeKey={shakeKey} disabled={isSubmitting} />
 
             {!hasPreselectedHierarchy && (
               <>
@@ -610,7 +599,7 @@ export const CreateFullProductModal = ({ isOpen, onClose, onSuccess, initialCate
 
                   {/* Imagen de la variante */}
                   <div className="md:col-span-1">
-                    <ComerziaSingleImageUploader
+                    <ComerziaSingleImageUploader cropAspect="portrait"
                       enableImageZoom
                       label="Imagen Variante"
                       value={variantImages[index]}

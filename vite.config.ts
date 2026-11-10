@@ -24,8 +24,9 @@ export default defineConfig(({ mode }) => {
     basicSsl()
   ],
   server: {
-    host: '127.0.0.1', // Las pruebas móviles requieren habilitar --host explícitamente.
+    host: '0.0.0.0', // Acceso de desarrollo desde el PC y los dispositivos de la LAN.
     port: 5173,
+    strictPort: true,
     proxy: {
       '/api': {
         target: 'http://localhost:8080',

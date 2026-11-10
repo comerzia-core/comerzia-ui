@@ -94,8 +94,7 @@ function PlatformSettingsForm({ initialSettings, isSaving, onSave }: PlatformSet
                 ...prev,
                 platformMode: 'PRIVATE',
                 publicRegistrationEnabled: false,
-                publicLandingEnabled: false,
-                publicCatalogsEnabled: false
+                publicLandingEnabled: false
             }));
         } else {
             setForm(prev => ({
@@ -169,7 +168,7 @@ function PlatformSettingsForm({ initialSettings, isSaving, onSave }: PlatformSet
                                 )}
                             </div>
                             <p className="text-xs text-base-content/70 leading-relaxed">
-                                Ideal para el VPS de clientes perpetuos. Redirige la raíz directamente al Login Corporativo (DaisyUI), inhabilita el auto-registro y oculta menciones de servicio SaaS.
+                                Muestra una página corporativa con acceso para el personal, inhabilita el auto-registro y oculta los planes comerciales. Los catálogos públicos conservan su configuración independiente.
                             </p>
                         </div>
 

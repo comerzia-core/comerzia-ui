@@ -28,7 +28,7 @@ export interface ProductResponse {
   id: string;
   name: string;
   description?: string;
-  variantType: number;
+  variantType: string;
   variantName: string;
   status: boolean;
   brand: BrandResponse;
@@ -102,7 +102,7 @@ export interface CreateFullVariantRequest {
 export interface CreateFullProductRequest {
   name: string;
   description?: string;
-  variantType: number;
+  variantType: string;
   brandId: string;
   variants: CreateFullVariantRequest[];
 }
@@ -133,6 +133,7 @@ export interface ScannerStockBranchResponse {
 }
 
 export interface ScannerVariantDetailResponse {
+  status: boolean;
   variantId: string;
   variantName: string;
   sku: string;
@@ -144,6 +145,7 @@ export interface ScannerVariantDetailResponse {
 }
 
 export interface ScannerSiblingVariantResponse {
+  status: boolean;
   variantId: string;
   variantName: string;
   sku: string;
@@ -161,6 +163,7 @@ export interface ScannerProductResponse {
 }
 
 export interface ProductVariantIdentityResponse {
+  status: boolean;
   variantId: string;
   productId: string;
   productName: string;

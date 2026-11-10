@@ -21,11 +21,29 @@ api.defaults.baseURL = `${window.location.origin}/api`;
 useAuthStore.setState({ isSessionReady: true, isAuthenticated: true });
 const imageUrl = 'http://127.0.0.1:5189/product.svg';
 
+function CropHarness() {
+  const [result, setResult] = useState('');
+  const [changes, setChanges] = useState(0);
+  const [pixel, setPixel] = useState('');
+  return <ToastProvider><ComerziaSingleImageUploader cropAspect={new URLSearchParams(location.search).get('aspect') === 'square' ? 'square' : 'portrait'} label="Foto de producto" onChange={async value => {
+    if (!value?.file) return;
+    const bitmap = await createImageBitmap(value.file);
+    setResult(`${bitmap.width}x${bitmap.height}`);
+    setChanges(count => count + 1);
+    const canvas = document.createElement('canvas'); canvas.width = bitmap.width; canvas.height = bitmap.height;
+    const context = canvas.getContext('2d')!;
+    context.drawImage(bitmap, 0, 0);
+    setPixel(JSON.stringify(Array.from(context.getImageData(450, 600, 1, 1).data)));
+    bitmap.close();
+  }} /><output>{result}</output><span data-testid="crop-changes">{changes}</span><span data-testid="crop-pixel">{pixel}</span></ToastProvider>;
+}
+
 function App() {
   const [count, setCount] = useState(2);
   const [selected, setSelected] = useState(0);
   const [saleOpen, setSaleOpen] = useState(true);
   const view = new URLSearchParams(location.search).get('view');
+  if (view === 'crop') return <CropHarness />;
   if (view === 'uploader') return <ToastProvider>
     <ComerziaSingleImageUploader enableImageZoom value={{ preview: imageUrl }} label="Foto variante" onChange={() => setSelected(value => value + 1)} />
     <ComerziaSingleImageUploader value={{ preview: imageUrl }} label="Perfil" onChange={() => setSelected(value => value + 1)} />

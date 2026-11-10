@@ -15,3 +15,11 @@
 @media(prefers-reduced-motion:reduce){.storefront *{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 
 .store-header-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}.store-brand{min-width:0;flex-shrink:1}.store-brand>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Encuadre uniforme de productos en todas las plantillas. */
+.storefront .store-product-photo{aspect-ratio:3/4}
+.store-product-photo .store-image img{object-fit:cover}
+
+/* El detalle ocupa su marco manteniendo el formato vertical en escritorio y móvil. */
+.storefront .store-detail-image{aspect-ratio:3/4;padding:0;max-height:none;overflow:hidden}
+.store-detail-image .store-image img{object-fit:cover}

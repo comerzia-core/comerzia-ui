@@ -67,7 +67,7 @@ export const EditVariantModal = ({ isOpen, onClose, onSuccess, productId, produc
       toastError("Ingresa el nombre o atributo de la variante.");
       return;
     }
-    if (!isInternalBarcode && !barCode.trim()) {
+    if (!variant && !isInternalBarcode && !barCode.trim()) {
       setShakeKey(prev => prev + 1);
       toastError("Ingresa el código de barras.");
       return;
@@ -119,7 +119,8 @@ export const EditVariantModal = ({ isOpen, onClose, onSuccess, productId, produc
             finalImageUrl = await uploadFile(
               selectedImage.file,
               STORAGE_FOLDERS.PRODUCTS,
-              `${cleanProd}-${cleanVar}-${Date.now()}`
+              `${cleanProd}-${cleanVar}-${Date.now()}`,
+              true
             );
           } catch (uploadErr) {
             console.error("Error al subir imagen:", uploadErr);
@@ -134,8 +135,6 @@ export const EditVariantModal = ({ isOpen, onClose, onSuccess, productId, produc
         name: name.trim(),
         description: variant?.description || undefined,
         sku: finalSku,
-        barCode: isInternalBarcode ? '' : barCode.trim(),
-        isInternalBarcode,
         imageUrl: finalImageUrl || undefined,
         productId,
         status
@@ -145,7 +144,11 @@ export const EditVariantModal = ({ isOpen, onClose, onSuccess, productId, produc
         await commercialService.updateProductVariant(variant.id, payload);
         toastSuccess("Variante actualizada exitosamente.");
       } else {
-        await commercialService.createProductVariant(payload);
+        await commercialService.createProductVariant({
+          ...payload,
+          barCode: isInternalBarcode ? undefined : barCode.trim(),
+          isInternalBarcode,
+        });
         toastSuccess("Variante creada exitosamente.");
       }
       setShakeKey(0);
@@ -192,22 +195,21 @@ export const EditVariantModal = ({ isOpen, onClose, onSuccess, productId, produc
           isRequired
         />
         
-        <div className="flex items-center gap-4 py-1">
+        {!variant && <div className="flex items-center gap-4 py-1">
           <span className="label-text">Generar código de barras internamente</span> 
           <ComerziaSwitch 
             checked={isInternalBarcode} 
             onChange={() => {
               setIsInternalBarcode(!isInternalBarcode);
-              if (!isInternalBarcode) { // it means we are setting it to true
+              if (!isInternalBarcode) {
                 setBarCode('');
                 setBarcodeError('');
               }
             }} 
-            disabled={!!variant}
           />
-        </div>
+        </div>}
 
-        {!isInternalBarcode && (
+        {(variant || !isInternalBarcode) && (
           <div className="flex items-end gap-1.5 w-full min-w-0">
             <div className="flex-1 min-w-0">
               <ComerziaInput
@@ -233,7 +235,7 @@ export const EditVariantModal = ({ isOpen, onClose, onSuccess, productId, produc
           </div>
         )}
 
-        <ComerziaSingleImageUploader
+        <ComerziaSingleImageUploader cropAspect="portrait"
           enableImageZoom
           label="Imagen de la Variante (Opcional)"
           value={selectedImage}

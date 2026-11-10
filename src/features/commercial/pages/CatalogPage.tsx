@@ -33,6 +33,7 @@ export const CatalogPage = () => {
   const { error: toastError, success: toastSuccess } = useToast();
   const { hasPermission, hasRole } = useAuthStore();
   const canManage = hasPermission('COM_CATALOG_MANAGE');
+  const canReadInactive = hasPermission('COM_CATALOG_READ_ALL');
   const canBulkUpload = hasPermission('COM_BULK_UPLOAD');
   const canCreateProduct = hasRole('OWNER') || hasRole('BRANCH_MANAGER');
 
@@ -78,12 +79,12 @@ export const CatalogPage = () => {
 
   useEffect(() => {
     loadCategories();
-  }, [canManage]);
+  }, [canReadInactive]);
 
   const loadCategories = async (background = false) => {
     if (!background) setIsLoadingCategories(true);
     try {
-      const activeOnly = canManage ? false : undefined;
+      const activeOnly = canReadInactive ? false : undefined;
       const res = await commercialService.getCategories(activeOnly);
       setCategories(res);
     } catch (e) {
@@ -104,7 +105,7 @@ export const CatalogPage = () => {
   const loadSegments = async (categoryId: string, background = false) => {
     if (!background) setIsLoadingSegments(true);
     try {
-      const activeOnly = canManage ? false : undefined;
+      const activeOnly = canReadInactive ? false : undefined;
       const res = await commercialService.getSegmentsByCategory(categoryId, activeOnly);
       setSegments(res);
     } catch (e) {
@@ -125,7 +126,7 @@ export const CatalogPage = () => {
   const loadBrands = async (segmentId: string, background = false) => {
     if (!background) setIsLoadingBrands(true);
     try {
-      const activeOnly = canManage ? false : undefined;
+      const activeOnly = canReadInactive ? false : undefined;
       const res = await commercialService.getBrandsBySegment(segmentId, activeOnly);
       setBrands(res);
     } catch (e) {
@@ -236,6 +237,7 @@ export const CatalogPage = () => {
               <ComerziaCreatableSelect
                 label="1. Categoría"
               entityName="Categoría"
+              statusChangeMessage={active => `${active ? 'Activar' : 'Desactivar'} esta categoría y sus rubros, marcas, productos y variantes. ¿Continuar?`}
               canManage={canManage}
               options={categories.map(c => ({ value: c.id, label: c.name, status: c.status }))}
               value={selectedCategoryId}
@@ -261,6 +263,8 @@ export const CatalogPage = () => {
                 try {
                   await commercialService.updateCategory(id as string, newLabel, status);
                   setCategories(prev => prev.map(c => c.id === id ? { ...c, name: newLabel, status } : c));
+                  if (selectedCategoryId) await loadSegments(selectedCategoryId, true);
+                  if (selectedSegmentId) await loadBrands(selectedSegmentId, true);
                 } catch (e: any) {
                   toastError(getCatalogErrorMessage(e, "Error al actualizar la categoría"));
                   throw e;
@@ -284,6 +288,7 @@ export const CatalogPage = () => {
             <ComerziaCreatableSelect
               label="2. Rubro"
               entityName="Rubro"
+              statusChangeMessage={active => `${active ? 'Activar' : 'Desactivar'} este rubro y sus marcas, productos y variantes. ¿Continuar?`}
               canManage={canManage}
               options={segments.map(s => ({ value: s.id, label: s.name, status: s.status }))}
               value={selectedSegmentId}
@@ -309,6 +314,7 @@ export const CatalogPage = () => {
                   const existing = segments.find(s => s.id === id);
                   await commercialService.updateSegment(id as string, newLabel, status, existing?.category?.id ?? selectedCategoryId);
                   setSegments(prev => prev.map(s => s.id === id ? { ...s, name: newLabel, status } : s));
+                  if (selectedSegmentId) await loadBrands(selectedSegmentId, true);
                 } catch (e: any) {
                   toastError(getCatalogErrorMessage(e, "Error al actualizar rubro"));
                   throw e;
@@ -333,6 +339,7 @@ export const CatalogPage = () => {
             <ComerziaCreatableSelect
               label="3. Marca"
               entityName="Marca"
+              statusChangeMessage={active => `${active ? 'Activar' : 'Desactivar'} esta marca y sus productos y variantes. ¿Continuar?`}
               canManage={canManage}
               options={brands.map(b => ({ value: b.id, label: b.name, status: b.status }))}
               value={selectedBrandId}

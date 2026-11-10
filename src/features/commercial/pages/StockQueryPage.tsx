@@ -1,3 +1,4 @@
+import { InactiveProductNotice } from '../components/InactiveProductNotice';
 import { ProductVariantImage } from '../components/ProductVariantImage';
 import { useRealtimeRefresh } from '../../realtime/hooks/useRealtimeRefresh';
 import { useState, useEffect } from 'react';
@@ -80,6 +81,7 @@ export const StockQueryPage = () => {
         />
       </div>
 
+      {productData && productData.scannedVariant.status === false && <InactiveProductNotice />}
       {productData && scannedVariant && (
         <div className="space-y-4 sm:space-y-6 animate-slide-up">
           {/* Header Producto */}
@@ -273,7 +275,7 @@ export const StockQueryPage = () => {
                     onClick={() => {
                       executeScan(variant.barCode);
                     }}
-                    className="flex items-center gap-3 p-3.5 bg-base-200/50 hover:bg-base-200/90 hover:border-primary/50 border border-base-200 rounded-2xl cursor-pointer active:scale-[0.99] transition-all group"
+                    className={`flex items-center gap-3 p-3.5 border rounded-2xl cursor-pointer active:scale-[0.99] transition-all group ${variant.status === false ? 'bg-error/10 border-error/30 text-error' : 'bg-base-200/50 hover:bg-base-200/90 hover:border-primary/50 border-base-200'}`}
                   >
                     <span className="text-xs text-base-content/50">{idx + 1}</span>
                     <div className="w-10 h-10 sm:w-12 sm:h-12 bg-base-100 rounded-xl overflow-hidden border border-base-300 flex items-center justify-center shrink-0">
@@ -285,7 +287,7 @@ export const StockQueryPage = () => {
                     </div>
                     <div className="min-w-0 flex-1">
                       <span className="font-bold text-sm sm:text-base text-base-content group-hover:text-primary transition-colors block truncate">
-                        {variant.variantName}
+                        {variant.variantName}{variant.status === false && <span className="badge badge-error badge-sm ml-2">Inactivo</span>}
                       </span>
                     </div>
                   </div>

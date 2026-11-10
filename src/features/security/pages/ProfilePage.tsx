@@ -553,7 +553,7 @@ export const ProfilePage = () => {
                       <span className="text-xs font-bold text-base-content/70 uppercase tracking-wider block mb-2">
                         Foto de Perfil
                       </span>
-                      <ComerziaSingleImageUploader
+                      <ComerziaSingleImageUploader cropAspect="square"
                         value={avatarValue}
                         onChange={setAvatarValue}
                         helperText="JPG, PNG o WEBP. Máx. 5MB."

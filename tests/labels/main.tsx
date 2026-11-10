@@ -13,7 +13,7 @@ import '../../src/index.css';
 // Todas las peticiones de este arnés son interceptadas por Playwright; no usa la API cotidiana.
 api.defaults.baseURL = `${window.location.origin}/api`;
 const product: ProductResponse = {
-  id: 'product', name: 'Producto', status: true, variantType: 1, variantName: 'Unidad',
+  id: 'product', name: 'Producto', status: true, variantType: 'type', variantName: 'Unidad',
   brand: { id: 'brand', name: 'Marca', status: true, segment: {
     id: 'segment', name: 'Segmento', status: true, category: { id: 'category', name: 'Categoría', status: true },
   } },

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useShake } from "../../hooks/useShake";
 import { Plus, MoreHorizontal, X, ChevronDown } from "lucide-react";
 import { ConfirmationModal } from "./ConfirmationModal";
@@ -20,6 +21,9 @@ interface Props {
     onUpdate?: (id: string | number, newLabel: string, status: boolean) => Promise<void>;
     onDelete?: (id: string | number) => Promise<void>;
     canManage?: boolean;
+    showStatusSwitch?: boolean;
+    deleteMessage?: string;
+    statusChangeMessage?: (active: boolean) => string;
     entityName?: string;
     error?: string;
     placeholder?: string;
@@ -39,6 +43,9 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
     onUpdate,
     onDelete,
     canManage = true,
+    showStatusSwitch = true,
+    deleteMessage,
+    statusChangeMessage,
     entityName = "Elemento",
     error,
     placeholder = "Buscar o crear...",
@@ -52,6 +59,8 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [isCreating, setIsCreating] = useState(false);
+    const [pendingStatus, setPendingStatus] = useState<{ id: string | number; name: string; active: boolean } | null>(null);
+    const [isChangingStatus, setIsChangingStatus] = useState(false);
     
     // Inline Edit State
     const [editOptionId, setEditOptionId] = useState<string | number | null>(null);
@@ -62,6 +71,43 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
     
     const wrapperRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+    const [dropdownPosition, setDropdownPosition] = useState<React.CSSProperties>({});
+
+    useEffect(() => {
+        if (!isOpen) return;
+        const positionDropdown = () => {
+            const input = inputRef.current;
+            if (!input) return;
+            const rect = input.getBoundingClientRect();
+            const viewport = window.visualViewport;
+            const viewportTop = viewport?.offsetTop ?? 0;
+            const viewportBottom = viewportTop + (viewport?.height ?? window.innerHeight);
+            const below = Math.max(0, viewportBottom - rect.bottom - 12);
+            const above = Math.max(0, rect.top - viewportTop - 12);
+            const openAbove = below < 240 && above > below;
+            setDropdownPosition({
+                position: 'fixed', left: rect.left, width: rect.width,
+                top: openAbove ? undefined : rect.bottom + 4,
+                bottom: openAbove ? window.innerHeight - rect.top + 4 : undefined,
+                maxHeight: Math.min(320, openAbove ? above : below), zIndex: 10000,
+            });
+        };
+        positionDropdown();
+        const observer = new ResizeObserver(positionDropdown);
+        if (inputRef.current) observer.observe(inputRef.current);
+        window.addEventListener('resize', positionDropdown);
+        window.addEventListener('scroll', positionDropdown, true);
+        window.visualViewport?.addEventListener('resize', positionDropdown);
+        window.visualViewport?.addEventListener('scroll', positionDropdown);
+        return () => {
+            observer.disconnect();
+            window.removeEventListener('resize', positionDropdown);
+            window.removeEventListener('scroll', positionDropdown, true);
+            window.visualViewport?.removeEventListener('resize', positionDropdown);
+            window.visualViewport?.removeEventListener('scroll', positionDropdown);
+        };
+    }, [isOpen]);
 
     // Sync search term with selected value label when not open
     useEffect(() => {
@@ -75,7 +121,8 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
     // Handle click / touch outside to close dropdown
     useEffect(() => {
         const handleOutside = (event: PointerEvent) => {
-            if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+            if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)
+                    && !dropdownRef.current?.contains(event.target as Node)) {
                 setIsOpen(false);
             }
         };
@@ -161,7 +208,8 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
     const handleUpdate = async () => {
         if (!editOptionId || !onUpdate) return;
         const opt = options.find(o => o.value === editOptionId);
-        if (opt && (opt.label !== editOptionLabel.trim() || opt.status !== editOptionStatus) && editOptionLabel.trim() !== "") {
+        const statusChanged = showStatusSwitch && opt?.status !== editOptionStatus;
+        if (opt && (opt.label !== editOptionLabel.trim() || statusChanged) && editOptionLabel.trim() !== "") {
             try {
                 await onUpdate(editOptionId, editOptionLabel.trim(), editOptionStatus);
                 // If it was the selected one, update local search term
@@ -264,8 +312,10 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
                 </label>
             )}
 
-            {isOpen && !disabled && (
-                <div className="absolute z-50 w-full mt-1 bg-base-100 rounded-xl shadow-2xl border border-base-200 max-h-80 overflow-y-auto overscroll-contain top-full">
+            {isOpen && !disabled && createPortal(
+                <div ref={dropdownRef} style={dropdownPosition}
+                    onClick={event => event.stopPropagation()}
+                    className="bg-base-100 rounded-xl shadow-2xl border border-base-200 overflow-y-auto overscroll-contain">
                     <ul className="menu menu-sm p-2 w-full">
                         {filteredOptions.length > 0 ? (
                             filteredOptions.map((opt) => (
@@ -286,16 +336,21 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
                                                         if (e.key === 'Escape') setEditOptionId(null);
                                                     }}
                                                 />
-                                                <div 
+                                                {showStatusSwitch && <div
                                                     className="flex-shrink-0" 
                                                     onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
                                                     onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
                                                 >
                                                     <ComerziaSwitch 
                                                         checked={editOptionStatus} 
-                                                        onChange={() => setEditOptionStatus(!editOptionStatus)} 
+                                                        onChange={() => {
+                                                            if (statusChangeMessage) {
+                                                                setPendingStatus({ id: opt.value, name: editOptionLabel.trim(), active: !editOptionStatus });
+                                                                setIsOpen(false);
+                                                            } else setEditOptionStatus(!editOptionStatus);
+                                                        }}
                                                     />
-                                                </div>
+                                                </div>}
                                             </div>
                                             {onDelete && (
                                                 <BtnDelete 
@@ -375,15 +430,30 @@ export const ComerziaCreatableSelect: React.FC<Props> = ({
                             </li>
                         )}
                     </ul>
-                </div>
+                </div>, document.body
             )}
             
+            <ConfirmationModal isOpen={pendingStatus !== null}
+                title="Cambiar estado" variant="warning"
+                message={pendingStatus && statusChangeMessage ? statusChangeMessage(pendingStatus.active) : ''}
+                confirmText="Aplicar cambio" isLoading={isChangingStatus}
+                onClose={() => { if (!isChangingStatus) setPendingStatus(null); }}
+                onConfirm={async () => {
+                    if (!pendingStatus || !onUpdate || isChangingStatus) return;
+                    setIsChangingStatus(true);
+                    try {
+                        await onUpdate(pendingStatus.id, pendingStatus.name, pendingStatus.active);
+                        setPendingStatus(null);
+                    } catch {
+                        // El consumidor muestra el error y la confirmación permite reintentar.
+                    } finally { setIsChangingStatus(false); }
+                }} />
             <ConfirmationModal
                 isOpen={isDeletingId !== null}
                 onClose={() => setIsDeletingId(null)}
                 onConfirm={handleConfirmDelete}
                 title={`Eliminar ${entityName}`}
-                message={`¿Estás seguro de eliminar este registro de ${entityName}? Si hay productos asociados a este registro, se perderán o desvincularán.`}
+                message={deleteMessage ?? `¿Estás seguro de eliminar este registro de ${entityName}? Si hay productos asociados a este registro, se perderán o desvincularán.`}
                 confirmText="Sí, eliminar"
             />
         </div>

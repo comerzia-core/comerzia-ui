@@ -9,7 +9,7 @@ import type { TenantCompanyProfileResponse, UpdateCompanySettingsRequest } from 
 
 export function useCompanyProfileSettings() {
   const { addToast: showToast } = useToast();
-  const [tab, setTab] = useState<'general' | 'business'>('general');
+  const [tab, setTab] = useState<'general' | 'business' | 'prices'>('general');
   const canManageSettings = useAuthStore(state => state.hasPermission('ORG_SETTINGS_MANAGE'));
 
   // Estados de la vista

@@ -7,8 +7,11 @@ import { ComerziaSingleImageUploader } from '../../../components/ui/ComerziaSing
 import { BtnSave } from '../../../components/ui/CrudButtons';
 import { ComerziaButton } from '../../../components/ui/ComerziaButton';
 import { useCompanyProfileSettings } from '../hooks/useCompanyProfileSettings';
+import { PriceTypeSettingsPanel } from '../components/PriceTypeSettingsPanel';
+import { useAuthStore } from '../../../stores/useAuthStore';
 
 export const CompanyProfilePage = () => {
+  const canReadPrices = useAuthStore(state => state.hasPermission('ORG_SETTINGS_READ') || state.hasPermission('ORG_SETTINGS_MANAGE'));
   const { profileData, isLoading, isSaving, companyLogo, setCompanyLogo, ticketLogo, setTicketLogo,
     companyQr, setCompanyQr, shakeKey, errors, formData, setFormData, handleChange, handleSaveSettings,
     tab, setTab, canManageSettings } = useCompanyProfileSettings();
@@ -42,8 +45,10 @@ export const CompanyProfilePage = () => {
       <div role="tablist" aria-label="Configuración de empresa" className="flex gap-2 overflow-x-auto">
         <ComerziaButton role="tab" aria-selected={tab === 'general'} aria-controls="company-general" label="Información general" variant={tab === 'general' ? 'primary' : 'ghost'} onClick={() => setTab('general')} />
         <ComerziaButton role="tab" aria-selected={tab === 'business'} aria-controls="company-business" label="Configuración empresarial" variant={tab === 'business' ? 'primary' : 'ghost'} onClick={() => setTab('business')} />
+        {canReadPrices && <ComerziaButton role="tab" aria-selected={tab === 'prices'} aria-controls="company-prices" label="Configuración de precios" variant={tab === 'prices' ? 'primary' : 'ghost'} onClick={() => setTab('prices')} />}
       </div>
       <div role="tabpanel" id={'company-' + tab} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {tab === 'prices' ? <PriceTypeSettingsPanel /> : <>
         
         {/* COLUMNA IZQUIERDA: Info General y Suscripción (Solo Lectura) */}
         {tab === 'general' && <div className="lg:col-span-1 space-y-6">
@@ -302,6 +307,7 @@ export const CompanyProfilePage = () => {
           </div>
         </div>
 
+        </>}
       </div>
     </div>
   );

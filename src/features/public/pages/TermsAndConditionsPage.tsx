@@ -1,3 +1,4 @@
+import { PrivateLegalDocument } from '../components/PrivateLegalDocument';
 import { Link } from 'react-router-dom';
 import { LegalDocument, type LegalSection } from '../components/LegalDocument';
 
@@ -261,9 +262,10 @@ const sections: LegalSection[] = [
   }
 ];
 
-export function TermsAndConditionsPage() {
+export function TermsAndConditionsPage({ privateDesign = false }: { privateDesign?: boolean } = {}) {
+  const Document = privateDesign ? PrivateLegalDocument : LegalDocument;
   return (
-    <LegalDocument
+    <Document
       title="Términos y Condiciones de Comerzia"
       introduction="Versión 1.0 — En vigor desde el 7 de noviembre de 2026. Documento normativo oficial que rige el acceso y uso de la plataforma Comerzia en el Estado Plurinacional de Bolivia."
       sections={sections}
